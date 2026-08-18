@@ -1,27 +1,29 @@
-# Data artifacts
-data/liiga.duckdb
+# FULL-BACKUP POLICY (2026-08-18)
+# This repo is a complete backup of the project: if the local machine dies, a
+# clone + `pip install -e .` restores everything. So we track things a normal
+# repo would not -- the built DuckDB, the raw API cache, and logs.
+#
+# Only genuinely MACHINE-REGENERABLE artifacts are excluded below. Nothing here
+# represents lost work: every entry is rebuilt automatically by the toolchain,
+# and most of it is platform-specific so it would not survive a move anyway.
 
-# Raw liiga.fi API cache. Completed seasons are committed (immutable, and the
-# only copy that survives an upstream API change -- v1 already broke once).
-# The target season is force-refetched daily by daily_update.py, so it would
-# churn the repo for no benefit; keep it ignored.
-data/raw/*.json
-!data/raw/games_202[2-6].json
-!data/raw/game_202[2-6]_*.json
+# Virtualenv -- restore with:  python -m venv .venv && pip install -e .
+# (631 MB of platform-specific compiled binaries; useless on another machine.)
+.venv/
+venv/
 
-# Python
+# Python build/bytecode caches -- regenerated on import/install.
+# Committing stale .pyc files actively causes hard-to-debug import bugs.
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
-venv/
-.env
+.pytest_cache/
 
-# Jupyter
+# Jupyter checkpoint copies
 .ipynb_checkpoints/
 
-# OS
-.DS_Store
+# Secrets -- must never be committed
+.env
 
-# Runtime logs
-logs/
+# macOS Finder metadata
+.DS_Store

@@ -1,0 +1,1732 @@
+=== 2026-07-07 09:01:52 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-08 08:33:46 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-09 08:32:52 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-10 08:34:51 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-11 08:44:49 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-12 08:30:00 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-13 08:33:45 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-14 08:40:32 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-15 08:43:23 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-16 08:36:32 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-17 08:33:26 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-18 08:42:11 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-19 08:37:00 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-20 08:40:58 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-07-22 08:41:47 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-23 08:42:10 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-24 08:42:40 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-25 08:39:18 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-26 08:44:09 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-27 08:37:00 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-07-28 08:30:59 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-08-03 08:30:03 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-08-04 08:30:03 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-05 08:30:03 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 54, in refresh_results
+    ingest_all()          # re-flattens all seasons (cache for past, fresh for target)
+    ~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 260, in ingest_all
+    con = get_connection()
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py", line 36, in get_connection
+    return duckdb.connect(str(path))
+           ~~~~~~~~~~~~~~^^^^^^^^^^^
+_duckdb.IOException: IO Error: Could not set lock on file "/Users/mika.heino/prod/liiga_2026-27/data/liiga.duckdb": Conflicting lock is held in /opt/homebrew/Cellar/duckdb/1.4.1/bin/duckdb (PID 21405) by user mika.heino. See also https://duckdb.org/docs/stable/connect/concurrency
+=== 2026-08-06 08:30:05 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-07 08:36:00 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-08 08:35:59 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-09 08:46:29 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-10 08:33:08 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-08-11 08:30:03 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-12 08:30:04 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-13 08:30:00 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-14 08:30:04 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-15 08:35:04 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 571, in getresponse
+    httplib_response = super().getresponse()
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1450, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 498, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Read timed out. (read timeout=30)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
+    main()
+    ~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
+    refresh_results(target)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
+    games = fetch_season(target, force=True)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
+    resp = requests.get(
+        _season_url(season),
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 742, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='www.liiga.fi', port=443): Read timed out. (read timeout=30)
+=== 2026-08-16 08:38:18 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-17 08:30:05 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-18 08:30:00 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
