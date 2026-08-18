@@ -51,6 +51,26 @@ What's in it (all the "more informative" ideas from June are done):
 Keep the header strip + ELI5 numbers in sync with the model: weights and MAE
 are constants at the top of `scripts/build_site.py`.
 
+**Verify visual changes by screenshot, not by reading HTML** — the ELI5 section
+is server-rendered static HTML while the standings/cards/heatmap/contributors
+are JS-populated from the embedded DATA blob, so a change can look right in the
+source and render wrong:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --screenshot=/tmp/site.png --window-size=1024,4600 \
+  "file://$PWD/site/index.html"
+```
+
+**Presenting numbers to a non-technical audience** (learned 2026-07-17): "show
+hard data" and "no visible math" are not in conflict. Step 1's table originally
+exposed the weighted-goals / weighted-games arithmetic; that was right when the
+ask was "hard data for a LinkedIn screenshot" and wrong once the audience was
+specified as sports fans who don't do math. The resolution was to keep real
+per-season stats (goals, games — numbers any fan reads fluently) and state the
+blended result as a fact, dropping the visible formula. Hard data means real
+stats, not exposed arithmetic.
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):
