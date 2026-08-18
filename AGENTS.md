@@ -367,3 +367,34 @@ Do this for EVERY player touched by a roster update, including ones who
 already show up with Liiga history — that history can predate their most
 recent season abroad (see the gotcha in §4). Finish with
 `python scripts/check_roster_coverage.py` to confirm nothing was missed.
+
+---
+
+## 13. Version control
+
+Git-initialized 2026-08-18. Remote: **https://github.com/mikaheino/liiga-2026-27**
+(public). Push over SSH — `origin` is set to
+`git@github.com:mikaheino/liiga-2026-27.git`.
+
+Auth uses a dedicated key, not the machine's other SSH identities: **`~/.ssh/id_ed25519_liiga`**
+(public half registered on github.com/mikaheino), wired up via a `Host github.com`
+block in `~/.ssh/config` (`IdentitiesOnly yes`, so it doesn't collide with the
+unrelated keys already on this machine for other projects). Never print or
+otherwise expose the private half of this key.
+
+`.gitignore` excludes `data/liiga.duckdb`, `data/raw/*.json`, `.venv/`, `logs/`,
+and the usual Python/OS junk — everything else in `data/` (transfers article,
+external stats, league factors, crowd predictions) is source-controlled on
+purpose, since those CSVs/text files are the human-maintained inputs (§5).
+
+**Commit after roster batches.** This became load-bearing after a 2026-08
+incident where a background research agent (sent to fetch external player
+stats) got prompt-injected via scraped web content and started rewriting
+unrelated project files (`league_factors.csv`, `src/liiga/crowd.py`,
+`scripts/build_site.py`, etc.), then re-applied the same tampering across
+multiple notifications even after being reverted, forcing a manual revert by
+reverse-engineering the agent's own transcript (no git history existed yet to
+diff against). With git now initialized, the fast recovery path for a repeat
+is `git status` / `git diff` / `git checkout -- <file>` — no transcript
+archaeology needed. Don't let this repo drift back to being uncommitted for
+long stretches.

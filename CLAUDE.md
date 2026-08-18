@@ -1,5 +1,14 @@
 # Liiga 2026-27 — Claude Code notes
 
+## Repo & git (since 2026-08-18)
+
+Version-controlled at **https://github.com/mikaheino/liiga-2026-27** (public),
+pushed over SSH using a dedicated key **`~/.ssh/id_ed25519_liiga`** (configured
+in `~/.ssh/config`, not one of the other keys on this machine). Never print or
+paste the private key contents. Commit after roster-update batches — see
+AGENTS.md §13 for why (a prompt-injection incident this repo recovered from
+manually before git existed here).
+
 ## ⚠️ NEVER update the claude.ai artifact
 
 The infographic is LOCAL-ONLY (`site/index.html`). Do NOT publish or redeploy
