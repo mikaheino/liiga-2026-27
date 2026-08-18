@@ -1,0 +1,144 @@
+# =============================================================================
+# Liiga 2026-27 prediction config.
+# Everything you might want to tweak lives here. Change a value, re-run the
+# relevant notebook, and the standings update. No code edits needed.
+# =============================================================================
+
+# --- Database backend -------------------------------------------------------
+# "duckdb" for local work, "snowflake" for production. The pipeline code is
+# identical either way (see src/liiga/db.py). Snowflake credentials are read
+# from environment variables, never stored here.
+database:
+  target: duckdb
+  duckdb_path: data/liiga.duckdb
+  # Used only when target: snowflake. Values are env var NAMES, not secrets.
+  snowflake:
+    account_env: SNOWFLAKE_ACCOUNT
+    user_env: SNOWFLAKE_USER
+    password_env: SNOWFLAKE_PASSWORD
+    warehouse_env: SNOWFLAKE_WAREHOUSE
+    database_env: SNOWFLAKE_DATABASE
+    schema_env: SNOWFLAKE_SCHEMA
+
+# --- Data ingestion ---------------------------------------------------------
+ingestion:
+  api_base: "https://www.liiga.fi/api/v2"
+  tournament: runkosarja
+  # liiga.fi season numbering: 2026 == the 2025-26 season.
+  train_seasons: [2022, 2023, 2024, 2025, 2026]   # 2021-22 ... 2025-26
+  target_season: 2027                             # 2026-27 (what we predict)
+  request_timeout_seconds: 30
+  user_agent: "liiga-predict/0.1 (personal hobby project)"
+
+# --- Player production model (tunable knobs) --------------------------------
+players:
+  # How many seasons of player history to use for rate estimation.
+  player_history_seasons: 5
+  # Exponential recency weight per season back (1.0 = no decay, lower = newer
+  # seasons matter more). A season N years old gets weight recency_decay**N.
+  recency_decay: 0.80
+  # Regression-to-mean strength. Higher = small-sample players pulled harder
+  # toward the positional average (in "phantom games" added to each player).
+  regression_strength: 20
+  # Light age adjustment toward a peak age. Set enabled: false to ignore age.
+  age_curve:
+    enabled: true
+    peak_age: 26
+    # Production penalty per year away from peak (small; applies symmetrically
+    # below peak_age and above it, up to cliff_age).
+    per_year_falloff: 0.015
+    # Past cliff_age, an EXTRA per-year penalty stacks on top of the above,
+    # modeling the accelerating decline real players show late in their 30s.
+    # Calibrated 2026-07 from within-player year-over-year rate changes
+    # (player_season_scoring, min. 3 prior-season goals to cut small-sample
+    # noise): median ratio is ~flat through age 28, but median next-season
+    # rate is 0.67x at age 35-37 transitions (n=49) and 0.40x at 38+ (n=18).
+    # cliff_age/cliff_per_year_falloff below reach the floor by ~41, roughly
+    # matching that magnitude without over-fitting the noisy 38+ tail.
+    cliff_age: 33
+    cliff_per_year_falloff: 0.04
+
+# --- Team strength blend (the knob you asked to manipulate later) -----------
+team_strength:
+  # final expected goals = (1 - team_weight) * player_derived
+  #                        +      team_weight  * team_history_derived
+  # 0.0 = pure player model; 1.0 = pure team history. Default low.
+  team_weight: 0.15
+  # Realistic team scoring band used to normalise the player-derived sum.
+  league_avg_goals_per_game: 2.9
+  # Number of skaters that carry the scoring load when aggregating a roster.
+  top_skaters: 18
+  # Defense: how much a team's GOALTENDING drives its goals-against vs. its
+  # team shot-suppression history. 1.0 = goaltending only, 0.0 = history only.
+  goalie_weight: 0.70
+  # Roster continuity: how much to shrink off_rating toward the league average
+  # (1.0) for high-turnover teams. 0.0 = disabled, 1.0 = full shrink to league
+  # average when a team retained none of last season's top-18 scorers.
+  continuity_shrinkage: 0.0
+
+# --- Goaltending ------------------------------------------------------------
+goaltending:
+  league_avg_save_pct: 0.908     # Liiga reference; converts save% -> goals-against
+  prior_save_pct: 0.905          # shrinkage target for thin-sample goalies
+  regression_games: 25           # phantom games of prior added to each goalie
+  # save% is inflated in weaker leagues; subtract to get a Liiga-equivalent.
+  # Calibrated 2026-07 from within-goalie movers in goalies_raw.txt (goalies
+  # with seasons in both leagues): Liiga-U20 implied +0.016 (8 goalies/137gp),
+  # Mestis +0.010 validated, SHL/AHL ~0 confirmed (absent = no offset).
+  league_save_offsets:
+    Liiga-U20: 0.016
+    SWE-U20: 0.016
+    USHL: 0.012
+    CHL: 0.012
+    Mestis: 0.010
+    OTHER: 0.010
+    KHL: 0.010       # movers implied +0.019 (n=3, shrunk)
+    ECHL: 0.005      # movers implied +0.005 (3 goalies/110gp)
+    Switzerland: 0.005
+    Allsvenskan: 0.007
+    NCAA: 0.007
+    Denmark: 0.007
+    Norway: 0.008
+    France: 0.008
+    Poland: 0.010
+    DEL2: 0.008
+    Slovakia: 0.006
+    DEL: 0.004
+
+# --- Match model ------------------------------------------------------------
+match_model:
+  # Home-ice scoring multiplier applied to the home team's expected goals.
+  home_ice: 1.08
+  # When a game is tied after regulation it goes to OT/shootout. Probability
+  # the (regulation) favourite still wins the extra session, 0.5 = coin flip.
+  # Empirical 2022-2026: the pre-game favourite won 51.6% of 533 OT/SO games.
+  ot_favourite_lean: 0.52
+  # Inflate the Poisson tie probability so the schedule-wide mean matches the
+  # observed OT/shootout rate (~23%; independent Poisson predicts only ~16%).
+  tie_calibration: true
+
+# --- Simulation -------------------------------------------------------------
+simulation:
+  n_simulations: 10000
+  random_seed: 42
+  # Liiga points system (since 2020).
+  points:
+    regulation_win: 3
+    overtime_win: 2
+    overtime_loss: 1
+    regulation_loss: 0
+  playoff_cutoff_rank: 6   # top N make direct playoffs (for P(playoff) reporting)
+
+# --- Crowd wisdom signal (pre-season, 2026-27 only) -------------------------
+# 40 Jatkoaika.com forum members posted standings predictions before the season.
+# crowd_weight blends their consensus into the model's expected points.
+# 0.0 = model only (default). Cannot be backtested — tune manually.
+crowd:
+  crowd_weight: 0.2
+
+# --- File paths -------------------------------------------------------------
+paths:
+  raw_dir: data/raw
+  rosters_csv: data/rosters_2026_27.csv
+  external_players_csv: data/external_players.csv
+  league_factors_csv: data/league_factors.csv

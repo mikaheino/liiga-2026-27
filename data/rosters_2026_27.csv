@@ -1,0 +1,16 @@
+# 2026-27 roster overrides. Rows here take PRECEDENCE over anything fetched
+# from liiga.fi. Use this to:
+#   - populate Jokerit (brand new to Liiga),
+#   - move transferred players to their new team,
+#   - drop players who left the league (set action=remove).
+#
+# team      : must match a Liiga team name (e.g. Jokerit, Tappara, HIFK ...).
+# player_id : liiga.fi playerId if known, else blank and match by name.
+# name      : "Firstname Lastname".
+# action    : add (default) or remove.
+#
+# Seed examples below are PLACEHOLDERS -- replace with the real roster.
+team,player_id,name,position,action
+Jokerit,,Samuel Salonen,F,add
+Jokerit,,Otso Rantakari,D,add
+Jokerit,,Veini Vehvilainen,G,add

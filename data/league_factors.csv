@@ -1,0 +1,30 @@
+# League-equivalency factors: multiply a player's scoring RATE (goals or points
+# per game) in `league` by `goals_factor` to get a Liiga-equivalent rate.
+# Liiga itself = 1.0. Values are derived from public NHLe estimates divided by
+# Liiga's NHLe (~0.54) and are ROUGH STARTING POINTS -- tune them freely.
+# `league` must match the codes used in data/external_players.txt research.
+league,goals_factor,notes
+Liiga,1.00,reference league (Finnish top tier)
+KHL,1.40,Russia/multinational top tier
+NHL,1.85,far stronger
+SHL,1.20,Swedish top tier; raised from 1.05 - within-player movers 2026-07 (survivorship-capped)
+AHL,1.15,NA second tier; raised from 0.85 - 10 adjacent-season movers implied 1.66 (survivorship-capped)
+Switzerland,1.00,Swiss National League (NLA); raised from 0.83 2026-07 - 3 independent NHLe studies (2018-2026) show NLA at parity-to-slightly-above Liiga; plus 2 recent CHL titles vs Finland's last in 2022-23
+Czechia,1.00,Czech Extraliga; raised from 0.83 - movers implied 1.29
+NCAA,0.80,US college (varies a lot by program)
+DEL,0.80,German top tier; raised from 0.75 2026-07 - within-league movers already implied 0.78; external NHLe research shows recent convergence toward Liiga (still clearly below; no source supports DEL > Liiga)
+Allsvenskan,0.75,Swedish second tier; nudged from 0.68 (n=3 movers too small for more)
+CHL,0.55,Canadian major junior (QMJHL/WHL/OHL)
+ICEHL,0.55,Austrian-based ICE league
+Slovakia,0.50,Slovak Extraliga
+ECHL,0.48,North American third tier
+USHL,0.46,US junior
+DEL2,0.41,German second tier
+SWE-U20,0.25,Swedish junior; cut from 0.41 in line with Liiga-U20 evidence
+Denmark,0.41,Danish Metal Ligaen
+Norway,0.37,Norwegian top tier
+France,0.37,French Ligue Magnus
+Liiga-U20,0.20,Finnish junior; CUT from 0.37 - even Liiga-promoted juniors translated at 0.14
+Mestis,0.35,Finnish second tier; 12 movers implied 0.37 - validated
+Poland,0.28,Polish top tier
+OTHER,0.30,unclassified / lower-tier league (conservative)

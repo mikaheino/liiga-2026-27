@@ -1,0 +1,44 @@
+# Jatkoaika.com forum predictions for the 2026-27 Liiga season
+# Source: https://keskustelu.jatkoaika.com/threads/liigan-veikkaukset-kaudella-2026-2027.84011/
+# Crawled: 2026-06-26
+# Format: username|team1,team2,...,team17  (teams in predicted order 1st to 17th)
+Jannun Alpakat|Tappara,Lukko,JYP,KooKoo,Jokerit,Ilves,SaiPa,KalPa,HIFK,Ässät,K-Espoo,Kärpät,Pelicans,TPS,HPK,Sport,Jukurit
+Jypmies|Tappara,Ilves,Lukko,HIFK,Kärpät,SaiPa,KooKoo,Jokerit,KalPa,Ässät,TPS,K-Espoo,Pelicans,HPK,JYP,Sport,Jukurit
+Sturba|Tappara,KooKoo,Ilves,JYP,Lukko,HIFK,Kärpät,Jokerit,SaiPa,Ässät,K-Espoo,KalPa,TPS,HPK,Pelicans,Jukurit,Sport
+Bata7|Tappara,Jokerit,Ilves,Kärpät,JYP,SaiPa,Ässät,HIFK,Lukko,KalPa,K-Espoo,TPS,Pelicans,Sport,KooKoo,HPK,Jukurit
+LarZu|Tappara,Ilves,KooKoo,Lukko,SaiPa,HIFK,Jokerit,JYP,Ässät,KalPa,K-Espoo,TPS,HPK,Pelicans,Kärpät,Sport,Jukurit
+53500|Tappara,Jokerit,Lukko,HIFK,KooKoo,JYP,Ilves,Kärpät,KalPa,Ässät,SaiPa,Pelicans,K-Espoo,TPS,HPK,Jukurit,Sport
+Juuhkelis|Tappara,HIFK,Ilves,KooKoo,SaiPa,Jokerit,Lukko,KalPa,Kärpät,JYP,Ässät,K-Espoo,HPK,TPS,Sport,Pelicans,Jukurit
+Hecquefeuille|Tappara,Ilves,HIFK,KooKoo,JYP,Ässät,Lukko,Jokerit,KalPa,K-Espoo,Kärpät,TPS,Pelicans,HPK,SaiPa,Sport,Jukurit
+Watsbak|Tappara,Ilves,Kärpät,Jokerit,KalPa,Lukko,HIFK,SaiPa,Sport,JYP,KooKoo,TPS,Ässät,HPK,K-Espoo,Pelicans,Jukurit
+Haepis|Tappara,Ilves,KooKoo,Lukko,HIFK,JYP,SaiPa,KalPa,Jokerit,Ässät,K-Espoo,Kärpät,TPS,Pelicans,HPK,Sport,Jukurit
+SPORTTIKOTKA|Tappara,KalPa,JYP,SaiPa,Ilves,HIFK,Sport,KooKoo,TPS,Ässät,K-Espoo,Lukko,HPK,Jokerit,Jukurit,Pelicans,Kärpät
+Randall Flagg|Tappara,KalPa,HIFK,Lukko,JYP,KooKoo,TPS,SaiPa,Ilves,Ässät,Jokerit,HPK,Kärpät,K-Espoo,Pelicans,Sport,Jukurit
+MarkoPalo|Tappara,SaiPa,Ilves,KooKoo,Lukko,JYP,Jokerit,KalPa,HIFK,Ässät,Kärpät,Pelicans,HPK,TPS,K-Espoo,Sport,Jukurit
+Jaageri12|Tappara,Lukko,Jokerit,JYP,HIFK,Ilves,Kärpät,KooKoo,KalPa,Ässät,K-Espoo,TPS,SaiPa,Pelicans,Sport,Jukurit,HPK
+Arnold|Tappara,JYP,KooKoo,Ässät,Ilves,Lukko,KalPa,SaiPa,HIFK,Jokerit,Kärpät,HPK,K-Espoo,TPS,Pelicans,Sport,Jukurit
+Mehiläistarhuri|Tappara,Lukko,KooKoo,Jokerit,Ilves,HIFK,JYP,KalPa,TPS,Ässät,SaiPa,K-Espoo,Pelicans,Kärpät,HPK,Sport,Jukurit
+Baloun|Ilves,Jokerit,Tappara,KooKoo,JYP,Lukko,HIFK,SaiPa,Ässät,KalPa,HPK,Sport,Pelicans,Kärpät,K-Espoo,Jukurit,TPS
+Itäinen pitkä|Tappara,Lukko,HIFK,KooKoo,Jokerit,JYP,Ilves,SaiPa,KalPa,Ässät,Kärpät,HPK,K-Espoo,TPS,Pelicans,Sport,Jukurit
+HyperX|Lukko,Ilves,KooKoo,Kärpät,HIFK,Tappara,Jokerit,SaiPa,KalPa,JYP,Ässät,TPS,K-Espoo,Sport,Pelicans,HPK,Jukurit
+jeesusteippi|Tappara,Lukko,KooKoo,JYP,HIFK,Kärpät,Ässät,TPS,KalPa,Jokerit,K-Espoo,Ilves,SaiPa,HPK,Sport,Pelicans,Jukurit
+Areenan keisari|Ilves,Tappara,Lukko,Jokerit,JYP,HIFK,KooKoo,Kärpät,SaiPa,KalPa,K-Espoo,Ässät,TPS,HPK,Sport,Pelicans,Jukurit
+Aapeli123|Tappara,Lukko,KooKoo,Ässät,HIFK,JYP,SaiPa,Ilves,KalPa,Jokerit,Kärpät,TPS,K-Espoo,HPK,Sport,Pelicans,Jukurit
+Wellutzzz|Tappara,HIFK,JYP,Lukko,KalPa,KooKoo,Jokerit,Kärpät,SaiPa,Ilves,TPS,Ässät,K-Espoo,HPK,Pelicans,Sport,Jukurit
+Ruubin|Tappara,KooKoo,Ässät,Ilves,HIFK,KalPa,SaiPa,Lukko,HPK,Sport,JYP,Kärpät,Jokerit,Pelicans,TPS,K-Espoo,Jukurit
+LähiönLapsi|JYP,Tappara,HIFK,Lukko,Pelicans,Kärpät,SaiPa,Jokerit,HPK,TPS,Ässät,K-Espoo,KalPa,Sport,KooKoo,Ilves,Jukurit
+don juan|Tappara,JYP,KooKoo,Lukko,HIFK,Ässät,Jokerit,Ilves,Pelicans,TPS,SaiPa,Kärpät,KalPa,HPK,K-Espoo,Sport,Jukurit
+Pluton|Tappara,Lukko,KooKoo,SaiPa,Kärpät,Ilves,KalPa,JYP,Ässät,HIFK,HPK,K-Espoo,Pelicans,TPS,Jokerit,Sport,Jukurit
+2011_|Tappara,Lukko,HIFK,KooKoo,Ilves,SaiPa,JYP,Ässät,Jokerit,KalPa,Kärpät,K-Espoo,TPS,HPK,Pelicans,Sport,Jukurit
+Bo73|Lukko,JYP,Tappara,Pelicans,KalPa,HIFK,Kärpät,Jokerit,Ässät,Ilves,HPK,K-Espoo,Sport,Jukurit,SaiPa,KooKoo,TPS
+dotto|Tappara,Lukko,KooKoo,Ilves,HIFK,SaiPa,JYP,Jokerit,Ässät,KalPa,Kärpät,Pelicans,HPK,K-Espoo,Jukurit,TPS,Sport
+Mibo|Tappara,Ilves,Jokerit,KooKoo,SaiPa,KalPa,HIFK,Kärpät,Lukko,JYP,Ässät,TPS,K-Espoo,HPK,Pelicans,Sport,Jukurit
+Surunmurhaaja|Tappara,KooKoo,SaiPa,Ilves,Lukko,KalPa,JYP,Ässät,Kärpät,HIFK,Jokerit,HPK,K-Espoo,Pelicans,TPS,Jukurit,Sport
+vanukas|Tappara,HIFK,Ilves,KooKoo,Lukko,Kärpät,SaiPa,Ässät,JYP,Jokerit,KalPa,TPS,Sport,K-Espoo,HPK,Pelicans,Jukurit
+M.Yrrä|Tappara,HIFK,Ilves,KooKoo,Lukko,Pelicans,SaiPa,Ässät,JYP,Jokerit,KalPa,TPS,Sport,K-Espoo,HPK,Kärpät,Jukurit
+Patatollah|Tappara,Kärpät,Ässät,Jokerit,HIFK,Lukko,KooKoo,SaiPa,TPS,Ilves,Pelicans,KalPa,JYP,Sport,HPK,K-Espoo,Jukurit
+Nakkimuki|Tappara,HIFK,Lukko,Ilves,KooKoo,JYP,SaiPa,Ässät,Kärpät,Jokerit,KalPa,Pelicans,TPS,K-Espoo,HPK,Sport,Jukurit
+Veleho|Tappara,HIFK,KooKoo,Ässät,Ilves,JYP,SaiPa,Lukko,Jokerit,KalPa,K-Espoo,Kärpät,HPK,TPS,Pelicans,Jukurit,Sport
+Nigi|Tappara,Lukko,Ilves,JYP,HIFK,Jokerit,KooKoo,Ässät,KalPa,Kärpät,K-Espoo,SaiPa,TPS,Pelicans,HPK,Jukurit,Sport
+expertti|Tappara,HIFK,KooKoo,Lukko,Ilves,JYP,SaiPa,KalPa,HPK,Ässät,Jokerit,Kärpät,TPS,K-Espoo,Sport,Pelicans,Jukurit
+Juz|Tappara,JYP,Lukko,HIFK,Jokerit,KooKoo,Ilves,SaiPa,Ässät,Kärpät,KalPa,K-Espoo,HPK,TPS,Pelicans,Sport,Jukurit

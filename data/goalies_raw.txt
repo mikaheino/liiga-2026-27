@@ -1,0 +1,175 @@
+Hugo Alnefelt|2022|AHL|23|0.882|Syracuse Crunch
+Hugo Alnefelt|2023|AHL|33|0.904|Syracuse Crunch
+Hugo Alnefelt|2024|AHL|26|0.893|Syracuse Crunch
+Hugo Alnefelt|2025|SHL|28|0.899|HV71
+Hugo Alnefelt|2026|Liiga|29|0.878|HIFK
+Rastislav Elias|2022|USHL|20|0.864|Green Bay Gamblers
+Rastislav Elias|2023|USHL|32|0.864|Madison Capitols
+Rastislav Elias|2024|Liiga-U20|35|0.898|HIFK U20
+Rastislav Elias|2025|Liiga|6|0.883|HIFK
+Rastislav Elias|2026|Liiga|9|0.861|HIFK
+Tim Juel|2022|SHL|26|0.911|IK Oskarshamn
+Tim Juel|2023|SHL|32|0.921|IK Oskarshamn
+Tim Juel|2024|SHL|19|0.899|Timrå IK
+Tim Juel|2025|SHL|31|0.929|Timrå IK
+Tim Juel|2026|SHL|19|0.892|Timrå IK
+Kim Saarinen|2023|Liiga-U20|3|0.854|HPK U20
+Kim Saarinen|2024|Liiga-U20|23|0.917|HPK U20
+Kim Saarinen|2025|Liiga|30|0.911|HPK
+Kim Saarinen|2026|Liiga|38|0.916|HPK
+Max Väyrynen|2022|Liiga-U20|12|0.912|Ässät U20
+Max Väyrynen|2023|NCAA|4|0.903|Michigan Tech
+Max Väyrynen|2024|NCAA|4|0.897|Michigan Tech
+Max Väyrynen|2025|NCAA|4|0.920|Michigan Tech
+Max Väyrynen|2026|Liiga|2|0.854|HPK
+Christoffer Rifalk|2022|SHL|37|0.921|Rögle BK
+Christoffer Rifalk|2023|SHL|31|0.892|Rögle BK
+Christoffer Rifalk|2024|SHL|36|0.903|Rögle BK
+Christoffer Rifalk|2025|SHL|18|0.893|Rögle BK
+Christoffer Rifalk|2026|SHL|19|0.916|Rögle BK
+Mantas Armalis|2022|SHL|36|0.900|Djurgårdens IF
+Mantas Armalis|2023|SHL|41|0.920|Leksands IF
+Mantas Armalis|2024|SHL|25|0.899|Leksands IF
+Mantas Armalis|2025|SHL|16|0.880|Leksands IF
+Mantas Armalis|2026|Liiga|22|0.910|Ilves
+Oskari Salminen|2022|Liiga|55|0.920|Jukurit
+Oskari Salminen|2023|AHL|39|0.896|Manitoba Moose
+Oskari Salminen|2024|AHL|12|0.867|Manitoba Moose
+Oskari Salminen|2025|Liiga|40|0.887|JYP
+Oskari Salminen|2026|Liiga|36|0.887|JYP
+Aarni Riihimäki|2026|Liiga-U20|16|0.889|JYP U20
+Oskari Setänen|2022|Liiga|30|0.907|KooKoo
+Oskari Setänen|2023|Liiga|39|0.903|KooKoo
+Oskari Setänen|2024|Liiga|23|0.880|KooKoo
+Oskari Setänen|2025|OTHER|30|0.898|Rouen
+Oskari Setänen|2026|Liiga|22|0.890|JYP
+Otto Hannikainen|2025|Liiga-U20|26|0.911|Jyväskylä U20
+Otto Hannikainen|2026|Mestis|22|0.892|KeuPa HT
+Lukas Selin|2025|Liiga-U20|29|0.900|Jokerit U20
+Olle Eriksson Ek|2022|AHL|23|0.880|San Diego Gulls
+Olle Eriksson Ek|2023|AHL|20|0.852|San Diego Gulls
+Olle Eriksson Ek|2024|SHL|13|0.878|MoDo
+Olle Eriksson Ek|2025|SHL|13|0.875|MoDo
+Olle Eriksson Ek|2026|Allsvenskan|25|0.922|IF Björklöven
+Veini Vehviläinen|2022|SHL|45|0.907|Brynäs IF
+Veini Vehviläinen|2023|Liiga|36|0.914|JYP
+Veini Vehviläinen|2024|Liiga|50|0.887|JYP
+Veini Vehviläinen|2025|Liiga|17|0.863|TPS
+Veini Vehviläinen|2026|Mestis|46|0.918|Jokerit
+Matthieu Herpin|2025|Liiga|23|0.890|Jukurit
+Matthieu Herpin|2026|Liiga|14|0.902|Jukurit
+Aleksi Karjalainen|2024|Mestis|1|0.857|Kiekko-Espoo
+Aleksi Karjalainen|2025|Liiga-U20|32|0.920|Kiekko-Espoo U20
+Petteri Rimpinen|2022|Liiga-U20|17|0.917|Kiekko-Espoo U20
+Petteri Rimpinen|2023|Liiga-U20|16|0.931|TPS U20
+Petteri Rimpinen|2024|Mestis|25|0.925|Kiekko-Espoo
+Petteri Rimpinen|2025|Liiga|46|0.912|Kiekko-Espoo
+Petteri Rimpinen|2026|Liiga|40|0.908|Kiekko-Espoo
+Sami Rajaniemi|2022|SHL|16|0.883|Timrå
+Sami Rajaniemi|2023|Liiga|32|0.915|HPK
+Sami Rajaniemi|2024|Liiga|50|0.908|HPK
+Sami Rajaniemi|2025|Liiga|21|0.887|HPK
+Sami Rajaniemi|2026|Liiga|25|0.900|Kiekko-Espoo
+Patrik Kerkola|2024|Liiga-U20|23|0.886|KalPa U20
+Patrik Kerkola|2025|Liiga-U20|31|0.883|KalPa U20
+Patrik Kerkola|2026|Liiga|10|0.855|KalPa
+Stefanos Lekkas|2022|ECHL|39|0.905|Wheeling Nailers
+Stefanos Lekkas|2023|Denmark|43|0.926|Odense Bulldogs
+Stefanos Lekkas|2024|Liiga|27|0.905|KalPa
+Stefanos Lekkas|2025|Liiga|32|0.906|KalPa
+Stefanos Lekkas|2026|Liiga|37|0.889|KalPa
+Eetu Randelin|2022|Mestis|34|0.921|SaPKo
+Eetu Randelin|2023|Mestis|48|0.901|IPK
+Eetu Randelin|2024|Liiga|13|0.920|Tappara
+Eetu Randelin|2025|Liiga|28|0.901|KooKoo
+Eetu Randelin|2026|Liiga|37|0.908|KooKoo
+Jasper Patrikainen|2022|Liiga|19|0.911|Pelicans
+Jasper Patrikainen|2023|Liiga|30|0.905|Pelicans
+Jasper Patrikainen|2024|Liiga|17|0.887|Pelicans
+Jasper Patrikainen|2025|Liiga|10|0.876|Pelicans
+Jasper Patrikainen|2026|Slovakia|38|0.922|HK Nitra
+Niklas Rubin|2022|SHL|23|0.891|Frölunda HC
+Niklas Rubin|2023|Liiga|47|0.922|Porin Ässät
+Niklas Rubin|2024|Liiga|50|0.916|Porin Ässät
+Niklas Rubin|2025|Liiga|24|0.915|Porin Ässät
+Niklas Rubin|2026|Liiga|36|0.900|Kärpät
+Visa Vedenpää|2022|Liiga-U20|3|0.898|Kärpät U20
+Visa Vedenpää|2023|Liiga-U20|31|0.886|Kärpät U20
+Visa Vedenpää|2024|Liiga-U20|17|0.900|Kärpät U20
+Visa Vedenpää|2025|Mestis|3|0.851|Hermes
+Visa Vedenpää|2026|Liiga|15|0.867|Kärpät
+Antti Raanta|2022|NHL|28|0.912|Carolina Hurricanes
+Antti Raanta|2023|NHL|27|0.910|Carolina Hurricanes
+Antti Raanta|2024|NHL|24|0.872|Carolina Hurricanes
+Antti Raanta|2025|Switzerland|24|0.902|Genève-Servette HC
+Antti Raanta|2026|Liiga|29|0.888|Lukko
+Daniel Salonen|2023|Liiga-U20|9|0.874|Lukko U20
+Daniel Salonen|2024|Liiga-U20|33|0.868|Lukko U20
+Daniel Salonen|2025|Liiga-U20|25|0.933|Lukko U20
+Daniel Salonen|2026|Liiga|30|0.887|Lukko
+Jooa Sammalniemi|2025|Liiga-U20|16|0.918|Lukko U20
+Jooa Sammalniemi|2026|Liiga-U20|39|0.908|Lukko U20
+Juho Olkinuora|2022|KHL|37|0.916|Metallurg Magnitogorsk
+Juho Olkinuora|2023|AHL|15|0.868|Grand Rapids Griffins
+Juho Olkinuora|2024|Liiga|20|0.899|Pelicans
+Juho Olkinuora|2025|DEL|25|0.898|Löwen Frankfurt
+Juho Olkinuora|2026|DEL|24|0.868|Dresdner Eislöwen
+Patrik Bartosak|2022|Liiga|16|0.949|Pelicans
+Patrik Bartosak|2023|Liiga|51|0.909|Pelicans
+Patrik Bartosak|2024|Czechia|17|0.919|Mountfield HK
+Patrik Bartosak|2025|Liiga|39|0.906|Pelicans
+Patrik Bartosak|2026|Liiga|53|0.910|Pelicans
+Gustavs Grigals|2022|NCAA|31|0.919|Alaska
+Gustavs Grigals|2023|NCAA|24|0.924|UMass Lowell
+Gustavs Grigals|2024|ECHL|33|0.900|Atlanta Gladiators
+Gustavs Grigals|2025|Slovakia|43|0.921|Dukla Trencin
+Gustavs Grigals|2026|Liiga|27|0.891|SaiPa
+Kari Piiroinen|2022|Mestis|14|0.898|KooVee
+Kari Piiroinen|2023|Allsvenskan|28|0.907|Mora IK
+Kari Piiroinen|2024|Liiga|34|0.878|SaiPa
+Kari Piiroinen|2025|Liiga|23|0.902|SaiPa
+Kari Piiroinen|2026|Liiga|32|0.907|SaiPa
+Ville-Veikko Hiltunen|2025|Liiga-U20|28|0.891|SaiPa U20
+Joni Ortio|2022|KHL|43|0.903|Barys Astana
+Joni Ortio|2023|SHL|40|0.903|HV71
+Joni Ortio|2024|SHL|41|0.872|HV71
+Joni Ortio|2025|Liiga|28|0.900|Ässät
+Joni Ortio|2026|Liiga|25|0.886|Vaasan Sport
+Masi Härkönen|2025|Liiga|35|0.897|Vaasan Sport
+Aatu Niittymäki|2025|Liiga-U20|33|0.899|TPS U20
+Aatu Niittymäki|2026|Liiga|6|0.815|TPS
+Eetu Mäkiniemi|2022|AHL|14|0.920|Chicago Wolves
+Eetu Mäkiniemi|2023|AHL|22|0.900|San Jose Barracuda
+Eetu Mäkiniemi|2024|AHL|18|0.901|San Jose Barracuda
+Eetu Mäkiniemi|2025|AHL|5|0.893|Lehigh Valley Phantoms
+Eetu Mäkiniemi|2026|Liiga|34|0.894|TPS
+Markus Ruusu|2022|Liiga|28|0.885|JYP
+Markus Ruusu|2023|Liiga|15|0.909|Jukurit
+Markus Ruusu|2024|Liiga|36|0.903|Jukurit
+Markus Ruusu|2025|Liiga|27|0.864|Jukurit
+Markus Ruusu|2026|Liiga|3|0.911|TPS
+Noa Vali|2024|Liiga|19|0.870|TPS
+Noa Vali|2025|Liiga|26|0.886|TPS
+Noa Vali|2026|Liiga|22|0.889|TPS
+Christian Heljanko|2022|Liiga|49|0.920|Tappara
+Christian Heljanko|2023|Liiga|40|0.891|Tappara
+Christian Heljanko|2024|Liiga|50|0.916|Tappara
+Christian Heljanko|2025|SHL|21|0.889|Linköping HC
+Christian Heljanko|2026|Liiga|42|0.911|Tappara
+Juha Metsola|2022|KHL|31|0.931|Salavat Yulaev
+Juha Metsola|2023|Switzerland|37|0.913|EHC Kloten
+Juha Metsola|2024|Switzerland|38|0.901|EHC Kloten
+Juha Metsola|2025|Liiga|40|0.894|Tappara
+Juha Metsola|2026|Liiga|18|0.902|Tappara
+Jan Bednar|2022|CHL|47|0.912|Acadie-Bathurst Titan
+Jan Bednar|2023|CHL|10|0.874|Acadie-Bathurst Titan
+Jan Bednar|2024|ECHL|36|0.901|Toledo Walleye
+Jan Bednar|2025|ECHL|37|0.914|Toledo Walleye
+Jan Bednar|2026|Liiga|44|0.906|Ässät
+Pyry Lammi|2025|Liiga-U20|30|0.925|Ässät U20
+Pyry Lammi|2026|Liiga-U20|29|0.925|Ässät U20
+Roope Taponen|2022|Liiga|5|0.865|HIFK
+Roope Taponen|2023|Liiga|41|0.912|HIFK
+Roope Taponen|2024|Liiga|41|0.907|HIFK
+Roope Taponen|2025|Liiga|26|0.899|HIFK
+Roope Taponen|2026|Liiga|6|0.846|Ilves
