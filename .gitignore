@@ -1,6 +1,13 @@
 # Data artifacts
 data/liiga.duckdb
+
+# Raw liiga.fi API cache. Completed seasons are committed (immutable, and the
+# only copy that survives an upstream API change -- v1 already broke once).
+# The target season is force-refetched daily by daily_update.py, so it would
+# churn the repo for no benefit; keep it ignored.
 data/raw/*.json
+!data/raw/games_202[2-6].json
+!data/raw/game_202[2-6]_*.json
 
 # Python
 __pycache__/
