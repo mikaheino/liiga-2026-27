@@ -387,6 +387,24 @@ and the usual Python/OS junk — everything else in `data/` (transfers article,
 external stats, league factors, crowd predictions) is source-controlled on
 purpose, since those CSVs/text files are the human-maintained inputs (§5).
 
+**The repo is a full backup (since 2026-08-18).** `data/liiga.duckdb`, the
+raw liiga.fi API cache (all seasons) and `logs/` are tracked on purpose, so a
+clone restores the project completely. `.gitignore` now excludes only
+machine-regenerable output (`.venv/`, `__pycache__/`, `*.egg-info`,
+`.pytest_cache/`, `.env`, `.DS_Store`). Verified restore procedure:
+
+```bash
+git clone git@github.com:mikaheino/liiga-2026-27.git && cd liiga-2026-27
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+python -m pytest tests/ -q        # 8 passed
+python scripts/build_site.py      # rebuilds the site from the tracked DB
+```
+
+Caveat: `daily_update.py` rewrites `liiga.duckdb` every morning, so the DB shows
+as modified daily. Commit it when you want a fresh restore point, not on every
+run -- it is a ~8 MB binary and each commit stores a full copy.
+
 **Commit after roster batches.** This became load-bearing after a 2026-08
 incident where a background research agent (sent to fetch external player
 stats) got prompt-injected via scraped web content and started rewriting
