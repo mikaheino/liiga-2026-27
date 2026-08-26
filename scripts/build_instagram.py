@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from PIL import Image                                    # noqa: E402
 
+from liiga.config import load_config                     # noqa: E402
 from liiga.db import get_connection, query_df           # noqa: E402
 
 OUT = ROOT / "site_instagram"
@@ -287,6 +288,9 @@ def how_slide(t: dict) -> str:
   </div>""")
 
 
+GAMES_PER_TEAM = 64          # overwritten from the schedule in build()
+
+
 def award_slide(t: dict, picks: list) -> str:
     """Three individual-award shouts, taken from the same projections that
     drive the table -- not from reputation."""
@@ -313,7 +317,7 @@ def award_slide(t: dict, picks: list) -> str:
     <div class="body">
       <div class="award">{rows}</div>
     </div>
-    <div class="foot">Projected over a 60-game season · same model as the table</div>
+    <div class="foot">Projected over the {GAMES_PER_TEAM}-game season · same model as the table</div>
   </div>""")
 
 
@@ -332,6 +336,69 @@ The last slide runs the same projections at player level: Blichfeld for points, 
 Next: porting it to Snowflake ML jobs on a nightly schedule, refitting Elo on real results and re-simulating only unplayed fixtures. I'll post the error as it moves.
 
 #dataengineering #machinelearning #snowflake #analytics #sportsanalytics #montecarlo #liiga"""
+
+
+def _award_picks() -> list:
+    """Individual projections: the model's own per-game rate over the real
+    schedule length.
+
+    Deliberately does NOT apply team_strength's normalisation factor. That
+    factor (~1.31) exists to make TEAM offence ratings land on the league
+    average while summing only the top 18 skaters -- it silently attributes a
+    whole roster's output to 18 players. Applied to an individual it inflates
+    them past their own career year, which is not a projection.
+
+    So these numbers sit below last season's actual leaders, on purpose: each
+    rate is recency-weighted across five seasons and shrunk toward the
+    positional mean, which is what an expectation should do. The player who
+    actually leads the league is the one who outperforms his expectation.
+    """
+    global GAMES_PER_TEAM
+    con = get_connection()
+    try:
+        gp = query_df(con, """SELECT COUNT(*) n FROM (
+                                SELECT home_team t FROM stg_games WHERE season=2027
+                                UNION ALL
+                                SELECT away_team FROM stg_games WHERE season=2027)
+                              GROUP BY t LIMIT 1""")
+        pr = query_df(con, """SELECT name, team,
+                                     projected_goals_per_game g,
+                                     projected_points_per_game p
+                              FROM player_rates
+                              WHERE position_group IN ('F','D')""")
+        gteams = query_df(con, """SELECT first_name||' '||last_name nm, team
+                                  FROM roster_2026_27 WHERE position_group='G'""")
+    finally:
+        con.close()
+    GAMES_PER_TEAM = int(gp["n"].iloc[0]) if not gp.empty else 64
+
+    pr["P"] = pr["p"] * GAMES_PER_TEAM
+    pr["G"] = pr["g"] * GAMES_PER_TEAM
+    pts = pr.nlargest(1, "P").iloc[0]
+    # the points leader also tops goals; take the goals runner-up so three
+    # different players get named
+    goals = pr[pr["name"] != pts["name"]].nlargest(1, "G").iloc[0]
+
+    # Save% needs a goalie who will actually qualify. Require real Liiga
+    # workload -- the raw rate leader (Tim Juel) has never played a Liiga game
+    # and shares a three-goalie depth chart.
+    from liiga.goalies import compute_goalie_ratings, parse_goalie_seasons
+    liiga_gp = (parse_goalie_seasons().query("league == 'Liiga'")
+                .groupby("name")["games"].sum())
+    g = compute_goalie_ratings()
+    g["liiga_gp"] = g["name"].map(liiga_gp).fillna(0)
+    g = g[g["liiga_gp"] >= 60].nlargest(1, "proj_save_pct").iloc[0]
+    tm = gteams.loc[gteams["nm"] == g["name"], "team"]
+
+    return [
+        ("Most points", pts["name"].split()[-1], pts["team"],
+         f"{pts['P']:.0f}", "projected points"),
+        ("Most goals", goals["name"].split()[-1], goals["team"],
+         f"{goals['G']:.0f}", "projected goals"),
+        ("Best save %", g["name"].split()[-1],
+         tm.iloc[0] if not tm.empty else "", f"{g['proj_save_pct']*100:.1f}",
+         "projected save %"),
+    ]
 
 
 def build() -> None:
@@ -377,11 +444,7 @@ def build() -> None:
     # Individual awards, read off the same projections as the table.
     # Blichfeld tops BOTH points and goals; the goals slot uses the runner-up
     # so three different players are named -- see the note in the README.
-    picks = [
-        ("Most points", "Blichfeld", "Tappara", "56", "projected points"),
-        ("Most goals", "Ojantakanen", "JYP", "24", "projected goals"),
-        ("Best save %", "Bartosak", "Pelicans", "91.1", "projected save %"),
-    ]
+    picks = _award_picks()
     slides.append(award_slide(themes[4], picks))
 
     for i, html in enumerate(slides, 1):
