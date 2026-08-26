@@ -39,10 +39,20 @@ POISSON_PCT, ELO_PCT, CROWD_PCT = 40, 60, 20
 BACKTEST_MAE = 12.7
 N_SIMS = "10,000"
 
-# retro sm-liiga.fi palette, same language as the main site (scaled up for 1080px)
-NAVY, NAVY2, STEEL = "#001040", "#003464", "#336699"
-GREEN, AMBER, SLATE = "#1F7A3D", "#CC5500", "#667788"
-INK, LABEL, LINE = "#1A1A1A", "#666666", "#CCCCCC"
+# Recordly brand palette, read off recordlydata.com's own stylesheet:
+#   #1b1b1b dominant (78 uses), #e3ff87 signature lime (24), #ffaf03 secondary,
+#   greys #f3f3f3 / #d0d0d0 / #868686 / #5b5b5b.
+# Type: headings "GT America Expanded" -> Arial Black, body "GT America" -> Arial
+# (GT America is licensed; Arial Black/Arial are Recordly's own declared fallbacks).
+INK      = "#1b1b1b"      # primary background
+LIME     = "#e3ff87"      # signature accent
+ORANGE   = "#ffaf03"      # secondary accent
+OFFWHITE = "#f3f3f3"
+GREY     = "#868686"
+GREY_DK  = "#5b5b5b"
+RULE     = "#333333"
+HEAD_F   = '"GT America Expanded","Arial Black",Arial,sans-serif'
+BODY_F   = '"GT America",Arial,Helvetica,sans-serif'
 
 
 def _slug(team: str) -> str:
@@ -58,64 +68,72 @@ def logo_uri(team: str) -> str:
     return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
 
 
-def zone(rank: int) -> tuple[str, str]:
-    """(colour, label) for the playoff / qualifier / outside bands."""
+def zone(rank: int) -> str:
+    """Accent colour for the playoff / wild-card / outside bands.
+
+    Colour alone carries the band now -- the explanatory labels under each
+    team were removed to cut template chrome.
+    """
     if rank <= 6:
-        return GREEN, "PLAYOFFS"
+        return LIME
     if rank <= 10:
-        return AMBER, "WILD CARD"
-    return SLATE, "OUTSIDE"
+        return ORANGE
+    return GREY
 
 
 CSS = f"""
   * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ width:{W}px; height:{H}px; overflow:hidden;
-         font-family:Verdana,Arial,Helvetica,sans-serif; color:{INK};
-         background:#FFFFFF; -webkit-font-smoothing:antialiased; }}
-  .slide {{ width:{W}px; height:{H}px; display:flex; flex-direction:column; }}
-  .head {{ background:{NAVY}; color:#FFFFFF; padding:38px 56px 30px;
-          border-bottom:10px solid {NAVY2}; }}
-  .kicker {{ font-size:23px; letter-spacing:3px; text-transform:uppercase;
-            color:#8FA8C8; margin-bottom:12px; }}
-  .title {{ font-size:57px; font-weight:bold; line-height:1.04; }}
-  .sub {{ font-size:25px; color:#B8CCE8; margin-top:14px; }}
-  .body {{ flex:1; padding:34px 56px 0; }}
-  .foot {{ padding:22px 56px 30px; border-top:3px solid {LINE};
-          display:flex; justify-content:space-between; align-items:center;
-          font-size:21px; color:{LABEL}; }}
-  .pill {{ background:{STEEL}; color:#FFF; font-size:20px; font-weight:bold;
-          padding:8px 18px; letter-spacing:1px; }}
+  body {{ width:{W}px; height:{H}px; overflow:hidden; background:{INK};
+         font-family:{BODY_F}; color:#FFFFFF; -webkit-font-smoothing:antialiased; }}
+  .slide {{ width:{W}px; height:{H}px; display:flex; flex-direction:column;
+           background:{INK}; }}
+  .head {{ padding:64px 64px 34px; }}
+  .kicker {{ font-family:{HEAD_F}; font-size:21px; letter-spacing:4px;
+            text-transform:uppercase; color:{LIME}; margin-bottom:20px; }}
+  .title {{ font-family:{HEAD_F}; font-size:82px; line-height:0.95;
+           text-transform:uppercase; letter-spacing:-1px; color:#FFFFFF; }}
+  .rule {{ height:5px; background:{LIME}; margin:34px 64px 0; }}
+  .body {{ flex:1; padding:30px 64px 0; }}
+  .foot {{ padding:26px 64px 46px; display:flex; justify-content:space-between;
+          align-items:flex-end; font-size:20px; color:{GREY}; }}
+  .wordmark {{ font-family:{HEAD_F}; font-size:24px; letter-spacing:2px;
+              color:{LIME}; text-transform:uppercase; }}
 
   /* ---- standings rows ---- */
-  /* rows share the leftover height so 6-row and 5-row slides both fill the
-     1080x1350 frame -- no dead space at the bottom of the image */
-  .body.standings {{ display:flex; flex-direction:column; padding-bottom:16px; }}
+  .body.standings {{ display:flex; flex-direction:column; padding-bottom:10px; }}
   .body.standings .row {{ flex:1; padding:0; }}
-  .row {{ display:flex; align-items:center; gap:26px; padding:19px 0;
-         border-bottom:2px solid #E4E4E4; }}
+  .row {{ display:flex; align-items:center; gap:30px;
+         border-bottom:1px solid {RULE}; }}
   .row:last-child {{ border-bottom:none; }}
-  .rank {{ width:82px; font-size:52px; font-weight:bold; text-align:center;
-          color:#FFF; padding:9px 0; }}
-  .logo {{ width:80px; height:80px; object-fit:contain; }}
-  .name {{ flex:1; font-size:41px; font-weight:bold; letter-spacing:-0.5px; }}
-  .zone {{ font-size:17px; letter-spacing:2px; font-weight:bold; margin-top:6px; }}
-  .pts  {{ text-align:right; }}
-  .ptsn {{ font-size:47px; font-weight:bold; font-variant-numeric:tabular-nums;
+  .rank {{ width:96px; font-family:{HEAD_F}; font-size:68px; text-align:right;
           line-height:1; }}
-  .ptsl {{ font-size:19px; color:{LABEL}; margin-top:8px; }}
+  /* white chip: several club marks are dark-inked and would vanish on #1b1b1b */
+  .chip {{ width:92px; height:92px; background:#FFFFFF; border-radius:50%;
+          display:flex; align-items:center; justify-content:center;
+          flex-shrink:0; }}
+  .chip img {{ width:66px; height:66px; object-fit:contain; }}
+  .name {{ flex:1; font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
+          letter-spacing:-0.5px; color:#FFFFFF; }}
+  .pts  {{ text-align:right; }}
+  .ptsn {{ font-family:{HEAD_F}; font-size:56px; font-variant-numeric:tabular-nums;
+          line-height:1; }}
+  .ptsl {{ font-size:19px; color:{GREY}; margin-top:9px; }}
 
   /* ---- explainer slides ---- */
-  .step {{ display:flex; gap:26px; margin-bottom:29px; align-items:flex-start; }}
-  .num {{ min-width:60px; height:60px; background:{STEEL}; color:#FFF;
-         font-size:31px; font-weight:bold; display:flex; align-items:center;
+  .step {{ display:flex; gap:28px; margin-bottom:30px; align-items:flex-start; }}
+  .num {{ min-width:56px; height:56px; background:{LIME}; color:{INK};
+         font-family:{HEAD_F}; font-size:28px; display:flex; align-items:center;
          justify-content:center; }}
-  .txt b {{ font-size:31px; display:block; margin-bottom:8px; }}
-  .txt span {{ font-size:26px; line-height:1.45; color:#333; }}
-  .callout {{ background:#F0F4F8; border-left:11px solid {STEEL};
-             padding:30px 34px; margin-top:8px; }}
-  .callout > b {{ font-size:31px; display:block; margin-bottom:12px; color:{NAVY}; }}
-  .callout span {{ font-size:26px; line-height:1.5; color:#333; }}
-  .big {{ font-size:34px; line-height:1.45; }}
+  .txt b {{ font-family:{HEAD_F}; font-size:30px; display:block; color:#FFFFFF;
+           margin-bottom:9px; text-transform:uppercase; letter-spacing:-0.3px; }}
+  .txt span {{ font-size:25px; line-height:1.45; color:{OFFWHITE}; }}
+  .callout {{ background:#252525; border-left:9px solid {LIME};
+             padding:30px 34px; margin-top:10px; }}
+  .callout > b {{ font-family:{HEAD_F}; font-size:29px; display:block;
+                 margin-bottom:13px; color:{LIME}; text-transform:uppercase; }}
+  .callout span {{ font-size:25px; line-height:1.5; color:{OFFWHITE}; }}
+  .callout span b {{ color:{LIME}; }}
+  .big {{ font-size:33px; line-height:1.45; color:{OFFWHITE}; }}
 """
 
 
@@ -127,32 +145,28 @@ def slide_html(inner: str) -> str:
 def standings_slide(rows, lo: int, hi: int, idx: int, total: int) -> str:
     body = []
     for r in rows:
-        col, zlabel = zone(int(r.proj_rank))
+        col = zone(int(r.proj_rank))
         body.append(f"""
       <div class="row">
-        <div class="rank" style="background:{col}">{int(r.proj_rank)}</div>
-        <img class="logo" src="{logo_uri(r.team)}" alt="">
-        <div class="name">{r.team}
-          <div class="zone" style="color:{col}">{zlabel}</div>
-        </div>
+        <div class="rank" style="color:{col}">{int(r.proj_rank)}</div>
+        <div class="chip"><img src="{logo_uri(r.team)}" alt=""></div>
+        <div class="name">{r.team}</div>
         <div class="pts">
-          <div class="ptsn">{r.mean_points:.0f}</div>
+          <div class="ptsn" style="color:{col}">{r.mean_points:.0f}</div>
           <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} pts</div>
         </div>
       </div>""")
-    head_sub = {1: "The projected top six", 2: "The chasing pack",
-                3: "Predicted to miss out"}[idx]
     return slide_html(f"""
   <div class="slide">
     <div class="head">
       <div class="kicker">Liiga 2026–27 · Season prediction</div>
       <div class="title">Places {lo}–{hi}</div>
-      <div class="sub">{head_sub}</div>
     </div>
+    <div class="rule"></div>
     <div class="body standings">{''.join(body)}</div>
     <div class="foot">
       <span>Projected points · {N_SIMS} simulated seasons</span>
-      <span class="pill">{idx} / {total}</span>
+      <span class="wordmark">Recordly</span>
     </div>
   </div>""")
 
@@ -184,8 +198,8 @@ def how_slide(idx: int, total: int) -> str:
     <div class="head">
       <div class="kicker">Liiga 2026–27 · Season prediction</div>
       <div class="title">How this is made</div>
-      <div class="sub">No crystal ball — just goals, ages and a lot of maths</div>
     </div>
+    <div class="rule"></div>
     <div class="body">
       {items}
       <div class="callout">
@@ -197,7 +211,7 @@ def how_slide(idx: int, total: int) -> str:
     </div>
     <div class="foot">
       <span>Built from public Liiga data</span>
-      <span class="pill">{idx} / {total}</span>
+      <span class="wordmark">Recordly</span>
     </div>
   </div>""")
 
@@ -208,8 +222,8 @@ def next_slide(idx: int, total: int) -> str:
     <div class="head">
       <div class="kicker">Liiga 2026–27 · What happens next</div>
       <div class="title">This keeps<br>updating all season</div>
-      <div class="sub">A prediction you can hold me to</div>
     </div>
+    <div class="rule"></div>
     <div class="body">
       <p class="big">This is a pre-season forecast — but it does not stop here.</p>
       <div class="callout" style="margin-top:34px">
@@ -222,7 +236,7 @@ def next_slide(idx: int, total: int) -> str:
       <p class="big" style="margin-top:34px">So the table above is just the
       starting point. As the season goes on the forecast keeps correcting itself
       — and you get to see exactly where it was right and where it was wrong.</p>
-      <div class="callout" style="margin-top:34px;border-left-color:{GREEN}">
+      <div class="callout" style="margin-top:34px;border-left-color:{ORANGE}">
         <b>Follow along</b>
         <span>I will be posting how these predictions hold up as the season
         plays out — hits and misses both.</span>
@@ -230,7 +244,7 @@ def next_slide(idx: int, total: int) -> str:
     </div>
     <div class="foot">
       <span>Player-level model · Snowflake ML · updated daily</span>
-      <span class="pill">{idx} / {total}</span>
+      <span class="wordmark">Recordly</span>
     </div>
   </div>""")
 
@@ -286,16 +300,16 @@ def build() -> None:
     (OUT / "index.html").write_text(f"""<!doctype html><html><head>
 <meta charset="utf-8"><title>Liiga 2026–27 — Instagram carousel</title>
 <style>
- body{{font-family:Verdana,Arial,sans-serif;background:#EEE;color:{INK};margin:0;padding:40px}}
- h1{{background:{NAVY};color:#fff;margin:-40px -40px 30px;padding:26px 40px;font-size:24px}}
+ body{{font-family:{BODY_F};background:#0e0e0e;color:#EEE;margin:0;padding:40px}}
+ h1{{font-family:{HEAD_F};background:{INK};color:{LIME};margin:-40px -40px 30px;padding:26px 40px;font-size:24px;text-transform:uppercase;letter-spacing:2px;border-bottom:4px solid {LIME}}}
  p.lead{{max-width:900px;line-height:1.6;font-size:14px}}
  .grid{{display:flex;flex-wrap:wrap;gap:24px;margin:30px 0}}
- figure{{margin:0;background:#fff;padding:12px;border:1px solid #BBB}}
+ figure{{margin:0;background:{INK};padding:12px;border:1px solid #333}}
  figure img{{width:320px;display:block}}
- figcaption{{font-size:12px;color:{LABEL};padding-top:8px;text-align:center}}
- textarea{{width:100%;max-width:900px;height:230px;font-family:Verdana,sans-serif;
+ figcaption{{font-size:12px;color:{GREY};padding-top:8px;text-align:center}}
+ textarea{{width:100%;max-width:900px;height:230px;font-family:{BODY_F};background:#1b1b1b;color:#EEE;
    font-size:13px;padding:14px;border:1px solid #BBB;line-height:1.5}}
- code{{background:#DDD;padding:2px 6px}}
+ code{{background:#2a2a2a;color:{LIME};padding:2px 6px}}
 </style></head><body>
 <h1>Liiga 2026–27 — Instagram carousel</h1>
 <p class="lead">Five ready-made {W}×{H} images (Instagram's 4:5 portrait format).
