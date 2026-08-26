@@ -59,6 +59,12 @@ HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
 BODY_F = '"GT America",Arial,Helvetica,sans-serif'
 
 
+def _ordinal(n: int) -> str:
+    if 11 <= n % 100 <= 13:
+        return f"{n}th"
+    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }".replace(" ", "")
+
+
 def _slug(team: str) -> str:
     return (team.lower().replace("ä", "a").replace("ö", "o").replace("å", "a")
             .replace(" ", "-"))
@@ -107,14 +113,19 @@ def css(t: dict) -> str:
      crests are dark-inked and grayscale alone leaves them invisible on black. */
   .chip {{ width:78px; height:156px; overflow:hidden; flex-shrink:0;
           display:flex; align-items:center; }}
+  /* contrast() compresses toward mid-grey BEFORE brightness lifts, so crests
+     with very different base luminance land in the same band. A flat
+     brightness lift blew out the light-heavy marks (Assat, TPS) to solid
+     white while dark ones stayed grey. Maps black->0.26, white->0.89. */
   .chip img {{ width:156px; height:156px; max-width:none; object-fit:contain;
-              filter:grayscale(1) brightness(2.1) contrast(0.95); opacity:0.92; }}
+              filter:grayscale(1) contrast(0.55) brightness(1.15); opacity:0.95; }}
   .name {{ flex:1; font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }}
   .pts {{ text-align:right; }}
   .ptsn {{ font-family:{HEAD_F}; font-size:56px; line-height:1;
           font-variant-numeric:tabular-nums; color:{t['accent']}; }}
-  .ptsl {{ font-size:19px; color:{t['muted']}; margin-top:9px; }}
+  .ptsl {{ font-size:19px; color:{t['muted']}; margin-top:8px; }}
+  .ptsr {{ font-size:21px; color:{t['accent']}; margin-top:5px; opacity:0.85; }}
 
   /* ---- technical slides ---- */
   .step {{ display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }}
@@ -141,7 +152,7 @@ def page(t: dict, inner: str) -> str:
             f"<style>{css(t)}</style></head><body>{inner}</body></html>")
 
 
-def standings_slide(rows, lo: int, hi: int, t: dict) -> str:
+def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
     body = "".join(f"""
       <div class="row">
         <div class="rank">{int(r.proj_rank)}</div>
@@ -150,6 +161,7 @@ def standings_slide(rows, lo: int, hi: int, t: dict) -> str:
         <div class="pts">
           <div class="ptsn">{r.mean_points:.0f}</div>
           <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} pts</div>
+          <div class="ptsr">likely {bands[r.team]}</div>
         </div>
       </div>""" for r in rows)
     return page(t, f"""
@@ -160,7 +172,7 @@ def standings_slide(rows, lo: int, hi: int, t: dict) -> str:
     </div>
     <div class="rule"></div>
     <div class="body standings">{body}</div>
-    <div class="foot">Mean of {N_SIMS} Monte Carlo seasons · 5th–95th percentile</div>
+    <div class="foot">{N_SIMS} simulated seasons · “likely” = middle 50% of finishes</div>
   </div>""")
 
 
@@ -272,8 +284,29 @@ def build() -> None:
         st = query_df(con, """SELECT proj_rank, team, mean_points, p05_points,
                                      p95_points
                               FROM standings_2026_27 ORDER BY proj_rank""")
+        pos = query_df(con, "SELECT * FROM position_distribution_2026_27")
     finally:
         con.close()
+
+    # Interquartile finishing range per team. The 5-95 band is honest but far
+    # too wide to be useful on a slide (KooKoo would read "1st-11th"); the IQR
+    # still carries 50-87% of the probability mass and is legible at a glance.
+    bands = {}
+    if not pos.empty:
+        cols = [f"rank_{i}" for i in range(1, 18)]
+        pos = pos.set_index("team")
+        for team in st["team"]:
+            cum, lo_r, hi_r = 0.0, None, 17
+            for i, c in enumerate(cols, 1):
+                cum += float(pos.loc[team, c])
+                if lo_r is None and cum >= 0.25:
+                    lo_r = i
+                if cum >= 0.75:
+                    hi_r = i
+                    break
+            lo_r = lo_r or 1
+            bands[team] = (f"{_ordinal(lo_r)}–{_ordinal(hi_r)}" if lo_r != hi_r
+                           else _ordinal(lo_r))
     if st.empty:
         raise SystemExit("standings_2026_27 empty — run scripts/refresh_standings.py")
 
@@ -281,7 +314,7 @@ def build() -> None:
     slides = []
     for i, (lo, hi) in enumerate([(1, 6), (7, 12), (13, 17)]):
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
-        slides.append(standings_slide(rows, lo, hi, themes[i]))
+        slides.append(standings_slide(rows, lo, hi, themes[i], bands))
     slides.append(how_slide(themes[3]))
     slides.append(next_slide(themes[4]))
 
