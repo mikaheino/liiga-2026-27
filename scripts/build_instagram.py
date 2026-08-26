@@ -97,15 +97,18 @@ def css(t: dict) -> str:
   /* ---- standings ---- */
   .body.standings {{ display:flex; flex-direction:column; padding-bottom:8px; }}
   .body.standings .row {{ flex:1; padding:0; }}
-  .row {{ display:flex; align-items:center; gap:30px;
+  .row {{ display:flex; align-items:center; gap:26px;
          border-bottom:1px solid {t['panel']}; }}
   .row:last-child {{ border-bottom:none; }}
   .rank {{ width:96px; font-family:{HEAD_F}; font-size:68px; text-align:right;
           line-height:1; color:{t['accent']}; }}
-  /* white chip: several club crests are dark-inked and vanish on dark slides */
-  .chip {{ width:92px; height:92px; background:#FFFFFF; border-radius:50%;
-          display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
-  .chip img {{ width:66px; height:66px; object-fit:contain; }}
+  /* Crest treatment: oversized, desaturated, and clipped down the vertical
+     centre so only the left half shows. brightness() is needed because several
+     crests are dark-inked and grayscale alone leaves them invisible on black. */
+  .chip {{ width:78px; height:156px; overflow:hidden; flex-shrink:0;
+          display:flex; align-items:center; }}
+  .chip img {{ width:156px; height:156px; max-width:none; object-fit:contain;
+              filter:grayscale(1) brightness(2.1) contrast(0.95); opacity:0.92; }}
   .name {{ flex:1; font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }}
   .pts {{ text-align:right; }}
@@ -207,33 +210,43 @@ def how_slide(t: dict) -> str:
 
 
 def next_slide(t: dict) -> str:
+    """Technical slide: this is where the modelling vocabulary lives, so the
+    method slide can stay plain-language for a general reader."""
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · What runs next</div>
-      <div class="title">Moving it to<br>Snowflake ML</div>
+      <div class="kicker">Liiga 2026–27 · Under the hood</div>
+      <div class="title">The model,<br>and what's next</div>
     </div>
     <div class="rule"></div>
     <div class="body">
-      <p class="big">The pre-season table is a cold start. What matters is what
-      happens once real results land.</p>
-      <div class="callout" style="margin-top:24px">
-        <b>Scheduled Snowflake ML jobs</b>
-        <span>Porting the pipeline into <b>Snowflake ML jobs</b> on a nightly
-        schedule. Each run ingests the day's box scores, refits Elo through
-        current results, re-derives team strength, and re-simulates
-        <b>only unplayed fixtures</b> — banking actual points for games already
-        in the book.</span>
+      <div class="callout">
+        <b>The match model</b>
+        <span>Goals are drawn from a <b>Poisson</b> model,
+        λ = lgAvg × off × def × home_ice, with a <b>Dixon-Coles</b> correction
+        inflating the low-score diagonal so the simulated OT rate matches
+        Liiga's observed 23%. That is blended <b>{POISSON_PCT}/{ELO_PCT}</b>
+        with a margin-of-victory <b>Elo</b> rating (k=16).</span>
       </div>
-      <div class="callout" style="margin-top:22px">
-        <b>Why the forecast sharpens</b>
-        <span>The weight on pre-season expectation drops as the season goes on, handing over from prior belief to observed results. At game 60
-        it converges on the real table by construction.</span>
+      <div class="callout" style="margin-top:20px">
+        <b>Validation</b>
+        <span>Leakage-free backtest over 2023–26, each season rated on prior
+        seasons only: points MAE <b>{BACKTEST_MAE}</b>, game log-loss
+        <b>0.672</b> against a <b>0.686</b> base rate, standings
+        <b>Spearman ρ 0.48</b>. Tuned on log-loss and MAE — ρ is far too noisy
+        at n=4 to optimise against.</span>
       </div>
-      <p class="big" style="margin-top:24px">I will publish the error as it
+      <div class="callout" style="margin-top:20px">
+        <b>Next: Snowflake ML jobs</b>
+        <span>Porting the pipeline to <b>Snowflake ML jobs</b> on a nightly
+        schedule — ingesting box scores, refitting Elo on current results, and
+        re-simulating <b>only unplayed fixtures</b> while banking points
+        already earned. The pre-season prior decays as real games accumulate.</span>
+      </div>
+      <p class="big" style="margin-top:22px">I will publish the error as it
       moves — including where it was wrong.</p>
     </div>
-    <div class="foot">Snowpark · scheduled tasks · nightly re-simulation</div>
+    <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowpark</div>
   </div>""")
 
 

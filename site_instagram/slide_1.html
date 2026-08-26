@@ -16,15 +16,18 @@
   /* ---- standings ---- */
   .body.standings { display:flex; flex-direction:column; padding-bottom:8px; }
   .body.standings .row { flex:1; padding:0; }
-  .row { display:flex; align-items:center; gap:30px;
+  .row { display:flex; align-items:center; gap:26px;
          border-bottom:1px solid rgba(255,255,255,0.07); }
   .row:last-child { border-bottom:none; }
   .rank { width:96px; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:68px; text-align:right;
           line-height:1; color:#e3ff87; }
-  /* white chip: several club crests are dark-inked and vanish on dark slides */
-  .chip { width:92px; height:92px; background:#FFFFFF; border-radius:50%;
-          display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .chip img { width:66px; height:66px; object-fit:contain; }
+  /* Crest treatment: oversized, desaturated, and clipped down the vertical
+     centre so only the left half shows. brightness() is needed because several
+     crests are dark-inked and grayscale alone leaves them invisible on black. */
+  .chip { width:78px; height:156px; overflow:hidden; flex-shrink:0;
+          display:flex; align-items:center; }
+  .chip img { width:156px; height:156px; max-width:none; object-fit:contain;
+              filter:grayscale(1) brightness(2.1) contrast(0.95); opacity:0.92; }
   .name { flex:1; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }
   .pts { text-align:right; }
