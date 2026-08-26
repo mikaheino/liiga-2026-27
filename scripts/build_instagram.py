@@ -93,7 +93,8 @@ def logo_uri(team: str) -> str:
 
     # measure the range over opaque pixels only -- anti-aliased edges would
     # otherwise drag the floor down and wash the crest out
-    vals = [v for v, a in zip(list(lum.getdata()), list(alpha.getdata())) if a > 40]
+    # tobytes() gives raw 8-bit pixels for L-mode; getdata() is deprecated in Pillow 12
+    vals = [v for v, a in zip(lum.tobytes(), alpha.tobytes()) if a > 40]
     lo, hi = (min(vals), max(vals)) if vals else (0, 255)
     span = max(hi - lo, 1)
     lut = [max(0, min(255, CREST_FLOOR
