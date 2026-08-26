@@ -13,9 +13,9 @@
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five 1080×1350 images. Upload <code>slide_1.png</code> …
-<code>slide_4.png</code> in order. Regenerate with
+<code>slide_5.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
-<div class="grid"><figure><img src="slide_1.png"></figure><figure><img src="slide_2.png"></figure><figure><img src="slide_3.png"></figure><figure><img src="slide_4.png"></figure></div>
+<div class="grid"><figure><img src="slide_1.png"></figure><figure><img src="slide_2.png"></figure><figure><img src="slide_3.png"></figure><figure><img src="slide_4.png"></figure><figure><img src="slide_5.png"></figure></div>
 <h2 style="font-size:18px">Caption</h2>
 <textarea readonly>I built a bottom-up model that projects the full Liiga 2026–27 table. Swipe for places 1–17, plus the method.
 
@@ -26,6 +26,8 @@ Age is piecewise — 1.5%/yr from peak 26, plus a further 4%/yr past 33. That cl
 Goaltending enters as a defensive multiplier, (1−SV)/(1−SVlg), regressed 25 games toward a prior. Games are Poisson with Dixon-Coles tie inflation calibrated to Liiga's observed 23% OT rate, blended 40/60 with margin-of-victory Elo (k=16), then run through 10,000 Monte Carlo seasons.
 
 Leakage-free backtest over 2023–26: points MAE 12.65, game log-loss 0.672 against a 0.686 base rate, Spearman ρ 0.48. Tuned on log-loss and MAE — ρ is far too noisy at n=4.
+
+The last slide runs the same projections at player level: Blichfeld for points, Ojantakanen for goals, Bartosak for save percentage.
 
 Next: porting it to Snowflake ML jobs on a nightly schedule, refitting Elo on real results and re-simulating only unplayed fixtures. I'll post the error as it moves.
 

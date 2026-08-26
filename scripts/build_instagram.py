@@ -3,11 +3,12 @@
 SEPARATE from the main infographic. Reads the same DuckDB tables as
 scripts/build_site.py but writes to site_instagram/ and never touches site/.
 
-Four 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
+Five 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
 top-right corner that varies slide to slide.
 
-    slide_1  places 1-6       slide_3  places 13-17
-    slide_2  places 7-12      slide_4  method, match model, validation
+    slide_1  places 1-6       slide_4  method, match model, validation
+    slide_2  places 7-12      slide_5  individual award projections
+    slide_3  places 13-17
 
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
@@ -53,6 +54,7 @@ GRADIENTS = [
     "linear-gradient(to bottom left, #d9f56f 0%, #5d6b31 7%, #1b1b1b 25%)",
     "linear-gradient(to bottom left, #e3ff87 0%, #667535 11%, #1b1b1b 34%)",
     "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
+    "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
 ]
 
 HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
@@ -175,6 +177,22 @@ def css(t: dict) -> str:
   .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
                  margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
   .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
+  /* ---- award slide ---- */
+  .award {{ display:flex; flex-direction:column; justify-content:space-evenly;
+           height:100%; padding-bottom:8px; }}
+  .aw {{ display:flex; align-items:center; gap:26px; }}
+  .aw .chip {{ width:78px; height:150px; }}
+  .aw .chip img {{ width:150px; height:150px; }}
+  .aw-txt {{ flex:1; }}
+  .aw-cat {{ font-family:{HEAD_F}; font-size:20px; letter-spacing:3px;
+            text-transform:uppercase; color:{t['accent']}; margin-bottom:9px; }}
+  .aw-name {{ font-family:{HEAD_F}; font-size:47px; text-transform:uppercase;
+             letter-spacing:-1px; line-height:1; }}
+  .aw-sub {{ font-size:22px; color:{t['muted']}; margin-top:11px; }}
+  .aw-num {{ font-family:{HEAD_F}; font-size:52px; color:{t['accent']};
+            text-align:right; line-height:1; }}
+  .aw-unit {{ font-size:19px; color:{t['muted']}; text-align:right;
+             margin-top:9px; }}
   .big {{ font-size:29px; line-height:1.4; color:{t['fg']}; }}
   .next {{ font-size:21px; line-height:1.4; margin-top:16px; color:{t['fg']};
           opacity:0.8; }}
@@ -269,6 +287,36 @@ def how_slide(t: dict) -> str:
   </div>""")
 
 
+def award_slide(t: dict, picks: list) -> str:
+    """Three individual-award shouts, taken from the same projections that
+    drive the table -- not from reputation."""
+    rows = "".join(f"""
+      <div class="aw">
+        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        <div class="aw-txt">
+          <div class="aw-cat">{cat}</div>
+          <div class="aw-name">{name}</div>
+          <div class="aw-sub">{team}</div>
+        </div>
+        <div>
+          <div class="aw-num">{num}</div>
+          <div class="aw-unit">{unit}</div>
+        </div>
+      </div>""" for cat, name, team, num, unit in picks)
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Individual projections</div>
+      <div class="title">Three to watch</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="award">{rows}</div>
+    </div>
+    <div class="foot">Projected over a 60-game season · same model as the table</div>
+  </div>""")
+
+
 CAPTION = """I built a bottom-up model that projects the full Liiga 2026–27 table. Swipe for places 1–17, plus the method.
 
 It deliberately ignores last season's standings. It starts at player level: five seasons of goals/game per player, exponentially recency-weighted (0.80/yr), shrunk toward positional means with a 20-game prior, then converted across leagues with NHLe-derived factors for every import (SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35) calibrated on within-player movers.
@@ -278,6 +326,8 @@ Age is piecewise — 1.5%/yr from peak 26, plus a further 4%/yr past 33. That cl
 Goaltending enters as a defensive multiplier, (1−SV)/(1−SVlg), regressed 25 games toward a prior. Games are Poisson with Dixon-Coles tie inflation calibrated to Liiga's observed 23% OT rate, blended 40/60 with margin-of-victory Elo (k=16), then run through 10,000 Monte Carlo seasons.
 
 Leakage-free backtest over 2023–26: points MAE 12.65, game log-loss 0.672 against a 0.686 base rate, Spearman ρ 0.48. Tuned on log-loss and MAE — ρ is far too noisy at n=4.
+
+The last slide runs the same projections at player level: Blichfeld for points, Ojantakanen for goals, Bartosak for save percentage.
 
 Next: porting it to Snowflake ML jobs on a nightly schedule, refitting Elo on real results and re-simulating only unplayed fixtures. I'll post the error as it moves.
 
@@ -324,6 +374,16 @@ def build() -> None:
         slides.append(standings_slide(rows, lo, hi, themes[i], bands))
     slides.append(how_slide(themes[3]))
 
+    # Individual awards, read off the same projections as the table.
+    # Blichfeld tops BOTH points and goals; the goals slot uses the runner-up
+    # so three different players are named -- see the note in the README.
+    picks = [
+        ("Most points", "Blichfeld", "Tappara", "56", "projected points"),
+        ("Most goals", "Ojantakanen", "JYP", "24", "projected goals"),
+        ("Best save %", "Bartosak", "Pelicans", "91.1", "projected save %"),
+    ]
+    slides.append(award_slide(themes[4], picks))
+
     for i, html in enumerate(slides, 1):
         src, png = OUT / f"slide_{i}.html", OUT / f"slide_{i}.png"
         src.write_text(html, encoding="utf-8")
@@ -351,7 +411,7 @@ def build() -> None:
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five {W}×{H} images. Upload <code>slide_1.png</code> …
-<code>slide_4.png</code> in order. Regenerate with
+<code>slide_5.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">Caption</h2>
