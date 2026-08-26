@@ -26,12 +26,17 @@
      crests are dark-inked and grayscale alone leaves them invisible on black. */
   .chip { width:78px; height:156px; overflow:hidden; flex-shrink:0;
           display:flex; align-items:center; }
-  /* contrast() compresses toward mid-grey BEFORE brightness lifts, so crests
-     with very different base luminance land in the same band. A flat
-     brightness lift blew out the light-heavy marks (Assat, TPS) to solid
-     white while dark ones stayed grey. Maps black->0.26, white->0.89. */
-  .chip img { width:156px; height:156px; max-width:none; object-fit:contain;
-              filter:grayscale(1) contrast(0.55) brightness(1.15); opacity:0.95; }
+  /* Crests are drawn as flat silhouettes in the SAME white as the team name:
+     the PNG's alpha channel is used as a mask and filled with one colour, so
+     every club renders at identical tone regardless of its original artwork.
+     A luminance filter can never do this -- each crest has different base
+     brightness, so some always came out lighter than others. */
+  .chip .mark { width:156px; height:156px; flex-shrink:0;
+                background-color:#FFFFFF;
+                -webkit-mask-image:var(--crest); mask-image:var(--crest);
+                -webkit-mask-size:contain; mask-size:contain;
+                -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+                -webkit-mask-position:center; mask-position:center; }
   .name { flex:1; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }
   .pts { text-align:right; }
