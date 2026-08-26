@@ -82,42 +82,19 @@ def _slug(team: str) -> str:
             .replace(" ", "-"))
 
 
-# Darkest tone any crest is allowed to use. Everything is remapped into
-# [CREST_FLOOR, 255] so all crests read as light as the team name beside them.
-CREST_FLOOR = 138
-
-
 def logo_uri(team: str) -> str:
-    """Grayscale a crest and stretch ITS OWN luminance range into one bright
-    band, so every club reads at the same tone while keeping internal detail.
+    """Club crest in its ORIGINAL colours, upscaled for sharpness.
 
-    A CSS filter cannot do this: each crest has a different native range (TPS
-    is black-on-white, Ilves is mid-tone), so one global brightness/contrast
-    always leaves some marks lighter than others. Normalising per image fixes
-    the tone without flattening the artwork into a silhouette.
+    Cached source art is 96px but is drawn at 156px, so it is resampled 3x
+    with LANCZOS rather than left to the browser's scaler.
     """
     p = LOGOS / f"{_slug(team)}.png"
     if not p.exists():
         return ""
     im = Image.open(p).convert("RGBA")
-    alpha = im.split()[3]
-    lum = im.convert("L")
-
-    # measure the range over opaque pixels only -- anti-aliased edges would
-    # otherwise drag the floor down and wash the crest out
-    # tobytes() gives raw 8-bit pixels for L-mode; getdata() is deprecated in Pillow 12
-    vals = [v for v, a in zip(lum.tobytes(), alpha.tobytes()) if a > 40]
-    lo, hi = (min(vals), max(vals)) if vals else (0, 255)
-    span = max(hi - lo, 1)
-    lut = [max(0, min(255, CREST_FLOOR
-                      + int((i - lo) / span * (255 - CREST_FLOOR))))
-           for i in range(256)]
-
-    out = lum.point(lut)
-    res = Image.merge("RGBA", (out, out, out, alpha))
-    res = res.resize((im.width * 3, im.height * 3), Image.LANCZOS)
+    im = im.resize((im.width * 3, im.height * 3), Image.LANCZOS)
     buf = io.BytesIO()
-    res.save(buf, "PNG")
+    im.save(buf, "PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
