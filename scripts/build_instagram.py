@@ -42,10 +42,18 @@ N_SIMS = "10,000"
 LIME = "#e3ff87"        # brand yellow, start of the ramp
 INK = "#1b1b1b"         # near-black, end of the ramp
 
-# yellow -> black across the five slides. Steps past the muddy mid-tones
-# quickly so slides 1-2 read as light and 3-5 as dark; text contrast never
-# lands in the unreadable middle.
-RAMP = ["#e3ff87", "#c2e05a", "#5f6f33", "#2f3320", "#1b1b1b"]
+# Each slide is black-dominant with a yellow bloom in the TOP-RIGHT corner,
+# falling diagonally to near-black at bottom-left. The bloom's reach varies
+# per slide so the carousel has movement without changing its identity.
+# Stops are kept tight: the bright zone must die out before it reaches the
+# first content row, or lime text sits on lime background.
+GRADIENTS = [
+    "linear-gradient(to bottom left, #e3ff87 0%, #6d7c39 9%, #1b1b1b 30%)",
+    "linear-gradient(to bottom left, #d9f56f 0%, #5d6b31 7%, #1b1b1b 25%)",
+    "linear-gradient(to bottom left, #e3ff87 0%, #667535 11%, #1b1b1b 34%)",
+    "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
+    "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
+]
 
 HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
 BODY_F = '"GT America",Arial,Helvetica,sans-serif'
@@ -63,24 +71,20 @@ def logo_uri(team: str) -> str:
     return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
 
 
-def theme(bg: str) -> dict:
-    """Foreground/accent for a background so contrast holds along the ramp."""
-    r, g, b = (int(bg[i:i + 2], 16) for i in (1, 3, 5))
-    lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    if lum > 0.55:                                     # light slide
-        return {"bg": bg, "fg": INK, "accent": INK, "muted": "#4a5230",
-                "rule": INK, "panel": "rgba(0,0,0,0.07)", "bar": INK}
-    return {"bg": bg, "fg": "#FFFFFF", "accent": LIME, "muted": "#9a9a8f",
+def theme(gradient: str) -> dict:
+    """Every slide is black-dominant now, so one light-on-dark palette serves
+    all five -- no luminance flipping needed."""
+    return {"grad": gradient, "fg": "#FFFFFF", "accent": LIME, "muted": "#9a9a8f",
             "rule": LIME, "panel": "rgba(255,255,255,0.07)", "bar": LIME}
 
 
 def css(t: dict) -> str:
     return f"""
   * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ width:{W}px; height:{H}px; overflow:hidden; background:{t['bg']};
+  body {{ width:{W}px; height:{H}px; overflow:hidden; background:{INK};
          font-family:{BODY_F}; color:{t['fg']}; -webkit-font-smoothing:antialiased; }}
   .slide {{ width:{W}px; height:{H}px; display:flex; flex-direction:column;
-           background:{t['bg']}; }}
+           background:{INK}; background-image:{t['grad']}; }}
   .head {{ padding:60px 64px 28px; }}
   .kicker {{ font-family:{HEAD_F}; font-size:20px; letter-spacing:4px;
             text-transform:uppercase; color:{t['accent']}; margin-bottom:18px; }}
@@ -111,7 +115,7 @@ def css(t: dict) -> str:
 
   /* ---- technical slides ---- */
   .step {{ display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }}
-  .num {{ min-width:48px; height:48px; background:{t['accent']}; color:{t['bg']};
+  .num {{ min-width:48px; height:48px; background:{t['accent']}; color:{INK};
          font-family:{HEAD_F}; font-size:24px; display:flex;
          align-items:center; justify-content:center; }}
   /* DIRECT child only -- inline <b> inside the description must stay inline,
@@ -159,26 +163,24 @@ def standings_slide(rows, lo: int, hi: int, t: dict) -> str:
 
 def how_slide(t: dict) -> str:
     steps = [
-        ("Per-player rates, not team history",
-         "Five seasons of goals/game per player from liiga.fi event data. "
-         "Exponential recency decay <b>0.80/yr</b>, then shrunk toward the "
-         "positional mean with a <b>20-game prior</b>."),
-        ("League-equivalency conversion",
-         "Imports rescaled by NHLe-derived factors — <b>SHL 1.20, AHL 1.15, "
-         "Allsvenskan 0.75, Mestis 0.35</b> — calibrated on within-player "
-         "league movers, not published tables."),
-        ("Piecewise age curve with a cliff",
-         "1.5%/yr either side of peak 26, plus <b>4%/yr past 33</b>. Fitted on "
-         "our own within-player YoY rate ratios: <b>0.67 at 35–37, 0.40 at "
-         "38+</b> — a cliff, not a fade."),
-        ("Goaltending as a defensive multiplier",
-         "Projected SV% (recency + GP weighted, league-adjusted, regressed "
-         "<b>25 games</b> to prior) → <b>(1−SV)/(1−SVlg)</b>, weighted 0.70 "
-         "against team shot suppression."),
-        ("Poisson × MOV-Elo ensemble",
-         "<b>λ = lgAvg × off × def × home_ice</b>, with Dixon-Coles tie "
-         f"inflation to hit Liiga's observed <b>23% OT rate</b>. Blended "
-         f"<b>{POISSON_PCT}/{ELO_PCT}</b> with margin-of-victory Elo (k=16)."),
+        ("Built from players, not last season",
+         "Five seasons of goals per game for every player on every roster, "
+         "with the most recent season weighted heaviest."),
+        ("Foreign leagues converted, not guessed",
+         "An import's scoring is rescaled into Liiga terms — <b>SHL 1.20, "
+         "AHL 1.15, Allsvenskan 0.75, Mestis 0.35</b> — set from players who "
+         "actually made that move."),
+        ("Age is a cliff, not a slope",
+         "Output holds up to about 28, then falls away fast: <b>0.67</b> of "
+         "the previous rate at 35–37, <b>0.40</b> at 38 and over. Measured, "
+         "not assumed."),
+        ("Goalies carry the defence",
+         "Each team's projected save percentage becomes a goals-against "
+         "multiplier, pulled toward the league average so one hot 20-game "
+         "run does not distort it."),
+        ("Two models, then 10,000 seasons",
+         "A goal-scoring model and a team-strength rating vote <b>40/60</b> on "
+         "every game. The full schedule is then simulated <b>10,000</b> times."),
     ]
     items = "".join(
         f'<div class="step"><div class="num">{i}</div>'
@@ -194,14 +196,13 @@ def how_slide(t: dict) -> str:
     <div class="body">
       {items}
       <div class="callout">
-        <b>Leakage-free backtest, 2023–26</b>
-        <span>Each held-out season is rated from prior seasons only. Points MAE
-        <b>{BACKTEST_MAE}</b>, game log-loss <b>0.672</b> vs <b>0.686</b> base
-        rate, standings Spearman ρ <b>0.48</b>. Tuned on log-loss and MAE — not
-        on ρ, which is far too noisy at n=4 seasons.</span>
+        <b>Does it actually work?</b>
+        <span>Tested on 2023–26, with each season predicted using only the
+        seasons before it. On average it lands within about
+        <b>{BACKTEST_MAE} points</b> of a team's real end-of-season total.</span>
       </div>
     </div>
-    <div class="foot">Python · DuckDB · Monte Carlo · leakage-free CV</div>
+    <div class="foot">Python · DuckDB · 10,000-season Monte Carlo</div>
   </div>""")
 
 
@@ -226,8 +227,7 @@ def next_slide(t: dict) -> str:
       </div>
       <div class="callout" style="margin-top:22px">
         <b>Why the forecast sharpens</b>
-        <span>The crowd-prior weight decays linearly with fraction of season
-        played, handing over from prior belief to observed results. At game 60
+        <span>The weight on pre-season expectation drops as the season goes on, handing over from prior belief to observed results. At game 60
         it converges on the real table by construction.</span>
       </div>
       <p class="big" style="margin-top:24px">I will publish the error as it
@@ -264,7 +264,7 @@ def build() -> None:
     if st.empty:
         raise SystemExit("standings_2026_27 empty — run scripts/refresh_standings.py")
 
-    themes = [theme(c) for c in RAMP]
+    themes = [theme(g) for g in GRADIENTS]
     slides = []
     for i, (lo, hi) in enumerate([(1, 6), (7, 12), (13, 17)]):
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
@@ -280,7 +280,7 @@ def build() -> None:
              "--force-device-scale-factor=1", f"--window-size={W},{H}",
              f"--screenshot={png}", f"file://{src}"],
             check=True, capture_output=True)
-        print(f"  wrote {png.name}  bg {RAMP[i-1]}  ({png.stat().st_size // 1024} KB)")
+        print(f"  wrote {png.name}  ({png.stat().st_size // 1024} KB)")
 
     figs = "".join(f'<figure><img src="slide_{i}.png"></figure>'
                    for i in range(1, len(slides) + 1))

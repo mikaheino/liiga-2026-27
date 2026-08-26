@@ -3,7 +3,7 @@
   body { width:1080px; height:1350px; overflow:hidden; background:#1b1b1b;
          font-family:"GT America",Arial,Helvetica,sans-serif; color:#FFFFFF; -webkit-font-smoothing:antialiased; }
   .slide { width:1080px; height:1350px; display:flex; flex-direction:column;
-           background:#1b1b1b; }
+           background:#1b1b1b; background-image:linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%); }
   .head { padding:60px 64px 28px; }
   .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:4px;
             text-transform:uppercase; color:#e3ff87; margin-bottom:18px; }
@@ -69,8 +69,7 @@
       </div>
       <div class="callout" style="margin-top:22px">
         <b>Why the forecast sharpens</b>
-        <span>The crowd-prior weight decays linearly with fraction of season
-        played, handing over from prior belief to observed results. At game 60
+        <span>The weight on pre-season expectation drops as the season goes on, handing over from prior belief to observed results. At game 60
         it converges on the real table by construction.</span>
       </div>
       <p class="big" style="margin-top:24px">I will publish the error as it

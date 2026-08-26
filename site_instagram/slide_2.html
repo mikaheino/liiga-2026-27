@@ -1,26 +1,26 @@
 <!doctype html><html><head><meta charset='utf-8'><style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { width:1080px; height:1350px; overflow:hidden; background:#c2e05a;
-         font-family:"GT America",Arial,Helvetica,sans-serif; color:#1b1b1b; -webkit-font-smoothing:antialiased; }
+  body { width:1080px; height:1350px; overflow:hidden; background:#1b1b1b;
+         font-family:"GT America",Arial,Helvetica,sans-serif; color:#FFFFFF; -webkit-font-smoothing:antialiased; }
   .slide { width:1080px; height:1350px; display:flex; flex-direction:column;
-           background:#c2e05a; }
+           background:#1b1b1b; background-image:linear-gradient(to bottom left, #d9f56f 0%, #5d6b31 7%, #1b1b1b 25%); }
   .head { padding:60px 64px 28px; }
   .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:4px;
-            text-transform:uppercase; color:#1b1b1b; margin-bottom:18px; }
+            text-transform:uppercase; color:#e3ff87; margin-bottom:18px; }
   .title { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:78px; line-height:0.95;
-           text-transform:uppercase; letter-spacing:-1px; color:#1b1b1b; }
-  .rule { height:5px; background:#1b1b1b; margin:26px 64px 0; }
+           text-transform:uppercase; letter-spacing:-1px; color:#FFFFFF; }
+  .rule { height:5px; background:#e3ff87; margin:26px 64px 0; }
   .body { flex:1; padding:26px 64px 0; }
-  .foot { padding:20px 64px 42px; font-size:19px; color:#4a5230; }
+  .foot { padding:20px 64px 42px; font-size:19px; color:#9a9a8f; }
 
   /* ---- standings ---- */
   .body.standings { display:flex; flex-direction:column; padding-bottom:8px; }
   .body.standings .row { flex:1; padding:0; }
   .row { display:flex; align-items:center; gap:30px;
-         border-bottom:1px solid rgba(0,0,0,0.07); }
+         border-bottom:1px solid rgba(255,255,255,0.07); }
   .row:last-child { border-bottom:none; }
   .rank { width:96px; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:68px; text-align:right;
-          line-height:1; color:#1b1b1b; }
+          line-height:1; color:#e3ff87; }
   /* white chip: several club crests are dark-inked and vanish on dark slides */
   .chip { width:92px; height:92px; background:#FFFFFF; border-radius:50%;
           display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -29,26 +29,26 @@
           letter-spacing:-0.5px; }
   .pts { text-align:right; }
   .ptsn { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:56px; line-height:1;
-          font-variant-numeric:tabular-nums; color:#1b1b1b; }
-  .ptsl { font-size:19px; color:#4a5230; margin-top:9px; }
+          font-variant-numeric:tabular-nums; color:#e3ff87; }
+  .ptsl { font-size:19px; color:#9a9a8f; margin-top:9px; }
 
   /* ---- technical slides ---- */
   .step { display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }
-  .num { min-width:48px; height:48px; background:#1b1b1b; color:#c2e05a;
+  .num { min-width:48px; height:48px; background:#e3ff87; color:#1b1b1b;
          font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; display:flex;
          align-items:center; justify-content:center; }
   /* DIRECT child only -- inline <b> inside the description must stay inline,
      otherwise every highlighted parameter becomes its own block heading */
-  .txt > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:26px; display:block; color:#1b1b1b;
+  .txt > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:26px; display:block; color:#FFFFFF;
              margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }
-  .txt span { font-size:21px; line-height:1.4; color:#1b1b1b; opacity:0.88; }
-  .txt span b, .callout span b { color:#1b1b1b; opacity:1; }
-  .callout { background:rgba(0,0,0,0.07); border-left:8px solid #1b1b1b;
+  .txt span { font-size:21px; line-height:1.4; color:#FFFFFF; opacity:0.88; }
+  .txt span b, .callout span b { color:#e3ff87; opacity:1; }
+  .callout { background:rgba(255,255,255,0.07); border-left:8px solid #e3ff87;
              padding:22px 28px; margin-top:4px; }
   .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:25px; display:block;
-                 margin-bottom:10px; color:#1b1b1b; text-transform:uppercase; }
-  .callout span { font-size:21px; line-height:1.42; color:#1b1b1b; opacity:0.9; }
-  .big { font-size:29px; line-height:1.4; color:#1b1b1b; }
+                 margin-bottom:10px; color:#e3ff87; text-transform:uppercase; }
+  .callout span { font-size:21px; line-height:1.42; color:#FFFFFF; opacity:0.9; }
+  .big { font-size:29px; line-height:1.4; color:#FFFFFF; }
 </style></head><body>
   <div class="slide">
     <div class="head">

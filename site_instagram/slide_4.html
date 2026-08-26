@@ -1,9 +1,9 @@
 <!doctype html><html><head><meta charset='utf-8'><style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { width:1080px; height:1350px; overflow:hidden; background:#2f3320;
+  body { width:1080px; height:1350px; overflow:hidden; background:#1b1b1b;
          font-family:"GT America",Arial,Helvetica,sans-serif; color:#FFFFFF; -webkit-font-smoothing:antialiased; }
   .slide { width:1080px; height:1350px; display:flex; flex-direction:column;
-           background:#2f3320; }
+           background:#1b1b1b; background-image:linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%); }
   .head { padding:60px 64px 28px; }
   .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:4px;
             text-transform:uppercase; color:#e3ff87; margin-bottom:18px; }
@@ -34,7 +34,7 @@
 
   /* ---- technical slides ---- */
   .step { display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }
-  .num { min-width:48px; height:48px; background:#e3ff87; color:#2f3320;
+  .num { min-width:48px; height:48px; background:#e3ff87; color:#1b1b1b;
          font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; display:flex;
          align-items:center; justify-content:center; }
   /* DIRECT child only -- inline <b> inside the description must stay inline,
@@ -57,14 +57,13 @@
     </div>
     <div class="rule"></div>
     <div class="body">
-      <div class="step"><div class="num">1</div><div class="txt"><b>Per-player rates, not team history</b><span>Five seasons of goals/game per player from liiga.fi event data. Exponential recency decay <b>0.80/yr</b>, then shrunk toward the positional mean with a <b>20-game prior</b>.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>League-equivalency conversion</b><span>Imports rescaled by NHLe-derived factors — <b>SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35</b> — calibrated on within-player league movers, not published tables.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Piecewise age curve with a cliff</b><span>1.5%/yr either side of peak 26, plus <b>4%/yr past 33</b>. Fitted on our own within-player YoY rate ratios: <b>0.67 at 35–37, 0.40 at 38+</b> — a cliff, not a fade.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Goaltending as a defensive multiplier</b><span>Projected SV% (recency + GP weighted, league-adjusted, regressed <b>25 games</b> to prior) → <b>(1−SV)/(1−SVlg)</b>, weighted 0.70 against team shot suppression.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Poisson × MOV-Elo ensemble</b><span><b>λ = lgAvg × off × def × home_ice</b>, with Dixon-Coles tie inflation to hit Liiga's observed <b>23% OT rate</b>. Blended <b>40/60</b> with margin-of-victory Elo (k=16).</span></div></div>
+      <div class="step"><div class="num">1</div><div class="txt"><b>Built from players, not last season</b><span>Five seasons of goals per game for every player on every roster, with the most recent season weighted heaviest.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>Foreign leagues converted, not guessed</b><span>An import's scoring is rescaled into Liiga terms — <b>SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35</b> — set from players who actually made that move.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Age is a cliff, not a slope</b><span>Output holds up to about 28, then falls away fast: <b>0.67</b> of the previous rate at 35–37, <b>0.40</b> at 38 and over. Measured, not assumed.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Goalies carry the defence</b><span>Each team's projected save percentage becomes a goals-against multiplier, pulled toward the league average so one hot 20-game run does not distort it.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Two models, then 10,000 seasons</b><span>A goal-scoring model and a team-strength rating vote <b>40/60</b> on every game. The full schedule is then simulated <b>10,000</b> times.</span></div></div>
       <div class="callout">
-        <b>Leakage-free backtest, 2023–26</b>
-        <span>Each held-out season is rated from prior seasons only. Points MAE
-        <b>12.65</b>, game log-loss <b>0.672</b> vs <b>0.686</b> base
-        rate, standings Spearman ρ <b>0.48</b>. Tuned on log-loss and MAE — not
-        on ρ, which is far too noisy at n=4 seasons.</span>
+        <b>Does it actually work?</b>
+        <span>Tested on 2023–26, with each season predicted using only the
+        seasons before it. On average it lands within about
+        <b>12.65 points</b> of a team's real end-of-season total.</span>
       </div>
     </div>
-    <div class="foot">Python · DuckDB · Monte Carlo · leakage-free CV</div>
+    <div class="foot">Python · DuckDB · 10,000-season Monte Carlo</div>
   </div></body></html>
