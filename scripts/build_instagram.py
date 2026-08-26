@@ -194,9 +194,9 @@ def css(t: dict) -> str:
          font-family:{HEAD_F}; font-size:22px; display:flex; align-items:center;
          justify-content:center; flex-shrink:0; }}
   .nc-txt {{ flex:1; }}
-  .nc-name {{ font-family:{HEAD_F}; font-size:38px; text-transform:uppercase;
+  .nc-name {{ font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
              letter-spacing:-0.5px; line-height:1; }}
-  .nc-from {{ font-size:19px; color:{t['muted']}; margin-top:8px; }}
+  .nc-from {{ font-size:21px; color:{t['muted']}; margin-top:10px; }}
   .nc-num {{ font-family:{HEAD_F}; font-size:42px; color:{t['accent']};
             text-align:right; line-height:1; }}
   .nc-unit {{ font-size:17px; color:{t['muted']}; text-align:right; margin-top:7px; }}
@@ -434,11 +434,7 @@ def newcomers_slide(t: dict, picks: list) -> str:
           <div class="nc-name">{name}</div>
           <div class="nc-from">{team} &nbsp;·&nbsp; from {frm}</div>
         </div>
-        <div>
-          <div class="nc-num">{num}</div>
-          <div class="nc-unit">{unit}</div>
-        </div>
-      </div>""" for pos, name, team, frm, num, unit in picks)
+      </div>""" for pos, name, team, frm, _num, _unit in picks)
     return page(t, f"""
   <div class="slide">
     <div class="head">
@@ -447,7 +443,7 @@ def newcomers_slide(t: dict, picks: list) -> str:
     </div>
     <div class="rule"></div>
     <div class="body newcomers">{rows}</div>
-    <div class="foot">Nobody here played a Liiga game last season · projected over {GAMES_PER_TEAM} games</div>
+    <div class="foot">Not one of these six played a Liiga game last season</div>
   </div>""")
 
 
