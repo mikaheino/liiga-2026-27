@@ -1,0 +1,31 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Liiga 2026–27 — Instagram carousel</title>
+<style>
+ body{font-family:Verdana,Arial,sans-serif;background:#EEE;color:#1A1A1A;margin:0;padding:40px}
+ h1{background:#001040;color:#fff;margin:-40px -40px 30px;padding:26px 40px;font-size:24px}
+ p.lead{max-width:900px;line-height:1.6;font-size:14px}
+ .grid{display:flex;flex-wrap:wrap;gap:24px;margin:30px 0}
+ figure{margin:0;background:#fff;padding:12px;border:1px solid #BBB}
+ figure img{width:320px;display:block}
+ figcaption{font-size:12px;color:#666666;padding-top:8px;text-align:center}
+ textarea{width:100%;max-width:900px;height:230px;font-family:Verdana,sans-serif;
+   font-size:13px;padding:14px;border:1px solid #BBB;line-height:1.5}
+ code{background:#DDD;padding:2px 6px}
+</style></head><body>
+<h1>Liiga 2026–27 — Instagram carousel</h1>
+<p class="lead">Five ready-made 1080×1350 images (Instagram's 4:5 portrait format).
+Upload <code>slide_1.png</code> … <code>slide_5.png</code> in order.
+Regenerate any time with <code>python scripts/build_instagram.py</code> —
+the numbers come straight from the live model.</p>
+<div class="grid"><figure><img src="slide_1.png" alt="slide 1"><figcaption>Slide 1</figcaption></figure><figure><img src="slide_2.png" alt="slide 2"><figcaption>Slide 2</figcaption></figure><figure><img src="slide_3.png" alt="slide 3"><figcaption>Slide 3</figcaption></figure><figure><img src="slide_4.png" alt="slide 4"><figcaption>Slide 4</figcaption></figure><figure><img src="slide_5.png" alt="slide 5"><figcaption>Slide 5</figcaption></figure></div>
+<h2 style="font-size:18px">Caption</h2>
+<textarea readonly>I built a model that predicts the whole Liiga 2026–27 season — here is what it says. 🏒
+
+Swipe for places 1–17.
+
+It does not look at last year's table. It starts from the players: five seasons of scoring for every single player on every roster, adjusted for age, for the league they played in, and for who is in goal. Then it plays the season 10,000 times and takes the average.
+
+Next step: I am moving the whole pipeline into Snowflake ML jobs so it re-runs every night on real results and keeps correcting itself all season. I will keep posting how it holds up — including where it gets it wrong.
+
+#liiga #jääkiekko #hockey #datascience #machinelearning #snowflake #analytics</textarea>
+</body></html>

@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset='utf-8'><style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1080px; height:1350px; overflow:hidden;
+         font-family:Verdana,Arial,Helvetica,sans-serif; color:#1A1A1A;
+         background:#FFFFFF; -webkit-font-smoothing:antialiased; }
+  .slide { width:1080px; height:1350px; display:flex; flex-direction:column; }
+  .head { background:#001040; color:#FFFFFF; padding:38px 56px 30px;
+          border-bottom:10px solid #003464; }
+  .kicker { font-size:23px; letter-spacing:3px; text-transform:uppercase;
+            color:#8FA8C8; margin-bottom:12px; }
+  .title { font-size:57px; font-weight:bold; line-height:1.04; }
+  .sub { font-size:25px; color:#B8CCE8; margin-top:14px; }
+  .body { flex:1; padding:34px 56px 0; }
+  .foot { padding:22px 56px 30px; border-top:3px solid #CCCCCC;
+          display:flex; justify-content:space-between; align-items:center;
+          font-size:21px; color:#666666; }
+  .pill { background:#336699; color:#FFF; font-size:20px; font-weight:bold;
+          padding:8px 18px; letter-spacing:1px; }
+
+  /* ---- standings rows ---- */
+  /* rows share the leftover height so 6-row and 5-row slides both fill the
+     1080x1350 frame -- no dead space at the bottom of the image */
+  .body.standings { display:flex; flex-direction:column; padding-bottom:16px; }
+  .body.standings .row { flex:1; padding:0; }
+  .row { display:flex; align-items:center; gap:26px; padding:19px 0;
+         border-bottom:2px solid #E4E4E4; }
+  .row:last-child { border-bottom:none; }
+  .rank { width:82px; font-size:52px; font-weight:bold; text-align:center;
+          color:#FFF; padding:9px 0; }
+  .logo { width:80px; height:80px; object-fit:contain; }
+  .name { flex:1; font-size:41px; font-weight:bold; letter-spacing:-0.5px; }
+  .zone { font-size:17px; letter-spacing:2px; font-weight:bold; margin-top:6px; }
+  .pts  { text-align:right; }
+  .ptsn { font-size:47px; font-weight:bold; font-variant-numeric:tabular-nums;
+          line-height:1; }
+  .ptsl { font-size:19px; color:#666666; margin-top:8px; }
+
+  /* ---- explainer slides ---- */
+  .step { display:flex; gap:26px; margin-bottom:29px; align-items:flex-start; }
+  .num { min-width:60px; height:60px; background:#336699; color:#FFF;
+         font-size:31px; font-weight:bold; display:flex; align-items:center;
+         justify-content:center; }
+  .txt b { font-size:31px; display:block; margin-bottom:8px; }
+  .txt span { font-size:26px; line-height:1.45; color:#333; }
+  .callout { background:#F0F4F8; border-left:11px solid #336699;
+             padding:30px 34px; margin-top:8px; }
+  .callout > b { font-size:31px; display:block; margin-bottom:12px; color:#001040; }
+  .callout span { font-size:26px; line-height:1.5; color:#333; }
+  .big { font-size:34px; line-height:1.45; }
+</style></head><body>
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Season prediction</div>
+      <div class="title">How this is made</div>
+      <div class="sub">No crystal ball — just goals, ages and a lot of maths</div>
+    </div>
+    <div class="body">
+      <div class="step"><div class="num">1</div><div class="txt"><b>Start with players, not teams</b><span>Every team is rebuilt from the players actually on its roster today. Transfers are baked in from day one.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>Count the goals they really scored</b><span>Five seasons of scoring history for each player, with the most recent season counting the most.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Adjust for age and league</b><span>A 20-year-old and a 38-year-old are not the same bet. Neither is a goal in the AHL and a goal in Liiga.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Add the goalies</b><span>Save percentage decides how many goals a team lets in — often the difference between a playoff spot and a golden helmet.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Play the season 10,000 times</b><span>Every one of the 60 games is simulated over and over. The table shows the average result, not a single guess.</span></div></div>
+      <div class="callout">
+        <span>Two models vote on every game — a goal-scoring model (40%)
+        and a team-strength rating (60%) — then a crowd of 20% fan
+        predictions is mixed in. Tested on past seasons, it lands within about
+        12.7 points of a team's real total.</span>
+      </div>
+    </div>
+    <div class="foot">
+      <span>Built from public Liiga data</span>
+      <span class="pill">4 / 5</span>
+    </div>
+  </div></body></html>
