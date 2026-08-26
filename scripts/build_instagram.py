@@ -3,12 +3,12 @@
 SEPARATE from the main infographic. Reads the same DuckDB tables as
 scripts/build_site.py but writes to site_instagram/ and never touches site/.
 
-Five 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
+Six 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
 top-right corner that varies slide to slide.
 
     slide_1  places 1-6       slide_4  method, match model, validation
     slide_2  places 7-12      slide_5  individual award projections
-    slide_3  places 13-17
+    slide_3  places 13-17     slide_6  best XI of players new to Liiga
 
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import base64
 import io
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,10 +57,18 @@ GRADIENTS = [
     "linear-gradient(to bottom left, #e3ff87 0%, #667535 11%, #1b1b1b 34%)",
     "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
     "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
+    "linear-gradient(to bottom left, #d9f56f 0%, #63723a 10%, #1b1b1b 31%)",
 ]
 
 HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
 BODY_F = '"GT America",Arial,Helvetica,sans-serif'
+
+
+def _norm(s: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", " ", s.lower())).strip()
 
 
 def _ordinal(n: int) -> str:
@@ -178,6 +187,20 @@ def css(t: dict) -> str:
   .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
                  margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
   .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
+  /* ---- newcomers slide ---- */
+  .body.newcomers {{ display:flex; flex-direction:column; padding-bottom:8px; }}
+  .body.newcomers .row {{ flex:1; padding:0; }}
+  .pos {{ width:46px; height:46px; background:{t['accent']}; color:{INK};
+         font-family:{HEAD_F}; font-size:22px; display:flex; align-items:center;
+         justify-content:center; flex-shrink:0; }}
+  .nc-txt {{ flex:1; }}
+  .nc-name {{ font-family:{HEAD_F}; font-size:38px; text-transform:uppercase;
+             letter-spacing:-0.5px; line-height:1; }}
+  .nc-from {{ font-size:19px; color:{t['muted']}; margin-top:8px; }}
+  .nc-num {{ font-family:{HEAD_F}; font-size:42px; color:{t['accent']};
+            text-align:right; line-height:1; }}
+  .nc-unit {{ font-size:17px; color:{t['muted']}; text-align:right; margin-top:7px; }}
+
   /* ---- award slide ---- */
   .award {{ display:flex; flex-direction:column; justify-content:space-evenly;
            height:100%; padding-bottom:8px; }}
@@ -401,6 +424,85 @@ def _award_picks() -> list:
     ]
 
 
+def newcomers_slide(t: dict, picks: list) -> str:
+    """Best XI assembled only from players with no Liiga games last season."""
+    rows = "".join(f"""
+      <div class="row">
+        <div class="pos">{pos}</div>
+        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        <div class="nc-txt">
+          <div class="nc-name">{name}</div>
+          <div class="nc-from">{team} &nbsp;·&nbsp; from {frm}</div>
+        </div>
+        <div>
+          <div class="nc-num">{num}</div>
+          <div class="nc-unit">{unit}</div>
+        </div>
+      </div>""" for pos, name, team, frm, num, unit in picks)
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Arrivals</div>
+      <div class="title">Best XI of<br>newcomers</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body newcomers">{rows}</div>
+    <div class="foot">Nobody here played a Liiga game last season · projected over {GAMES_PER_TEAM} games</div>
+  </div>""")
+
+
+def _newcomer_picks() -> list:
+    """Best 1G / 2D / 3F among players with no Liiga games in 2025-26.
+
+    "New" means: on a 2026-27 roster, no scoring row for season 2026, and
+    either no Liiga history at all (rate_source 'external') or an
+    external_players.csv row for 2026 showing they played abroad. Note this
+    leans on the scoring table, which only lists players who registered a
+    point -- a genuinely scoreless Liiga season would slip through. None of
+    the picks below are in that position; all six came from other leagues.
+    """
+    import pandas as pd
+    con = get_connection()
+    try:
+        pr = query_df(con, """SELECT name, team, position_group,
+                                     projected_points_per_game p, rate_source
+                              FROM player_rates""")
+        played = query_df(con, """SELECT p.name FROM player_rates p
+                                  JOIN player_season_scoring s
+                                    ON s.player_id = p.player_id AND s.season = 2026""")
+        groster = query_df(con, """SELECT first_name||' '||last_name nm, team
+                                   FROM roster_2026_27 WHERE position_group='G'""")
+    finally:
+        con.close()
+
+    ext = pd.read_csv(ROOT / "data/external_players.csv", comment="#")
+    abroad = {_norm(n) for n in ext[ext.season == 2026]["name"]}
+    src = {_norm(n): l for n, l in zip(ext[ext.season == 2026]["name"],
+                                       ext[ext.season == 2026]["league"])}
+    pr["k"] = pr["name"].map(_norm)
+    new = pr[(~pr["name"].isin(set(played["name"])))
+             & (pr["k"].isin(abroad) | (pr["rate_source"] == "external"))]
+
+    picks = []
+    from liiga.goalies import parse_goalie_seasons, compute_goalie_ratings
+    gs = parse_goalie_seasons()
+    last = gs.sort_values("season").groupby("name").tail(1)
+    g = compute_goalie_ratings().merge(
+        last[["name", "season", "league"]], on="name")
+    g = g[(g.season == 2026) & (g.league != "Liiga")].merge(
+        groster, left_on="name", right_on="nm")
+    if not g.empty:
+        gr = g.nlargest(1, "proj_save_pct").iloc[0]
+        picks.append(("G", gr["name"].split()[-1], gr["team"], gr["league"],
+                      f"{gr['proj_save_pct']*100:.1f}", "proj. save %"))
+    for pos, n in (("D", 2), ("F", 3)):
+        for _, r in new[new.position_group == pos].nlargest(n, "p").iterrows():
+            picks.append((pos, r["name"].split()[-1], r["team"],
+                          src.get(r["k"], "abroad"),
+                          f"{r['p'] * GAMES_PER_TEAM:.0f}", "proj. points"))
+    return picks
+
+
 def build() -> None:
     OUT.mkdir(exist_ok=True)
     con = get_connection()
@@ -446,6 +548,7 @@ def build() -> None:
     # so three different players are named -- see the note in the README.
     picks = _award_picks()
     slides.append(award_slide(themes[4], picks))
+    slides.append(newcomers_slide(themes[5], _newcomer_picks()))
 
     for i, html in enumerate(slides, 1):
         src, png = OUT / f"slide_{i}.html", OUT / f"slide_{i}.png"
@@ -474,7 +577,7 @@ def build() -> None:
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five {W}×{H} images. Upload <code>slide_1.png</code> …
-<code>slide_5.png</code> in order. Regenerate with
+<code>slide_6.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">Caption</h2>
