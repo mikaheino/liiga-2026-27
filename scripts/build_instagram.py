@@ -3,13 +3,11 @@
 SEPARATE from the main infographic. Reads the same DuckDB tables as
 scripts/build_site.py but writes to site_instagram/ and never touches site/.
 
-Five 1080x1350 (4:5) PNGs. Backgrounds run as a ramp from the brand yellow
-down to near-black across the carousel; text and accent colours flip with
-background luminance so contrast holds on every slide.
+Four 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
+top-right corner that varies slide to slide.
 
-    slide_1  places 1-6      slide_4  how it is built (technical)
-    slide_2  places 7-12     slide_5  what runs next (Snowflake ML)
-    slide_3  places 13-17
+    slide_1  places 1-6       slide_3  places 13-17
+    slide_2  places 7-12      slide_4  method, match model, validation
 
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
@@ -52,7 +50,6 @@ GRADIENTS = [
     "linear-gradient(to bottom left, #d9f56f 0%, #5d6b31 7%, #1b1b1b 25%)",
     "linear-gradient(to bottom left, #e3ff87 0%, #667535 11%, #1b1b1b 34%)",
     "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
-    "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
 ]
 
 HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
@@ -128,7 +125,7 @@ def css(t: dict) -> str:
   .ptsr {{ font-size:21px; color:{t['accent']}; margin-top:5px; opacity:0.85; }}
 
   /* ---- technical slides ---- */
-  .step {{ display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }}
+  .step {{ display:flex; gap:20px; margin-bottom:15px; align-items:flex-start; }}
   .num {{ min-width:48px; height:48px; background:{t['accent']}; color:{INK};
          font-family:{HEAD_F}; font-size:24px; display:flex;
          align-items:center; justify-content:center; }}
@@ -136,14 +133,17 @@ def css(t: dict) -> str:
      otherwise every highlighted parameter becomes its own block heading */
   .txt > b {{ font-family:{HEAD_F}; font-size:26px; display:block; color:{t['fg']};
              margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }}
-  .txt span {{ font-size:21px; line-height:1.4; color:{t['fg']}; opacity:0.88; }}
+  .txt span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.88; }}
   .txt span b, .callout span b {{ color:{t['accent']}; opacity:1; }}
   .callout {{ background:{t['panel']}; border-left:8px solid {t['bar']};
-             padding:22px 28px; margin-top:4px; }}
+             padding:18px 26px; margin-top:4px; }}
   .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
                  margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
-  .callout span {{ font-size:21px; line-height:1.42; color:{t['fg']}; opacity:0.9; }}
+  .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
   .big {{ font-size:29px; line-height:1.4; color:{t['fg']}; }}
+  .next {{ font-size:21px; line-height:1.4; margin-top:16px; color:{t['fg']};
+          opacity:0.8; }}
+  .next b {{ color:{t['accent']}; opacity:1; }}
 """
 
 
@@ -211,54 +211,26 @@ def how_slide(t: dict) -> str:
     <div class="body">
       {items}
       <div class="callout">
-        <b>Does it actually work?</b>
-        <span>Tested on 2023–26, with each season predicted using only the
-        seasons before it. On average it lands within about
-        <b>{BACKTEST_MAE} points</b> of a team's real end-of-season total.</span>
-      </div>
-    </div>
-    <div class="foot">Python · DuckDB · 10,000-season Monte Carlo</div>
-  </div>""")
-
-
-def next_slide(t: dict) -> str:
-    """Technical slide: this is where the modelling vocabulary lives, so the
-    method slide can stay plain-language for a general reader."""
-    return page(t, f"""
-  <div class="slide">
-    <div class="head">
-      <div class="kicker">Liiga 2026–27 · Under the hood</div>
-      <div class="title">The model,<br>and what's next</div>
-    </div>
-    <div class="rule"></div>
-    <div class="body">
-      <div class="callout">
         <b>The match model</b>
-        <span>Goals are drawn from a <b>Poisson</b> model,
+        <span>Goals come from a <b>Poisson</b> model,
         λ = lgAvg × off × def × home_ice, with a <b>Dixon-Coles</b> correction
-        inflating the low-score diagonal so the simulated OT rate matches
-        Liiga's observed 23%. That is blended <b>{POISSON_PCT}/{ELO_PCT}</b>
-        with a margin-of-victory <b>Elo</b> rating (k=16).</span>
+        on the low-score diagonal so the simulated OT rate matches Liiga's
+        observed 23%. Blended <b>{POISSON_PCT}/{ELO_PCT}</b> with a
+        margin-of-victory <b>Elo</b> rating (k=16).</span>
       </div>
-      <div class="callout" style="margin-top:20px">
+      <div class="callout" style="margin-top:16px">
         <b>Validation</b>
         <span>Leakage-free backtest over 2023–26, each season rated on prior
         seasons only: points MAE <b>{BACKTEST_MAE}</b>, game log-loss
-        <b>0.672</b> against a <b>0.686</b> base rate, standings
-        <b>Spearman ρ 0.48</b>. Tuned on log-loss and MAE — ρ is far too noisy
-        at n=4 to optimise against.</span>
+        <b>0.672</b> vs a <b>0.686</b> base rate, standings
+        <b>Spearman ρ 0.48</b>. Tuned on log-loss and MAE — ρ is too noisy at
+        n=4 to optimise against.</span>
       </div>
-      <div class="callout" style="margin-top:20px">
-        <b>Next: Snowflake ML jobs</b>
-        <span>Porting the pipeline to <b>Snowflake ML jobs</b> on a nightly
-        schedule — ingesting box scores, refitting Elo on current results, and
-        re-simulating <b>only unplayed fixtures</b> while banking points
-        already earned. The pre-season prior decays as real games accumulate.</span>
-      </div>
-      <p class="big" style="margin-top:22px">I will publish the error as it
-      moves — including where it was wrong.</p>
+      <p class="next">Next: moving the pipeline to scheduled
+      <b>Snowflake ML jobs</b> — refitting nightly on real results and
+      re-simulating only unplayed fixtures.</p>
     </div>
-    <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowpark</div>
+    <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowflake ML</div>
   </div>""")
 
 
@@ -316,7 +288,6 @@ def build() -> None:
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
         slides.append(standings_slide(rows, lo, hi, themes[i], bands))
     slides.append(how_slide(themes[3]))
-    slides.append(next_slide(themes[4]))
 
     for i, html in enumerate(slides, 1):
         src, png = OUT / f"slide_{i}.html", OUT / f"slide_{i}.png"
@@ -345,7 +316,7 @@ def build() -> None:
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five {W}×{H} images. Upload <code>slide_1.png</code> …
-<code>slide_5.png</code> in order. Regenerate with
+<code>slide_4.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">Caption</h2>
