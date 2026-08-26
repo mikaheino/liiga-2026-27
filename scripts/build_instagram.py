@@ -18,12 +18,15 @@ with concrete parameters rather than analogies.
 from __future__ import annotations
 
 import base64
+import io
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+
+from PIL import Image                                    # noqa: E402
 
 from liiga.db import get_connection, query_df           # noqa: E402
 
@@ -67,11 +70,42 @@ def _slug(team: str) -> str:
             .replace(" ", "-"))
 
 
+# Darkest tone any crest is allowed to use. Everything is remapped into
+# [CREST_FLOOR, 255] so all crests read as light as the team name beside them.
+CREST_FLOOR = 138
+
+
 def logo_uri(team: str) -> str:
+    """Grayscale a crest and stretch ITS OWN luminance range into one bright
+    band, so every club reads at the same tone while keeping internal detail.
+
+    A CSS filter cannot do this: each crest has a different native range (TPS
+    is black-on-white, Ilves is mid-tone), so one global brightness/contrast
+    always leaves some marks lighter than others. Normalising per image fixes
+    the tone without flattening the artwork into a silhouette.
+    """
     p = LOGOS / f"{_slug(team)}.png"
     if not p.exists():
         return ""
-    return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
+    im = Image.open(p).convert("RGBA")
+    alpha = im.split()[3]
+    lum = im.convert("L")
+
+    # measure the range over opaque pixels only -- anti-aliased edges would
+    # otherwise drag the floor down and wash the crest out
+    vals = [v for v, a in zip(list(lum.getdata()), list(alpha.getdata())) if a > 40]
+    lo, hi = (min(vals), max(vals)) if vals else (0, 255)
+    span = max(hi - lo, 1)
+    lut = [max(0, min(255, CREST_FLOOR
+                      + int((i - lo) / span * (255 - CREST_FLOOR))))
+           for i in range(256)]
+
+    out = lum.point(lut)
+    res = Image.merge("RGBA", (out, out, out, alpha))
+    res = res.resize((im.width * 3, im.height * 3), Image.LANCZOS)
+    buf = io.BytesIO()
+    res.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def theme(gradient: str) -> dict:
@@ -115,12 +149,7 @@ def css(t: dict) -> str:
      every club renders at identical tone regardless of its original artwork.
      A luminance filter can never do this -- each crest has different base
      brightness, so some always came out lighter than others. */
-  .chip .mark {{ width:156px; height:156px; flex-shrink:0;
-                background-color:{t['fg']};
-                -webkit-mask-image:var(--crest); mask-image:var(--crest);
-                -webkit-mask-size:contain; mask-size:contain;
-                -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-                -webkit-mask-position:center; mask-position:center; }}
+  .chip img {{ width:156px; height:156px; max-width:none; object-fit:contain; }}
   .name {{ flex:1; font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }}
   .pts {{ text-align:right; }}
@@ -161,7 +190,7 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
     body = "".join(f"""
       <div class="row">
         <div class="rank">{int(r.proj_rank)}</div>
-        <div class="chip"><div class="mark" style="--crest:url('{logo_uri(r.team)}')"></div></div>
+        <div class="chip"><img src="{logo_uri(r.team)}" alt=""></div>
         <div class="name">{r.team}</div>
         <div class="pts">
           <div class="ptsn">{r.mean_points:.0f}</div>

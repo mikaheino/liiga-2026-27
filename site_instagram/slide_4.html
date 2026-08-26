@@ -31,12 +31,7 @@
      every club renders at identical tone regardless of its original artwork.
      A luminance filter can never do this -- each crest has different base
      brightness, so some always came out lighter than others. */
-  .chip .mark { width:156px; height:156px; flex-shrink:0;
-                background-color:#FFFFFF;
-                -webkit-mask-image:var(--crest); mask-image:var(--crest);
-                -webkit-mask-size:contain; mask-size:contain;
-                -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-                -webkit-mask-position:center; mask-position:center; }
+  .chip img { width:156px; height:156px; max-width:none; object-fit:contain; }
   .name { flex:1; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:44px; text-transform:uppercase;
           letter-spacing:-0.5px; }
   .pts { text-align:right; }
