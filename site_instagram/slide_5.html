@@ -4,80 +4,77 @@
          font-family:"GT America",Arial,Helvetica,sans-serif; color:#FFFFFF; -webkit-font-smoothing:antialiased; }
   .slide { width:1080px; height:1350px; display:flex; flex-direction:column;
            background:#1b1b1b; }
-  .head { padding:64px 64px 34px; }
-  .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:21px; letter-spacing:4px;
-            text-transform:uppercase; color:#e3ff87; margin-bottom:20px; }
-  .title { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:82px; line-height:0.95;
+  .head { padding:60px 64px 28px; }
+  .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:4px;
+            text-transform:uppercase; color:#e3ff87; margin-bottom:18px; }
+  .title { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:78px; line-height:0.95;
            text-transform:uppercase; letter-spacing:-1px; color:#FFFFFF; }
-  .rule { height:5px; background:#e3ff87; margin:34px 64px 0; }
-  .body { flex:1; padding:30px 64px 0; }
-  .foot { padding:26px 64px 46px; display:flex; justify-content:space-between;
-          align-items:flex-end; font-size:20px; color:#868686; }
-  .wordmark { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; letter-spacing:2px;
-              color:#e3ff87; text-transform:uppercase; }
+  .rule { height:5px; background:#e3ff87; margin:26px 64px 0; }
+  .body { flex:1; padding:26px 64px 0; }
+  .foot { padding:20px 64px 42px; font-size:19px; color:#9a9a8f; }
 
-  /* ---- standings rows ---- */
-  .body.standings { display:flex; flex-direction:column; padding-bottom:10px; }
+  /* ---- standings ---- */
+  .body.standings { display:flex; flex-direction:column; padding-bottom:8px; }
   .body.standings .row { flex:1; padding:0; }
   .row { display:flex; align-items:center; gap:30px;
-         border-bottom:1px solid #333333; }
+         border-bottom:1px solid rgba(255,255,255,0.07); }
   .row:last-child { border-bottom:none; }
   .rank { width:96px; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:68px; text-align:right;
-          line-height:1; }
-  /* white chip: several club marks are dark-inked and would vanish on #1b1b1b */
+          line-height:1; color:#e3ff87; }
+  /* white chip: several club crests are dark-inked and vanish on dark slides */
   .chip { width:92px; height:92px; background:#FFFFFF; border-radius:50%;
-          display:flex; align-items:center; justify-content:center;
-          flex-shrink:0; }
+          display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .chip img { width:66px; height:66px; object-fit:contain; }
   .name { flex:1; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:44px; text-transform:uppercase;
-          letter-spacing:-0.5px; color:#FFFFFF; }
-  .pts  { text-align:right; }
-  .ptsn { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:56px; font-variant-numeric:tabular-nums;
-          line-height:1; }
-  .ptsl { font-size:19px; color:#868686; margin-top:9px; }
+          letter-spacing:-0.5px; }
+  .pts { text-align:right; }
+  .ptsn { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:56px; line-height:1;
+          font-variant-numeric:tabular-nums; color:#e3ff87; }
+  .ptsl { font-size:19px; color:#9a9a8f; margin-top:9px; }
 
-  /* ---- explainer slides ---- */
-  .step { display:flex; gap:28px; margin-bottom:30px; align-items:flex-start; }
-  .num { min-width:56px; height:56px; background:#e3ff87; color:#1b1b1b;
-         font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:28px; display:flex; align-items:center;
-         justify-content:center; }
-  .txt b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:30px; display:block; color:#FFFFFF;
-           margin-bottom:9px; text-transform:uppercase; letter-spacing:-0.3px; }
-  .txt span { font-size:25px; line-height:1.45; color:#f3f3f3; }
-  .callout { background:#252525; border-left:9px solid #e3ff87;
-             padding:30px 34px; margin-top:10px; }
-  .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:29px; display:block;
-                 margin-bottom:13px; color:#e3ff87; text-transform:uppercase; }
-  .callout span { font-size:25px; line-height:1.5; color:#f3f3f3; }
-  .callout span b { color:#e3ff87; }
-  .big { font-size:33px; line-height:1.45; color:#f3f3f3; }
+  /* ---- technical slides ---- */
+  .step { display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }
+  .num { min-width:48px; height:48px; background:#e3ff87; color:#1b1b1b;
+         font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; display:flex;
+         align-items:center; justify-content:center; }
+  /* DIRECT child only -- inline <b> inside the description must stay inline,
+     otherwise every highlighted parameter becomes its own block heading */
+  .txt > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:26px; display:block; color:#FFFFFF;
+             margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }
+  .txt span { font-size:21px; line-height:1.4; color:#FFFFFF; opacity:0.88; }
+  .txt span b, .callout span b { color:#e3ff87; opacity:1; }
+  .callout { background:rgba(255,255,255,0.07); border-left:8px solid #e3ff87;
+             padding:22px 28px; margin-top:4px; }
+  .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:25px; display:block;
+                 margin-bottom:10px; color:#e3ff87; text-transform:uppercase; }
+  .callout span { font-size:21px; line-height:1.42; color:#FFFFFF; opacity:0.9; }
+  .big { font-size:29px; line-height:1.4; color:#FFFFFF; }
 </style></head><body>
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · What happens next</div>
-      <div class="title">This keeps<br>updating all season</div>
+      <div class="kicker">Liiga 2026–27 · What runs next</div>
+      <div class="title">Moving it to<br>Snowflake ML</div>
     </div>
     <div class="rule"></div>
     <div class="body">
-      <p class="big">This is a pre-season forecast — but it does not stop here.</p>
-      <div class="callout" style="margin-top:34px">
-        <b>Moving into Snowflake ML jobs</b>
-        <span>I am putting this pipeline into <b>Snowflake ML jobs</b> and running
-        it as a scheduled job right through the season. Every night it takes the
-        real results, re-rates every team, and re-simulates only the games that
-        are still to be played.</span>
+      <p class="big">The pre-season table is a cold start. What matters is what
+      happens once real results land.</p>
+      <div class="callout" style="margin-top:24px">
+        <b>Scheduled Snowflake ML jobs</b>
+        <span>Porting the pipeline into <b>Snowflake ML jobs</b> on a nightly
+        schedule. Each run ingests the day's box scores, refits Elo through
+        current results, re-derives team strength, and re-simulates
+        <b>only unplayed fixtures</b> — banking actual points for games already
+        in the book.</span>
       </div>
-      <p class="big" style="margin-top:34px">So the table above is just the
-      starting point. As the season goes on the forecast keeps correcting itself
-      — and you get to see exactly where it was right and where it was wrong.</p>
-      <div class="callout" style="margin-top:34px;border-left-color:#ffaf03">
-        <b>Follow along</b>
-        <span>I will be posting how these predictions hold up as the season
-        plays out — hits and misses both.</span>
+      <div class="callout" style="margin-top:22px">
+        <b>Why the forecast sharpens</b>
+        <span>The crowd-prior weight decays linearly with fraction of season
+        played, handing over from prior belief to observed results. At game 60
+        it converges on the real table by construction.</span>
       </div>
+      <p class="big" style="margin-top:24px">I will publish the error as it
+      moves — including where it was wrong.</p>
     </div>
-    <div class="foot">
-      <span>Player-level model · Snowflake ML · updated daily</span>
-      <span class="wordmark">Recordly</span>
-    </div>
+    <div class="foot">Snowpark · scheduled tasks · nightly re-simulation</div>
   </div></body></html>

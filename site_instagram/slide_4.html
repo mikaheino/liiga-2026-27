@@ -1,74 +1,70 @@
 <!doctype html><html><head><meta charset='utf-8'><style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { width:1080px; height:1350px; overflow:hidden; background:#1b1b1b;
+  body { width:1080px; height:1350px; overflow:hidden; background:#2f3320;
          font-family:"GT America",Arial,Helvetica,sans-serif; color:#FFFFFF; -webkit-font-smoothing:antialiased; }
   .slide { width:1080px; height:1350px; display:flex; flex-direction:column;
-           background:#1b1b1b; }
-  .head { padding:64px 64px 34px; }
-  .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:21px; letter-spacing:4px;
-            text-transform:uppercase; color:#e3ff87; margin-bottom:20px; }
-  .title { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:82px; line-height:0.95;
+           background:#2f3320; }
+  .head { padding:60px 64px 28px; }
+  .kicker { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:4px;
+            text-transform:uppercase; color:#e3ff87; margin-bottom:18px; }
+  .title { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:78px; line-height:0.95;
            text-transform:uppercase; letter-spacing:-1px; color:#FFFFFF; }
-  .rule { height:5px; background:#e3ff87; margin:34px 64px 0; }
-  .body { flex:1; padding:30px 64px 0; }
-  .foot { padding:26px 64px 46px; display:flex; justify-content:space-between;
-          align-items:flex-end; font-size:20px; color:#868686; }
-  .wordmark { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; letter-spacing:2px;
-              color:#e3ff87; text-transform:uppercase; }
+  .rule { height:5px; background:#e3ff87; margin:26px 64px 0; }
+  .body { flex:1; padding:26px 64px 0; }
+  .foot { padding:20px 64px 42px; font-size:19px; color:#9a9a8f; }
 
-  /* ---- standings rows ---- */
-  .body.standings { display:flex; flex-direction:column; padding-bottom:10px; }
+  /* ---- standings ---- */
+  .body.standings { display:flex; flex-direction:column; padding-bottom:8px; }
   .body.standings .row { flex:1; padding:0; }
   .row { display:flex; align-items:center; gap:30px;
-         border-bottom:1px solid #333333; }
+         border-bottom:1px solid rgba(255,255,255,0.07); }
   .row:last-child { border-bottom:none; }
   .rank { width:96px; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:68px; text-align:right;
-          line-height:1; }
-  /* white chip: several club marks are dark-inked and would vanish on #1b1b1b */
+          line-height:1; color:#e3ff87; }
+  /* white chip: several club crests are dark-inked and vanish on dark slides */
   .chip { width:92px; height:92px; background:#FFFFFF; border-radius:50%;
-          display:flex; align-items:center; justify-content:center;
-          flex-shrink:0; }
+          display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .chip img { width:66px; height:66px; object-fit:contain; }
   .name { flex:1; font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:44px; text-transform:uppercase;
-          letter-spacing:-0.5px; color:#FFFFFF; }
-  .pts  { text-align:right; }
-  .ptsn { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:56px; font-variant-numeric:tabular-nums;
-          line-height:1; }
-  .ptsl { font-size:19px; color:#868686; margin-top:9px; }
+          letter-spacing:-0.5px; }
+  .pts { text-align:right; }
+  .ptsn { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:56px; line-height:1;
+          font-variant-numeric:tabular-nums; color:#e3ff87; }
+  .ptsl { font-size:19px; color:#9a9a8f; margin-top:9px; }
 
-  /* ---- explainer slides ---- */
-  .step { display:flex; gap:28px; margin-bottom:30px; align-items:flex-start; }
-  .num { min-width:56px; height:56px; background:#e3ff87; color:#1b1b1b;
-         font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:28px; display:flex; align-items:center;
-         justify-content:center; }
-  .txt b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:30px; display:block; color:#FFFFFF;
-           margin-bottom:9px; text-transform:uppercase; letter-spacing:-0.3px; }
-  .txt span { font-size:25px; line-height:1.45; color:#f3f3f3; }
-  .callout { background:#252525; border-left:9px solid #e3ff87;
-             padding:30px 34px; margin-top:10px; }
-  .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:29px; display:block;
-                 margin-bottom:13px; color:#e3ff87; text-transform:uppercase; }
-  .callout span { font-size:25px; line-height:1.5; color:#f3f3f3; }
-  .callout span b { color:#e3ff87; }
-  .big { font-size:33px; line-height:1.45; color:#f3f3f3; }
+  /* ---- technical slides ---- */
+  .step { display:flex; gap:22px; margin-bottom:21px; align-items:flex-start; }
+  .num { min-width:48px; height:48px; background:#e3ff87; color:#2f3320;
+         font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:24px; display:flex;
+         align-items:center; justify-content:center; }
+  /* DIRECT child only -- inline <b> inside the description must stay inline,
+     otherwise every highlighted parameter becomes its own block heading */
+  .txt > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:26px; display:block; color:#FFFFFF;
+             margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }
+  .txt span { font-size:21px; line-height:1.4; color:#FFFFFF; opacity:0.88; }
+  .txt span b, .callout span b { color:#e3ff87; opacity:1; }
+  .callout { background:rgba(255,255,255,0.07); border-left:8px solid #e3ff87;
+             padding:22px 28px; margin-top:4px; }
+  .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:25px; display:block;
+                 margin-bottom:10px; color:#e3ff87; text-transform:uppercase; }
+  .callout span { font-size:21px; line-height:1.42; color:#FFFFFF; opacity:0.9; }
+  .big { font-size:29px; line-height:1.4; color:#FFFFFF; }
 </style></head><body>
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Season prediction</div>
-      <div class="title">How this is made</div>
+      <div class="kicker">Liiga 2026–27 · Method</div>
+      <div class="title">How it is built</div>
     </div>
     <div class="rule"></div>
     <div class="body">
-      <div class="step"><div class="num">1</div><div class="txt"><b>Start with players, not teams</b><span>Every team is rebuilt from the players actually on its roster today. Transfers are baked in from day one.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>Count the goals they really scored</b><span>Five seasons of scoring history for each player, with the most recent season counting the most.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Adjust for age and league</b><span>A 20-year-old and a 38-year-old are not the same bet. Neither is a goal in the AHL and a goal in Liiga.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Add the goalies</b><span>Save percentage decides how many goals a team lets in — often the difference between a playoff spot and a golden helmet.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Play the season 10,000 times</b><span>Every one of the 60 games is simulated over and over. The table shows the average result, not a single guess.</span></div></div>
+      <div class="step"><div class="num">1</div><div class="txt"><b>Per-player rates, not team history</b><span>Five seasons of goals/game per player from liiga.fi event data. Exponential recency decay <b>0.80/yr</b>, then shrunk toward the positional mean with a <b>20-game prior</b>.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>League-equivalency conversion</b><span>Imports rescaled by NHLe-derived factors — <b>SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35</b> — calibrated on within-player league movers, not published tables.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Piecewise age curve with a cliff</b><span>1.5%/yr either side of peak 26, plus <b>4%/yr past 33</b>. Fitted on our own within-player YoY rate ratios: <b>0.67 at 35–37, 0.40 at 38+</b> — a cliff, not a fade.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Goaltending as a defensive multiplier</b><span>Projected SV% (recency + GP weighted, league-adjusted, regressed <b>25 games</b> to prior) → <b>(1−SV)/(1−SVlg)</b>, weighted 0.70 against team shot suppression.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Poisson × MOV-Elo ensemble</b><span><b>λ = lgAvg × off × def × home_ice</b>, with Dixon-Coles tie inflation to hit Liiga's observed <b>23% OT rate</b>. Blended <b>40/60</b> with margin-of-victory Elo (k=16).</span></div></div>
       <div class="callout">
-        <span>Two models vote on every game — a goal-scoring model (40%)
-        and a team-strength rating (60%) — then a crowd of 20% fan
-        predictions is mixed in. Tested on past seasons, it lands within about
-        12.7 points of a team's real total.</span>
+        <b>Leakage-free backtest, 2023–26</b>
+        <span>Each held-out season is rated from prior seasons only. Points MAE
+        <b>12.65</b>, game log-loss <b>0.672</b> vs <b>0.686</b> base
+        rate, standings Spearman ρ <b>0.48</b>. Tuned on log-loss and MAE — not
+        on ρ, which is far too noisy at n=4 seasons.</span>
       </div>
     </div>
-    <div class="foot">
-      <span>Built from public Liiga data</span>
-      <span class="wordmark">Recordly</span>
-    </div>
+    <div class="foot">Python · DuckDB · Monte Carlo · leakage-free CV</div>
   </div></body></html>
