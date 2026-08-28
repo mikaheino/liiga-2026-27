@@ -123,6 +123,43 @@ def logo_uri(team: str) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+PHOTOS = ROOT / "site" / "assets" / "players"
+
+
+def photo_uri(name: str) -> str:
+    """Square-cropped headshot as a data URI, or "" if we have no photo.
+
+    Photos are mined from cached liiga.fi game files by scripts/build_site.py,
+    so only players with Liiga appearances have one -- every newcomer falls
+    back to the club crest by definition.
+    """
+    import unicodedata as _u
+    s = _u.normalize("NFKD", name)
+    s = "".join(c for c in s if not _u.combining(c))
+    f = PHOTOS / (re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-") + ".jpg")
+    if not f.exists():
+        return ""
+    im = Image.open(f).convert("RGB")
+    # Source art is a square 600x600 torso shot, so min(size) crops nothing --
+    # it has to be zoomed onto the head. 46% of the width starting 2% down
+    # frames the full head plus a little shoulder without clipping hair.
+    side = int(im.width * 0.46)
+    left = (im.width - side) // 2
+    top = min(int(im.height * 0.02), max(0, im.height - side))
+    im = im.crop((left, top, left + side, top + side)).resize((320, 320), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=88)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def face_or_crest(name: str, team: str) -> str:
+    """Circular avatar: player photo where we have one, else the club crest."""
+    ph = photo_uri(name)
+    if ph:
+        return f'<div class="ava"><img class="face" src="{ph}" alt=""></div>'
+    return f'<div class="ava"><img class="crest" src="{logo_uri(team)}" alt=""></div>'
+
+
 def theme(gradient: str) -> dict:
     """Every slide is black-dominant now, so one light-on-dark palette serves
     all five -- no luminance flipping needed."""
@@ -189,6 +226,15 @@ def css(t: dict) -> str:
   .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
                  margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
   .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
+  /* Circular avatar used on the player slides: a headshot fills it, a crest
+     is letterboxed inside it. Faces are NOT half-clipped like the standings
+     crests -- half a face reads as a mistake. */
+  .ava {{ width:112px; height:112px; border-radius:50%; overflow:hidden;
+         flex-shrink:0; background:rgba(255,255,255,0.06);
+         display:flex; align-items:center; justify-content:center; }}
+  .ava .face {{ width:112px; height:112px; object-fit:cover; }}
+  .ava .crest {{ width:78px; height:78px; object-fit:contain; }}
+
   /* ---- newcomers slide ---- */
   .body.newcomers {{ display:flex; flex-direction:column; padding-bottom:8px; }}
   .body.newcomers .row {{ flex:1; padding:0; }}
@@ -207,8 +253,9 @@ def css(t: dict) -> str:
   .award {{ display:flex; flex-direction:column; justify-content:space-evenly;
            height:100%; padding-bottom:8px; }}
   .aw {{ display:flex; align-items:center; gap:26px; }}
-  .aw .chip {{ width:78px; height:150px; }}
-  .aw .chip img {{ width:150px; height:150px; }}
+  .aw .ava {{ width:132px; height:132px; }}
+  .aw .ava .face {{ width:132px; height:132px; }}
+  .aw .ava .crest {{ width:92px; height:92px; }}
   .aw-txt {{ flex:1; }}
   .aw-cat {{ font-family:{HEAD_F}; font-size:20px; letter-spacing:3px;
             text-transform:uppercase; color:{t['accent']}; margin-bottom:9px; }}
@@ -321,7 +368,7 @@ def award_slide(t: dict, picks: list) -> str:
     drive the table -- not from reputation."""
     rows = "".join(f"""
       <div class="aw">
-        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        {face_or_crest(full, team)}
         <div class="aw-txt">
           <div class="aw-cat">{cat}</div>
           <div class="aw-name">{name}</div>
@@ -331,7 +378,7 @@ def award_slide(t: dict, picks: list) -> str:
           <div class="aw-num">{num}</div>
           <div class="aw-unit">{unit}</div>
         </div>
-      </div>""" for cat, name, team, num, unit in picks)
+      </div>""" for cat, full, name, team, num, unit in picks)
     return page(t, f"""
   <div class="slide">
     <div class="head">
@@ -416,11 +463,11 @@ def _award_picks() -> list:
     tm = gteams.loc[gteams["nm"] == g["name"], "team"]
 
     return [
-        ("Most points", pts["name"].split()[-1], pts["team"],
+        ("Most points", pts["name"], pts["name"].split()[-1], pts["team"],
          f"{pts['P']:.0f}", "projected points"),
-        ("Most goals", goals["name"].split()[-1], goals["team"],
+        ("Most goals", goals["name"], goals["name"].split()[-1], goals["team"],
          f"{goals['G']:.0f}", "projected goals"),
-        ("Best save %", g["name"].split()[-1],
+        ("Best save %", g["name"], g["name"].split()[-1],
          tm.iloc[0] if not tm.empty else "", f"{g['proj_save_pct']*100:.1f}",
          "projected save %"),
     ]
@@ -431,7 +478,7 @@ def top5_slide(t: dict, title: str, rows_in: list, foot: str) -> str:
     rows = "".join(f"""
       <div class="row">
         <div class="rank">{i}</div>
-        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        {face_or_crest(full, team)}
         <div class="nc-txt">
           <div class="nc-name">{name}</div>
           <div class="nc-from">{team}</div>
@@ -440,7 +487,7 @@ def top5_slide(t: dict, title: str, rows_in: list, foot: str) -> str:
           <div class="nc-num">{num}</div>
           <div class="nc-unit">{unit}</div>
         </div>
-      </div>""" for i, (name, team, num, unit) in enumerate(rows_in, 1))
+      </div>""" for i, (full, name, team, num, unit) in enumerate(rows_in, 1))
     return page(t, f"""
   <div class="slide">
     <div class="head">
@@ -475,14 +522,15 @@ def _top5_lists() -> tuple:
     pr["P"] = pr["p"] * GAMES_PER_TEAM
 
     def rows(pos):
-        return [(r["name"].split()[-1], r["team"], f"{r['P']:.0f}", "proj. points")
+        return [(r["name"], r["name"].split()[-1], r["team"],
+                 f"{r['P']:.0f}", "proj. points")
                 for _, r in pr[pr.position_group == pos].nlargest(5, "P").iterrows()]
 
     from liiga.goalies import compute_goalie_ratings
     g = compute_goalie_ratings().merge(gr, left_on="name", right_on="nm")
     g = g[(~g["name"].map(_norm).isin(nhl)) & (g.tot_games >= 60)]
-    grows = [(r["name"].split()[-1], r["team"], f"{r['proj_save_pct']*100:.1f}",
-              "proj. save %")
+    grows = [(r["name"], r["name"].split()[-1], r["team"],
+              f"{r['proj_save_pct']*100:.1f}", "proj. save %")
              for _, r in g.nlargest(5, "proj_save_pct").iterrows()]
     return rows("F"), rows("D"), grows
 
@@ -493,12 +541,12 @@ def newcomers_slide(t: dict, picks: list) -> str:
     rows = "".join(f"""
       <div class="row">
         <div class="pos">{pos}</div>
-        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        {face_or_crest(full, team)}
         <div class="nc-txt">
           <div class="nc-name">{name}</div>
           <div class="nc-from">{team} &nbsp;·&nbsp; from {frm}</div>
         </div>
-      </div>""" for pos, name, team, frm, _num, _unit in picks)
+      </div>""" for pos, full, name, team, frm, _num, _unit in picks)
     return page(t, f"""
   <div class="slide">
     <div class="head">
@@ -565,11 +613,11 @@ def _newcomer_picks() -> list:
         groster, left_on="name", right_on="nm")
     if not g.empty:
         gr = g.nlargest(1, "proj_save_pct").iloc[0]
-        picks.append(("G", gr["name"].split()[-1], gr["team"], gr["league"],
-                      f"{gr['proj_save_pct']*100:.1f}", "proj. save %"))
+        picks.append(("G", gr["name"], gr["name"].split()[-1], gr["team"],
+                      gr["league"], f"{gr['proj_save_pct']*100:.1f}", "proj. save %"))
     for pos, n in (("D", 2), ("F", 3)):
         for _, r in new[new.position_group == pos].nlargest(n, "p").iterrows():
-            picks.append((pos, r["name"].split()[-1], r["team"],
+            picks.append((pos, r["name"], r["name"].split()[-1], r["team"],
                           src.get(r["k"], "abroad"),
                           f"{r['p'] * GAMES_PER_TEAM:.0f}", "proj. points"))
     return picks

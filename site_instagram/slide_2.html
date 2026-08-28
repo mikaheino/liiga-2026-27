@@ -56,6 +56,15 @@
   .callout > b { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:25px; display:block;
                  margin-bottom:10px; color:#e3ff87; text-transform:uppercase; }
   .callout span { font-size:20px; line-height:1.38; color:#FFFFFF; opacity:0.9; }
+  /* Circular avatar used on the player slides: a headshot fills it, a crest
+     is letterboxed inside it. Faces are NOT half-clipped like the standings
+     crests -- half a face reads as a mistake. */
+  .ava { width:112px; height:112px; border-radius:50%; overflow:hidden;
+         flex-shrink:0; background:rgba(255,255,255,0.06);
+         display:flex; align-items:center; justify-content:center; }
+  .ava .face { width:112px; height:112px; object-fit:cover; }
+  .ava .crest { width:78px; height:78px; object-fit:contain; }
+
   /* ---- newcomers slide ---- */
   .body.newcomers { display:flex; flex-direction:column; padding-bottom:8px; }
   .body.newcomers .row { flex:1; padding:0; }
@@ -74,8 +83,9 @@
   .award { display:flex; flex-direction:column; justify-content:space-evenly;
            height:100%; padding-bottom:8px; }
   .aw { display:flex; align-items:center; gap:26px; }
-  .aw .chip { width:78px; height:150px; }
-  .aw .chip img { width:150px; height:150px; }
+  .aw .ava { width:132px; height:132px; }
+  .aw .ava .face { width:132px; height:132px; }
+  .aw .ava .crest { width:92px; height:92px; }
   .aw-txt { flex:1; }
   .aw-cat { font-family:"GT America Expanded","Arial Black",Arial,sans-serif; font-size:20px; letter-spacing:3px;
             text-transform:uppercase; color:#e3ff87; margin-bottom:9px; }
