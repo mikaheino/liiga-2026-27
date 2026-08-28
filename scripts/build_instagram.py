@@ -483,11 +483,7 @@ def top5_slide(t: dict, title: str, rows_in: list, foot: str) -> str:
           <div class="nc-name">{name}</div>
           <div class="nc-from">{team}</div>
         </div>
-        <div>
-          <div class="nc-num">{num}</div>
-          <div class="nc-unit">{unit}</div>
-        </div>
-      </div>""" for i, (full, name, team, num, unit) in enumerate(rows_in, 1))
+      </div>""" for i, (full, name, team, _num, _unit) in enumerate(rows_in, 1))
     return page(t, f"""
   <div class="slide">
     <div class="head">
@@ -669,11 +665,11 @@ def build() -> None:
     picks = _award_picks()
     slides.append(award_slide(themes[4], picks))
     f5, d5, g5 = _top5_lists()
-    pf = f"Projected points over {GAMES_PER_TEAM} games"
+    pf = f"Ranked by projected points over {GAMES_PER_TEAM} games"
     slides.append(top5_slide(themes[5], "Top five<br>forwards", f5, pf))
     slides.append(top5_slide(themes[6], "Top five<br>defencemen", d5, pf))
     slides.append(top5_slide(themes[7], "Top five<br>goalies", g5,
-                             "Projected save % · min. 60 career games on file"))
+                             "Ranked by projected save % · min. 60 career games on file"))
     slides.append(newcomers_slide(themes[8], _newcomer_picks()))
 
     for i, html in enumerate(slides, 1):
