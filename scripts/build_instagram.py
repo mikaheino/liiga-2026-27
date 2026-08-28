@@ -3,12 +3,14 @@
 SEPARATE from the main infographic. Reads the same DuckDB tables as
 scripts/build_site.py but writes to site_instagram/ and never touches site/.
 
-Six 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
+Nine 1080x1350 (4:5) PNGs, all black-dominant with a yellow bloom in the
 top-right corner that varies slide to slide.
 
-    slide_1  places 1-6       slide_4  method, match model, validation
-    slide_2  places 7-12      slide_5  individual award projections
-    slide_3  places 13-17     slide_6  all-newcomer starting six
+    slide_1  places 1-6       slide_6  top five forwards
+    slide_2  places 7-12      slide_7  top five defencemen
+    slide_3  places 13-17     slide_8  top five goalies
+    slide_4  method           slide_9  all-newcomer starting six
+    slide_5  award predictions
 
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
@@ -58,6 +60,9 @@ GRADIENTS = [
     "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
     "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
     "linear-gradient(to bottom left, #d9f56f 0%, #63723a 10%, #1b1b1b 31%)",
+    "linear-gradient(to bottom left, #e3ff87 0%, #5f6f33 8%, #1b1b1b 26%)",
+    "linear-gradient(to bottom left, #cbe862 0%, #56632f 7%, #1b1b1b 24%)",
+    "linear-gradient(to bottom left, #d9f56f 0%, #6a7a3c 12%, #1b1b1b 33%)",
 ]
 
 HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
@@ -69,6 +74,26 @@ def _norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", str(s))
     s = "".join(c for c in s if not unicodedata.combining(c))
     return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", " ", s.lower())).strip()
+
+
+# Players whose Liiga career predates the database window (2022-2026), so
+# player_season_scoring shows nothing and rate_source reads 'external'.
+# Verified individually against EliteProspects; extend when a new signing has
+# an older Liiga spell.
+PRE_WINDOW_LIIGA = {
+    "matt caito",          # 59 GP for KooKoo in 2019-20, 8+35=43 pts
+}
+
+
+def _nhl_bound() -> set:
+    """Names the transfers article marks '(NHL)' in a club's contract list.
+
+    They hold a Liiga contract on paper but are playing in North America, so
+    they must not appear in any leaderboard -- Kim Saarinen otherwise ranks
+    5th among goalies on save%.
+    """
+    txt = (ROOT / "data/transfers_2026_27.txt").read_text(encoding="utf-8")
+    return {_norm(m) for m in re.findall(r"([A-ZÄÖÅ][\w\-\u00c0-\u017f]+(?:\s+[A-ZÄÖÅ][\w\-\u00c0-\u017f]+)+)\s*\(NHL\)", txt)}
 
 
 def _ordinal(n: int) -> str:
@@ -310,8 +335,8 @@ def award_slide(t: dict, picks: list) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Individual projections</div>
-      <div class="title">Three to watch</div>
+      <div class="kicker">Liiga 2026–27 · Predictions</div>
+      <div class="title">Who we predict<br>wins what</div>
     </div>
     <div class="rule"></div>
     <div class="body">
@@ -401,6 +426,67 @@ def _award_picks() -> list:
     ]
 
 
+def top5_slide(t: dict, title: str, rows_in: list, foot: str) -> str:
+    """Ranked five-player leaderboard: rank, crest, name, club, projected stat."""
+    rows = "".join(f"""
+      <div class="row">
+        <div class="rank">{i}</div>
+        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        <div class="nc-txt">
+          <div class="nc-name">{name}</div>
+          <div class="nc-from">{team}</div>
+        </div>
+        <div>
+          <div class="nc-num">{num}</div>
+          <div class="nc-unit">{unit}</div>
+        </div>
+      </div>""" for i, (name, team, num, unit) in enumerate(rows_in, 1))
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Predictions</div>
+      <div class="title">{title}</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body newcomers">{rows}</div>
+    <div class="foot">{foot}</div>
+  </div>""")
+
+
+def _top5_lists() -> tuple:
+    """Top five forwards, defencemen and goalies by projection.
+
+    Drops anyone the transfers article marks '(NHL)' -- they hold a Liiga
+    contract but are playing in North America. Kim Saarinen otherwise ranks
+    fifth among goalies on save% despite not being in the league.
+    """
+    nhl = _nhl_bound()
+    con = get_connection()
+    try:
+        pr = query_df(con, """SELECT name, team, position_group,
+                                     projected_points_per_game p
+                              FROM player_rates
+                              WHERE position_group IN ('F','D')""")
+        gr = query_df(con, """SELECT first_name||' '||last_name nm, team
+                              FROM roster_2026_27 WHERE position_group='G'""")
+    finally:
+        con.close()
+    pr = pr[~pr["name"].map(_norm).isin(nhl)].copy()
+    pr["P"] = pr["p"] * GAMES_PER_TEAM
+
+    def rows(pos):
+        return [(r["name"].split()[-1], r["team"], f"{r['P']:.0f}", "proj. points")
+                for _, r in pr[pr.position_group == pos].nlargest(5, "P").iterrows()]
+
+    from liiga.goalies import compute_goalie_ratings
+    g = compute_goalie_ratings().merge(gr, left_on="name", right_on="nm")
+    g = g[(~g["name"].map(_norm).isin(nhl)) & (g.tot_games >= 60)]
+    grows = [(r["name"].split()[-1], r["team"], f"{r['proj_save_pct']*100:.1f}",
+              "proj. save %")
+             for _, r in g.nlargest(5, "proj_save_pct").iterrows()]
+    return rows("F"), rows("D"), grows
+
+
 def newcomers_slide(t: dict, picks: list) -> str:
     """A full on-ice unit -- 1G/2D/3F, six players, not eleven -- assembled
     only from players with no Liiga games last season."""
@@ -416,12 +502,12 @@ def newcomers_slide(t: dict, picks: list) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Arrivals</div>
+      <div class="kicker">Liiga 2026–27 · First season in Liiga</div>
       <div class="title">All-newcomer<br>starting six</div>
     </div>
     <div class="rule"></div>
     <div class="body newcomers">{rows}</div>
-    <div class="foot">Not one of these six played a Liiga game last season</div>
+    <div class="foot">None of these six has ever played a Liiga game</div>
   </div>""")
 
 
@@ -457,8 +543,13 @@ def _newcomer_picks() -> list:
     src = {_norm(n): l for n, l in zip(ext[ext.season == 2026]["name"],
                                        ext[ext.season == 2026]["league"])}
     pr["k"] = pr["name"].map(_norm)
-    new = pr[(~pr["name"].isin(set(played["name"])))
-             & (pr["k"].isin(abroad) | (pr["rate_source"] == "external"))]
+    # STRICT: never played a Liiga game. rate_source 'external' means the
+    # model found no Liiga scoring history at all. The looser "no games last
+    # season" test would have admitted returnees like Teemu Turunen (Karpat
+    # 2023-25), which is not what "newcomer" should mean here.
+    new = pr[(pr["rate_source"] == "external")
+             & (~pr["name"].isin(set(played["name"])))
+             & (~pr["name"].map(_norm).isin(_nhl_bound() | PRE_WINDOW_LIIGA))]
 
     picks = []
     from liiga.goalies import parse_goalie_seasons, compute_goalie_ratings
@@ -466,7 +557,11 @@ def _newcomer_picks() -> list:
     last = gs.sort_values("season").groupby("name").tail(1)
     g = compute_goalie_ratings().merge(
         last[["name", "season", "league"]], on="name")
-    g = g[(g.season == 2026) & (g.league != "Liiga")].merge(
+    # goalies with no Liiga season on file at all
+    ever_liiga = set(gs[gs.league == "Liiga"]["name"])
+    g = g[(g.season == 2026) & (g.league != "Liiga")
+          & (~g["name"].map(_norm).isin(PRE_WINDOW_LIIGA))
+          & (~g["name"].isin(ever_liiga))].merge(
         groster, left_on="name", right_on="nm")
     if not g.empty:
         gr = g.nlargest(1, "proj_save_pct").iloc[0]
@@ -525,7 +620,13 @@ def build() -> None:
     # so three different players are named -- see the note in the README.
     picks = _award_picks()
     slides.append(award_slide(themes[4], picks))
-    slides.append(newcomers_slide(themes[5], _newcomer_picks()))
+    f5, d5, g5 = _top5_lists()
+    pf = f"Projected points over {GAMES_PER_TEAM} games"
+    slides.append(top5_slide(themes[5], "Top five<br>forwards", f5, pf))
+    slides.append(top5_slide(themes[6], "Top five<br>defencemen", d5, pf))
+    slides.append(top5_slide(themes[7], "Top five<br>goalies", g5,
+                             "Projected save % · min. 60 career games on file"))
+    slides.append(newcomers_slide(themes[8], _newcomer_picks()))
 
     for i, html in enumerate(slides, 1):
         src, png = OUT / f"slide_{i}.html", OUT / f"slide_{i}.png"
@@ -554,7 +655,7 @@ def build() -> None:
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five {W}×{H} images. Upload <code>slide_1.png</code> …
-<code>slide_6.png</code> in order. Regenerate with
+<code>slide_9.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">Caption</h2>
