@@ -1826,3 +1826,27 @@ updated: 0/544 games played, crowd weight 0.20
 wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
 serve with: python -m http.server 8765 --directory site
 === done ===
+=== 2026-08-27 08:30:00 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===
+=== 2026-08-28 08:30:03 daily update ===
+fetched season 2027: 544 games, 0 played
+  season 2022: 448 games
+  season 2023: 450 games
+  season 2024: 450 games
+  season 2025: 480 games
+  season 2026: 480 games
+  season 2027: 544 games
+updated: 0/544 games played, crowd weight 0.20
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+=== done ===

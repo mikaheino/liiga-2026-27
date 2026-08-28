@@ -8,7 +8,7 @@ top-right corner that varies slide to slide.
 
     slide_1  places 1-6       slide_4  method, match model, validation
     slide_2  places 7-12      slide_5  individual award projections
-    slide_3  places 13-17     slide_6  best XI of players new to Liiga
+    slide_3  places 13-17     slide_6  all-newcomer starting six
 
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
@@ -402,7 +402,8 @@ def _award_picks() -> list:
 
 
 def newcomers_slide(t: dict, picks: list) -> str:
-    """Best XI assembled only from players with no Liiga games last season."""
+    """A full on-ice unit -- 1G/2D/3F, six players, not eleven -- assembled
+    only from players with no Liiga games last season."""
     rows = "".join(f"""
       <div class="row">
         <div class="pos">{pos}</div>
@@ -416,7 +417,7 @@ def newcomers_slide(t: dict, picks: list) -> str:
   <div class="slide">
     <div class="head">
       <div class="kicker">Liiga 2026–27 · Arrivals</div>
-      <div class="title">Best XI of<br>newcomers</div>
+      <div class="title">All-newcomer<br>starting six</div>
     </div>
     <div class="rule"></div>
     <div class="body newcomers">{rows}</div>
@@ -426,6 +427,9 @@ def newcomers_slide(t: dict, picks: list) -> str:
 
 def _newcomer_picks() -> list:
     """Best 1G / 2D / 3F among players with no Liiga games in 2025-26.
+
+    Six players: a hockey team ices a goalie, a defence pair and a forward
+    line. (An earlier version called this a "best XI", which is football.)
 
     "New" means: on a 2026-27 roster, no scoring row for season 2026, and
     either no Liiga history at all (rate_source 'external') or an
