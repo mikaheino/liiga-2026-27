@@ -15,6 +15,12 @@ top-right corner that varies slide to slide.
 Audience is data practitioners, so the method slide and caption are written
 with concrete parameters rather than analogies.
 
+Also bundles the slides into two self-contained PDFs, each ending with the
+method slide:
+
+    liiga-2026-27-standings.pdf   places 1-6, 7-12, 13-17, how it is built
+    liiga-2026-27-players.pdf     award picks, top fives, newcomers, how it is built
+
     python scripts/refresh_standings.py     # make sure standings are current
     python scripts/build_instagram.py
 """
@@ -619,6 +625,35 @@ def _newcomer_picks() -> list:
     return picks
 
 
+# Which rendered slides go into each PDF. The method slide (4) closes BOTH
+# bundles, so either can be sent on its own and still explain itself.
+PDF_BUNDLES = [
+    ("liiga-2026-27-standings.pdf", "Predicted table", [1, 2, 3, 4]),
+    ("liiga-2026-27-players.pdf", "Player predictions", [5, 6, 7, 8, 9, 4]),
+]
+PDF_DPI = 150          # 1080x1350 px -> 7.2 x 9 in, a sane page rather than 15 in
+
+
+def write_pdfs() -> list:
+    """Bundle the rendered PNGs into PDFs (Pillow, no extra dependency)."""
+    made = []
+    for fname, _label, order in PDF_BUNDLES:
+        pages = []
+        for n in order:
+            f = OUT / f"slide_{n}.png"
+            if f.exists():
+                pages.append(Image.open(f).convert("RGB"))
+        if not pages:
+            continue
+        dest = OUT / fname
+        pages[0].save(dest, "PDF", save_all=True, append_images=pages[1:],
+                      resolution=PDF_DPI)
+        made.append((dest, len(pages)))
+        print(f"  wrote {dest.name}  {len(pages)} pages "
+              f"({dest.stat().st_size // 1024} KB)")
+    return made
+
+
 def build() -> None:
     OUT.mkdir(exist_ok=True)
     con = get_connection()
@@ -682,6 +717,10 @@ def build() -> None:
             check=True, capture_output=True)
         print(f"  wrote {png.name}  ({png.stat().st_size // 1024} KB)")
 
+    print()
+    write_pdfs()
+    print()
+
     figs = "".join(f'<figure><img src="slide_{i}.png"></figure>'
                    for i in range(1, len(slides) + 1))
     (OUT / "index.html").write_text(f"""<!doctype html><html><head>
@@ -702,6 +741,9 @@ def build() -> None:
 <code>slide_9.png</code> in order. Regenerate with
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
+<h2 style="font-size:18px">PDF bundles</h2>
+<p class="lead">{"".join(f'<a style="color:{LIME}" href="{f}">{f}</a> — {l} ({len(o)} pages)<br>' for f, l, o in PDF_BUNDLES)}
+Each bundle ends with <em>How it is built</em>, so either can be sent on its own.</p>
 <h2 style="font-size:18px">Caption</h2>
 <textarea readonly>{CAPTION}</textarea>
 </body></html>""", encoding="utf-8")
