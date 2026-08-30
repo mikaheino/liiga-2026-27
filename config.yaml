@@ -11,8 +11,17 @@
 database:
   target: duckdb
   duckdb_path: data/liiga.duckdb
-  # Used only when target: snowflake. Values are env var NAMES, not secrets.
+  # Used only when target: snowflake.
   snowflake:
+    # Preferred: a named profile in ~/.snowflake/connections.toml -- no
+    # secrets here or in the environment. SNOWFLAKE_CONNECTION overrides it.
+    connection_name: CONTAINER_SERVICES
+    connection_name_env: SNOWFLAKE_CONNECTION
+    database: LIIGA
+    schema: MODEL
+    warehouse: LIIGA_WH
+    role: ACCOUNTADMIN
+    # Fallback for password auth. Values are env var NAMES, not secrets.
     account_env: SNOWFLAKE_ACCOUNT
     user_env: SNOWFLAKE_USER
     password_env: SNOWFLAKE_PASSWORD

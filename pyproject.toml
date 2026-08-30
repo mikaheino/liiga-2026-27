@@ -17,7 +17,12 @@ dependencies = [
 
 [project.optional-dependencies]
 # Production backend. Install with: pip install -e ".[snowflake]"
-snowflake = ["snowflake-connector-python>=3.7"]
+# secure-local-storage adds keyring, which caches the OAuth token so the
+# connector does not open a browser on every run (see AGENTS.md).
+snowflake = [
+    "snowflake-connector-python[pandas,secure-local-storage]>=3.7",
+    "pyarrow>=14",
+]
 dev = ["pytest>=8.0"]
 
 [build-system]

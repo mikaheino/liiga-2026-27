@@ -40,6 +40,19 @@ def get_connection(target: str | None = None):
 
         sf = db["snowflake"]
 
+        # Preferred path: a named profile in ~/.snowflake/connections.toml.
+        # It keeps credentials (and the OAuth token cache) out of this repo
+        # and out of the environment entirely. Explicit database/schema/
+        # warehouse/role overrides win, because the shared profile may point
+        # somewhere else -- CONTAINER_SERVICES, for one, sets no database.
+        name = os.environ.get(sf.get("connection_name_env", ""), "") or \
+            sf.get("connection_name")
+        if name:
+            overrides = {k: sf[k] for k in
+                         ("database", "schema", "warehouse", "role")
+                         if sf.get(k)}
+            return snowflake.connector.connect(connection_name=name, **overrides)
+
         def env(key: str) -> str:
             name = sf[key]
             val = os.environ.get(name)
@@ -73,9 +86,15 @@ def query_df(con, sql: str, params: list | None = None) -> pd.DataFrame:
     cur = con.cursor()
     try:
         cur.execute(sql, params) if params else cur.execute(sql)
-        return cur.fetch_pandas_all()
+        df = cur.fetch_pandas_all()
     finally:
         cur.close()
+    # Snowflake returns UPPER CASE column names; DuckDB returns them as
+    # written. Downstream pandas code indexes lower-case ("goals",
+    # "player_id"), so normalise here rather than in every caller -- this is
+    # the seam that makes the two backends interchangeable.
+    df.columns = [c.lower() for c in df.columns]
+    return df
 
 
 def execute(con, sql: str, params: list | None = None) -> None:

@@ -1,6 +1,51 @@
-# Snowflake ML migration — initial plan
+# Snowflake ML migration
 
-**Status: deferred.** Not started, not to be started now. Revisit once the
+**Status: phase 1 done (2026-08-30).** All data now lives in Snowflake;
+the model still runs locally. Phases 2-4 below are not started.
+
+## Phase 1 as built
+
+Account `uqb62234`, connection profile `CONTAINER_SERVICES`.
+
+| Object | Purpose |
+|---|---|
+| `LIIGA_WH` | X-Small, auto-suspend 60s |
+| `LIIGA.RAW` | ingested + hand-collected source tables (8) |
+| `LIIGA.MODEL` | everything the pipeline derives (13) |
+| `LIIGA.CODE.LIIGA_REPO` | git repo, `main`, public HTTPS origin -- no secret |
+| `LIIGA.CODE.LOAD_STAGE` | Parquet landing zone used by the migration script |
+| `LIIGA_GITHUB_API` | API integration, prefix `https://github.com/mikaheino` |
+
+`scripts/migrate_to_snowflake.py` copies all 21 DuckDB tables (52,571 rows)
+via Parquet through an internal stage. It is idempotent (`CREATE OR REPLACE`),
+so re-running it re-lands the current local state.
+
+Two things that are easy to get wrong and are handled in that script:
+
+- **Column case.** `INFER_SCHEMA` reproduces Parquet names verbatim, so
+  lower-case names become quoted, case-sensitive Snowflake identifiers and the
+  repo's unquoted SQL stops resolving. The export aliases every column to
+  UPPER CASE; `db.query_df` lower-cases them again on the way back so pandas
+  code is unchanged.
+- **HUGEINT.** DuckDB's INT128 has no Snowflake equivalent and arrives in
+  pandas as float64. Every HUGEINT here is a counting stat, so the export
+  casts to BIGINT.
+
+**Auth caveat.** `CONTAINER_SERVICES` uses `OAUTH_AUTHORIZATION_CODE`.
+The `snow` CLI holds a cached token and works non-interactively;
+snowflake-connector-python needs `keyring` (now in the `snowflake` extra) plus
+**one** interactive browser login before it caches its own token. Until that
+login happens, `database.target: snowflake` blocks waiting on a browser. A
+key-pair credential on this account would remove the interactive step
+entirely and is the right fix for scheduled runs.
+
+## Original plan (July 2026)
+
+The rest of this document is the original deferred plan, kept because phases
+2-4 still describe the intended shape of the work. Its "deferred" framing is
+now historical -- phase 1 has been done.
+
+Revisit once the
 2026-27 season actually begins and the daily-update loop (`daily_update.py` +
 launchd, see AGENTS.md §3) is running against real in-season results — that's
 the point where a laptop-dependent cron job becomes the least attractive part

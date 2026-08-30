@@ -71,6 +71,25 @@ per-season stats (goals, games — numbers any fan reads fluently) and state the
 blended result as a fact, dropping the visible formula. Hard data means real
 stats, not exposed arithmetic.
 
+## Snowflake (migration phase 1 done, 2026-08-30)
+
+All 21 DuckDB tables now also live in Snowflake account `uqb62234`:
+`LIIGA.RAW` (source) and `LIIGA.MODEL` (derived), warehouse `LIIGA_WH`.
+The repo is mirrored as a Snowflake git repository at
+`LIIGA.CODE.LIIGA_REPO` (branch `main`).
+
+```bash
+python scripts/migrate_to_snowflake.py --dry-run   # show routing plan
+python scripts/migrate_to_snowflake.py             # re-land all tables
+snow sql -c CONTAINER_SERVICES --query "ALTER GIT REPOSITORY LIIGA.CODE.LIIGA_REPO FETCH"
+```
+
+The model still runs **locally** — this was a data move, not a compute move.
+`database.target` is still `duckdb`; flipping it to `snowflake` needs one
+interactive browser login first (see docs/snowflake_ml_migration.md).
+The site stays local-only regardless — the never-publish policy above is
+unaffected by the Snowflake work.
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):
