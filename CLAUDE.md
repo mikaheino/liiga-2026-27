@@ -107,6 +107,35 @@ interactive browser login first (see docs/snowflake_ml_migration.md).
 The site stays local-only regardless — the never-publish policy above is
 unaffected by the Snowflake work.
 
+## Streamlit app (local + Snowflake, since 2026-08-30)
+
+`streamlit_app/streamlit_app.py` shows the two most-asked-for views from the
+site — the position-distribution heatmap and the forecast-history chart —
+plus a prominent "last updated" stamp read from `prediction_meta.updated_at`.
+
+**One file, two backends.** It detects a Snowpark session: inside Snowflake it
+reads `LIIGA.MODEL`, locally it reads `data/liiga.duckdb`. It deliberately does
+NOT import the `liiga` package — Streamlit in Snowflake only receives this file
+plus `environment.yml`, so it has to be self-contained. Verified both paths give
+identical numbers (Tappara 43%, JYP σ 3.8).
+
+```bash
+streamlit run streamlit_app/streamlit_app.py          # local
+cd streamlit_app && snow streamlit deploy --replace \
+  -c CONTAINER_SERVICES --role ACCOUNTADMIN --warehouse LIIGA_WH \
+  --database LIIGA --schema CODE                      # Snowflake
+```
+
+Freshness is automatic and needs no scheduler: `load_updated_at()` is
+uncached and its value is the `@st.cache_data` key for everything else, so a
+new prediction invalidates the cache exactly when the data changes. In
+Snowflake that happens as soon as the local run's `sync_all()` lands the
+tables. **Don't add a TTL** — it would either lag a fresh prediction or
+re-query pointlessly.
+
+This is a Snowflake-account app, not a public one; the never-publish rule
+above is about the claude.ai artifact and still stands.
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):

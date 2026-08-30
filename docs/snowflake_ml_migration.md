@@ -100,10 +100,13 @@ model is making decisions against live results.
 The standings site (`site/index.html`, built by `scripts/build_site.py`) stays
 **local-only**, per the standing policy in CLAUDE.md/AGENTS.md — this
 migration is about the data/model/scheduling layer, not the front end.
-Hosting the site as a Snowsight dashboard or Streamlit-in-Snowflake app would
-be a separate, explicit decision (it would also mean revisiting the
-never-publish policy), not a side effect of this migration. Don't fold that
-in silently if/when this work actually starts.
+
+**Update 2026-08-30:** the user then made that separate, explicit decision —
+`LIIGA.CODE.LIIGA_ENNUSTE`, a Streamlit app carrying the position heatmap and
+the forecast-history chart, now runs in Snowflake. That is a deliberate call,
+not a side effect, and it is narrower than "host the site": `site/index.html`
+itself is untouched and still local-only, and the never-publish rule (which
+is about the claude.ai artifact) is unaffected.
 
 ## Target architecture (per pipeline stage)
 

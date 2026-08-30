@@ -1,0 +1,16 @@
+definition_version: '2'
+
+entities:
+  liiga_ennuste:
+    type: streamlit
+    identifier:
+      name: LIIGA_ENNUSTE
+      schema: CODE
+      database: LIIGA
+    stage: LIIGA.CODE.STREAMLIT_STAGE
+    query_warehouse: LIIGA_WH
+    title: Liiga 2026-27 -ennuste
+    main_file: streamlit_app.py
+    artifacts:
+      - streamlit_app.py
+      - environment.yml
