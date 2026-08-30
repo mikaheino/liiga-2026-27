@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import argparse
 
-from liiga.snowflake_sync import (_cfg, _schema_for, fetch_git_repo,
-                                  local_tables, sync_all)
+from liiga.snowflake_sync import (CURATED_TABLES, _cfg, _schema_for,
+                                  fetch_git_repo, local_tables, sync_all)
 
 
 def main() -> int:
@@ -30,10 +30,14 @@ def main() -> int:
                     help="print the routing plan without touching Snowflake")
     ap.add_argument("--code", action="store_true",
                     help="also FETCH the Snowflake git repo (pushed commits only)")
+    ap.add_argument("--all", action="store_true",
+                    help="push EVERY table, not just the curated model inputs. "
+                         "Overwrites what Snowflake's own pipeline computed -- "
+                         "bootstrap and disaster recovery only.")
     args = ap.parse_args()
 
     c = _cfg()
-    names = args.tables or local_tables()
+    names = args.tables or (local_tables() if args.all else CURATED_TABLES)
 
     if args.dry_run:
         print(f"target: {c['database']} on connection {c['connection']}"

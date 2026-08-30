@@ -45,6 +45,23 @@ RAW_TABLES = {
 }
 
 
+# What the in-Snowflake pipeline CANNOT derive for itself, and therefore the
+# only thing a local run should publish. Everything else -- stg_games, Elo,
+# team strength, standings, simulations -- Snowflake recomputes daily from
+# liiga.fi, and pushing our copies over the top would silently replace its
+# results with the Mac's.
+CURATED_TABLES = [
+    "league_factors",                # league-equivalency factors, hand-tuned
+    "raw_external_player_seasons",   # hand-researched abroad seasons
+    "raw_goalie_seasons",            # hand-collected goalie records
+    "roster_2026_27",                # built from the transfers article
+    "player_bio",                    # 2800 per-game API calls to rebuild
+    "player_rates",                  # the model itself
+    "player_rates_liiga",
+    "player_rates_unified",
+]
+
+
 class SyncError(RuntimeError):
     """Raised when the Snowflake side of a publish fails."""
 
@@ -188,7 +205,12 @@ def fetch_git_repo(c: dict | None = None) -> str:
 
 def sync_all(tables: list[str] | None = None, *, strict: bool = False,
              quiet: bool = False) -> dict[str, int]:
-    """Publish local tables to Snowflake. Returns {table: rows} for successes.
+    """Publish the model to Snowflake. Returns {table: rows} for successes.
+
+    Defaults to CURATED_TABLES, not everything: Snowflake runs its own daily
+    pipeline, so publishing derived tables would overwrite its results with
+    the local ones. Pass tables=local_tables() to force a full push (bootstrap
+    or disaster recovery).
 
     strict=False (default) never raises: this runs at the tail of the local
     pipeline, and a prod publish failing must not fail a dev run.
@@ -204,7 +226,7 @@ def sync_all(tables: list[str] | None = None, *, strict: bool = False,
 
     import duckdb
 
-    names = tables or local_tables()
+    names = tables if tables is not None else CURATED_TABLES
     path = resolve_path(load_config()["database"]["duckdb_path"])
     con = duckdb.connect(str(path), read_only=True)
     done: dict[str, int] = {}
