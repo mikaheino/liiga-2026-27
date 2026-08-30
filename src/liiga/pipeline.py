@@ -43,6 +43,16 @@ def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:
         con, f"SELECT COUNT(*) AS n FROM stg_games WHERE season = {target}")["n"].iloc[0])
     n_played = n_total - len(remaining)
 
+    if remaining.empty:
+        # Every game played: nothing left to simulate, so the standings are
+        # simply the banked points. Without this the ensemble would index an
+        # empty frame and raise KeyError on p_home_reg. Reached at the end of
+        # a season -- and by any dry run against a completed tournament.
+        empty = pd.DataFrame(columns=["game_id", "home_team", "away_team",
+                                      "p_home_reg", "p_away_reg", "p_overtime",
+                                      "p_home_ot_win", "p_home_win"])
+        return empty, banked, {"n_total": n_total, "n_played": n_played}
+
     poisson_ratings = query_df(con, "SELECT * FROM team_strength")
     ot_rate = _ot_rate_before(con, target)
     poisson_pred = predict_games(remaining, poisson_ratings, cfg)
