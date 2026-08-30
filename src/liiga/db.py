@@ -139,6 +139,18 @@ def query_df(con, sql: str, params: list | None = None) -> pd.DataFrame:
 def execute(con, sql: str, params: list | None = None) -> None:
     """Run a statement that returns no rows (DDL / INSERT)."""
     if isinstance(con, ActiveSession):
+        # Snowpark's session.sql() analyses the statement and rejects
+        # "CREATE TABLE ... AS SELECT x AS y" with
+        # SnowparkSQLUnexpectedAliasException -- every transform in sql/ is
+        # exactly that shape. The underlying cursor just runs the text.
+        conn = getattr(con.session, "connection", None)
+        if conn is not None:
+            cur = conn.cursor()
+            try:
+                cur.execute(sql)
+            finally:
+                cur.close()
+            return
         con.session.sql(sql).collect()
         return
     if _is_duckdb(con):
