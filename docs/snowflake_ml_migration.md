@@ -47,6 +47,83 @@ login happens, `database.target: snowflake` blocks waiting on a browser. A
 key-pair credential on this account would remove the interactive step
 entirely and is the right fix for scheduled runs.
 
+## Phase 2 — what the account actually supports (verified 2026-08-30)
+
+Snowflake 10.30.102, AWS us-west-2. All checked against this account, not
+assumed:
+
+| | |
+|---|---|
+| `EXECUTE NOTEBOOK` | supported -- so a notebook can be driven by a TASK |
+| Python packages | requests 2.34, pandas 3.0.5, numpy 2.5.1, scipy 1.9.3, scikit-learn 1.9.0, pyyaml 6.0.3, streamlit 1.52.2, snowflake-ml-python 1.9.2 |
+| liiga.fi egress | works, via the narrow `LIIGA_FI_ACCESS` integration + `LIIGA.CODE.LIIGA_FI_RULE` (`www.liiga.fi:443`) |
+| Preseason data | `tournament=valmistavat_ottelut&season=2027` -- 51 games, all played |
+
+`snowflake-ml-python` is available but still not a fit, for the reason in the
+original plan: this is not a trained sklearn model.
+
+## Phase 2 — plan changed to a scheduled notebook
+
+The original plan below proposed six Snowpark stored procedures plus a Task
+DAG. **That is superseded.** The pipeline is already one Python entry point
+and the repo is already mirrored into Snowflake as a git repository, so a
+notebook runs it nearly as-is; decomposing into six procedures buys
+per-stage retry granularity a seconds-long pipeline does not need.
+
+There is also a hard technical reason. A stored procedure **cannot set its
+schema context** -- both `USE SCHEMA` and `ALTER SESSION SET SEARCH_PATH`
+fail with *Unsupported statement type*. The transforms in `src/liiga/sql`
+create and read unqualified table names, so they need that context. A
+notebook is a session and can do both.
+
+### What already runs inside Snowflake (proven, not designed)
+
+A stored procedure bootstrapping from the git repo got this far:
+
+- pulls `src/liiga`, `config.yaml` and the curated `data/*.csv|txt` out of
+  `@LIIGA.CODE.LIIGA_REPO` onto `/tmp` and imports the package
+- `get_connection()` returns the `ActiveSession` wrapper, and `ingest_all()`
+  fetched liiga.fi and wrote 391 games / 1116 goal events / 1699 assists
+  straight into Snowflake tables via `write_pandas`
+
+`data/raw` is deliberately never pulled: it is 2800 cached per-game JSONs,
+and the season-level endpoint returns the same facts in six calls.
+
+### Division of labour (the point of the whole thing)
+
+Local DuckDB and Snowflake run **independent** models. Only the model itself
+crosses over, and it crosses through git:
+
+- **local -> Snowflake:** code, and the curated inputs the pipeline cannot
+  derive (`player_rates`, `roster_2026_27`, `league_factors`,
+  `raw_external_player_seasons`, `raw_goalie_seasons`, `player_bio`)
+- **Snowflake computes daily by itself:** ingest from liiga.fi -> transforms
+  -> team strength -> Elo -> Poisson -> simulation -> `LIIGA.MODEL` -> Streamlit
+
+This means `sync_all()` must stop publishing derived MODEL tables on every
+local run once the notebook is live, or the Mac will overwrite Snowflake's
+own results. Not yet changed.
+
+### Remaining work
+
+1. Wrap the bootstrap + pipeline in a notebook (`USE SCHEMA` works there).
+2. `daily_update.py`'s tail writes `prediction_history` through DuckDB-only
+   calls (`con.register`, `con.execute`) -- needs a portable version.
+3. Narrow the local publish to curated inputs only.
+4. Schedule it. **Deliberately not done**: there are no regular-season games
+   yet, so the real test happens when the season starts.
+
+## Cost control (2026-08-30)
+
+Credits are spent only while something runs or someone is looking:
+
+- `LIIGA_WH` -- X-Small, `AUTO_SUSPEND = 60` (Snowflake's minimum),
+  `AUTO_RESUME = TRUE`, `STATEMENT_TIMEOUT_IN_SECONDS = 1800` so a runaway
+  pipeline run cannot bill indefinitely
+- the Streamlit app uses that same warehouse, so closing the browser tab
+  leads to suspension within a minute
+- **zero tasks exist in `LIIGA`** -- nothing runs on a schedule
+
 ## Original plan (July 2026)
 
 The rest of this document is the original deferred plan, kept because phases
