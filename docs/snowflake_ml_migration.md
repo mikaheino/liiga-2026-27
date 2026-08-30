@@ -94,24 +94,70 @@ and the season-level endpoint returns the same facts in six calls.
 Local DuckDB and Snowflake run **independent** models. Only the model itself
 crosses over, and it crosses through git:
 
-- **local -> Snowflake:** code, and the curated inputs the pipeline cannot
-  derive (`player_rates`, `roster_2026_27`, `league_factors`,
-  `raw_external_player_seasons`, `raw_goalie_seasons`, `player_bio`)
+- **local -> Snowflake:** code (via git), and the curated inputs the pipeline
+  cannot derive -- `snowflake_sync.CURATED_TABLES`, which `sync_all()` now
+  defaults to. `sync_to_snowflake.py --all` forces a full push for bootstrap
+  or recovery.
 - **Snowflake computes daily by itself:** ingest from liiga.fi -> transforms
   -> team strength -> Elo -> Poisson -> simulation -> `LIIGA.MODEL` -> Streamlit
 
-This means `sync_all()` must stop publishing derived MODEL tables on every
-local run once the notebook is live, or the Mac will overwrite Snowflake's
-own results. Not yet changed.
+`sync_all()` publishes only those curated inputs; pushing derived tables
+would replace Snowflake's own results with the Mac's, which is the opposite
+of two models running independently.
+
+### Built and verified (2026-08-30)
+
+`LIIGA.CODE.LIIGA_DAILY` is the notebook, created from
+`@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/`, with
+`EXTERNAL_ACCESS_INTEGRATIONS = (LIIGA_FI_ACCESS)`. It bootstraps the package
+out of the git repo, fetches liiga.fi, rebuilds the tables and re-forecasts.
+
+Target tournament and schemas come from `LIIGA.CODE.PIPELINE_SETTINGS`, so a
+dry run can be pointed at throwaway schemas without redeploying. Use that for
+any experiment: an early preseason test wrote 51 games over the 2852-row
+`RAW_GAMES` and the history had to be restored from the Mac.
+
+Redeploy after a code change:
+
+```sql
+ALTER GIT REPOSITORY LIIGA.CODE.LIIGA_REPO FETCH;
+CREATE OR REPLACE NOTEBOOK LIIGA.CODE.LIIGA_DAILY
+  FROM '@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/'
+  MAIN_FILE = 'daily_update.ipynb' QUERY_WAREHOUSE = LIIGA_WH;
+ALTER NOTEBOOK LIIGA.CODE.LIIGA_DAILY
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (LIIGA_FI_ACCESS);
+ALTER NOTEBOOK LIIGA.CODE.LIIGA_DAILY ADD LIVE VERSION FROM LAST;
+EXECUTE NOTEBOOK LIIGA.CODE.LIIGA_DAILY();
+```
+
+`ADD LIVE VERSION` fails on an existing live version, hence the
+`CREATE OR REPLACE` -- editing in place is not enough.
+
+**Two portability bugs the migration actually found**, both fixed:
+
+- `START` is a Snowflake reserved word (`START WITH`) and DuckDB is not.
+  `stg_games.sql` failed on `start AS start_ts`. Quoting does not help either,
+  because the identifier's case differs between backends, so the ingest emits
+  `start_time` now. This is the first real exception to the portable-SQL claim
+  in AGENTS.md 8.
+- `build_prediction()` raised `KeyError: p_home_reg` when every game was
+  already played, because the ensemble indexed an empty frame. Hit
+  immediately by a completed preseason tournament, and it would have hit at
+  the end of a real season.
+
+**Results.** Preseason dry run: 391 games ingested, 51/51 target-season games
+played, standings correctly fall back to banked points and the crowd weight to
+0. Production run: Snowflake fetched liiga.fi itself and produced Tappara
+115.32 / KooKoo 107.43 / Lukko 104.83 -- identical to the local run to two
+decimals.
 
 ### Remaining work
 
-1. Wrap the bootstrap + pipeline in a notebook (`USE SCHEMA` works there).
-2. `daily_update.py`'s tail writes `prediction_history` through DuckDB-only
-   calls (`con.register`, `con.execute`) -- needs a portable version.
-3. Narrow the local publish to curated inputs only.
-4. Schedule it. **Deliberately not done**: there are no regular-season games
-   yet, so the real test happens when the season starts.
+1. **Schedule it.** Deliberately not done: there are no regular-season games
+   yet, so the real test is when the season starts. A `TASK` calling
+   `EXECUTE NOTEBOOK LIIGA.CODE.LIIGA_DAILY()` is all it takes.
+2. Decide whether the Mac's launchd job keeps running once Snowflake is
+   scheduled, or becomes purely a development loop.
 
 ## Cost control (2026-08-30)
 
