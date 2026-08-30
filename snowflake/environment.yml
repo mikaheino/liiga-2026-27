@@ -1,0 +1,10 @@
+name: app_environment
+channels:
+  - snowflake
+dependencies:
+  - requests
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - pyyaml
