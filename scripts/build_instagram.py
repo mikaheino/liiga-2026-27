@@ -229,21 +229,21 @@ def css(t: dict) -> str:
   .ptsr {{ font-size:21px; color:{t['accent']}; margin-top:5px; opacity:0.85; }}
 
   /* ---- technical slides ---- */
-  .step {{ display:flex; gap:18px; margin-bottom:11px; align-items:flex-start; }}
-  .num {{ min-width:42px; height:42px; background:{CREAM}; color:{INK};
-         font-family:{HEAD_F}; font-size:21px; display:flex;
+  .step {{ display:flex; gap:20px; margin-bottom:15px; align-items:flex-start; }}
+  .num {{ min-width:47px; height:47px; background:{CREAM}; color:{INK};
+         font-family:{HEAD_F}; font-size:23px; display:flex;
          align-items:center; justify-content:center; }}
   /* DIRECT child only -- inline <b> inside the description must stay inline,
      otherwise every highlighted parameter becomes its own block heading */
-  .txt > b {{ font-family:{HEAD_F}; font-size:23px; display:block; color:{t['fg']};
-             margin-bottom:4px; text-transform:uppercase; letter-spacing:-0.3px; }}
-  .txt span {{ font-size:18px; line-height:1.34; color:{t['fg']}; opacity:0.88; }}
+  .txt > b {{ font-family:{HEAD_F}; font-size:26px; display:block; color:{t['fg']};
+             margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }}
+  .txt span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.88; }}
   .txt span b, .callout span b {{ color:{t['accent']}; opacity:1; }}
   .callout {{ background:{t['panel']}; border-left:8px solid {t['bar']};
-             padding:14px 22px; margin-top:2px; }}
-  .callout > b {{ font-family:{HEAD_F}; font-size:22px; display:block;
-                 margin-bottom:7px; color:{t['accent']}; text-transform:uppercase; }}
-  .callout span {{ font-size:18px; line-height:1.34; color:{t['fg']}; opacity:0.9; }}
+             padding:16px 26px; margin-top:2px; }}
+  .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
+                 margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
+  .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
   /* Circular avatar used on the player slides: a headshot fills it, a crest
      is letterboxed inside it. Faces are NOT half-clipped like the standings
      crests -- half a face reads as a mistake. */
@@ -367,7 +367,7 @@ def how_slide(t: dict) -> str:
         nostaa vähämaalisia tasatuloksia niin että jatkoajat osuvat Liigan
         oikeaan <b>23 %</b>:iin. Elo huomioi maalieron (k=16).</span>
       </div>
-      <div class="callout" style="margin-top:16px">
+      <div class="callout" style="margin-top:14px">
         <b>Toimiiko se?</b>
         <span>Testattu kausilla 2023–26 niin, että jokainen kausi
         ennustettiin vain sitä edeltävällä datalla: pistevirhe keskimäärin
