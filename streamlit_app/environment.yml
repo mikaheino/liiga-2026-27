@@ -4,3 +4,6 @@ channels:
 dependencies:
   - altair
   - pandas
+  # pandas Styler (sijoitusjakauman värit) tarvitsee jinja2:n; ilman sitä
+  # .style nostaa AttributeErrorin Snowflaken ajoympäristössä.
+  - jinja2

@@ -93,6 +93,21 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     }
 
 
+def full_width(render, *args, **kwargs):
+    """Piirrä elementti täyteen leveyteen Streamlitin versiosta riippumatta.
+
+    Streamlit 1.49+ haluaa width="stretch"; Streamlit in Snowflake ajaa
+    vanhempaa versiota, jossa width on int ja täysi leveys on
+    use_container_width=True. Sama tiedosto ajetaan molemmissa, joten
+    kokeillaan uutta API:a ensin ja pudotaan vanhaan -- versionumeron
+    vertailu arvaisi, tämä mittaa.
+    """
+    try:
+        return render(*args, width="stretch", **kwargs)
+    except (TypeError, ValueError, st.errors.StreamlitAPIException):
+        return render(*args, use_container_width=True, **kwargs)
+
+
 # --------------------------------------------------------------------------
 # Sijoitusjakauma
 # --------------------------------------------------------------------------
@@ -149,7 +164,7 @@ def render_position_table(m: pd.DataFrame) -> None:
                         (QUALI_CUT + 1, "1px dashed #667788")):
         styler = styler.set_properties(subset=[col],
                                        **{"border-left": border})
-    st.dataframe(styler, width="stretch", height=(TEAMS + 1) * 35 + 3)
+    full_width(st.dataframe, styler, height=(TEAMS + 1) * 35 + 3)
 
 
 # --------------------------------------------------------------------------
@@ -181,7 +196,7 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
         .properties(height=430)
         .interactive()
     )
-    st.altair_chart(chart, width="stretch")
+    full_width(st.altair_chart, chart)
 
 
 # --------------------------------------------------------------------------
