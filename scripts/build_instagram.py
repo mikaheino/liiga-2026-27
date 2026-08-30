@@ -49,30 +49,33 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 # model facts — keep in sync with scripts/build_site.py / AGENTS.md §10
 POISSON_PCT, ELO_PCT, CROWD_PCT = 40, 60, 20
 BACKTEST_MAE = 12.65
-N_SIMS = "10,000"
+MAE_FI = "12,65"        # suomalainen desimaalipilkku dioihin
+N_SIMS = "10 000"
 
-LIME = "#e3ff87"        # brand yellow, start of the ramp
-INK = "#1b1b1b"         # near-black, end of the ramp
+# --- Liiga-tyylinen paletti -------------------------------------------------
+# Mallina Liigan oma Instagram-ilme: tumma ruskea/seepia halli taustana,
+# kultainen liukuväri otsikoissa, kermanvalkoiset laatikot numeroille ja
+# vinot, leveät versaaliotsikot.
+GOLD      = "#d9b654"
+GOLD_HI   = "#f7e7ad"
+GOLD_LO   = "#a9822c"
+CREAM     = "#f2ece0"
+INK       = "#150f09"      # tumma ruskea, ei musta
+MUTED     = "#a89880"
 
-# Each slide is black-dominant with a yellow bloom in the TOP-RIGHT corner,
-# falling diagonally to near-black at bottom-left. The bloom's reach varies
-# per slide so the carousel has movement without changing its identity.
-# Stops are kept tight: the bright zone must die out before it reaches the
-# first content row, or lime text sits on lime background.
-GRADIENTS = [
-    "linear-gradient(to bottom left, #e3ff87 0%, #6d7c39 9%, #1b1b1b 30%)",
-    "linear-gradient(to bottom left, #d9f56f 0%, #5d6b31 7%, #1b1b1b 25%)",
-    "linear-gradient(to bottom left, #e3ff87 0%, #667535 11%, #1b1b1b 34%)",
-    "linear-gradient(to bottom left, #cbe862 0%, #4f5b2b 6%, #1b1b1b 22%)",
-    "linear-gradient(to bottom left, #e3ff87 0%, #5a6830 8%, #1b1b1b 27%)",
-    "linear-gradient(to bottom left, #d9f56f 0%, #63723a 10%, #1b1b1b 31%)",
-    "linear-gradient(to bottom left, #e3ff87 0%, #5f6f33 8%, #1b1b1b 26%)",
-    "linear-gradient(to bottom left, #cbe862 0%, #56632f 7%, #1b1b1b 24%)",
-    "linear-gradient(to bottom left, #d9f56f 0%, #6a7a3c 12%, #1b1b1b 33%)",
-]
+# Taustat: lämmin halli-vignette, jonka valokeila siirtyy dialta toiselle niin
+# että karusellissa on liikettä ilman että ilme vaihtuu.
+def _bg(x: int, y: int) -> str:
+    return (f"radial-gradient(120% 85% at {x}% {y}%, #5a4028 0%, #3a2818 32%, "
+            f"#241a10 58%, #150f09 100%)")
 
-HEAD_F = '"GT America Expanded","Arial Black",Arial,sans-serif'
-BODY_F = '"GT America",Arial,Helvetica,sans-serif'
+
+GRADIENTS = [_bg(x, y) for x, y in
+             [(78, 8), (22, 12), (85, 30), (15, 25), (60, 5),
+              (35, 35), (90, 15), (10, 8), (70, 40)]]
+
+HEAD_F = '"Arial Black","Helvetica Neue",Arial,sans-serif'
+BODY_F = '"Helvetica Neue",Arial,Helvetica,sans-serif'
 
 
 def _norm(s: str) -> str:
@@ -103,9 +106,8 @@ def _nhl_bound() -> set:
 
 
 def _ordinal(n: int) -> str:
-    if 11 <= n % 100 <= 13:
-        return f"{n}th"
-    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }".replace(" ", "")
+    """Suomessa järjestysluku on pelkkä numero + piste."""
+    return f"{n}."
 
 
 def _slug(team: str) -> str:
@@ -167,10 +169,9 @@ def face_or_crest(name: str, team: str) -> str:
 
 
 def theme(gradient: str) -> dict:
-    """Every slide is black-dominant now, so one light-on-dark palette serves
-    all five -- no luminance flipping needed."""
-    return {"grad": gradient, "fg": "#FFFFFF", "accent": LIME, "muted": "#9a9a8f",
-            "rule": LIME, "panel": "rgba(255,255,255,0.07)", "bar": LIME}
+    """Yksi lämmin light-on-dark paletti kaikille dioille."""
+    return {"grad": gradient, "fg": "#FFFFFF", "accent": GOLD, "muted": MUTED,
+            "rule": GOLD, "panel": "rgba(255,255,255,0.06)", "bar": GOLD}
 
 
 def css(t: dict) -> str:
@@ -181,11 +182,18 @@ def css(t: dict) -> str:
   .slide {{ width:{W}px; height:{H}px; display:flex; flex-direction:column;
            background:{INK}; background-image:{t['grad']}; }}
   .head {{ padding:60px 64px 28px; }}
-  .kicker {{ font-family:{HEAD_F}; font-size:20px; letter-spacing:4px;
-            text-transform:uppercase; color:{t['accent']}; margin-bottom:18px; }}
-  .title {{ font-family:{HEAD_F}; font-size:78px; line-height:0.95;
-           text-transform:uppercase; letter-spacing:-1px; color:{t['fg']}; }}
-  .rule {{ height:5px; background:{t['rule']}; margin:26px 64px 0; }}
+  .kicker {{ font-family:{HEAD_F}; font-size:19px; letter-spacing:5px;
+            text-transform:uppercase; color:{CREAM}; opacity:0.75;
+            margin-bottom:16px; font-style:italic; }}
+  /* Liiga-ilme: vino leveä versaali + kultainen liukuväri tekstin sisällä */
+  .title {{ font-family:{HEAD_F}; font-size:76px; line-height:0.94;
+           text-transform:uppercase; letter-spacing:-1.5px; font-style:italic;
+           transform:skewX(-6deg); transform-origin:left bottom;
+           background:linear-gradient(180deg,{GOLD_HI} 0%,{GOLD} 52%,{GOLD_LO} 100%);
+           -webkit-background-clip:text; background-clip:text; color:transparent;
+           filter:drop-shadow(0 3px 0 rgba(0,0,0,0.35)); }}
+  .rule {{ height:4px; margin:26px 64px 0;
+          background:linear-gradient(90deg,{GOLD} 0%,{GOLD_LO} 70%,transparent 100%); }}
   .body {{ flex:1; padding:26px 64px 0; }}
   .foot {{ padding:20px 64px 42px; font-size:19px; color:{t['muted']}; }}
 
@@ -195,8 +203,10 @@ def css(t: dict) -> str:
   .row {{ display:flex; align-items:center; gap:26px;
          border-bottom:1px solid {t['panel']}; }}
   .row:last-child {{ border-bottom:none; }}
-  .rank {{ width:96px; font-family:{HEAD_F}; font-size:68px; text-align:right;
-          line-height:1; color:{t['accent']}; }}
+  .rank {{ width:104px; font-family:{HEAD_F}; font-size:52px; line-height:1;
+          font-style:italic; color:{INK}; background:{CREAM};
+          padding:14px 0; text-align:center; transform:skewX(-6deg);
+          box-shadow:4px 4px 0 rgba(0,0,0,0.35); }}
   /* Crest treatment: oversized, desaturated, and clipped down the vertical
      centre so only the left half shows. brightness() is needed because several
      crests are dark-inked and grayscale alone leaves them invisible on black. */
@@ -208,17 +218,17 @@ def css(t: dict) -> str:
      A luminance filter can never do this -- each crest has different base
      brightness, so some always came out lighter than others. */
   .chip img {{ width:156px; height:156px; max-width:none; object-fit:contain; }}
-  .name {{ flex:1; font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
-          letter-spacing:-0.5px; }}
+  .name {{ flex:1; font-family:{HEAD_F}; font-size:42px; text-transform:uppercase;
+          letter-spacing:-0.5px; font-style:italic; }}
   .pts {{ text-align:right; }}
-  .ptsn {{ font-family:{HEAD_F}; font-size:56px; line-height:1;
-          font-variant-numeric:tabular-nums; color:{t['accent']}; }}
+  .ptsn {{ font-family:{HEAD_F}; font-size:54px; line-height:1; font-style:italic;
+          font-variant-numeric:tabular-nums; color:{CREAM}; }}
   .ptsl {{ font-size:19px; color:{t['muted']}; margin-top:8px; }}
   .ptsr {{ font-size:21px; color:{t['accent']}; margin-top:5px; opacity:0.85; }}
 
   /* ---- technical slides ---- */
   .step {{ display:flex; gap:20px; margin-bottom:15px; align-items:flex-start; }}
-  .num {{ min-width:48px; height:48px; background:{t['accent']}; color:{INK};
+  .num {{ min-width:48px; height:48px; background:{CREAM}; color:{INK};
          font-family:{HEAD_F}; font-size:24px; display:flex;
          align-items:center; justify-content:center; }}
   /* DIRECT child only -- inline <b> inside the description must stay inline,
@@ -244,12 +254,12 @@ def css(t: dict) -> str:
   /* ---- newcomers slide ---- */
   .body.newcomers {{ display:flex; flex-direction:column; padding-bottom:8px; }}
   .body.newcomers .row {{ flex:1; padding:0; }}
-  .pos {{ width:46px; height:46px; background:{t['accent']}; color:{INK};
+  .pos {{ width:46px; height:46px; background:{CREAM}; color:{INK};
          font-family:{HEAD_F}; font-size:22px; display:flex; align-items:center;
          justify-content:center; flex-shrink:0; }}
   .nc-txt {{ flex:1; }}
-  .nc-name {{ font-family:{HEAD_F}; font-size:44px; text-transform:uppercase;
-             letter-spacing:-0.5px; line-height:1; }}
+  .nc-name {{ font-family:{HEAD_F}; font-size:42px; text-transform:uppercase;
+             letter-spacing:-0.5px; line-height:1; font-style:italic; }}
   .nc-from {{ font-size:21px; color:{t['muted']}; margin-top:10px; }}
   .nc-num {{ font-family:{HEAD_F}; font-size:42px; color:{t['accent']};
             text-align:right; line-height:1; }}
@@ -265,8 +275,8 @@ def css(t: dict) -> str:
   .aw-txt {{ flex:1; }}
   .aw-cat {{ font-family:{HEAD_F}; font-size:20px; letter-spacing:3px;
             text-transform:uppercase; color:{t['accent']}; margin-bottom:9px; }}
-  .aw-name {{ font-family:{HEAD_F}; font-size:47px; text-transform:uppercase;
-             letter-spacing:-1px; line-height:1; }}
+  .aw-name {{ font-family:{HEAD_F}; font-size:45px; text-transform:uppercase;
+             letter-spacing:-1px; line-height:1; font-style:italic; }}
   .aw-sub {{ font-size:22px; color:{t['muted']}; margin-top:11px; }}
   .aw-num {{ font-family:{HEAD_F}; font-size:52px; color:{t['accent']};
             text-align:right; line-height:1; }}
@@ -292,42 +302,43 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
         <div class="name">{r.team}</div>
         <div class="pts">
           <div class="ptsn">{r.mean_points:.0f}</div>
-          <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} pts</div>
-          <div class="ptsr">likely {bands[r.team]}</div>
+          <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} p</div>
+          <div class="ptsr">todennäk. {bands[r.team]}</div>
         </div>
       </div>""" for r in rows)
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Season projection</div>
-      <div class="title">Places {lo}–{hi}</div>
+      <div class="kicker">Liiga 2026–27 · Kausiennuste</div>
+      <div class="title">Sijat {lo}–{hi}</div>
     </div>
     <div class="rule"></div>
     <div class="body standings">{body}</div>
-    <div class="foot">{N_SIMS} simulated seasons · “likely” = middle 50% of finishes</div>
+    <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 % lopputuloksista</div>
   </div>""")
 
 
 def how_slide(t: dict) -> str:
     steps = [
-        ("Built from players, not last season",
-         "Five seasons of goals per game for every player on every roster, "
-         "with the most recent season weighted heaviest."),
-        ("Foreign leagues converted, not guessed",
-         "An import's scoring is rescaled into Liiga terms — <b>SHL 1.20, "
-         "AHL 1.15, Allsvenskan 0.75, Mestis 0.35</b> — set from players who "
-         "actually made that move."),
-        ("Age is a cliff, not a slope",
-         "Output holds up to about 28, then falls away fast: <b>0.67</b> of "
-         "the previous rate at 35–37, <b>0.40</b> at 38 and over. Measured, "
-         "not assumed."),
-        ("Goalies carry the defence",
-         "Each team's projected save percentage becomes a goals-against "
-         "multiplier, pulled toward the league average so one hot 20-game "
-         "run does not distort it."),
-        ("Two models, then 10,000 seasons",
-         "A goal-scoring model and a team-strength rating vote <b>40/60</b> on "
-         "every game. The full schedule is then simulated <b>10,000</b> times."),
+        ("Rakennettu pelaajista, ei viime kaudesta",
+         "Jokaisen joukkueen jokaiselta pelaajalta viiden kauden maalitahti, "
+         "tuorein kausi painaa eniten."),
+        ("Ulkomaiset sarjat muunnettu, ei arvattu",
+         "Tulokkaan pistetahti skaalataan Liiga-tasolle — <b>SHL 1,20, "
+         "AHL 1,15, Allsvenskan 0,75, Mestis 0,35</b> — kertoimet on laskettu "
+         "pelaajista, jotka oikeasti tekivät sen siirron."),
+        ("Ikä on jyrkänne, ei loiva mäki",
+         "Tuotto pysyy noin 28-vuotiaaksi ja romahtaa sitten: <b>0,67</b> "
+         "edellisestä tahdista 35–37-vuotiaana ja <b>0,40</b> 38+ -vuotiaana. "
+         "Mitattu, ei oletettu."),
+        ("Maalivahti kantaa puolustuksen",
+         "Joukkueen ennustettu torjuntaprosentti muuttuu päästettyjen maalien "
+         "kertoimeksi, ja sitä vedetään sarjan keskiarvoa kohti, ettei yksi "
+         "kuuma 20 ottelun jakso vääristä sitä."),
+        ("Kaksi mallia, sitten 10 000 kautta",
+         "Maalintekomalli ja joukkuevoimaluku äänestävät jokaisesta ottelusta "
+         "suhteessa <b>40/60</b>. Koko sarjaohjelma simuloidaan sitten "
+         "<b>10 000</b> kertaa."),
     ]
     items = "".join(
         f'<div class="step"><div class="num">{i}</div>'
@@ -336,31 +347,33 @@ def how_slide(t: dict) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Method</div>
-      <div class="title">How it is built</div>
+      <div class="kicker">Liiga 2026–27 · Menetelmä</div>
+      <div class="title">Näin se on tehty</div>
     </div>
     <div class="rule"></div>
     <div class="body">
       {items}
       <div class="callout">
-        <b>The match model</b>
-        <span>Goals come from a <b>Poisson</b> model,
-        λ = lgAvg × off × def × home_ice, with a <b>Dixon-Coles</b> correction
-        on the low-score diagonal so the simulated OT rate matches Liiga's
-        observed 23%. Blended <b>{POISSON_PCT}/{ELO_PCT}</b> with a
-        margin-of-victory <b>Elo</b> rating (k=16).</span>
+        <b>Ottelumalli</b>
+        <span>Maalit arvotaan <b>Poisson</b>-mallista,
+        λ = sarjan ka. × hyökkäys × vastustajan puolustus × kotietu, ja
+        <b>Dixon-Coles</b>-korjaus nostaa vähämaalisten tasatulosten
+        todennäköisyyttä niin että jatkoaikojen osuus vastaa Liigan todellista
+        <b>23 %</b>. Yhdistetään suhteessa <b>{POISSON_PCT}/{ELO_PCT}</b>
+        maalieron huomioivaan <b>Elo</b>-lukuun (k=16).</span>
       </div>
       <div class="callout" style="margin-top:16px">
-        <b>Validation</b>
-        <span>Leakage-free backtest over 2023–26, each season rated on prior
-        seasons only: points MAE <b>{BACKTEST_MAE}</b>, game log-loss
-        <b>0.672</b> vs a <b>0.686</b> base rate, standings
-        <b>Spearman ρ 0.48</b>. Tuned on log-loss and MAE — ρ is too noisy at
-        n=4 to optimise against.</span>
+        <b>Toimiiko se?</b>
+        <span>Testattu kausilla 2023–26 niin että jokainen kausi
+        ennustettiin vain sitä edeltävillä kausilla: pistevirhe keskimäärin
+        <b>{MAE_FI}</b>, ottelutason log-loss <b>0,672</b> vs.
+        <b>0,686</b> arvauksella, sarjataulukon <b>Spearman ρ 0,48</b>.
+        Viritetty log-lossilla ja pistevirheellä — ρ heittelee neljän kauden
+        otoksella liikaa.</span>
       </div>
-      <p class="next">Next: moving the pipeline to scheduled
-      <b>Snowflake ML jobs</b> — refitting nightly on real results and
-      re-simulating only unplayed fixtures.</p>
+      <p class="next">Seuraavaksi: putki siirtyy ajastetuiksi
+      <b>Snowflake ML -ajoiksi</b> — malli päivittyy joka yö oikeilla
+      tuloksilla ja simuloi uudelleen vain pelaamattomat ottelut.</p>
     </div>
     <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowflake ML</div>
   </div>""")
@@ -388,32 +401,30 @@ def award_slide(t: dict, picks: list) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Predictions</div>
-      <div class="title">Who we predict<br>wins what</div>
+      <div class="kicker">Liiga 2026–27 · Ennusteet</div>
+      <div class="title">Kuka voittaa<br>mitäkin</div>
     </div>
     <div class="rule"></div>
     <div class="body">
       <div class="award">{rows}</div>
     </div>
-    <div class="foot">Projected over the {GAMES_PER_TEAM}-game season · same model as the table</div>
+    <div class="foot">Ennuste koko {GAMES_PER_TEAM} ottelun kaudelle · sama malli kuin taulukossa</div>
   </div>""")
 
 
-CAPTION = """I built a bottom-up model that projects the full Liiga 2026–27 table. Swipe for places 1–17, plus the method.
+CAPTION = """Rakensin mallin, joka ennustaa koko Liigan kauden 2026–27. Pyyhkäise sijat 1–17 ja menetelmä. 🏒
 
-It deliberately ignores last season's standings. It starts at player level: five seasons of goals/game per player, exponentially recency-weighted (0.80/yr), shrunk toward positional means with a 20-game prior, then converted across leagues with NHLe-derived factors for every import (SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35) calibrated on within-player movers.
+Malli ei katso viime kauden taulukkoa lainkaan. Se lähtee pelaajista: viiden kauden maalitahti jokaiselta pelaajalta jokaisessa rosterissa, tuorein kausi painottuen eniten, kutistettuna kohti pelipaikan keskiarvoa 20 ottelun priorilla. Ulkomailta tulevien tuotto muunnetaan Liiga-tasolle NHLe-pohjaisilla kertoimilla (SHL 1,20, AHL 1,15, Allsvenskan 0,75, Mestis 0,35), jotka on laskettu pelaajista jotka oikeasti tekivät sen siirron.
 
-Age is piecewise — 1.5%/yr from peak 26, plus a further 4%/yr past 33. That cliff was fitted on within-player year-over-year rate ratios (0.67 at 35–37, 0.40 at 38+) rather than assumed.
+Ikäkäyrä on kaksiosainen: 1,5 %/v huipusta 26 alkaen ja lisäksi 4 %/v 33 ikävuoden jälkeen. Tuo jyrkänne mitattiin omista tiedoista pelaajien vuosimuutoksista (0,67 ikävuosina 35–37, 0,40 38+), ei oletettu.
 
-Goaltending enters as a defensive multiplier, (1−SV)/(1−SVlg), regressed 25 games toward a prior. Games are Poisson with Dixon-Coles tie inflation calibrated to Liiga's observed 23% OT rate, blended 40/60 with margin-of-victory Elo (k=16), then run through 10,000 Monte Carlo seasons.
+Maalivahti tulee mukaan puolustuskertoimena (1−torj%)/(1−sarjan torj%), regressoituna 25 ottelun verran kohti priorii. Ottelut ovat Poisson-malli Dixon-Coles-korjauksella, joka kalibroitiin Liigan todelliseen 23 %:n jatkoaikaosuuteen, yhdistettynä 40/60 maalieron huomioivaan Eloon (k=16). Lopuksi koko kausi simuloidaan 10 000 kertaa.
 
-Leakage-free backtest over 2023–26: points MAE 12.65, game log-loss 0.672 against a 0.686 base rate, Spearman ρ 0.48. Tuned on log-loss and MAE — ρ is far too noisy at n=4.
+Vuotamaton testi kausilla 2023–26: pistevirhe keskimäärin 12,65, ottelutason log-loss 0,672 vs. 0,686 arvauksella.
 
-The last slide runs the same projections at player level: Blichfeld for points, Ojantakanen for goals, Bartosak for save percentage.
+Seuraavaksi putki siirtyy ajastetuiksi Snowflake ML -ajoiksi, jotka päivittävät Elon oikeilla tuloksilla joka yö ja simuloivat uudelleen vain pelaamattomat ottelut. Julkaisen myös sen, missä malli meni pieleen.
 
-Next: porting it to Snowflake ML jobs on a nightly schedule, refitting Elo on real results and re-simulating only unplayed fixtures. I'll post the error as it moves.
-
-#dataengineering #machinelearning #snowflake #analytics #sportsanalytics #montecarlo #liiga"""
+#jääkiekko #liiga #datascience #koneoppiminen #snowflake #analytiikka #montecarlo"""
 
 
 def _award_picks() -> list:
@@ -469,13 +480,13 @@ def _award_picks() -> list:
     tm = gteams.loc[gteams["nm"] == g["name"], "team"]
 
     return [
-        ("Most points", pts["name"], pts["name"].split()[-1], pts["team"],
-         f"{pts['P']:.0f}", "projected points"),
-        ("Most goals", goals["name"], goals["name"].split()[-1], goals["team"],
-         f"{goals['G']:.0f}", "projected goals"),
-        ("Best save %", g["name"], g["name"].split()[-1],
-         tm.iloc[0] if not tm.empty else "", f"{g['proj_save_pct']*100:.1f}",
-         "projected save %"),
+        ("Eniten pisteitä", pts["name"], pts["name"].split()[-1], pts["team"],
+         f"{pts['P']:.0f}", "ennustettua pistettä"),
+        ("Eniten maaleja", goals["name"], goals["name"].split()[-1], goals["team"],
+         f"{goals['G']:.0f}", "ennustettua maalia"),
+        ("Paras torjunta-%", g["name"], g["name"].split()[-1],
+         tm.iloc[0] if not tm.empty else "", f"{g['proj_save_pct']*100:.1f}".replace('.', ','),
+         "ennustettu torjunta-%"),
     ]
 
 
@@ -493,7 +504,7 @@ def top5_slide(t: dict, title: str, rows_in: list, foot: str) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Predictions</div>
+      <div class="kicker">Liiga 2026–27 · Ennusteet</div>
       <div class="title">{title}</div>
     </div>
     <div class="rule"></div>
@@ -546,18 +557,18 @@ def newcomers_slide(t: dict, picks: list) -> str:
         {face_or_crest(full, team)}
         <div class="nc-txt">
           <div class="nc-name">{name}</div>
-          <div class="nc-from">{team} &nbsp;·&nbsp; from {frm}</div>
+          <div class="nc-from">{team} &nbsp;·&nbsp; {frm}</div>
         </div>
       </div>""" for pos, full, name, team, frm, _num, _unit in picks)
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · First season in Liiga</div>
-      <div class="title">All-newcomer<br>starting six</div>
+      <div class="kicker">Liiga 2026–27 · Ensimmäinen Liiga-kausi</div>
+      <div class="title">Tulokkaiden<br>kokoonpano</div>
     </div>
     <div class="rule"></div>
     <div class="body newcomers">{rows}</div>
-    <div class="foot">None of these six has ever played a Liiga game</div>
+    <div class="foot">Kukaan näistä kuudesta ei ole pelannut yhtään Liiga-ottelua</div>
   </div>""")
 
 
@@ -615,11 +626,11 @@ def _newcomer_picks() -> list:
         groster, left_on="name", right_on="nm")
     if not g.empty:
         gr = g.nlargest(1, "proj_save_pct").iloc[0]
-        picks.append(("G", gr["name"], gr["name"].split()[-1], gr["team"],
+        picks.append(("MV", gr["name"], gr["name"].split()[-1], gr["team"],
                       gr["league"], f"{gr['proj_save_pct']*100:.1f}", "proj. save %"))
-    for pos, n in (("D", 2), ("F", 3)):
+    for pos, fi, n in (("D", "P", 2), ("F", "H", 3)):
         for _, r in new[new.position_group == pos].nlargest(n, "p").iterrows():
-            picks.append((pos, r["name"], r["name"].split()[-1], r["team"],
+            picks.append((fi, r["name"], r["name"].split()[-1], r["team"],
                           src.get(r["k"], "abroad"),
                           f"{r['p'] * GAMES_PER_TEAM:.0f}", "proj. points"))
     return picks
@@ -700,11 +711,11 @@ def build() -> None:
     picks = _award_picks()
     slides.append(award_slide(themes[4], picks))
     f5, d5, g5 = _top5_lists()
-    pf = f"Ranked by projected points over {GAMES_PER_TEAM} games"
-    slides.append(top5_slide(themes[5], "Top five<br>forwards", f5, pf))
-    slides.append(top5_slide(themes[6], "Top five<br>defencemen", d5, pf))
-    slides.append(top5_slide(themes[7], "Top five<br>goalies", g5,
-                             "Ranked by projected save % · min. 60 career games on file"))
+    pf = f"Järjestys ennustettujen pisteiden mukaan, {GAMES_PER_TEAM} ottelua"
+    slides.append(top5_slide(themes[5], "Viisi parasta<br>hyökkääjää", f5, pf))
+    slides.append(top5_slide(themes[6], "Viisi parasta<br>puolustajaa", d5, pf))
+    slides.append(top5_slide(themes[7], "Viisi parasta<br>maalivahtia", g5,
+                             "Järjestys ennustetun torjunta-%:n mukaan · vähintään 60 uraottelua"))
     slides.append(newcomers_slide(themes[8], _newcomer_picks()))
 
     for i, html in enumerate(slides, 1):
@@ -726,15 +737,15 @@ def build() -> None:
     (OUT / "index.html").write_text(f"""<!doctype html><html><head>
 <meta charset="utf-8"><title>Liiga 2026-27 — carousel</title><style>
  body{{font-family:{BODY_F};background:#0e0e0e;color:#EEE;margin:0;padding:40px}}
- h1{{font-family:{HEAD_F};color:{LIME};font-size:24px;text-transform:uppercase;
-    letter-spacing:2px;border-bottom:4px solid {LIME};padding-bottom:18px}}
+ h1{{font-family:{HEAD_F};color:{GOLD};font-size:24px;text-transform:uppercase;
+    letter-spacing:2px;border-bottom:4px solid {GOLD};padding-bottom:18px}}
  p.lead{{max-width:900px;line-height:1.6;font-size:14px;color:#BBB}}
  .grid{{display:flex;flex-wrap:wrap;gap:20px;margin:30px 0}}
  figure{{margin:0}} figure img{{width:320px;display:block}}
  textarea{{width:100%;max-width:900px;height:360px;font-family:{BODY_F};
    background:#1b1b1b;color:#EEE;font-size:13px;padding:14px;border:1px solid #333;
    line-height:1.5}}
- code{{background:#2a2a2a;color:{LIME};padding:2px 6px}}
+ code{{background:#2a2a2a;color:{GOLD};padding:2px 6px}}
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five {W}×{H} images. Upload <code>slide_1.png</code> …
@@ -742,7 +753,7 @@ def build() -> None:
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">PDF bundles</h2>
-<p class="lead">{"".join(f'<a style="color:{LIME}" href="{f}">{f}</a> — {l} ({len(o)} pages)<br>' for f, l, o in PDF_BUNDLES)}
+<p class="lead">{"".join(f'<a style="color:{GOLD}" href="{f}">{f}</a> — {l} ({len(o)} pages)<br>' for f, l, o in PDF_BUNDLES)}
 Each bundle ends with <em>How it is built</em>, so either can be sent on its own.</p>
 <h2 style="font-size:18px">Caption</h2>
 <textarea readonly>{CAPTION}</textarea>

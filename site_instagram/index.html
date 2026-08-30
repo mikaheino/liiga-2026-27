@@ -1,15 +1,15 @@
 <!doctype html><html><head>
 <meta charset="utf-8"><title>Liiga 2026-27 — carousel</title><style>
- body{font-family:"GT America",Arial,Helvetica,sans-serif;background:#0e0e0e;color:#EEE;margin:0;padding:40px}
- h1{font-family:"GT America Expanded","Arial Black",Arial,sans-serif;color:#e3ff87;font-size:24px;text-transform:uppercase;
-    letter-spacing:2px;border-bottom:4px solid #e3ff87;padding-bottom:18px}
+ body{font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;background:#0e0e0e;color:#EEE;margin:0;padding:40px}
+ h1{font-family:"Arial Black","Helvetica Neue",Arial,sans-serif;color:#d9b654;font-size:24px;text-transform:uppercase;
+    letter-spacing:2px;border-bottom:4px solid #d9b654;padding-bottom:18px}
  p.lead{max-width:900px;line-height:1.6;font-size:14px;color:#BBB}
  .grid{display:flex;flex-wrap:wrap;gap:20px;margin:30px 0}
  figure{margin:0} figure img{width:320px;display:block}
- textarea{width:100%;max-width:900px;height:360px;font-family:"GT America",Arial,Helvetica,sans-serif;
+ textarea{width:100%;max-width:900px;height:360px;font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;
    background:#1b1b1b;color:#EEE;font-size:13px;padding:14px;border:1px solid #333;
    line-height:1.5}
- code{background:#2a2a2a;color:#e3ff87;padding:2px 6px}
+ code{background:#2a2a2a;color:#d9b654;padding:2px 6px}
 </style></head><body>
 <h1>Liiga 2026-27 — carousel</h1>
 <p class="lead">Five 1080×1350 images. Upload <code>slide_1.png</code> …
@@ -17,22 +17,20 @@
 <code>python scripts/build_instagram.py</code>.</p>
 <div class="grid"><figure><img src="slide_1.png"></figure><figure><img src="slide_2.png"></figure><figure><img src="slide_3.png"></figure><figure><img src="slide_4.png"></figure><figure><img src="slide_5.png"></figure><figure><img src="slide_6.png"></figure><figure><img src="slide_7.png"></figure><figure><img src="slide_8.png"></figure><figure><img src="slide_9.png"></figure></div>
 <h2 style="font-size:18px">PDF bundles</h2>
-<p class="lead"><a style="color:#e3ff87" href="liiga-2026-27-standings.pdf">liiga-2026-27-standings.pdf</a> — Predicted table (4 pages)<br><a style="color:#e3ff87" href="liiga-2026-27-players.pdf">liiga-2026-27-players.pdf</a> — Player predictions (6 pages)<br>
+<p class="lead"><a style="color:#d9b654" href="liiga-2026-27-standings.pdf">liiga-2026-27-standings.pdf</a> — Predicted table (4 pages)<br><a style="color:#d9b654" href="liiga-2026-27-players.pdf">liiga-2026-27-players.pdf</a> — Player predictions (6 pages)<br>
 Each bundle ends with <em>How it is built</em>, so either can be sent on its own.</p>
 <h2 style="font-size:18px">Caption</h2>
-<textarea readonly>I built a bottom-up model that projects the full Liiga 2026–27 table. Swipe for places 1–17, plus the method.
+<textarea readonly>Rakensin mallin, joka ennustaa koko Liigan kauden 2026–27. Pyyhkäise sijat 1–17 ja menetelmä. 🏒
 
-It deliberately ignores last season's standings. It starts at player level: five seasons of goals/game per player, exponentially recency-weighted (0.80/yr), shrunk toward positional means with a 20-game prior, then converted across leagues with NHLe-derived factors for every import (SHL 1.20, AHL 1.15, Allsvenskan 0.75, Mestis 0.35) calibrated on within-player movers.
+Malli ei katso viime kauden taulukkoa lainkaan. Se lähtee pelaajista: viiden kauden maalitahti jokaiselta pelaajalta jokaisessa rosterissa, tuorein kausi painottuen eniten, kutistettuna kohti pelipaikan keskiarvoa 20 ottelun priorilla. Ulkomailta tulevien tuotto muunnetaan Liiga-tasolle NHLe-pohjaisilla kertoimilla (SHL 1,20, AHL 1,15, Allsvenskan 0,75, Mestis 0,35), jotka on laskettu pelaajista jotka oikeasti tekivät sen siirron.
 
-Age is piecewise — 1.5%/yr from peak 26, plus a further 4%/yr past 33. That cliff was fitted on within-player year-over-year rate ratios (0.67 at 35–37, 0.40 at 38+) rather than assumed.
+Ikäkäyrä on kaksiosainen: 1,5 %/v huipusta 26 alkaen ja lisäksi 4 %/v 33 ikävuoden jälkeen. Tuo jyrkänne mitattiin omista tiedoista pelaajien vuosimuutoksista (0,67 ikävuosina 35–37, 0,40 38+), ei oletettu.
 
-Goaltending enters as a defensive multiplier, (1−SV)/(1−SVlg), regressed 25 games toward a prior. Games are Poisson with Dixon-Coles tie inflation calibrated to Liiga's observed 23% OT rate, blended 40/60 with margin-of-victory Elo (k=16), then run through 10,000 Monte Carlo seasons.
+Maalivahti tulee mukaan puolustuskertoimena (1−torj%)/(1−sarjan torj%), regressoituna 25 ottelun verran kohti priorii. Ottelut ovat Poisson-malli Dixon-Coles-korjauksella, joka kalibroitiin Liigan todelliseen 23 %:n jatkoaikaosuuteen, yhdistettynä 40/60 maalieron huomioivaan Eloon (k=16). Lopuksi koko kausi simuloidaan 10 000 kertaa.
 
-Leakage-free backtest over 2023–26: points MAE 12.65, game log-loss 0.672 against a 0.686 base rate, Spearman ρ 0.48. Tuned on log-loss and MAE — ρ is far too noisy at n=4.
+Vuotamaton testi kausilla 2023–26: pistevirhe keskimäärin 12,65, ottelutason log-loss 0,672 vs. 0,686 arvauksella.
 
-The last slide runs the same projections at player level: Blichfeld for points, Ojantakanen for goals, Bartosak for save percentage.
+Seuraavaksi putki siirtyy ajastetuiksi Snowflake ML -ajoiksi, jotka päivittävät Elon oikeilla tuloksilla joka yö ja simuloivat uudelleen vain pelaamattomat ottelut. Julkaisen myös sen, missä malli meni pieleen.
 
-Next: porting it to Snowflake ML jobs on a nightly schedule, refitting Elo on real results and re-simulating only unplayed fixtures. I'll post the error as it moves.
-
-#dataengineering #machinelearning #snowflake #analytics #sportsanalytics #montecarlo #liiga</textarea>
+#jääkiekko #liiga #datascience #koneoppiminen #snowflake #analytiikka #montecarlo</textarea>
 </body></html>
