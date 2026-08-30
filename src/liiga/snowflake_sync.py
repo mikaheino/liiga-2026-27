@@ -29,8 +29,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import duckdb
-
 from .config import load_config, resolve_path
 
 # RAW = ingested or hand-collected source data; MODEL = anything the pipeline
@@ -148,6 +146,8 @@ def _load(table: str, parquet: Path, schema: str, c: dict) -> None:
 
 
 def local_tables() -> list[str]:
+    import duckdb
+
     path = resolve_path(load_config()["database"]["duckdb_path"])
     con = duckdb.connect(str(path), read_only=True)
     try:
@@ -201,6 +201,8 @@ def sync_all(tables: list[str] | None = None, *, strict: bool = False,
         if not quiet:
             print("snowflake sync: disabled (snowflake_sync.enabled = false)")
         return {}
+
+    import duckdb
 
     names = tables or local_tables()
     path = resolve_path(load_config()["database"]["duckdb_path"])
