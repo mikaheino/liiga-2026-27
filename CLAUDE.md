@@ -136,6 +136,20 @@ re-query pointlessly.
 This is a Snowflake-account app, not a public one; the never-publish rule
 above is about the claude.ai artifact and still stands.
 
+## In-season: prediction_games is the evidence table
+
+`persist()` writes **`prediction_games`** — one row per unplayed game per
+daily run, carrying the per-game probabilities and a `snapshot_date`. It
+exists because those probabilities are unrecoverable after kick-off: every
+in-season measurement of the model (log-loss, Brier, calibration) depends on
+having captured them beforehand. Do not "clean it up" — it is append-only
+history, ~50k rows over a season.
+
+Score a game against the last snapshot before puck drop; the join is written
+out in `docs/model_improvements_in_season.md`, which also holds the ordered
+list of what to improve and when. Measure after ~20 games, tune only after
+the season is complete (AGENTS.md §10: log-loss and MAE, never ρ).
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):

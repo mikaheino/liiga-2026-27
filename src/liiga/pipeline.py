@@ -29,6 +29,16 @@ POISSON_WEIGHT = 0.4      # keep in sync with scripts/refresh_standings.py
 HISTORY_COLUMNS = ["snapshot_date", "games_played", "proj_rank", "team",
                    "mean_points", "p_title", "p_top_playoff"]
 
+# What the model said about each individual game, before it was played.
+# Only recoverable ahead of time: once a game is over there is no way back to
+# the probabilities that were on offer for it, so every in-season measurement
+# of the model -- log-loss, Brier, calibration -- depends on capturing this
+# now. The season standings in prediction_history are the output; this is the
+# evidence.
+GAME_COLUMNS = ["snapshot_date", "game_id", "home_team", "away_team",
+                "p_home_reg", "p_away_reg", "p_overtime", "p_home_ot_win",
+                "p_home_win"]
+
 
 def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:
     """Ensemble probabilities for the REMAINING schedule + banked points."""
@@ -108,13 +118,31 @@ def forecast(con=None, cfg=None) -> dict:
     hist.insert(0, "snapshot_date", today)
     hist.insert(1, "games_played", meta["n_played"])
 
+    games = pred.copy()
+    if not games.empty:
+        games.insert(0, "snapshot_date", today)
+    games = games.reindex(columns=GAME_COLUMNS)
+
     return {"standings": standings, "position": pos, "meta": meta_df,
-            "history": hist, "today": today, "n_played": meta["n_played"],
-            "n_total": meta["n_total"], "crowd_weight": crowd_weight}
+            "history": hist, "games": games, "today": today,
+            "n_played": meta["n_played"], "n_total": meta["n_total"],
+            "crowd_weight": crowd_weight}
+
+
+def _replace_today(con, table: str, columns: list[str], today: str,
+                   fresh: pd.DataFrame) -> pd.DataFrame:
+    """Existing rows minus today's, plus today's -- idempotent per day."""
+    try:
+        old = query_df(con, f"SELECT * FROM {table}")
+        old = old[[c for c in columns if c in old.columns]]
+        old = old[old["snapshot_date"].astype(str) != today]
+    except Exception:                   # noqa: BLE001 -- first ever run
+        old = pd.DataFrame(columns=columns)
+    return pd.concat([old, fresh[columns]], ignore_index=True)
 
 
 def persist(res: dict, con=None) -> None:
-    """Write the forecast to the four output tables, on either backend.
+    """Write the forecast to the five output tables, on either backend.
 
     prediction_history is append-with-replace-today rather than DELETE +
     INSERT: the old version used DuckDB's own register()/execute() API, which
@@ -125,19 +153,16 @@ def persist(res: dict, con=None) -> None:
     own = con is None
     con = con or get_connection()
     try:
-        try:
-            old = query_df(con, "SELECT * FROM prediction_history")
-            old = old[[c for c in HISTORY_COLUMNS if c in old.columns]]
-            old = old[old["snapshot_date"].astype(str) != res["today"]]
-        except Exception:               # noqa: BLE001 -- first ever run
-            old = pd.DataFrame(columns=HISTORY_COLUMNS)
-        history = pd.concat([old, res["history"][HISTORY_COLUMNS]],
-                            ignore_index=True)
+        history = _replace_today(con, "prediction_history", HISTORY_COLUMNS,
+                                 res["today"], res["history"])
+        games = _replace_today(con, "prediction_games", GAME_COLUMNS,
+                               res["today"], res["games"])
 
         register_df(con, "standings_2026_27", res["standings"])
         register_df(con, "position_distribution_2026_27", res["position"])
         register_df(con, "prediction_meta", res["meta"])
         register_df(con, "prediction_history", history)
+        register_df(con, "prediction_games", games)
     finally:
         if own:
             con.close()
