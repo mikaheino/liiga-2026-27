@@ -194,7 +194,9 @@ def css(t: dict) -> str:
            filter:drop-shadow(0 3px 0 rgba(0,0,0,0.35)); }}
   .rule {{ height:4px; margin:26px 64px 0;
           background:linear-gradient(90deg,{GOLD} 0%,{GOLD_LO} 70%,transparent 100%); }}
-  .body {{ flex:1; padding:26px 64px 0; }}
+  .body {{ flex:1; padding:26px 64px 0; display:flex; flex-direction:column; }}
+  /* method slide only: pin the two callouts to the bottom of the body */
+  .boxes {{ margin-top:auto; padding-bottom:10px; }}
   .foot {{ padding:20px 64px 42px; font-size:19px; color:{t['muted']}; }}
 
   /* ---- standings ---- */
@@ -322,8 +324,7 @@ def how_slide(t: dict) -> str:
     steps = [
         ("Kaikki lähtee pelaajista, ei viime kauden taulukosta",
          "Jokaisesta pelaajasta on kerätty viiden kauden datasetti — vain "
-         "sellaisia tilastoja, jotka löytyvät EliteProspectsista. Ei "
-         "taikakaavoja."),
+         "sellaisia tilastoja, jotka löytyvät EliteProspectsista."),
         ("Myös ne, jotka eivät pelanneet viime kautta Liigassa",
          "Turunen ja Bryggman tulevat SHL:stä, Tim Juel on kokonaan uusi "
          "mies. Jokaisen tulokkaan tilastot on etsitty erikseen — muuten "
@@ -334,8 +335,7 @@ def how_slide(t: dict) -> str:
          "pelaajista, jotka oikeasti tekivät sen siirron."),
         ("Ikä painaa pelaajan arvoa alas",
          "Jos ikä alkaa painaa, se painaa. Tuotto putoaa <b>0,67</b>:ään "
-         "35–37-vuotiaana ja <b>0,40</b>:een 38+ (case Harri Pesonen). "
-         "Mitattu, ei arvattu."),
+         "35–37-vuotiaana ja <b>0,40</b>:een 38+."),
         ("Joukkueen maalipotentiaali on se mittari",
          "SaiPa menetti suoralta kädeltä yli <b>90 maalia</b> — Fortier, "
          "Nikkanen, Kalapudas, Kivenmäki, Kuusla — eikä se voi olla "
@@ -359,7 +359,8 @@ def how_slide(t: dict) -> str:
     <div class="rule"></div>
     <div class="body">
       {items}
-      <div class="callout">
+      <div class="boxes">
+        <div class="callout">
         <b>Ottelumalli</b>
         <span>Maalit arvotaan <b>Poisson</b>-mallista, λ = sarjan ka. ×
         hyökkäys × vastustajan puolustus × kotietu. <b>Dixon-Coles</b>-korjaus
@@ -372,11 +373,8 @@ def how_slide(t: dict) -> str:
         ennustettiin vain sitä edeltävällä datalla: pistevirhe keskimäärin
         <b>{MAE_FI}</b>, ottelutason log-loss <b>0,672</b> vs. <b>0,686</b>
         pelkällä arvauksella, taulukon <b>Spearman ρ 0,48</b>.</span>
+        </div>
       </div>
-      <p class="next">Tämä on vasta ennakko. Jatkossa hilavitkutin päivittyy
-      toteuman mukaan ajastetuissa <b>Snowflake ML -ajoissa</b>: joka yö
-      oikeat tulokset sisään ja uusi simulointi vain pelaamattomista
-      otteluista. Ja kyllä, Snowflakella voi tehdä ML:ää.</p>
     </div>
     <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowflake ML</div>
   </div>""")

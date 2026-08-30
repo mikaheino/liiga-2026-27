@@ -17,7 +17,9 @@
            filter:drop-shadow(0 3px 0 rgba(0,0,0,0.35)); }
   .rule { height:4px; margin:26px 64px 0;
           background:linear-gradient(90deg,#d9b654 0%,#a9822c 70%,transparent 100%); }
-  .body { flex:1; padding:26px 64px 0; }
+  .body { flex:1; padding:26px 64px 0; display:flex; flex-direction:column; }
+  /* method slide only: pin the two callouts to the bottom of the body */
+  .boxes { margin-top:auto; padding-bottom:10px; }
   .foot { padding:20px 64px 42px; font-size:19px; color:#a89880; }
 
   /* ---- standings ---- */
