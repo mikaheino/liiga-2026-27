@@ -16,9 +16,16 @@ Account `uqb62234`, connection profile `CONTAINER_SERVICES`.
 | `LIIGA.CODE.LOAD_STAGE` | Parquet landing zone used by the migration script |
 | `LIIGA_GITHUB_API` | API integration, prefix `https://github.com/mikaheino` |
 
-`scripts/migrate_to_snowflake.py` copies all 21 DuckDB tables (52,571 rows)
-via Parquet through an internal stage. It is idempotent (`CREATE OR REPLACE`),
-so re-running it re-lands the current local state.
+`src/liiga/snowflake_sync.py` copies all 21 DuckDB tables (52,571 rows) via
+Parquet through an internal stage. It is idempotent (`CREATE OR REPLACE`), so
+re-running it re-lands the current local state.
+
+**This is an ongoing dev -> prod publish, not a one-time migration.** Local
+DuckDB is development; Snowflake is production. `daily_update.py` and
+`refresh_standings.py` call `sync_all()` as their last step, and
+`scripts/sync_to_snowflake.py` is the manual entry point. Inside the pipeline
+the publish is best-effort (`strict=False`) so a prod failure cannot fail a
+dev run; run by hand it is strict and exits non-zero.
 
 Two things that are easy to get wrong and are handled in that script:
 
@@ -32,7 +39,8 @@ Two things that are easy to get wrong and are handled in that script:
   casts to BIGINT.
 
 **Auth caveat.** `CONTAINER_SERVICES` uses `OAUTH_AUTHORIZATION_CODE`.
-The `snow` CLI holds a cached token and works non-interactively;
+The `snow` CLI holds a cached token and works non-interactively -- which is
+why `snowflake_sync` shells out to it rather than using `liiga.db`;
 snowflake-connector-python needs `keyring` (now in the `snowflake` extra) plus
 **one** interactive browser login before it caches its own token. Until that
 login happens, `database.target: snowflake` blocks waiting on a browser. A

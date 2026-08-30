@@ -24,6 +24,7 @@ from liiga.ensemble import ensemble_game_probs
 from liiga.model import predict_games, _ratings_as_of, calibrate_ties
 from liiga.simulate import simulate
 from liiga.team_strength import build_team_strength
+from liiga.snowflake_sync import sync_all
 
 # 0.4 Poisson + 0.6 MOV-Elo: best game logloss (0.672) and points MAE (12.7)
 # on the 2023-2026 backtest after tie calibration + k=16 margin-of-victory Elo.
@@ -49,7 +50,7 @@ def _build_ensemble_pred(con, cfg):
     return ensemble_game_probs(poisson_pred, elo_pred, poisson_weight=_POISSON_WEIGHT)
 
 
-def main() -> None:
+def main(sync: bool = True) -> None:
     cfg = load_config()
     crowd_weight = cfg.get("crowd", {}).get("crowd_weight", 0.0)
 
@@ -98,6 +99,16 @@ def main() -> None:
         cwd.rename(columns={"mean_rank": "crowd_mean_rank", "rank_stdev": "crowd_stdev"}, inplace=True)
         print(cwd.to_string(index=False))
 
+    # Publish local (dev) state to Snowflake (prod); best-effort, see
+    # liiga.snowflake_sync -- a failed publish never fails the local run.
+    if sync:
+        sync_all(quiet=True)
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--no-sync", action="store_true",
+                    help="skip the Snowflake publish (local-only run)")
+    main(sync=not ap.parse_args().no_sync)

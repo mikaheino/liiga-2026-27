@@ -29,6 +29,21 @@ database:
     database_env: SNOWFLAKE_DATABASE
     schema_env: SNOWFLAKE_SCHEMA
 
+# --- Publishing local state to Snowflake (dev -> prod) ----------------------
+# Local DuckDB is development; Snowflake is production. daily_update.py
+# publishes here at the end of every run. Set enabled: false to work purely
+# offline -- the local pipeline is unaffected either way.
+snowflake_sync:
+  enabled: true
+  connection: CONTAINER_SERVICES   # profile in ~/.snowflake/connections.toml
+  role: ACCOUNTADMIN
+  warehouse: LIIGA_WH
+  database: LIIGA
+  raw_schema: RAW                  # ingested / hand-collected sources
+  model_schema: MODEL              # everything the pipeline derives
+  code_schema: CODE                # git repo, stage, file format
+  git_repo: LIIGA_REPO
+
 # --- Data ingestion ---------------------------------------------------------
 ingestion:
   api_base: "https://www.liiga.fi/api/v2"

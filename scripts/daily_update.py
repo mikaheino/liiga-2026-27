@@ -37,6 +37,7 @@ from liiga.ensemble import ensemble_game_probs
 from liiga.ingest import fetch_season, ingest_all
 from liiga.model import predict_games, calibrate_ties
 from liiga.simulate import simulate, banked_points
+from liiga.snowflake_sync import sync_all
 from liiga.team_strength import build_team_strength
 from liiga.transform import run_transforms
 
@@ -81,7 +82,7 @@ def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:
     return pred, banked, meta
 
 
-def main() -> None:
+def main(sync: bool = True) -> None:
     cfg = load_config()
     target = cfg["ingestion"]["target_season"]
 
@@ -144,6 +145,17 @@ def main() -> None:
           f"crowd weight {crowd_weight:.2f}")
     build_site_main()
 
+    # Publish local (dev) state to Snowflake (prod). Best-effort by design:
+    # strict=False means an expired token or an offline warehouse leaves the
+    # local run -- results, site, DuckDB -- completely intact.
+    if sync:
+        sync_all(quiet=True)
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--no-sync", action="store_true",
+                    help="skip the Snowflake publish (local-only run)")
+    main(sync=not ap.parse_args().no_sync)

@@ -78,11 +78,28 @@ All 21 DuckDB tables now also live in Snowflake account `uqb62234`:
 The repo is mirrored as a Snowflake git repository at
 `LIIGA.CODE.LIIGA_REPO` (branch `main`).
 
+**Local DuckDB is dev, Snowflake is prod.** Keep working locally exactly as
+before; the publish happens on the way out. `daily_update.py` and
+`refresh_standings.py` both push to Snowflake at the end of every run, so an
+ordinary roster batch (step 7 below) lands in prod with no extra command.
+
 ```bash
-python scripts/migrate_to_snowflake.py --dry-run   # show routing plan
-python scripts/migrate_to_snowflake.py             # re-land all tables
-snow sql -c CONTAINER_SERVICES --query "ALTER GIT REPOSITORY LIIGA.CODE.LIIGA_REPO FETCH"
+python scripts/refresh_standings.py            # local run, then publishes
+python scripts/refresh_standings.py --no-sync  # local only
+python scripts/sync_to_snowflake.py --dry-run  # show routing plan
+python scripts/sync_to_snowflake.py -t player_rates   # publish one table
+python scripts/sync_to_snowflake.py --code     # + FETCH the git repo
 ```
+
+The publish is **best-effort inside the pipeline** (`strict=False`): an
+expired token, an offline warehouse or a missing `snow` CLI prints a warning
+and leaves the local run — results, site, DuckDB — untouched. Run
+`sync_to_snowflake.py` by hand and it fails loudly instead (exit 1), because
+then the publish *is* the task. Turn it off entirely with
+`snowflake_sync.enabled: false` in config.yaml.
+
+Mechanics and the two traps (column case, HUGEINT) live in
+`src/liiga/snowflake_sync.py`; don't re-derive them.
 
 The model still runs **locally** — this was a data move, not a compute move.
 `database.target` is still `duckdb`; flipping it to `snowflake` needs one
