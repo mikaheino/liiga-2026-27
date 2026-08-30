@@ -6,7 +6,7 @@ SELECT
     game_id,
     season,
     game_week,
-    start                               AS start_ts,
+    start_time                          AS start_ts,
     started,
     ended,
     home_team,

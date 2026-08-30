@@ -79,7 +79,7 @@ def _flatten_games(games: list[dict], season: int) -> pd.DataFrame:
                 "season": g.get("season", season),
                 "serie": g.get("serie"),
                 "game_week": g.get("gameWeek"),
-                "start": g.get("start"),
+                "start_time": g.get("start"),
                 "started": bool(g.get("started")),
                 "ended": bool(g.get("ended")),
                 "home_team": home.get("teamName"),
