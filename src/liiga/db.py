@@ -19,6 +19,32 @@ import pandas as pd
 from .config import load_config, resolve_path
 
 
+class ActiveSession:
+    """The Snowpark session Snowflake hands to code running inside it.
+
+    Wrapped rather than returned bare for one reason: the pipeline closes its
+    connection in `finally` blocks, and closing the *active* session would
+    tear down the notebook or stored procedure that is running the code. So
+    close() is deliberately a no-op -- Snowflake owns this session's lifetime,
+    we are only borrowing it.
+    """
+
+    def __init__(self, session):
+        self.session = session
+
+    def close(self) -> None:      # noqa: D401 -- intentionally does nothing
+        pass
+
+
+def active_session():
+    """The caller's Snowpark session, or None when not running in Snowflake."""
+    try:
+        from snowflake.snowpark.context import get_active_session
+        return get_active_session()
+    except Exception:
+        return None
+
+
 def get_connection(target: str | None = None):
     """Return a live DB connection for the configured (or given) target.
 
@@ -36,6 +62,14 @@ def get_connection(target: str | None = None):
         return duckdb.connect(str(path))
 
     if target == "snowflake":
+        # Running INSIDE Snowflake (notebook / stored procedure): reuse the
+        # session we were handed. No credentials, no network hop, and it is
+        # the only thing that works there -- the connector cannot dial back
+        # into the account it is already running in.
+        session = active_session()
+        if session is not None:
+            return ActiveSession(session)
+
         import snowflake.connector
 
         sf = db["snowflake"]
@@ -78,8 +112,13 @@ def query_df(con, sql: str, params: list | None = None) -> pd.DataFrame:
     """Run a query and return a pandas DataFrame, backend-agnostic.
 
     DuckDB's Python API has .df(); the Snowflake connector cursor exposes
-    .fetch_pandas_all(). This helper hides that difference.
+    .fetch_pandas_all(); a Snowpark session has .sql().to_pandas(). This
+    helper hides all three.
     """
+    if isinstance(con, ActiveSession):
+        df = con.session.sql(sql).to_pandas()
+        df.columns = [c.lower() for c in df.columns]
+        return df
     if _is_duckdb(con):
         rel = con.execute(sql, params) if params else con.execute(sql)
         return rel.df()
@@ -99,6 +138,9 @@ def query_df(con, sql: str, params: list | None = None) -> pd.DataFrame:
 
 def execute(con, sql: str, params: list | None = None) -> None:
     """Run a statement that returns no rows (DDL / INSERT)."""
+    if isinstance(con, ActiveSession):
+        con.session.sql(sql).collect()
+        return
     if _is_duckdb(con):
         con.execute(sql, params) if params else con.execute(sql)
         return
@@ -115,6 +157,22 @@ def register_df(con, name: str, df: pd.DataFrame) -> None:
     On DuckDB we register the frame and CREATE TABLE AS (fast, zero-copy-ish).
     On Snowflake we use write_pandas.
     """
+    if isinstance(con, ActiveSession):
+        # Upper-case the columns for the same reason snowflake_sync does:
+        # lower-case names would become quoted, case-sensitive identifiers
+        # and the portable SQL elsewhere would stop resolving them.
+        from .snowflake_sync import RAW_TABLES, _cfg
+
+        cfg = _cfg()
+        out = df.copy()
+        out.columns = [c.upper() for c in out.columns]
+        # Route to the same schema the local publish uses, so a table means
+        # the same thing whichever side wrote it.
+        schema = cfg["raw_schema"] if name in RAW_TABLES else cfg["model_schema"]
+        con.session.write_pandas(out, name.upper(), auto_create_table=True,
+                                 overwrite=True,
+                                 database=cfg["database"], schema=schema)
+        return
     if _is_duckdb(con):
         con.register(f"_tmp_{name}", df)
         con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM _tmp_{name}')
