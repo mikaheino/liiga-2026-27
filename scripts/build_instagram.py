@@ -227,21 +227,21 @@ def css(t: dict) -> str:
   .ptsr {{ font-size:21px; color:{t['accent']}; margin-top:5px; opacity:0.85; }}
 
   /* ---- technical slides ---- */
-  .step {{ display:flex; gap:20px; margin-bottom:15px; align-items:flex-start; }}
-  .num {{ min-width:48px; height:48px; background:{CREAM}; color:{INK};
-         font-family:{HEAD_F}; font-size:24px; display:flex;
+  .step {{ display:flex; gap:18px; margin-bottom:11px; align-items:flex-start; }}
+  .num {{ min-width:42px; height:42px; background:{CREAM}; color:{INK};
+         font-family:{HEAD_F}; font-size:21px; display:flex;
          align-items:center; justify-content:center; }}
   /* DIRECT child only -- inline <b> inside the description must stay inline,
      otherwise every highlighted parameter becomes its own block heading */
-  .txt > b {{ font-family:{HEAD_F}; font-size:26px; display:block; color:{t['fg']};
-             margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }}
-  .txt span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.88; }}
+  .txt > b {{ font-family:{HEAD_F}; font-size:23px; display:block; color:{t['fg']};
+             margin-bottom:4px; text-transform:uppercase; letter-spacing:-0.3px; }}
+  .txt span {{ font-size:18px; line-height:1.34; color:{t['fg']}; opacity:0.88; }}
   .txt span b, .callout span b {{ color:{t['accent']}; opacity:1; }}
   .callout {{ background:{t['panel']}; border-left:8px solid {t['bar']};
-             padding:18px 26px; margin-top:4px; }}
-  .callout > b {{ font-family:{HEAD_F}; font-size:25px; display:block;
-                 margin-bottom:10px; color:{t['accent']}; text-transform:uppercase; }}
-  .callout span {{ font-size:20px; line-height:1.38; color:{t['fg']}; opacity:0.9; }}
+             padding:14px 22px; margin-top:2px; }}
+  .callout > b {{ font-family:{HEAD_F}; font-size:22px; display:block;
+                 margin-bottom:7px; color:{t['accent']}; text-transform:uppercase; }}
+  .callout span {{ font-size:18px; line-height:1.34; color:{t['fg']}; opacity:0.9; }}
   /* Circular avatar used on the player slides: a headshot fills it, a crest
      is letterboxed inside it. Faces are NOT half-clipped like the standings
      crests -- half a face reads as a mistake. */
@@ -283,7 +283,7 @@ def css(t: dict) -> str:
   .aw-unit {{ font-size:19px; color:{t['muted']}; text-align:right;
              margin-top:9px; }}
   .big {{ font-size:29px; line-height:1.4; color:{t['fg']}; }}
-  .next {{ font-size:21px; line-height:1.4; margin-top:16px; color:{t['fg']};
+  .next {{ font-size:18px; line-height:1.38; margin-top:12px; color:{t['fg']};
           opacity:0.8; }}
   .next b {{ color:{t['accent']}; opacity:1; }}
 """
@@ -320,25 +320,31 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
 
 def how_slide(t: dict) -> str:
     steps = [
-        ("Rakennettu pelaajista, ei viime kaudesta",
-         "Jokaisen joukkueen jokaiselta pelaajalta viiden kauden maalitahti, "
-         "tuorein kausi painaa eniten."),
-        ("Ulkomaiset sarjat muunnettu, ei arvattu",
-         "Tulokkaan pistetahti skaalataan Liiga-tasolle — <b>SHL 1,20, "
-         "AHL 1,15, Allsvenskan 0,75, Mestis 0,35</b> — kertoimet on laskettu "
+        ("Kaikki lähtee pelaajista, ei viime kauden taulukosta",
+         "Jokaisesta pelaajasta on kerätty viiden kauden datasetti — vain "
+         "sellaisia tilastoja, jotka löytyvät EliteProspectsista. Ei "
+         "taikakaavoja."),
+        ("Myös ne, jotka eivät pelanneet viime kautta Liigassa",
+         "Turunen ja Bryggman tulevat SHL:stä, Tim Juel on kokonaan uusi "
+         "mies. Jokaisen tulokkaan tilastot on etsitty erikseen — muuten "
+         "heidät laskettaisiin nolliksi."),
+        ("Maali SHL:ssä on kovempi kuin maali Liigassa",
+         "Siksi jokaisella sarjalla on oma painonsa: <b>SHL 1,20, AHL 1,15, "
+         "Allsvenskan 0,75, Mestis 0,35</b>. Kertoimet on laskettu "
          "pelaajista, jotka oikeasti tekivät sen siirron."),
-        ("Ikä on jyrkänne, ei loiva mäki",
-         "Tuotto pysyy noin 28-vuotiaaksi ja romahtaa sitten: <b>0,67</b> "
-         "edellisestä tahdista 35–37-vuotiaana ja <b>0,40</b> 38+ -vuotiaana. "
-         "Mitattu, ei oletettu."),
-        ("Maalivahti kantaa puolustuksen",
-         "Joukkueen ennustettu torjuntaprosentti muuttuu päästettyjen maalien "
-         "kertoimeksi, ja sitä vedetään sarjan keskiarvoa kohti, ettei yksi "
-         "kuuma 20 ottelun jakso vääristä sitä."),
-        ("Kaksi mallia, sitten 10 000 kautta",
-         "Maalintekomalli ja joukkuevoimaluku äänestävät jokaisesta ottelusta "
-         "suhteessa <b>40/60</b>. Koko sarjaohjelma simuloidaan sitten "
-         "<b>10 000</b> kertaa."),
+        ("Ikä painaa pelaajan arvoa alas",
+         "Jos ikä alkaa painaa, se painaa. Tuotto putoaa <b>0,67</b>:ään "
+         "35–37-vuotiaana ja <b>0,40</b>:een 38+ (case Harri Pesonen). "
+         "Mitattu, ei arvattu."),
+        ("Joukkueen maalipotentiaali on se mittari",
+         "SaiPa menetti suoralta kädeltä yli <b>90 maalia</b> — Fortier, "
+         "Nikkanen, Kalapudas, Kivenmäki, Kuusla — eikä se voi olla "
+         "näkymättä. Maalivahdin torjunta-% muuttuu samalla logiikalla "
+         "päästettyjen maalien kertoimeksi."),
+        ("Poisson ja Elo, sitten 10 000 kautta",
+         "Pelaajista saatu maalilukema (Poisson) ja viiden vuoden tuloksista "
+         "koottu Elo blendataan <b>40/60</b> per joukkue. Sitten koko "
+         "sarjaohjelma simuloidaan <b>10 000</b> kertaa."),
     ]
     items = "".join(
         f'<div class="step"><div class="num">{i}</div>'
@@ -355,25 +361,22 @@ def how_slide(t: dict) -> str:
       {items}
       <div class="callout">
         <b>Ottelumalli</b>
-        <span>Maalit arvotaan <b>Poisson</b>-mallista,
-        λ = sarjan ka. × hyökkäys × vastustajan puolustus × kotietu, ja
-        <b>Dixon-Coles</b>-korjaus nostaa vähämaalisten tasatulosten
-        todennäköisyyttä niin että jatkoaikojen osuus vastaa Liigan todellista
-        <b>23 %</b>. Yhdistetään suhteessa <b>{POISSON_PCT}/{ELO_PCT}</b>
-        maalieron huomioivaan <b>Elo</b>-lukuun (k=16).</span>
+        <span>Maalit arvotaan <b>Poisson</b>-mallista, λ = sarjan ka. ×
+        hyökkäys × vastustajan puolustus × kotietu. <b>Dixon-Coles</b>-korjaus
+        nostaa vähämaalisia tasatuloksia niin että jatkoajat osuvat Liigan
+        oikeaan <b>23 %</b>:iin. Elo huomioi maalieron (k=16).</span>
       </div>
       <div class="callout" style="margin-top:16px">
         <b>Toimiiko se?</b>
-        <span>Testattu kausilla 2023–26 niin että jokainen kausi
-        ennustettiin vain sitä edeltävillä kausilla: pistevirhe keskimäärin
-        <b>{MAE_FI}</b>, ottelutason log-loss <b>0,672</b> vs.
-        <b>0,686</b> arvauksella, sarjataulukon <b>Spearman ρ 0,48</b>.
-        Viritetty log-lossilla ja pistevirheellä — ρ heittelee neljän kauden
-        otoksella liikaa.</span>
+        <span>Testattu kausilla 2023–26 niin, että jokainen kausi
+        ennustettiin vain sitä edeltävällä datalla: pistevirhe keskimäärin
+        <b>{MAE_FI}</b>, ottelutason log-loss <b>0,672</b> vs. <b>0,686</b>
+        pelkällä arvauksella, taulukon <b>Spearman ρ 0,48</b>.</span>
       </div>
-      <p class="next">Seuraavaksi: putki siirtyy ajastetuiksi
-      <b>Snowflake ML -ajoiksi</b> — malli päivittyy joka yö oikeilla
-      tuloksilla ja simuloi uudelleen vain pelaamattomat ottelut.</p>
+      <p class="next">Tämä on vasta ennakko. Jatkossa hilavitkutin päivittyy
+      toteuman mukaan ajastetuissa <b>Snowflake ML -ajoissa</b>: joka yö
+      oikeat tulokset sisään ja uusi simulointi vain pelaamattomista
+      otteluista. Ja kyllä, Snowflakella voi tehdä ML:ää.</p>
     </div>
     <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowflake ML</div>
   </div>""")

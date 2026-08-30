@@ -50,21 +50,21 @@
   .ptsr { font-size:21px; color:#d9b654; margin-top:5px; opacity:0.85; }
 
   /* ---- technical slides ---- */
-  .step { display:flex; gap:20px; margin-bottom:15px; align-items:flex-start; }
-  .num { min-width:48px; height:48px; background:#f2ece0; color:#150f09;
-         font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:24px; display:flex;
+  .step { display:flex; gap:18px; margin-bottom:11px; align-items:flex-start; }
+  .num { min-width:42px; height:42px; background:#f2ece0; color:#150f09;
+         font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:21px; display:flex;
          align-items:center; justify-content:center; }
   /* DIRECT child only -- inline <b> inside the description must stay inline,
      otherwise every highlighted parameter becomes its own block heading */
-  .txt > b { font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:26px; display:block; color:#FFFFFF;
-             margin-bottom:6px; text-transform:uppercase; letter-spacing:-0.3px; }
-  .txt span { font-size:20px; line-height:1.38; color:#FFFFFF; opacity:0.88; }
+  .txt > b { font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:23px; display:block; color:#FFFFFF;
+             margin-bottom:4px; text-transform:uppercase; letter-spacing:-0.3px; }
+  .txt span { font-size:18px; line-height:1.34; color:#FFFFFF; opacity:0.88; }
   .txt span b, .callout span b { color:#d9b654; opacity:1; }
   .callout { background:rgba(255,255,255,0.06); border-left:8px solid #d9b654;
-             padding:18px 26px; margin-top:4px; }
-  .callout > b { font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:25px; display:block;
-                 margin-bottom:10px; color:#d9b654; text-transform:uppercase; }
-  .callout span { font-size:20px; line-height:1.38; color:#FFFFFF; opacity:0.9; }
+             padding:14px 22px; margin-top:2px; }
+  .callout > b { font-family:"Arial Black","Helvetica Neue",Arial,sans-serif; font-size:22px; display:block;
+                 margin-bottom:7px; color:#d9b654; text-transform:uppercase; }
+  .callout span { font-size:18px; line-height:1.34; color:#FFFFFF; opacity:0.9; }
   /* Circular avatar used on the player slides: a headshot fills it, a crest
      is letterboxed inside it. Faces are NOT half-clipped like the standings
      crests -- half a face reads as a mistake. */
@@ -106,7 +106,7 @@
   .aw-unit { font-size:19px; color:#a89880; text-align:right;
              margin-top:9px; }
   .big { font-size:29px; line-height:1.4; color:#FFFFFF; }
-  .next { font-size:21px; line-height:1.4; margin-top:16px; color:#FFFFFF;
+  .next { font-size:18px; line-height:1.38; margin-top:12px; color:#FFFFFF;
           opacity:0.8; }
   .next b { color:#d9b654; opacity:1; }
 </style></head><body>
@@ -117,28 +117,25 @@
     </div>
     <div class="rule"></div>
     <div class="body">
-      <div class="step"><div class="num">1</div><div class="txt"><b>Rakennettu pelaajista, ei viime kaudesta</b><span>Jokaisen joukkueen jokaiselta pelaajalta viiden kauden maalitahti, tuorein kausi painaa eniten.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>Ulkomaiset sarjat muunnettu, ei arvattu</b><span>Tulokkaan pistetahti skaalataan Liiga-tasolle — <b>SHL 1,20, AHL 1,15, Allsvenskan 0,75, Mestis 0,35</b> — kertoimet on laskettu pelaajista, jotka oikeasti tekivät sen siirron.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Ikä on jyrkänne, ei loiva mäki</b><span>Tuotto pysyy noin 28-vuotiaaksi ja romahtaa sitten: <b>0,67</b> edellisestä tahdista 35–37-vuotiaana ja <b>0,40</b> 38+ -vuotiaana. Mitattu, ei oletettu.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Maalivahti kantaa puolustuksen</b><span>Joukkueen ennustettu torjuntaprosentti muuttuu päästettyjen maalien kertoimeksi, ja sitä vedetään sarjan keskiarvoa kohti, ettei yksi kuuma 20 ottelun jakso vääristä sitä.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Kaksi mallia, sitten 10 000 kautta</b><span>Maalintekomalli ja joukkuevoimaluku äänestävät jokaisesta ottelusta suhteessa <b>40/60</b>. Koko sarjaohjelma simuloidaan sitten <b>10 000</b> kertaa.</span></div></div>
+      <div class="step"><div class="num">1</div><div class="txt"><b>Kaikki lähtee pelaajista, ei viime kauden taulukosta</b><span>Jokaisesta pelaajasta on kerätty viiden kauden datasetti — vain sellaisia tilastoja, jotka löytyvät EliteProspectsista. Ei taikakaavoja.</span></div></div><div class="step"><div class="num">2</div><div class="txt"><b>Myös ne, jotka eivät pelanneet viime kautta Liigassa</b><span>Turunen ja Bryggman tulevat SHL:stä, Tim Juel on kokonaan uusi mies. Jokaisen tulokkaan tilastot on etsitty erikseen — muuten heidät laskettaisiin nolliksi.</span></div></div><div class="step"><div class="num">3</div><div class="txt"><b>Maali SHL:ssä on kovempi kuin maali Liigassa</b><span>Siksi jokaisella sarjalla on oma painonsa: <b>SHL 1,20, AHL 1,15, Allsvenskan 0,75, Mestis 0,35</b>. Kertoimet on laskettu pelaajista, jotka oikeasti tekivät sen siirron.</span></div></div><div class="step"><div class="num">4</div><div class="txt"><b>Ikä painaa pelaajan arvoa alas</b><span>Jos ikä alkaa painaa, se painaa. Tuotto putoaa <b>0,67</b>:ään 35–37-vuotiaana ja <b>0,40</b>:een 38+ (case Harri Pesonen). Mitattu, ei arvattu.</span></div></div><div class="step"><div class="num">5</div><div class="txt"><b>Joukkueen maalipotentiaali on se mittari</b><span>SaiPa menetti suoralta kädeltä yli <b>90 maalia</b> — Fortier, Nikkanen, Kalapudas, Kivenmäki, Kuusla — eikä se voi olla näkymättä. Maalivahdin torjunta-% muuttuu samalla logiikalla päästettyjen maalien kertoimeksi.</span></div></div><div class="step"><div class="num">6</div><div class="txt"><b>Poisson ja Elo, sitten 10 000 kautta</b><span>Pelaajista saatu maalilukema (Poisson) ja viiden vuoden tuloksista koottu Elo blendataan <b>40/60</b> per joukkue. Sitten koko sarjaohjelma simuloidaan <b>10 000</b> kertaa.</span></div></div>
       <div class="callout">
         <b>Ottelumalli</b>
-        <span>Maalit arvotaan <b>Poisson</b>-mallista,
-        λ = sarjan ka. × hyökkäys × vastustajan puolustus × kotietu, ja
-        <b>Dixon-Coles</b>-korjaus nostaa vähämaalisten tasatulosten
-        todennäköisyyttä niin että jatkoaikojen osuus vastaa Liigan todellista
-        <b>23 %</b>. Yhdistetään suhteessa <b>40/60</b>
-        maalieron huomioivaan <b>Elo</b>-lukuun (k=16).</span>
+        <span>Maalit arvotaan <b>Poisson</b>-mallista, λ = sarjan ka. ×
+        hyökkäys × vastustajan puolustus × kotietu. <b>Dixon-Coles</b>-korjaus
+        nostaa vähämaalisia tasatuloksia niin että jatkoajat osuvat Liigan
+        oikeaan <b>23 %</b>:iin. Elo huomioi maalieron (k=16).</span>
       </div>
       <div class="callout" style="margin-top:16px">
         <b>Toimiiko se?</b>
-        <span>Testattu kausilla 2023–26 niin että jokainen kausi
-        ennustettiin vain sitä edeltävillä kausilla: pistevirhe keskimäärin
-        <b>12,65</b>, ottelutason log-loss <b>0,672</b> vs.
-        <b>0,686</b> arvauksella, sarjataulukon <b>Spearman ρ 0,48</b>.
-        Viritetty log-lossilla ja pistevirheellä — ρ heittelee neljän kauden
-        otoksella liikaa.</span>
+        <span>Testattu kausilla 2023–26 niin, että jokainen kausi
+        ennustettiin vain sitä edeltävällä datalla: pistevirhe keskimäärin
+        <b>12,65</b>, ottelutason log-loss <b>0,672</b> vs. <b>0,686</b>
+        pelkällä arvauksella, taulukon <b>Spearman ρ 0,48</b>.</span>
       </div>
-      <p class="next">Seuraavaksi: putki siirtyy ajastetuiksi
-      <b>Snowflake ML -ajoiksi</b> — malli päivittyy joka yö oikeilla
-      tuloksilla ja simuloi uudelleen vain pelaamattomat ottelut.</p>
+      <p class="next">Tämä on vasta ennakko. Jatkossa hilavitkutin päivittyy
+      toteuman mukaan ajastetuissa <b>Snowflake ML -ajoissa</b>: joka yö
+      oikeat tulokset sisään ja uusi simulointi vain pelaamattomista
+      otteluista. Ja kyllä, Snowflakella voi tehdä ML:ää.</p>
     </div>
     <div class="foot">Poisson · Dixon-Coles · MOV-Elo · Monte Carlo · Snowflake ML</div>
   </div></body></html>
