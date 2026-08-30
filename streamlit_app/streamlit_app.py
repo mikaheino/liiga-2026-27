@@ -90,15 +90,30 @@ def run_query(sql: str) -> pd.DataFrame:
     return df
 
 
-UPCOMING_SQL = """
-SELECT g.start_ts, g.home_team, g.away_team,
-       p.p_home_win, p.p_overtime
-FROM prediction_games p
-JOIN stg_games g ON g.game_id = p.game_id
-WHERE NOT g.ended
-  AND p.snapshot_date = (SELECT MAX(snapshot_date) FROM prediction_games)
-ORDER BY g.start_ts, g.home_team
-"""
+def _qualify(table: str) -> str:
+    """Table reference for the current backend.
+
+    In Snowflake the app runs in LIIGA.CODE (that is where the Streamlit
+    object lives), so an unqualified name does not resolve to the tables in
+    LIIGA.MODEL. Everything else here reads through session.table() with the
+    full path; hand-written SQL has to do the same.
+    """
+    return f"LIIGA.MODEL.{table.upper()}" if backend() == "snowflake" else table
+
+
+def upcoming_sql() -> str:
+    games, sched = _qualify("prediction_games"), _qualify("stg_games")
+    return f"""
+        SELECT g.start_ts, g.home_team, g.away_team,
+               p.p_home_win, p.p_overtime
+        FROM {games} p
+        JOIN {sched} g ON g.game_id = p.game_id
+        WHERE NOT g.ended
+          AND p.snapshot_date = (SELECT MAX(snapshot_date) FROM {games})
+        -- Several games share a kickoff time, so start_ts alone would leave
+        -- the order to chance and the list would reshuffle between runs.
+        ORDER BY g.start_ts, g.home_team
+    """
 
 
 def load_updated_at() -> str:
@@ -112,19 +127,21 @@ def load_updated_at() -> str:
 @st.cache_data(show_spinner=False)
 def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     """Kaikki näytettävä data. Avaimena aikaleima: uusi ennuste -> uusi haku."""
+    # Only games still unplayed exist here, so no season filter is needed:
+    # every past season is fully ended.
     try:
-        # Only games still unplayed exist here, so no season filter is needed:
-        # every past season is fully ended.
-        upcoming = run_query(UPCOMING_SQL)
-    except Exception:                     # noqa: BLE001 -- table not there yet
+        upcoming, upcoming_error = run_query(upcoming_sql()), ""
+    except Exception as exc:              # noqa: BLE001 -- degrade, but say so
         upcoming = pd.DataFrame(columns=["start_ts", "home_team", "away_team",
                                          "p_home_win", "p_overtime"])
+        upcoming_error = str(exc).strip().splitlines()[0][:200]
     return {
         "standings": read_sql("standings_2026_27"),
         "position": read_sql("position_distribution_2026_27"),
         "history": read_sql("prediction_history"),
         "meta": read_sql("prediction_meta"),
         "upcoming": upcoming,
+        "upcoming_error": upcoming_error,
     }
 
 
@@ -301,7 +318,13 @@ def main() -> None:
                "mieltä niiden sijoituksesta.")
 
     upcoming = data["upcoming"]
-    if not upcoming.empty:
+    if data["upcoming_error"]:
+        # Silence here once hid a real bug: the query used unqualified table
+        # names and failed in Snowflake, so the section simply vanished.
+        st.subheader("Seuraavat ottelut")
+        st.warning("Otteluennusteita ei saatu haettua: "
+                   + data["upcoming_error"])
+    elif not upcoming.empty:
         st.subheader("Seuraavat ottelut")
         st.caption("Kotivoiton todennäköisyys sisältää jatkoajalla ratkenneet. "
                    "Jatkoaika-sarake on todennäköisyys sille, että ottelu "
