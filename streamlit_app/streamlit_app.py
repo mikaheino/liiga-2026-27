@@ -74,6 +74,33 @@ def read_sql(table: str) -> pd.DataFrame:
     return df
 
 
+def run_query(sql: str) -> pd.DataFrame:
+    """Run one SQL statement on whichever backend we are on."""
+    session = _snowpark_session()
+    if session is not None:
+        df = session.sql(sql).to_pandas()
+    else:
+        import duckdb
+        con = duckdb.connect(str(_duckdb_path()), read_only=True)
+        try:
+            df = con.execute(sql).df()
+        finally:
+            con.close()
+    df.columns = [c.lower() for c in df.columns]
+    return df
+
+
+UPCOMING_SQL = """
+SELECT g.start_ts, g.home_team, g.away_team,
+       p.p_home_win, p.p_overtime
+FROM prediction_games p
+JOIN stg_games g ON g.game_id = p.game_id
+WHERE NOT g.ended
+  AND p.snapshot_date = (SELECT MAX(snapshot_date) FROM prediction_games)
+ORDER BY g.start_ts, g.home_team
+"""
+
+
 def load_updated_at() -> str:
     """Ennusteen aikaleima. Tätä EI kacheta -- se on välimuistin avain."""
     meta = read_sql("prediction_meta")
@@ -85,11 +112,19 @@ def load_updated_at() -> str:
 @st.cache_data(show_spinner=False)
 def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     """Kaikki näytettävä data. Avaimena aikaleima: uusi ennuste -> uusi haku."""
+    try:
+        # Only games still unplayed exist here, so no season filter is needed:
+        # every past season is fully ended.
+        upcoming = run_query(UPCOMING_SQL)
+    except Exception:                     # noqa: BLE001 -- table not there yet
+        upcoming = pd.DataFrame(columns=["start_ts", "home_team", "away_team",
+                                         "p_home_win", "p_overtime"])
     return {
         "standings": read_sql("standings_2026_27"),
         "position": read_sql("position_distribution_2026_27"),
         "history": read_sql("prediction_history"),
         "meta": read_sql("prediction_meta"),
+        "upcoming": upcoming,
     }
 
 
@@ -199,6 +234,32 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
     full_width(st.altair_chart, chart)
 
 
+def render_upcoming(upcoming: pd.DataFrame, n: int) -> None:
+    df = upcoming.head(n).copy()
+    df["pvm"] = pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m.")
+    df["ottelu"] = df["home_team"] + " – " + df["away_team"]
+    df["koti"] = df["p_home_win"].astype(float) * 100
+    df["vieras"] = 100 - df["koti"]
+    df["ja"] = df["p_overtime"].astype(float) * 100
+
+    full_width(
+        st.dataframe,
+        df[["pvm", "ottelu", "koti", "vieras", "ja"]],
+        hide_index=True,
+        column_config={
+            "pvm": st.column_config.TextColumn("Päivä", width="small"),
+            "ottelu": st.column_config.TextColumn("Ottelu", width="medium"),
+            # A bar reads faster than a number when the question is
+            # "who is favoured, and by how much".
+            "koti": st.column_config.ProgressColumn(
+                "Koti voittaa", format="%.0f%%", min_value=0, max_value=100),
+            "vieras": st.column_config.ProgressColumn(
+                "Vieras voittaa", format="%.0f%%", min_value=0, max_value=100),
+            "ja": st.column_config.NumberColumn("Jatkoaika", format="%.0f%%"),
+        },
+    )
+
+
 # --------------------------------------------------------------------------
 def main() -> None:
     updated_at = load_updated_at()
@@ -238,6 +299,16 @@ def main() -> None:
     st.caption(f"**Villit kortit:** {wild} voivat päätyä lähes minne tahansa. "
                f"**Varmimmat:** {tight} — simulaatiot ovat pitkälti samaa "
                "mieltä niiden sijoituksesta.")
+
+    upcoming = data["upcoming"]
+    if not upcoming.empty:
+        st.subheader("Seuraavat ottelut")
+        st.caption("Kotivoiton todennäköisyys sisältää jatkoajalla ratkenneet. "
+                   "Jatkoaika-sarake on todennäköisyys sille, että ottelu "
+                   "menee yli ajan.")
+        n = st.slider("Otteluita näkyvissä", 5, 40, 12, step=5,
+                      label_visibility="collapsed")
+        render_upcoming(upcoming, n)
 
     st.subheader("Miten ennuste on liikkunut")
     st.caption("Ennustetut lopputilanteen pisteet, yksi piste per päivitysajo. "

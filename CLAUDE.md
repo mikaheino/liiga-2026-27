@@ -111,7 +111,8 @@ unaffected by the Snowflake work.
 
 `streamlit_app/streamlit_app.py` shows the two most-asked-for views from the
 site — the position-distribution heatmap and the forecast-history chart —
-plus a prominent "last updated" stamp read from `prediction_meta.updated_at`.
+plus the next fixtures with their win probabilities (from `prediction_games`)
+and a prominent "last updated" stamp read from `prediction_meta.updated_at`.
 
 **One file, two backends.** It detects a Snowpark session: inside Snowflake it
 reads `LIIGA.MODEL`, locally it reads `data/liiga.duckdb`. It deliberately does
