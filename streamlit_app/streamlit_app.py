@@ -101,15 +101,35 @@ def _qualify(table: str) -> str:
     return f"LIIGA.MODEL.{table.upper()}" if backend() == "snowflake" else table
 
 
-def upcoming_sql() -> str:
+MONTHS_FI = ["tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu",
+             "kesäkuu", "heinäkuu", "elokuu", "syyskuu", "lokakuu",
+             "marraskuu", "joulukuu"]
+
+
+def fixtures_sql() -> str:
+    """Every game of the target season with the last prediction made before it.
+
+    LEFT JOIN, because a game played before prediction_games existed has no
+    row to match -- it should still be listed, just without a forecast.
+
+    The snapshot is the newest one dated on or before the game's own day.
+    For a future game that is simply today's run; for a played game it is
+    what the model said going in, which is the only version worth scoring.
+    Same-day is allowed because the pipeline runs in the morning and games
+    start in the afternoon.
+    """
     games, sched = _qualify("prediction_games"), _qualify("stg_games")
     return f"""
-        SELECT g.start_ts, g.home_team, g.away_team,
+        SELECT g.start_ts, g.home_team, g.away_team, g.ended,
+               g.home_goals, g.away_goals, g.result_category,
                p.p_home_win, p.p_overtime
-        FROM {games} p
-        JOIN {sched} g ON g.game_id = p.game_id
-        WHERE NOT g.ended
-          AND p.snapshot_date = (SELECT MAX(snapshot_date) FROM {games})
+        FROM {sched} g
+        LEFT JOIN {games} p ON p.game_id = g.game_id
+             AND p.snapshot_date = (
+                 SELECT MAX(p2.snapshot_date) FROM {games} p2
+                 WHERE p2.game_id = g.game_id
+                   AND p2.snapshot_date <= SUBSTR(g.start_ts, 1, 10))
+        WHERE g.season = (SELECT MAX(season) FROM {sched})
         -- Several games share a kickoff time, so start_ts alone would leave
         -- the order to chance and the list would reshuffle between runs.
         ORDER BY g.start_ts, g.home_team
@@ -130,10 +150,11 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     # Only games still unplayed exist here, so no season filter is needed:
     # every past season is fully ended.
     try:
-        upcoming, upcoming_error = run_query(upcoming_sql()), ""
+        upcoming, upcoming_error = run_query(fixtures_sql()), ""
     except Exception as exc:              # noqa: BLE001 -- degrade, but say so
-        upcoming = pd.DataFrame(columns=["start_ts", "home_team", "away_team",
-                                         "p_home_win", "p_overtime"])
+        upcoming = pd.DataFrame(columns=[
+            "start_ts", "home_team", "away_team", "ended", "home_goals",
+            "away_goals", "result_category", "p_home_win", "p_overtime"])
         upcoming_error = str(exc).strip().splitlines()[0][:200]
     return {
         "standings": read_sql("standings_2026_27"),
@@ -271,34 +292,58 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
     full_width(st.altair_chart, chart)
 
 
-def render_upcoming(upcoming: pd.DataFrame, n: int) -> None:
-    """Fixtures with in-cell probability bars.
+def _result_text(r) -> str:
+    """Final score, with the Finnish suffix for how it was decided."""
+    if not bool(r["ended"]) or pd.isna(r["home_goals"]):
+        return ""
+    suffix = {"overtime": " ja", "shootout": " vl"}.get(
+        str(r["result_category"]), "")
+    return f"{int(r['home_goals'])}–{int(r['away_goals'])}{suffix}"
+
+
+def _model_said(r) -> float:
+    """Probability the model gave to the side that actually won.
+
+    This is the honest score for a single game: being "wrong" on a 55/45 is
+    not a failure, giving 20% to the winner is. Blank until the game is
+    played, and blank if no forecast was captured before it.
+    """
+    if not bool(r["ended"]) or pd.isna(r["p_home_win"]) or pd.isna(r["home_goals"]):
+        return float("nan")
+    p = float(r["p_home_win"]) * 100
+    return p if r["home_goals"] > r["away_goals"] else 100 - p
+
+
+def render_fixtures(games: pd.DataFrame) -> None:
+    """Fixtures with in-cell probability bars, and the outcome once played.
 
     Drawn with a pandas Styler rather than st.column_config: Streamlit in
     Snowflake ships a build with no `column_config` attribute at all, and the
     heatmap above already proves Styler renders the same on both.
     """
-    df = upcoming.head(n).copy()
+    df = games.copy()
     out = pd.DataFrame({
         "Päivä": pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m."),
         "Ottelu": df["home_team"] + " – " + df["away_team"],
         "Koti voittaa": df["p_home_win"].astype(float) * 100,
         "Vieras voittaa": 100 - df["p_home_win"].astype(float) * 100,
         "Jatkoaika": df["p_overtime"].astype(float) * 100,
+        "Tulos": df.apply(_result_text, axis=1),
+        "Malli antoi voittajalle": df.apply(_model_said, axis=1),
     })
 
     bars = ["Koti voittaa", "Vieras voittaa"]
+    nums = bars + ["Jatkoaika", "Malli antoi voittajalle"]
     styler = (out.style
-                 .format({c: "{:.0f} %" for c in bars + ["Jatkoaika"]})
+                 .format({c: "{:.0f} %" for c in nums}, na_rep="")
                  # A bar reads faster than a number when the question is
                  # "who is favoured, and by how much". vmin/vmax pinned to
                  # 0-100 so bars are comparable between rows.
                  .bar(subset=bars, color=f"rgba{(*ACCENT, 0.35)}",
                       vmin=0, vmax=100)
-                 .set_properties(subset=bars + ["Jatkoaika"],
-                                 **{"text-align": "right"}))
+                 .set_properties(subset=nums, **{"text-align": "right"}))
     full_width(st.dataframe, styler, hide_index=True,
-               height=min(len(out) + 1, 25) * 35 + 3)
+               height=min(len(out) + 1, 26) * 35 + 3)
 
 
 # --------------------------------------------------------------------------
@@ -349,15 +394,23 @@ def main() -> None:
         st.warning("Otteluennusteita ei saatu haettua: "
                    + data["upcoming_error"])
     elif not upcoming.empty:
-        st.subheader("Seuraavat ottelut")
+        st.subheader("Ottelut")
         st.caption("Kotivoiton todennäköisyys sisältää jatkoajalla ratkenneet. "
-                   "Jatkoaika-sarake on todennäköisyys sille, että ottelu "
-                   "menee yli ajan.")
-        # A team plays 64 games, so 64 is the natural full view -- default to
-        # it rather than making the reader drag for the rest.
-        n = st.slider("Otteluita näkyvissä", 8, 64, 64, step=8,
-                      label_visibility="collapsed")
-        render_upcoming(upcoming, n)
+                   "”Malli antoi voittajalle” on se todennäköisyys, jonka "
+                   "malli antoi ennen ottelua sille joukkueelle, joka lopulta "
+                   "voitti — mitä pienempi, sitä enemmän ennuste meni pieleen.")
+
+        month_keys = sorted(upcoming["start_ts"].str[:7].unique())
+        this_month = dt.date.today().strftime("%Y-%m")
+        # Default to the running month; before the season opens that month has
+        # no games at all, so fall back to the first month that does.
+        default = month_keys.index(this_month) if this_month in month_keys else 0
+        chosen = st.selectbox(
+            "Kuukausi",
+            month_keys, index=default,
+            format_func=lambda k: (f"{MONTHS_FI[int(k[5:7]) - 1]} {k[:4]}"
+                                   .capitalize()))
+        render_fixtures(upcoming[upcoming["start_ts"].str[:7] == chosen])
 
     st.subheader("Miten ennuste on liikkunut")
     st.caption("Ennustetut lopputilanteen pisteet, yksi piste per päivitysajo. "
