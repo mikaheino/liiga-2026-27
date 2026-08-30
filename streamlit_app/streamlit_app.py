@@ -145,6 +145,25 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     }
 
 
+def _supported(render, kwargs: dict) -> dict:
+    """Drop keyword arguments this Streamlit build does not accept.
+
+    Streamlit in Snowflake runs an older build than a local install -- old
+    enough that `st.column_config` does not exist at all, so sibling
+    arguments of the same vintage (`hide_index`) cannot be assumed either.
+    Filtering against the real signature beats guessing from a version
+    number, and beats letting the app die on an unknown keyword.
+    """
+    import inspect
+    try:
+        params = inspect.signature(render).parameters
+    except (TypeError, ValueError):
+        return kwargs
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return kwargs
+    return {k: v for k, v in kwargs.items() if k in params}
+
+
 def full_width(render, *args, **kwargs):
     """Piirrä elementti täyteen leveyteen Streamlitin versiosta riippumatta.
 
@@ -154,6 +173,7 @@ def full_width(render, *args, **kwargs):
     kokeillaan uutta API:a ensin ja pudotaan vanhaan -- versionumeron
     vertailu arvaisi, tämä mittaa.
     """
+    kwargs = _supported(render, kwargs)
     try:
         return render(*args, width="stretch", **kwargs)
     except (TypeError, ValueError, st.errors.StreamlitAPIException):
@@ -252,29 +272,33 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
 
 
 def render_upcoming(upcoming: pd.DataFrame, n: int) -> None:
-    df = upcoming.head(n).copy()
-    df["pvm"] = pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m.")
-    df["ottelu"] = df["home_team"] + " – " + df["away_team"]
-    df["koti"] = df["p_home_win"].astype(float) * 100
-    df["vieras"] = 100 - df["koti"]
-    df["ja"] = df["p_overtime"].astype(float) * 100
+    """Fixtures with in-cell probability bars.
 
-    full_width(
-        st.dataframe,
-        df[["pvm", "ottelu", "koti", "vieras", "ja"]],
-        hide_index=True,
-        column_config={
-            "pvm": st.column_config.TextColumn("Päivä", width="small"),
-            "ottelu": st.column_config.TextColumn("Ottelu", width="medium"),
-            # A bar reads faster than a number when the question is
-            # "who is favoured, and by how much".
-            "koti": st.column_config.ProgressColumn(
-                "Koti voittaa", format="%.0f%%", min_value=0, max_value=100),
-            "vieras": st.column_config.ProgressColumn(
-                "Vieras voittaa", format="%.0f%%", min_value=0, max_value=100),
-            "ja": st.column_config.NumberColumn("Jatkoaika", format="%.0f%%"),
-        },
-    )
+    Drawn with a pandas Styler rather than st.column_config: Streamlit in
+    Snowflake ships a build with no `column_config` attribute at all, and the
+    heatmap above already proves Styler renders the same on both.
+    """
+    df = upcoming.head(n).copy()
+    out = pd.DataFrame({
+        "Päivä": pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m."),
+        "Ottelu": df["home_team"] + " – " + df["away_team"],
+        "Koti voittaa": df["p_home_win"].astype(float) * 100,
+        "Vieras voittaa": 100 - df["p_home_win"].astype(float) * 100,
+        "Jatkoaika": df["p_overtime"].astype(float) * 100,
+    })
+
+    bars = ["Koti voittaa", "Vieras voittaa"]
+    styler = (out.style
+                 .format({c: "{:.0f} %" for c in bars + ["Jatkoaika"]})
+                 # A bar reads faster than a number when the question is
+                 # "who is favoured, and by how much". vmin/vmax pinned to
+                 # 0-100 so bars are comparable between rows.
+                 .bar(subset=bars, color=f"rgba{(*ACCENT, 0.35)}",
+                      vmin=0, vmax=100)
+                 .set_properties(subset=bars + ["Jatkoaika"],
+                                 **{"text-align": "right"}))
+    full_width(st.dataframe, styler, hide_index=True,
+               height=min(len(out) + 1, 25) * 35 + 3)
 
 
 # --------------------------------------------------------------------------
@@ -329,7 +353,9 @@ def main() -> None:
         st.caption("Kotivoiton todennäköisyys sisältää jatkoajalla ratkenneet. "
                    "Jatkoaika-sarake on todennäköisyys sille, että ottelu "
                    "menee yli ajan.")
-        n = st.slider("Otteluita näkyvissä", 5, 40, 12, step=5,
+        # A team plays 64 games, so 64 is the natural full view -- default to
+        # it rather than making the reader drag for the rest.
+        n = st.slider("Otteluita näkyvissä", 8, 64, 64, step=8,
                       label_visibility="collapsed")
         render_upcoming(upcoming, n)
 
