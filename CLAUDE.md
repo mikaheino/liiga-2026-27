@@ -139,6 +139,32 @@ re-query pointlessly.
 This is a Snowflake-account app, not a public one; the never-publish rule
 above is about the claude.ai artifact and still stands.
 
+## In-season: per-game detail (since 2026-09-02)
+
+`liiga.results.ingest_results()` fetches what the season endpoint cannot see —
+**lineups, goalies and penalties** — from `/games/{season}/{game_id}`, into
+`game_lineups` / `game_goalies` / `game_penalties` (all in `LIIGA.RAW`).
+
+`pipeline.refresh_results()` is the single scheduled entry point: season
+results → SQL transforms → per-game detail. Both `scripts/daily_update.py` and
+the Snowflake notebook call it, so they cannot drift.
+
+It is built for unattended runs: **no disk cache** (ingest's `data/raw/` is
+right on a laptop, useless in Snowflake), **incremental** (only games not
+already stored — a seven-game day costs seven calls, not 544), and
+**idempotent** (a re-run replaces those games' rows).
+
+Two API traps, both handled in `results.py` — don't re-derive them:
+
+- `goalKeeperEvents` is a *timeline of who is in the net*, not a substitution
+  list, and appears only when the state changes (a goalie who plays sixty
+  minutes is absent from it). `playerId` 0 + `emptyNet` 1 is the empty net; a
+  named playerId is that goalie in the net over that window, **including
+  coming back after a pull**. A real substitution is a named goalie who is
+  not the starter.
+- Goals-against nets off empty-net goals (`goalTypes` contains `TM`),
+  otherwise every trailing team's goalie looks worse than he was.
+
 ## In-season: prediction_games is the evidence table
 
 `persist()` writes **`prediction_games`** — one row per unplayed game per
