@@ -40,6 +40,43 @@ GAME_COLUMNS = ["snapshot_date", "game_id", "home_team", "away_team",
                 "p_home_win"]
 
 
+def refresh_results(season: int | None = None, con=None) -> dict:
+    """Pull in what has happened since the last run. The in-season step.
+
+    Three layers, in order, because each feeds the next:
+
+    1. the season endpoint -> results, goals, assists (`ingest_all`)
+    2. the SQL transforms   -> stg_games, team_game_log, ... which the model
+       and the Elo ratings read
+    3. the per-game endpoint -> lineups, goalies, penalties for games that
+       have just been played (`results.ingest_results`)
+
+    Step 3 is incremental and step 1 is not: the season endpoint is one call
+    per season and gives every result at once, while per-game detail costs a
+    call per game and is therefore fetched only for games we do not have yet.
+
+    Called by both the local daily run and the in-Snowflake notebook, so this
+    must stay free of anything laptop-specific.
+    """
+    from .ingest import fetch_season, ingest_all
+    from .results import ingest_results
+    from .transform import run_transforms
+
+    cfg = load_config()
+    season = season or cfg["ingestion"]["target_season"]
+
+    games = fetch_season(season, force=True)
+    n_played = sum(1 for g in games if g.get("ended"))
+    ingest_all()
+    run_transforms()
+    detail = ingest_results(season, con=con)
+
+    return {"season": season, "games_total": len(games),
+            "games_played": n_played,
+            "detail_games": detail["games_fetched"],
+            "detail_rows": detail["rows"], "detail_failed": detail["failed"]}
+
+
 def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:
     """Ensemble probabilities for the REMAINING schedule + banked points."""
     target = cfg["ingestion"]["target_season"]

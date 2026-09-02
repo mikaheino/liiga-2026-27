@@ -28,6 +28,7 @@ TEAMS = 17
 PLAYOFF_CUT = 6          # 1-6 suoraan playoffeihin
 QUALI_CUT = 10           # 7-10 karsintoihin
 ACCENT = (51, 102, 153)  # #336699, sama teräksensininen kuin sivustolla
+N_SIMS = "10 000"        # pidä synkassa config.yaml -> simulation.n_simulations
 
 st.set_page_config(page_title="Liiga 2026-27 -ennuste",
                    page_icon="🏒", layout="wide")
@@ -346,6 +347,70 @@ def render_fixtures(games: pd.DataFrame) -> None:
                height=min(len(out) + 1, 26) * 35 + 3)
 
 
+def render_title_race(standings: pd.DataFrame, history: pd.DataFrame) -> None:
+    """Who wins the regular season: the standing today, and how it has moved.
+
+    Two views of one number. The bars answer "who, and how far clear"; the
+    lines answer "is that lead holding". Pre-season the lines are flat and the
+    bars carry everything -- once results land, the movement is the story.
+    """
+    cur = (standings[["team", "p_title"]].copy()
+           .assign(p_title=lambda d: d["p_title"].astype(float) * 100)
+           .sort_values("p_title", ascending=False))
+
+    bars = (
+        alt.Chart(cur)
+        .mark_bar(cornerRadiusEnd=2)
+        .encode(
+            x=alt.X("p_title:Q", title="Todennäköisyys (%)"),
+            y=alt.Y("team:N", title=None, sort="-x"),
+            # One accent colour, opacity carrying the value: a categorical
+            # palette here would imply the teams are different in kind.
+            opacity=alt.Opacity("p_title:Q", legend=None,
+                                scale=alt.Scale(range=[0.35, 1.0])),
+            color=alt.value(f"rgb{ACCENT}"),
+            tooltip=[alt.Tooltip("team:N", title="Joukkue"),
+                     alt.Tooltip("p_title:Q", title="Voittaa runkosarjan",
+                                 format=".1f")],
+        )
+        .properties(height=max(len(cur) * 26, 200))
+    )
+    labels = bars.mark_text(align="left", dx=4, fontSize=11).encode(
+        text=alt.Text("p_title:Q", format=".1f"), opacity=alt.value(1.0))
+    full_width(st.altair_chart, bars + labels)
+
+    if history.empty or history["snapshot_date"].nunique() < 2:
+        return
+    h = history.copy()
+    h["snapshot_date"] = pd.to_datetime(h["snapshot_date"])
+    h["p_title"] = h["p_title"].astype(float) * 100
+    # Only the teams with a real shot: seventeen flat lines at 0% would bury
+    # the three that move.
+    top = cur.head(6)["team"].tolist()
+    h = h[h["team"].isin(top)]
+
+    st.caption("Miten mestaruussuosikki on vaihtunut — kuusi kärkijoukkuetta.")
+    line = (
+        alt.Chart(h)
+        .mark_line(strokeWidth=2, interpolate="monotone")
+        .encode(
+            x=alt.X("snapshot_date:T", title=None,
+                    axis=alt.Axis(format="%-d.%-m.", grid=False)),
+            y=alt.Y("p_title:Q", title="Todennäköisyys (%)"),
+            color=alt.Color("team:N", title="Joukkue", sort=top,
+                            scale=alt.Scale(scheme="tableau10")),
+            tooltip=[alt.Tooltip("team:N", title="Joukkue"),
+                     alt.Tooltip("snapshot_date:T", title="Päivä",
+                                 format="%-d.%-m.%Y"),
+                     alt.Tooltip("p_title:Q", title="%", format=".1f"),
+                     alt.Tooltip("games_played:Q", title="Otteluita")],
+        )
+        .properties(height=320)
+        .interactive()
+    )
+    full_width(st.altair_chart, line)
+
+
 # --------------------------------------------------------------------------
 def main() -> None:
     updated_at = load_updated_at()
@@ -368,6 +433,11 @@ def main() -> None:
     c3.metric("Datalähde",
               "Snowflake (LIIGA.MODEL)" if backend() == "snowflake"
               else "Paikallinen DuckDB")
+
+    st.subheader("Kuka voittaa runkosarjan?")
+    st.caption(f"Osuus {N_SIMS} simuloidusta kaudesta, jossa joukkue on "
+               "runkosarjan ykkönen.")
+    render_title_race(standings, data["history"])
 
     m = position_matrix(data["position"], standings)
 
