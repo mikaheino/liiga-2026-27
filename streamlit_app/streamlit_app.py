@@ -330,11 +330,16 @@ def render_fixtures(games: pd.DataFrame) -> None:
         "Vieras voittaa": 100 - df["p_home_win"].astype(float) * 100,
         "Jatkoaika": df["p_overtime"].astype(float) * 100,
         "Tulos": df.apply(_result_text, axis=1),
-        "Malli antoi voittajalle": df.apply(_model_said, axis=1),
+        # Pre-formatted as text, not left as a float with NaN: Streamlit
+        # renders the underlying null as "None" for an unplayed game rather
+        # than honouring the Styler's na_rep, which does produce "".
+        "Malli antoi voittajalle": df.apply(_model_said, axis=1)
+                                     .map(lambda v: "" if pd.isna(v)
+                                          else f"{v:.0f} %"),
     })
 
     bars = ["Koti voittaa", "Vieras voittaa"]
-    nums = bars + ["Jatkoaika", "Malli antoi voittajalle"]
+    nums = bars + ["Jatkoaika"]
     styler = (out.style
                  .format({c: "{:.0f} %" for c in nums}, na_rep="")
                  # A bar reads faster than a number when the question is
@@ -342,7 +347,8 @@ def render_fixtures(games: pd.DataFrame) -> None:
                  # 0-100 so bars are comparable between rows.
                  .bar(subset=bars, color=f"rgba{(*ACCENT, 0.35)}",
                       vmin=0, vmax=100)
-                 .set_properties(subset=nums, **{"text-align": "right"}))
+                 .set_properties(subset=nums + ["Malli antoi voittajalle"],
+                                 **{"text-align": "right"}))
     full_width(st.dataframe, styler, hide_index=True,
                height=min(len(out) + 1, 26) * 35 + 3)
 
