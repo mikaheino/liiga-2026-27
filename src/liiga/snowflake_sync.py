@@ -42,6 +42,10 @@ RAW_TABLES = {
     "player_bio",
     "roster_2026_27",
     "league_factors",
+    # Per-game detail from the API (liiga.results) -- ingested, not derived.
+    "game_lineups",
+    "game_goalies",
+    "game_penalties",
 }
 
 
