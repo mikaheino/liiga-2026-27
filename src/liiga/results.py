@@ -265,38 +265,76 @@ def _upsert(con, table: str, columns: list[str], fresh: pd.DataFrame) -> int:
     return len(fresh)
 
 
-def played_game_ids(season: int, cfg: dict | None = None,
-                    on_date: str | None = None) -> list[int]:
-    """Game ids the API reports as ended, optionally limited to one date."""
-    cfg = cfg or load_config()["ingestion"]
-    games = fetch_season_games(season, cfg)
-    return [g["id"] for g in games
-            if g.get("ended") and g.get("id") is not None
-            and (on_date is None or str(g.get("start", ""))[:10] == on_date)]
+def games_needing_update(con, season: int, *, grace_hours: int = 8,
+                         now: dt.datetime | None = None) -> list[int]:
+    """Games the stored schedule says must have finished, that we lack results for.
+
+    The fixture list is read from `raw_games`, not re-fetched. The schedule is
+    fixed for the season; if it changes, that is an exception the operator
+    tells us about, and `ingest_all(seasons=[...])` reloads it.
+
+    A game counts as certainly over `grace_hours` after its start -- eight
+    covers sixty minutes plus overtime, shootout and any delay. Where the
+    start time is missing, the fallback is the calendar: a game dated 4.9. has
+    certainly finished once it is 5.9.
+    """
+    now = now or dt.datetime.now(dt.timezone.utc)
+    sched = query_df(
+        con,
+        f"""SELECT game_id, start_time, ended FROM raw_games
+            WHERE season = {int(season)}""")
+    if sched.empty:
+        return []
+
+    starts = pd.to_datetime(sched["start_time"], errors="coerce", utc=True)
+    over = starts + pd.Timedelta(hours=grace_hours) < now
+    # No usable start time: fall back to the day having rolled over.
+    dateless = starts.isna()
+    if dateless.any():
+        day = pd.to_datetime(sched["start_time"].astype(str).str[:10],
+                             errors="coerce", utc=True)
+        over = over | (dateless & (day < pd.Timestamp(now.date(), tz="UTC")))
+
+    done = sched["ended"].fillna(False).astype(bool)
+    return [int(g) for g in sched.loc[over & ~done, "game_id"].dropna()]
 
 
 def ingest_results(season: int | None = None, *, game_ids: list[int] | None = None,
-                   on_date: str | None = None, con=None,
-                   refetch: bool = False) -> dict:
-    """Fetch and store detail for played games. The scheduled entry point.
+                   con=None, refetch: bool = False,
+                   grace_hours: int = 8) -> dict:
+    """Update every table from the per-game endpoint. The scheduled entry point.
 
-    season   -- defaults to config's target_season.
-    game_ids -- explicit list; skips the "what is new" lookup entirely.
-    on_date  -- 'YYYY-MM-DD', only that day's games (a yesterday-only run).
-    refetch  -- re-fetch games already stored, instead of only new ones.
+    One response per game carries everything: the result, goals, assists,
+    expected goals and periods -- which used to come from the season endpoint
+    -- plus the lineups, goalies, penalties and referees that only it has. So
+    the season endpoint is not called at all; the schedule already in
+    `raw_games` says which games should be over.
+
+    That also halves the failure surface. The season endpoint has been
+    observed returning 502 for the current season from some networks while
+    serving historical seasons fine, and it was a single point of failure for
+    the whole run.
+
+    season    -- defaults to config's target_season.
+    game_ids  -- explicit list; skips the schedule lookup entirely.
+    refetch   -- re-read games already stored, instead of only missing ones.
     """
-    cfg_all = load_config()
-    cfg = cfg_all["ingestion"]
+    from .ingest import (_flatten_assists, _flatten_games, _flatten_goal_events,
+                         _flatten_on_ice, _flatten_periods)
+
+    cfg = load_config()["ingestion"]
     season = season or cfg["target_season"]
 
     own = con is None
     con = con or get_connection()
     try:
         if game_ids is None:
-            ended = played_game_ids(season, cfg, on_date=on_date)
-            have = set() if refetch else _existing_game_ids(con, LINEUP_TABLE)
-            game_ids = [g for g in ended if g not in have]
+            game_ids = games_needing_update(con, season, grace_hours=grace_hours)
+            if refetch:
+                game_ids = sorted(set(game_ids)
+                                  | _existing_game_ids(con, LINEUP_TABLE))
 
+        games, events, assists, periods, on_ice = [], [], [], [], []
         lineups, goalies, penalties, referees = [], [], [], []
         failed: list[tuple[int, str]] = []
         for gid in game_ids:
@@ -308,14 +346,25 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
                 continue
             # The endpoint has been observed returning only the two player
             # lists, with no `game` object at all. Every row parsed from that
-            # gets game_id None, and _upsert keys on game_id -- so NULL
+            # gets game_id None, and the merge keys on game_id -- so NULL
             # matches nothing, the rows append instead of replacing, and the
             # table silently doubles. Refuse the payload instead: a loud
             # failure beats a quiet duplicate.
-            if not (detail.get("game") or {}).get("id"):
+            g = (detail.get("game") or {})
+            if not g.get("id"):
                 failed.append((gid, "payload has no game.id -- endpoint "
                                     "returned a partial response"))
                 continue
+
+            # `game` has the same shape as an entry in the season list, so the
+            # season-side flatteners take it unchanged -- one parser per table
+            # rather than two that can drift.
+            one = [g]
+            games.append(_flatten_games(one, season))
+            events.append(_flatten_goal_events(one, season))
+            assists.append(_flatten_assists(one, season))
+            periods.append(_flatten_periods(one, season))
+            on_ice.append(_flatten_on_ice(one, season))
             lineups.append(_parse_lineups(detail, season))
             goalies.append(_parse_goalies(detail, season))
             penalties.append(_parse_penalties(detail, season))
@@ -325,16 +374,19 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
             return (pd.concat(parts, ignore_index=True) if parts
                     else pd.DataFrame(columns=columns))
 
-        counts = {
-            LINEUP_TABLE: _upsert(con, LINEUP_TABLE, LINEUP_COLUMNS,
-                                  _frame(lineups, LINEUP_COLUMNS)),
-            GOALIE_TABLE: _upsert(con, GOALIE_TABLE, GOALIE_COLUMNS,
-                                  _frame(goalies, GOALIE_COLUMNS)),
-            PENALTY_TABLE: _upsert(con, PENALTY_TABLE, PENALTY_COLUMNS,
-                                   _frame(penalties, PENALTY_COLUMNS)),
-            REFEREE_TABLE: _upsert(con, REFEREE_TABLE, REFEREE_COLUMNS,
-                                   _frame(referees, REFEREE_COLUMNS)),
-        }
+        counts = {}
+        for table, parts, columns in (
+                ("raw_games", games, None),
+                ("raw_goal_events", events, None),
+                ("raw_assists", assists, None),
+                ("raw_periods", periods, None),
+                ("raw_on_ice", on_ice, None),
+                (LINEUP_TABLE, lineups, LINEUP_COLUMNS),
+                (GOALIE_TABLE, goalies, GOALIE_COLUMNS),
+                (PENALTY_TABLE, penalties, PENALTY_COLUMNS),
+                (REFEREE_TABLE, referees, REFEREE_COLUMNS)):
+            df = _frame(parts, columns or [])
+            counts[table] = _upsert(con, table, columns or list(df.columns), df)
     finally:
         if own:
             con.close()

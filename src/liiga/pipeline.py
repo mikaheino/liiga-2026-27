@@ -43,36 +43,49 @@ GAME_COLUMNS = ["snapshot_date", "game_id", "home_team", "away_team",
 def refresh_results(season: int | None = None, con=None) -> dict:
     """Pull in what has happened since the last run. The in-season step.
 
-    Three layers, in order, because each feeds the next:
+    Two layers:
 
-    1. the season endpoint -> results, goals, assists (`ingest_all`)
-    2. the SQL transforms   -> stg_games, team_game_log, ... which the model
+    1. the per-game endpoint -> results, goals, assists, expected goals,
+       periods, lineups, goalies, penalties, referees, for the games the
+       stored schedule says must be over (`results.ingest_results`)
+    2. the SQL transforms -> stg_games, team_game_log, ... which the model
        and the Elo ratings read
-    3. the per-game endpoint -> lineups, goalies, penalties for games that
-       have just been played (`results.ingest_results`)
 
-    Step 3 is incremental and step 1 is not: the season endpoint is one call
-    per season and gives every result at once, while per-game detail costs a
-    call per game and is therefore fetched only for games we do not have yet.
+    The season endpoint is deliberately not called. The fixture list is fixed
+    and already in `raw_games`, so there is nothing to discover: a game is due
+    eight hours after its start time, and one response per game carries
+    everything that response used to. Dropping it also removes a single point
+    of failure -- it has been observed returning 502 for the current season
+    from some networks while serving historical seasons fine.
+
+    A schedule change is the exception the operator reports, and
+    `ingest_all(seasons=[...])` reloads the fixture list when it happens.
 
     Called by both the local daily run and the in-Snowflake notebook, so this
     must stay free of anything laptop-specific.
     """
-    from .ingest import fetch_season, ingest_all
     from .results import ingest_results
     from .transform import run_transforms
 
     cfg = load_config()
     season = season or cfg["ingestion"]["target_season"]
 
-    games = fetch_season(season, force=True)
-    n_played = sum(1 for g in games if g.get("ended"))
-    ingest_all()
-    run_transforms()
-    detail = ingest_results(season, con=con)
+    own = con is None
+    con = con or get_connection()
+    try:
+        detail = ingest_results(season, con=con)
+        run_transforms(con)
+        counts = query_df(con, f"""
+            SELECT COUNT(*) AS n_total,
+                   SUM(CASE WHEN ended THEN 1 ELSE 0 END) AS n_played
+            FROM stg_games WHERE season = {int(season)}""")
+    finally:
+        if own:
+            con.close()
 
-    return {"season": season, "games_total": len(games),
-            "games_played": n_played,
+    return {"season": season,
+            "games_total": int(counts["n_total"].iloc[0] or 0),
+            "games_played": int(counts["n_played"].iloc[0] or 0),
             "detail_games": detail["games_fetched"],
             "detail_rows": detail["rows"], "detail_failed": detail["failed"]}
 
