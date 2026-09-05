@@ -252,10 +252,17 @@ hetkestä**: sijat 1–6, 7–12 ja 13–17. Latausnapit antavat **PDF:ää, eiv
 PNG:tä** — LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto
 siihen mihin kuvia käytetään.
 
-**Rivillä on kolme sijaa, eikä niitä saa sekoittaa.** Iso laatikko on
-nykyinen, nuolen alla `alkup.` on ensimmäinen ennuste, ja pistemäärän vieressä
-`ed.` on edellinen ajo. Alaviite nimeää kaikki kolme päivämäärineen — kolme
-paljasta lukua samalla rivillä olisi arvoitus.
+**Rivillä on kaksi sijaa.** Iso laatikko on nykyinen ja nuolen alla `alkup.`
+on ensimmäinen ennuste; nuoli on niiden erotus. Alaviite nimeää molemmat ja
+päivää vertailun.
+
+⚠️ **`alkup.` on `prediction_history`:n ensimmäinen snapshot (28.6.2026), joka
+EI ole sama kuin julkaistu karuselli.** `site_instagram/slide_1.png` on
+committoitu 30.8. ja vastaa snapshotteja 28.8.–1.9. — pisteet 115/107/105/104/
+99/99. Ensimmäisen ja julkaistun välillä on **9 sijaeroa 17:stä**: HIFK 6.→5.,
+Jokerit 8.→6., SaiPa 5.→7., K-Espoo 11.→9. Kolme kärkeä (Tappara, KooKoo,
+Ilves) on molemmissa sama, joten ne eivät paljasta kumpaa vertailukohtaa
+käytetään — tarkista muualta jos tämä tulee kysymykseksi.
 
 **Nuoli vertaa ENSIMMÄISEEN ennusteeseen, ei edelliseen ajoon**, ja luku sen
 alla on se johon se vertaa. Päivittäinen ajo liikuttaa joukkueita pisteen

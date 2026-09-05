@@ -230,10 +230,6 @@ def css(t: dict) -> str:
   .mv-a {{ font-size:34px; line-height:1; }}
   .mv-r {{ display:block; font-size:18px; color:{t['muted']}; margin-top:6px;
           font-variant-numeric:tabular-nums; }}
-  /* Alkuperäinen ennuste pistemäärän vasemmalla puolella: pieni ja vaimea,
-     koska se on vertailukohta eikä tämän hetken luku. */
-  .orig {{ font-family:{BODY_F}; font-size:19px; font-style:normal;
-          color:{t['muted']}; margin-right:14px; vertical-align:middle; }}
   .pts {{ text-align:right; }}
   .ptsn {{ font-family:{HEAD_F}; font-size:54px; line-height:1; font-style:italic;
           font-variant-numeric:tabular-nums; color:{CREAM}; }}
@@ -312,10 +308,9 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
                     ctx: dict | None = None) -> str:
     """One band of the table, with where each team came from.
 
-    Three ranks are on the row and they must not be confusable: the big box
-    is now, `ed.` under the arrow is the previous run, `alkup.` beside the
-    points is the very first prediction. The foot names all three -- three
-    bare numbers in one row would be a puzzle.
+    Two ranks on the row: the big box is now, `alkup.` under the arrow is the
+    first prediction, and the arrow is the difference between them. The foot
+    names both and dates the comparison.
     """
     ctx = ctx or {}
     FIRST_DATE = ctx.get("__first_date__", "kesäkuu 2026")
@@ -330,8 +325,7 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
           <span class="mv-r">{ctx.get(r.team, _NO_CTX)[2]}</span>
         </div>
         <div class="pts">
-          <div class="ptsn"><span class="orig"
-            >{ctx.get(r.team, _NO_CTX)[3]}</span>{r.mean_points:.0f}</div>
+          <div class="ptsn">{r.mean_points:.0f}</div>
           <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} p</div>
           <div class="ptsr">todennäk. {bands[r.team]}</div>
         </div>
@@ -345,8 +339,8 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
     <div class="rule"></div>
     <div class="body standings">{body}</div>
     <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 %
-      lopputuloksista · nuoli ja ”alkup.” = sija ensimmäisessä ennusteessa
-      ({FIRST_DATE}), ”ed.” = sija edellisessä ajossa</div>
+      lopputuloksista · nuoli ja ”alkup.” = sija ensimmäisessä
+      ennusteessa ({FIRST_DATE})</div>
   </div>""")
 
 
@@ -743,7 +737,7 @@ def iqr_bands(pos, teams) -> dict:
 
 
 # Kun historiaa ei vielä ole, rivi ei saa jäädä tyhjäksi eikä valehdella.
-_NO_CTX = ("\u2013", MUTED, "", "")
+_NO_CTX = ("\u2013", MUTED, "")
 
 
 def rank_context(con) -> dict:
@@ -759,12 +753,12 @@ def rank_context(con) -> dict:
         return {}
     h["snapshot_date"] = h["snapshot_date"].astype(str)
     dates = sorted(h["snapshot_date"].unique())
-    first, prev, now = dates[0], dates[-2], dates[-1]
+    first, now = dates[0], dates[-1]
 
     def ranks(d):
         return h[h["snapshot_date"] == d].set_index("team")["proj_rank"]
 
-    r_first, r_prev, r_now = ranks(first), ranks(prev), ranks(now)
+    r_first, r_now = ranks(first), ranks(now)
     out = {}
     for team in r_now.index:
         if team not in r_first.index:
@@ -780,10 +774,8 @@ def rank_context(con) -> dict:
         arrow, colour = (("\u25b2", GOLD) if moved > 0 else
                          ("\u25bc", MUTED) if moved < 0 else ("\u2013", MUTED))
         # The number under the arrow is the one the arrow compares against.
-        # Putting the other rank there is what makes a reader mistrust both.
-        out[team] = (arrow, colour, f"alkup. {_ordinal(int(r_first[team]))}",
-                     (f"ed. {_ordinal(int(r_prev[team]))}"
-                      if team in r_prev.index else ""))
+        # Putting any other rank there is what makes a reader mistrust both.
+        out[team] = (arrow, colour, f"alkup. {_ordinal(int(r_first[team]))}")
     # Alaviite tarvitsee päivämäärän: "ensimmäinen ennuste" on tyhjä
     # ilmaisu ilman sitä. Avain ei voi törmätä joukkueen nimeen.
     out["__first_date__"] = _fi_date(first)

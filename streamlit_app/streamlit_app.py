@@ -1234,7 +1234,7 @@ def render_slide_section(updated_at: str) -> None:
     st.caption(
         "Kolme 1080×1350 (4:5) diaa tästä hetkestä: sijat 1–6, 7–12 ja 13–17. "
         "Jokaisella rivillä nuoli ja **alkup.** kertovat sijan ensimmäisessä "
-        "ennusteessa ja **ed.** sijan edellisessä ajossa. **Lataa kaikki** antaa "
+        "ennusteessa. **Lataa kaikki** antaa "
         "yhden PDF:n, jonka voi viedä LinkedIn-karuselliksi sellaisenaan.")
 
     slides, pdf, problem = build_slides(updated_at)
