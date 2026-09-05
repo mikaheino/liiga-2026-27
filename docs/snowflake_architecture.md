@@ -71,6 +71,20 @@ Egress goes through `LIIGA_FI_ACCESS`, whose network rule allows exactly
 `www.liiga.fi:443`. The account also has a blanket `ALLOW_ALL_INTEGRATION`
 (`0.0.0.0:443`) that would have worked; it is deliberately not used.
 
+**A 200 from liiga.fi does not mean the response has anything in it.** During a
+roughly ten-minute window on 2026-09-05 the standings endpoint answered 200
+with a 2-byte `{}` for *every* season, and the per-game endpoint answered 200
+with the two player lists but no `game` object -- from a laptop and from
+Snowflake's egress alike, minutes after both had served full payloads, and back
+to normal afterwards. It is upstream flapping, not a block and not a change to
+the API.
+
+Two consequences, both already in the code. Check the body, never the status
+code: `_get`'s `raise_for_status()` is not enough, so `ingest_results` refuses a
+payload with no `game.id` and `snapshot_standings` reports an empty table out
+loud instead of writing nothing quietly. And treat an empty answer as
+temporary: retry the run rather than concluding the endpoint has been withdrawn.
+
 ## Ingest — `LIIGA.RAW`
 
 `liiga.results.ingest_results()` is the whole ingest. It reads the fixed
@@ -83,7 +97,9 @@ unchanged.
 
 `liiga.standings.snapshot_standings()` records the cumulative table each run,
 and `reconstruct_games()` derives a result from the movement between two
-snapshots when the per-game endpoint serves a partial payload. It refuses
+snapshots when the per-game endpoint serves a partial payload. Both tolerate
+their own table not existing yet -- a first run, or a run where the endpoint
+answered empty, must not crash the pipeline behind it. It refuses
 ambiguity: both teams must have gained exactly one game and agree on the
 score, or the fixture is left alone. Rows recovered this way carry
 `result_source = 'standings_delta'`.
