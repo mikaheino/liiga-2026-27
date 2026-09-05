@@ -40,6 +40,43 @@ season. Small enough to leave alone.
 
 ---
 
+## Backtestable now — the API had xG all along (2026-09-05)
+
+The ranked list below was written believing the only new in-season signal
+would be unvalidatable until spring. That was wrong. `expectedGoals`,
+`powerplayInstances` and `shortHandedInstances` are present in **every one of
+the 2 308 cached games from 2022–2026**, and were simply discarded at parse
+time. They are now in `raw_games`, and `team_season` derives `pp_pct`,
+`pk_pct` and `xg_share` from them.
+
+That means these can go through the same leakage-free harness as every other
+knob — `model.backtest()` and `backtest_standings()` on 2023–26, judged on
+log-loss and points MAE, **never ρ** (AGENTS.md §10). In priority order:
+
+1. **xG into team strength.** `team_strength.team_history_ratings` uses actual
+   goals; xG is the lower-variance version of the same signal. Run both.
+2. **xG margin into MOV-Elo.** `elo.py` scales by goal margin; xG margin is
+   less noisy.
+3. **Special teams into the Poisson.** `powerplayInstances` separates "scores
+   on the power play" from "gets power plays" — the model sees only goals.
+4. **Score effects** from `raw_periods` and `home_score_after`. Teams play
+   differently when leading; this is part of what the Dixon-Coles correction
+   currently absorbs as a flat constant.
+
+Two that stay out of the model:
+
+- **On-ice plus/minus** (`raw_on_ice`). 73% coverage historically, and 22% of
+  even-strength goals repeat a jersey number, meaning a skater is missing.
+  They are jersey numbers, not player ids, and there are no historical lineups
+  to translate them. Collect it; do not model on it.
+- **Per-game detail** (penalty windows, referees, player physicals). Current
+  season only — the historical per-game responses were never stored, and
+  fetching 2 841 of them is off the table. No history means no backtest.
+
+There is no possession metric to be had: liiga.fi publishes no shots, no
+Corsi, no faceoffs and no zone time. `xg_share` is chance quality, and should
+be labelled as such rather than as possession.
+
 ## After ~15–20 games — measure, do not tune
 
 **Score the model for real.** The backtest gave log-loss 0.672 against a
