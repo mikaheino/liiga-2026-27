@@ -13,8 +13,13 @@ WITH goals AS (
     WHERE player_id IS NOT NULL AND player_id <> 0 AND NOT is_shootout
     GROUP BY player_id, season, team
 ),
+-- Names come from here too, not only from `goals`. A player with assists and
+-- no goals had a NULL name -- 75 of 128 rows in 2027, including the man who
+-- was second in the scoring race. MAX() picks the mixed-case spelling over
+-- the ALL-CAPS duplicate the API sometimes returns ('Lukas' > 'LUKAS').
 assists AS (
-    SELECT player_id, season, team, COUNT(*) AS assists
+    SELECT player_id, season, team, COUNT(*) AS assists,
+           MAX(first_name) AS first_name, MAX(last_name) AS last_name
     FROM raw_assists
     WHERE player_id IS NOT NULL AND player_id <> 0
     GROUP BY player_id, season, team
@@ -25,7 +30,8 @@ combined AS (
         COALESCE(g.player_id, a.player_id)       AS player_id,
         COALESCE(g.season,    a.season)          AS season,
         COALESCE(g.team,      a.team)            AS team,
-        g.first_name, g.last_name,
+        COALESCE(g.first_name, a.first_name)     AS first_name,
+        COALESCE(g.last_name,  a.last_name)      AS last_name,
         COALESCE(g.goals, 0)                     AS goals,
         COALESCE(a.assists, 0)                   AS assists
     FROM goals g

@@ -810,6 +810,133 @@ def slides_to_pdf(slides) -> bytes:
     return buf.getvalue()
 
 
+def season_stats(con) -> dict:
+    """Current-season production per player, with their place in the race.
+
+    Keyed on the normalised full name because that is all the pick lists
+    carry -- they come from player_rates, which has no player_id.
+
+    RANK(), not ROW_NUMBER(): five players tied on three points are all
+    third, and picking one of them to be sixth would be an invention.
+    """
+    df = query_df(con, """
+        SELECT first_name || ' ' || last_name AS nm, team, goals, assists,
+               points,
+               RANK() OVER (ORDER BY points DESC) AS rank_p,
+               RANK() OVER (ORDER BY goals  DESC) AS rank_g
+        FROM player_season_scoring
+        WHERE season = (SELECT MAX(season) FROM player_season_scoring)""")
+    out = {_norm(r.nm): {"points": int(r.points), "goals": int(r.goals),
+                         "rank_p": int(r.rank_p), "rank_g": int(r.rank_g)}
+           for r in df.itertuples()}
+    # Goalies produce no points, so they are absent above and need their own
+    # pass. There is no save percentage to be had: liiga.fi publishes no
+    # shots, so `game_goalies` records goals against and nothing to divide it
+    # by. Starts and goals against are what the season actually measured.
+    gk = query_df(con, """
+        SELECT first_name || ' ' || last_name AS nm,
+               SUM(CASE WHEN started THEN 1 ELSE 0 END) AS starts,
+               COALESCE(SUM(goals_against), 0) AS ga
+        FROM game_goalies
+        WHERE season = (SELECT MAX(season) FROM game_goalies)
+        GROUP BY 1""")
+    for r in gk.itertuples():
+        out.setdefault(_norm(r.nm), {}).update(
+            {"starts": int(r.starts or 0), "ga": int(r.ga or 0)})
+    return out
+
+
+def _points_line(stats: dict, full: str) -> str:
+    """'6 p · 3. pistepörssissä', or an honest blank."""
+    s = stats.get(_norm(full))
+    if not s or "points" not in s:
+        return "ei vielä pisteitä"
+    return f"{s['points']} p · {_ordinal(s['rank_p'])} pistepörssissä"
+
+
+def award_status_slide(t: dict, picks: list, stats: dict) -> str:
+    """The same three award picks, scored against what has happened.
+
+    Keeps the original slide's layout and its own projection on the row, so
+    the comparison is legible without flipping back to the carousel.
+    """
+    rows = []
+    for cat, full, name, team, num, unit in picks:
+        s = stats.get(_norm(full), {})
+        # The pick list's unit already reads "ennustettua pistettä"; prefixing
+        # it with "ennuste" would say the word twice.
+        short = unit.replace("ennustettua ", "").replace("ennustettu ", "")
+        if "torjunta" in unit:
+            # No shots in the API, so no save percentage. Saying "-" and
+            # naming the reason beats printing a number that is not one.
+            big, small = "&ndash;", f"{s.get('starts', 0)} aloitusta &middot; ei mitattavissa"
+        elif "maalia" in unit:
+            big = str(s.get("goals", 0))
+            small = (f"maalia &middot; {_ordinal(s['rank_g'])} maalipörssissä"
+                     if s.get("goals") else "maalia")
+        else:
+            big = str(s.get("points", 0))
+            small = (f"pistettä &middot; {_ordinal(s['rank_p'])} pistepörssissä"
+                     if s.get("points") else "pistettä")
+        rows.append(f"""
+      <div class="aw">
+        {face_or_crest(full, team)}
+        <div class="aw-txt">
+          <div class="aw-cat">{cat}</div>
+          <div class="aw-name">{name}</div>
+          <div class="aw-sub">{team} &middot; ennuste {num} {short}</div>
+        </div>
+        <div>
+          <div class="aw-num">{big}</div>
+          <div class="aw-unit">{small}</div>
+        </div>
+      </div>""")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026-27 &middot; Ennuste vs. toteuma</div>
+      <div class="title">Kuka voittaa<br>mitäkin</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="award">{"".join(rows)}</div>
+    </div>
+    <div class="foot">Ennakkovalinnat ja niiden tuotto tähän mennessä &middot;
+      torjunta-%:a ei voi laskea: liiga.fi ei julkaise laukauksia</div>
+  </div>""")
+
+
+def newcomers_status_slide(t: dict, picks: list, stats: dict) -> str:
+    """The same six newcomers, with what they have produced so far."""
+    rows = []
+    for pos, full, name, team, frm, _num, _unit in picks:
+        s = stats.get(_norm(full), {})
+        if pos == "MV":
+            line = (f"{s['starts']} aloitusta &middot; {s['ga']} päästettyä"
+                    if s.get("starts") else "ei vielä aloituksia")
+        else:
+            line = _points_line(stats, full)
+        rows.append(f"""
+      <div class="row">
+        <div class="pos">{pos}</div>
+        {face_or_crest(full, team)}
+        <div class="nc-txt">
+          <div class="nc-name">{name}</div>
+          <div class="nc-from">{team} &nbsp;&middot;&nbsp; {line}</div>
+        </div>
+      </div>""")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026-27 &middot; Ennuste vs. toteuma</div>
+      <div class="title">Tulokkaiden<br>kokoonpano</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body newcomers">{"".join(rows)}</div>
+    <div class="foot">Sama kuusikko kuin ennakkodiassa &middot; tuotto tähän mennessä</div>
+  </div>""")
+
+
 def live_slides(con=None) -> list:
     """The standings slides plus the movement slide, from the current tables.
 
@@ -824,6 +951,7 @@ def live_slides(con=None) -> list:
                               FROM standings_2026_27 ORDER BY proj_rank""")
         pos = query_df(con, "SELECT * FROM position_distribution_2026_27")
         ctx = rank_context(con)
+        stats = season_stats(con)
     finally:
         if own:
             con.close()
@@ -837,6 +965,12 @@ def live_slides(con=None) -> list:
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
         out.append((f"sijat_{lo}-{hi}.png",
                     standings_slide(rows, lo, hi, themes[i], bands, ctx)))
+    # The pick lists come from player_rates, so they are the same names the
+    # published carousel named; only the right-hand column is new.
+    out.append(("palkinnot_toteuma.png",
+                award_status_slide(themes[4], _award_picks(), stats)))
+    out.append(("tulokkaat_toteuma.png",
+                newcomers_status_slide(themes[8], _newcomer_picks(), stats)))
     return [(name, rasterise(html)) for name, html in out]
 
 

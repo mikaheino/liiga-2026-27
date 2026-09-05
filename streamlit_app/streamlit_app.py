@@ -621,7 +621,9 @@ def render_title_history(history: pd.DataFrame, top: list[str],
             # Kiinteä alue, ei domainMin: kerrostettuna toisen tason skaala
             # yhdistyy tähän ja venytti akselin -150 %:iin asti. Prosentti ei
             # voi olla negatiivinen eikä yli sadan.
-            y=alt.Y("p_title:Q", title="Todennäköisyys (%)",
+            # Lyhyt otsikko: pitkä leikkautui kun selite vei leveyttä, ja
+            # kuvatekstin jälkeen "%" riittää kertomaan mitä akseli mittaa.
+            y=alt.Y("p_title:Q", title="%",
                     scale=alt.Scale(domain=[0, ymax], clamp=True)),
             color=alt.Color(
                 "team:N", title="Joukkue",
@@ -747,6 +749,19 @@ _CSS = """
 .stApp, .stMarkdown, .stCaption, p, label{color:var(--lp-body)}
 h1,h2,h3,h4{color:var(--lp-ink)}
 hr{border-color:var(--lp-gray-200)}
+/* Fontti koko sovellukseen, ei vain omiin lohkoihin. Streamlitin otsikot,
+   kuvatekstit ja widgetit ottavat fonttinsa teemasta eivätkä tokeneista,
+   joten ilman tätä vain "Kuka on kuumana?" oli Hanken Groteskia ja kaikki
+   muu jotain muuta -- kaksi kirjasinta samalla sivulla ilman syytä. */
+.stApp, .stApp button, .stApp input, .stApp select, .stApp textarea,
+.stApp [class*="st-"], [data-testid="stSidebar"] *{
+  font-family:var(--lp-sans)}
+/* Osioiden otsikot samaan painoon ja kirjainväliin kuin sivun oma H1. */
+.stApp h1, .stApp h2, .stApp h3, .stApp h4{
+  font-family:var(--lp-sans);font-weight:800;letter-spacing:-.02em}
+/* Numerot pysyvät monona: taulukoiden luvut on tarkoitus voida verrata
+   pystysuunnassa, mikä vaatii tasalevyiset numerot. */
+.lp-num, .ptsn, .mv-r{font-family:var(--lp-mono)}
 </style>
 """
 
@@ -1232,10 +1247,12 @@ def build_slides(updated_at: str) -> tuple[list, bytes, str]:
 def render_slide_section(updated_at: str) -> None:
     st.subheader("Diat jakoon")
     st.caption(
-        "Kolme 1080×1350 (4:5) diaa tästä hetkestä: sijat 1–6, 7–12 ja 13–17. "
-        "Jokaisella rivillä nuoli ja **alkup.** kertovat sijan siinä "
-        "ennusteessa joka oli voimassa ennen kauden alkua — sama kuin "
-        "julkaistussa karusellissa. **Lataa kaikki** antaa "
+        "Viisi 1080×1350 (4:5) diaa tästä hetkestä: sarjataulukko kolmessa "
+        "osassa, palkintovalinnat ja tulokkaiden kuusikko. Sijadioilla nuoli "
+        "ja **alkup.** kertovat sijan siinä ennusteessa joka oli voimassa "
+        "ennen kauden alkua — sama kuin julkaistussa karusellissa; kahdella "
+        "viimeisellä ennakkovalinnat ja niiden tuotto tähän mennessä. "
+        "**Lataa kaikki** antaa "
         "yhden PDF:n, jonka voi viedä LinkedIn-karuselliksi sellaisenaan.")
 
     slides, pdf, problem = build_slides(updated_at)

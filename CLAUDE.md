@@ -247,10 +247,20 @@ poikkeus.
 
 ## Diat jakoon — Streamlitin alaosio (2026-09-05)
 
-Sovelluksen alimmainen osio tarjoaa kolme 1080×1350 (4:5) diaa **tästä
-hetkestä**: sijat 1–6, 7–12 ja 13–17. Latausnapit antavat **PDF:ää, eivät
-PNG:tä** — LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto
-siihen mihin kuvia käytetään.
+Sovelluksen alimmainen osio tarjoaa viisi 1080×1350 (4:5) diaa **tästä
+hetkestä**: sijat 1–6, 7–12, 13–17 sekä kaksi ennuste-vs-toteuma-diaa
+(`award_status_slide`, `newcomers_status_slide`). Latausnapit antavat
+**PDF:ää, eivät PNG:tä** — LinkedIn-karuselli on PDF, joten PNG olisi väärä
+tiedostomuoto siihen mihin kuvia käytetään.
+
+**Toteumadiat nimeävät samat pelaajat kuin ennakkodiat** ja näyttävät heidän
+tuottonsa sekä sijansa pörssissä (`season_stats`, `RANK()` eikä
+`ROW_NUMBER()` — viisi kolmen pisteen pelaajaa on kaikki kolmansia).
+
+⚠️ **Torjunta-%:a ei voi laskea kuluvalta kaudelta.** `game_goalies` kirjaa
+päästetyt maalit eikä mitään millä jakaa: liiga.fi ei julkaise laukauksia.
+Maalivahtiriveillä on aloitukset ja päästetyt, ja dia sanoo syyn ääneen.
+Älä keksi torjunta-%:a jostain.
 
 **Rivillä on kaksi sijaa.** Iso laatikko on nykyinen ja nuolen alla `alkup.`
 on ensimmäinen ennuste; nuoli on niiden erotus. Alaviite nimeää molemmat ja
