@@ -6,10 +6,15 @@ at all. When that happens there is nothing left to read a score from, because
 the season endpoint is not used either (it returns 502 for the current season
 from some networks).
 
-`/api/v2/standings?season=N` is a third door, and it stays open: verified 200
-from both a laptop and Snowflake's egress while the season endpoint was 502
-from the same place. It is cumulative per team -- games, points, goals for and
-against -- so a single snapshot cannot say what happened in any one game.
+`/api/v2/standings?season=N` is a third door. It is cumulative per team --
+games, points, goals for and against -- so a single snapshot cannot say what
+happened in any one game.
+
+That door is not reliably open either. It has been seen answering **200 with
+an empty body** (`{}`, 2 bytes) for every season at once, from a laptop and
+from Snowflake's egress within minutes of serving a full table. So check the
+body, never the status code: `fetch_standings` returns `[]` and
+`snapshot_standings` says so out loud rather than writing nothing quietly.
 
 Two consecutive snapshots can. A team whose `games` rose by one played exactly
 one game in between; the fixture list says who against, and the `goals` and
@@ -87,6 +92,10 @@ def snapshot_standings(con=None, season: int | None = None) -> int:
         rows.append(row)
     fresh = pd.DataFrame(rows, columns=COLUMNS)
     if fresh.empty:
+        # The endpoint answers 200 with `{}` when it has nothing to say --
+        # observed for every season at once, so it is an upstream outage, not
+        # a bad season number. Say so; a silent 0 looks like "no games yet".
+        print("  standings: endpoint returned no teams -- no snapshot taken")
         return 0
 
     own = con is None
@@ -102,9 +111,13 @@ def snapshot_standings(con=None, season: int | None = None) -> int:
 
 
 def _latest_two(con, season: int) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    snaps = query_df(
-        con,
-        f"SELECT DISTINCT snapshot_at FROM {TABLE} WHERE season = {int(season)}")
+    try:
+        snaps = query_df(
+            con,
+            f"SELECT DISTINCT snapshot_at FROM {TABLE} "
+            f"WHERE season = {int(season)}")
+    except Exception:               # noqa: BLE001 -- table not created yet
+        return None
     if len(snaps) < 2:
         return None
     order = sorted(snaps["snapshot_at"].astype(str))
