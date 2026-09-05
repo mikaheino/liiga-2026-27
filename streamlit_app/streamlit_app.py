@@ -29,6 +29,9 @@ PLAYOFF_CUT = 6          # 1-6 suoraan playoffeihin
 QUALI_CUT = 10           # 7-10 karsintoihin
 ACCENT = (51, 102, 153)  # #336699, sama teräksensininen kuin sivustolla
 N_SIMS = "10 000"        # pidä synkassa config.yaml -> simulation.n_simulations
+HIT = "#1F7A3D"          # playoff-vihreä: malli osui
+MISS = "#CC0000"         # punainen: malli meni pieleen
+CONTEXT = "#D8DEE5"      # taustaviivat pienissä kuvissa
 
 st.set_page_config(page_title="Liiga 2026-27 -ennuste",
                    page_icon="🏒", layout="wide")
@@ -137,6 +140,17 @@ def fixtures_sql() -> str:
     """
 
 
+def banked_sql() -> str:
+    """Points already earned per team, and how many games produced them."""
+    log = _qualify("team_game_log")
+    return f"""
+        SELECT team, SUM(points) AS banked, COUNT(*) AS played
+        FROM {log}
+        WHERE season = (SELECT MAX(season) FROM {log})
+        GROUP BY team
+    """
+
+
 def load_updated_at() -> str:
     """Ennusteen aikaleima. Tätä EI kacheta -- se on välimuistin avain."""
     meta = read_sql("prediction_meta")
@@ -151,6 +165,10 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
     # Only games still unplayed exist here, so no season filter is needed:
     # every past season is fully ended.
     try:
+        banked = run_query(banked_sql())
+    except Exception:                     # noqa: BLE001 -- nothing played yet
+        banked = pd.DataFrame(columns=["team", "banked", "played"])
+    try:
         upcoming, upcoming_error = run_query(fixtures_sql()), ""
     except Exception as exc:              # noqa: BLE001 -- degrade, but say so
         upcoming = pd.DataFrame(columns=[
@@ -164,6 +182,7 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
         "meta": read_sql("prediction_meta"),
         "upcoming": upcoming,
         "upcoming_error": upcoming_error,
+        "banked": banked,
     }
 
 
@@ -265,31 +284,55 @@ def render_position_table(m: pd.DataFrame) -> None:
 # Ennusteen liike
 # --------------------------------------------------------------------------
 def render_history(history: pd.DataFrame, order: list[str]) -> None:
+    """Small multiples, not seventeen lines in one frame.
+
+    One panel per team is the standard fix for a spaghetti chart: with all
+    seventeen in a single set of axes the lines cross constantly and no colour
+    legend can separate them. Each panel repeats every team's line in grey as
+    context, so a team is read against the field rather than against nothing.
+
+    The context layer carries its own copy of the data with the team column
+    renamed, so faceting -- which filters on `team` -- leaves it whole.
+    """
+    if history.empty:
+        return
     h = history.copy()
     h["snapshot_date"] = pd.to_datetime(h["snapshot_date"])
     h["mean_points"] = h["mean_points"].astype(float)
 
-    chart = (
-        alt.Chart(h)
-        .mark_line(strokeWidth=2, interpolate="monotone")
-        .encode(
-            x=alt.X("snapshot_date:T", title=None,
-                    axis=alt.Axis(format="%-d.%-m.", grid=False)),
-            y=alt.Y("mean_points:Q", title="Ennustetut pisteet",
-                    scale=alt.Scale(zero=False, nice=True)),
-            color=alt.Color("team:N", title="Joukkue",
-                            sort=order,
-                            scale=alt.Scale(scheme="tableau20")),
-            tooltip=[alt.Tooltip("team:N", title="Joukkue"),
-                     alt.Tooltip("snapshot_date:T", title="Päivä",
-                                 format="%-d.%-m.%Y"),
-                     alt.Tooltip("mean_points:Q", title="Pisteet",
-                                 format=".1f"),
-                     alt.Tooltip("games_played:Q", title="Otteluita")],
-        )
-        .properties(height=430)
-        .interactive()
-    )
+    # One row per (team, panel): every panel carries the whole field, and the
+    # focus layer picks its own team out of it. Altair needs a single
+    # top-level dataset to facet a layered chart, so the context cannot just
+    # be a second frame.
+    big = h.merge(pd.DataFrame({"panel": order}), how="cross")
+
+    x = alt.X("snapshot_date:T", title=None,
+              axis=alt.Axis(format="%-d.%-m.", grid=False, tickCount=3))
+    y = alt.Y("mean_points:Q", title="Ennustetut pisteet",
+              scale=alt.Scale(zero=False, nice=True))
+
+    context = (alt.Chart()
+               .mark_line(strokeWidth=1, color=CONTEXT, interpolate="monotone")
+               .encode(x=x, y=y, detail="team:N"))
+    focus = (alt.Chart()
+             .mark_line(strokeWidth=2, color=f"rgb{ACCENT}",
+                        interpolate="monotone")
+             .transform_filter("datum.team === datum.panel")
+             .encode(x=x, y=y,
+                     tooltip=[alt.Tooltip("team:N", title="Joukkue"),
+                              alt.Tooltip("snapshot_date:T", title="Päivä",
+                                          format="%-d.%-m.%Y"),
+                              alt.Tooltip("mean_points:Q", title="Pisteet",
+                                          format=".1f"),
+                              alt.Tooltip("games_played:Q",
+                                          title="Otteluita")]))
+
+    chart = (alt.layer(context, focus, data=big)
+             .properties(width=230, height=120)
+             .facet(facet=alt.Facet("panel:N", title=None, sort=order,
+                                    header=alt.Header(labelFontSize=12,
+                                                      labelFontWeight="bold")),
+                    columns=5))
     full_width(st.altair_chart, chart)
 
 
@@ -323,6 +366,7 @@ def render_fixtures(games: pd.DataFrame) -> None:
     heatmap above already proves Styler renders the same on both.
     """
     df = games.copy()
+    said = df.apply(_model_said, axis=1)      # NaN until the game is played
     out = pd.DataFrame({
         "Päivä": pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m."),
         "Ottelu": df["home_team"] + " – " + df["away_team"],
@@ -333,10 +377,24 @@ def render_fixtures(games: pd.DataFrame) -> None:
         # Pre-formatted as text, not left as a float with NaN: Streamlit
         # renders the underlying null as "None" for an unplayed game rather
         # than honouring the Styler's na_rep, which does produce "".
-        "Malli antoi voittajalle": df.apply(_model_said, axis=1)
-                                     .map(lambda v: "" if pd.isna(v)
-                                          else f"{v:.0f} %"),
+        # The tick/cross carries the hit/miss on its own -- colour alone
+        # would fail anyone who cannot separate the green from the red.
+        "Malli antoi voittajalle": said.map(
+            lambda v: "" if pd.isna(v)
+            else f"{'✓' if v >= 50 else '✗'}  {v:.0f} %"),
     })
+
+    def _hit_shading(_col):
+        """Green where the model favoured the eventual winner, red where not.
+
+        50% exactly counts as a miss rather than a hit: the model expressed no
+        preference, so it earns no credit.
+        """
+        return [("" if pd.isna(v) else
+                 f"background-color: rgba(31,122,61,0.14); color: {HIT}"
+                 if v >= 50 else
+                 f"background-color: rgba(204,0,0,0.10); color: {MISS}")
+                for v in said]
 
     bars = ["Koti voittaa", "Vieras voittaa"]
     nums = bars + ["Jatkoaika"]
@@ -347,53 +405,83 @@ def render_fixtures(games: pd.DataFrame) -> None:
                  # 0-100 so bars are comparable between rows.
                  .bar(subset=bars, color=f"rgba{(*ACCENT, 0.35)}",
                       vmin=0, vmax=100)
+                 .apply(_hit_shading, subset=["Malli antoi voittajalle"])
                  .set_properties(subset=nums + ["Malli antoi voittajalle"],
                                  **{"text-align": "right"}))
     full_width(st.dataframe, styler, hide_index=True,
                height=min(len(out) + 1, 26) * 35 + 3)
 
 
-def render_title_race(standings: pd.DataFrame, history: pd.DataFrame) -> None:
-    """Who wins the regular season: the standing today, and how it has moved.
+def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame) -> None:
+    """Who wins the regular season -- and how much of it is already decided.
 
-    Two views of one number. The bars answer "who, and how far clear"; the
-    lines answer "is that lead holding". Pre-season the lines are flat and the
-    bars carry everything -- once results land, the movement is the story.
+    Bar length is projected final points, split by colour into points a team
+    has actually earned and points the simulation expects it to add. Early in
+    the season the earned segment is a sliver, which is the honest message:
+    almost all of this is still simulation. It grows as the season does.
+
+    Order and the right-hand label carry the actual question (P(title)), so
+    the chart answers "who is favoured" and "how much is real" at once.
     """
-    cur = (standings[["team", "p_title"]].copy()
-           .assign(p_title=lambda d: d["p_title"].astype(float) * 100)
-           .sort_values("p_title", ascending=False))
+    cur = (standings[["team", "p_title", "mean_points"]].copy()
+           .assign(p_title=lambda d: d["p_title"].astype(float) * 100,
+                   mean_points=lambda d: d["mean_points"].astype(float))
+           .merge(banked[["team", "banked"]] if not banked.empty
+                  else pd.DataFrame({"team": [], "banked": []}),
+                  on="team", how="left"))
+    cur["banked"] = cur["banked"].fillna(0.0).astype(float)
+    # Clip so a team whose banked points already exceed the projection (a hot
+    # start) cannot produce a negative segment.
+    cur["simuloitu"] = (cur["mean_points"] - cur["banked"]).clip(lower=0.0)
+    cur = cur.sort_values("p_title", ascending=False)
+    order = cur["team"].tolist()
+
+    long = cur.melt(id_vars=["team", "p_title", "mean_points"],
+                    value_vars=["banked", "simuloitu"],
+                    var_name="osa", value_name="pisteet")
+    long["osa"] = long["osa"].map({"banked": "Kerätyt pisteet",
+                                   "simuloitu": "Simuloitu loppukausi"})
 
     bars = (
-        alt.Chart(cur)
-        .mark_bar(cornerRadiusEnd=2)
+        alt.Chart(long)
+        .mark_bar()
         .encode(
-            x=alt.X("p_title:Q", title="Todennäköisyys (%)"),
-            y=alt.Y("team:N", title=None, sort="-x"),
-            # One accent colour, opacity carrying the value: a categorical
-            # palette here would imply the teams are different in kind.
-            opacity=alt.Opacity("p_title:Q", legend=None,
-                                scale=alt.Scale(range=[0.35, 1.0])),
-            color=alt.value(f"rgb{ACCENT}"),
+            x=alt.X("pisteet:Q", title="Ennustetut pisteet", stack="zero"),
+            y=alt.Y("team:N", title=None, sort=order,
+                    axis=alt.Axis(labelOverlap=False, labelFontSize=12)),
+            color=alt.Color(
+                "osa:N", title=None,
+                scale=alt.Scale(domain=["Kerätyt pisteet",
+                                        "Simuloitu loppukausi"],
+                                range=[f"rgb{ACCENT}", "#B9C9DA"]),
+                legend=alt.Legend(orient="top")),
+            order=alt.Order("osa:N", sort="ascending"),
             tooltip=[alt.Tooltip("team:N", title="Joukkue"),
+                     alt.Tooltip("osa:N", title=None),
+                     alt.Tooltip("pisteet:Q", title="Pisteitä", format=".1f"),
                      alt.Tooltip("p_title:Q", title="Voittaa runkosarjan",
                                  format=".1f")],
         )
-        .properties(height=max(len(cur) * 26, 200))
+        .properties(height=max(len(cur) * 30, 200))
     )
-    labels = bars.mark_text(align="left", dx=4, fontSize=11).encode(
-        text=alt.Text("p_title:Q", format=".1f"), opacity=alt.value(1.0))
+    labels = (
+        alt.Chart(cur)
+        .mark_text(align="left", dx=5, fontSize=11)
+        .encode(x=alt.X("mean_points:Q"),
+                y=alt.Y("team:N", sort=order,
+                        axis=alt.Axis(labelOverlap=False)),
+                text=alt.Text("p_title:Q", format=".1f"))
+    )
     full_width(st.altair_chart, bars + labels)
 
+
+def render_title_history(history: pd.DataFrame, top: list[str]) -> None:
+    """Six contenders' title probability over time. Six lines still read."""
     if history.empty or history["snapshot_date"].nunique() < 2:
         return
-    h = history.copy()
+    h = history[history["team"].isin(top)].copy()
     h["snapshot_date"] = pd.to_datetime(h["snapshot_date"])
     h["p_title"] = h["p_title"].astype(float) * 100
-    # Only the teams with a real shot: seventeen flat lines at 0% would bury
-    # the three that move.
-    top = cur.head(6)["team"].tolist()
-    h = h[h["team"].isin(top)]
 
     st.caption("Miten mestaruussuosikki on vaihtunut — kuusi kärkijoukkuetta.")
     line = (
@@ -441,9 +529,16 @@ def main() -> None:
               else "Paikallinen DuckDB")
 
     st.subheader("Kuka voittaa runkosarjan?")
-    st.caption(f"Osuus {N_SIMS} simuloidusta kaudesta, jossa joukkue on "
-               "runkosarjan ykkönen.")
-    render_title_race(standings, data["history"])
+    st.caption(
+        f"Palkin pituus on ennustetut loppupisteet: tumma osa on jo kerätty "
+        f"({played}/{total} ottelua pelattu), vaalea on {N_SIMS} simuloidun "
+        "kauden keskiarvo lopuista. Luku palkin perässä on todennäköisyys "
+        "prosentteina, että joukkue on runkosarjan ykkönen.")
+    render_title_race(standings, data["banked"])
+    render_title_history(
+        data["history"],
+        standings.sort_values("p_title", ascending=False)["team"]
+                 .head(6).tolist())
 
     m = position_matrix(data["position"], standings)
 
@@ -490,7 +585,7 @@ def main() -> None:
 
     st.subheader("Miten ennuste on liikkunut")
     st.caption("Ennustetut lopputilanteen pisteet, yksi piste per päivitysajo. "
-               "Kauden alettua esikauden mielipide väistyy tulosten tieltä.")
+               "Oma paneeli per joukkue — harmaana kaikki muut vertailukohdaksi.")
     render_history(data["history"], standings.sort_values("proj_rank")["team"].tolist())
 
 
