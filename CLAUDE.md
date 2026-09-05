@@ -289,6 +289,22 @@ välissä 3:een ja on taas 2. `proj_rank` on pienempi kun sija on parempi,
 joten luvun lasku on dialla nousu; tämä on se kohta jonka saa helposti
 väärinpäin.
 
+**Typografia on jaettu vain osittain, tarkoituksella.** Otsikot, sijanumerot,
+joukkueiden nimet ja pistemäärät ovat Arial Blackia (`HEAD_F`) — dian ilme on
+sen massassa, eikä julkaistun karusellin ulkoasu saa muuttua tunnistettavasti.
+Leipäteksti (`BODY_F`) on **Hanken Grotesk**, sama kuin sovelluksessa.
+
+Fontti on **viety repoon** (`site/assets/fonts/hanken-grotesk-400-latin.woff2`,
+13 kt, SIL OFL) ja upotetaan diaan base64-data-URI:na, ei haeta Google
+Fontsista ajon aikana: Chrome renderöi diat offline, ja verkosta haettu fontti
+putoaisi hiljaa Helveticaan huonolla yhteydellä — jolloin dia poikkeaisi
+edellisistä ilman näkyvää syytä. `body_font_face()` hoitaa upotuksen ja
+kertoo jos tiedosto puuttuu.
+
+**Vain leikkaus 400.** Dian CSS ei aseta `font-weight`iä millekään
+`BODY_F`-elementille; jokainen lihavoitu vaihtaa `HEAD_F`:ään. Käyttämättömät
+leikkaukset kolminkertaistaisivat jokaisen dian koon tyhjästä.
+
 **Diat rakentaa `scripts/build_instagram.py`, ei `streamlit_app.py`.** Sama
 koodi tuottaa levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
 voi karata erilleen. Streamlit lataa moduulin ajonaikaisesti

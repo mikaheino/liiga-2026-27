@@ -32,6 +32,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,8 +76,37 @@ GRADIENTS = [_bg(x, y) for x, y in
              [(78, 8), (22, 12), (85, 30), (15, 25), (60, 5),
               (35, 35), (90, 15), (10, 8), (70, 40)]]
 
+# Otsikot, sijanumerot, joukkueiden nimet ja pistemäärät pysyvät Arial
+# Blackina: dian ilme on sen massassa, eikä julkaistun karusellin ulkoasu saa
+# muuttua tunnistettavasti. Leipäteksti on Hanken Grotesk, sama kuin
+# Streamlit-sovelluksessa.
 HEAD_F = '"Arial Black","Helvetica Neue",Arial,sans-serif'
-BODY_F = '"Helvetica Neue",Arial,Helvetica,sans-serif'
+BODY_F = "'Hanken Grotesk','Helvetica Neue',Arial,Helvetica,sans-serif"
+
+FONTS = ROOT / "site" / "assets" / "fonts"
+
+
+@lru_cache(maxsize=1)
+def body_font_face() -> str:
+    """Hanken Grotesk as a data URI, or nothing if the file is missing.
+
+    Vendored rather than pulled from Google Fonts at build time: Chrome
+    renders these offline, and a font fetched over the network would fail
+    silently into Helvetica on a bad connection -- producing slides that
+    differ from the ones before them for no visible reason.
+
+    Only regular 400 is here because the slide CSS sets no font-weight on
+    anything using BODY_F; every bold element switches to HEAD_F. Adding the
+    unused cuts would triple the size of every slide for nothing.
+    """
+    f = FONTS / "hanken-grotesk-400-latin.woff2"
+    if not f.exists():
+        print(f"  ! {f.name} puuttuu -- leipäteksti jää Helvetica Neueen")
+        return ""
+    b64 = base64.b64encode(f.read_bytes()).decode()
+    return ("@font-face{font-family:'Hanken Grotesk';font-style:normal;"
+            "font-weight:400;font-display:block;"
+            f"src:url(data:font/woff2;base64,{b64}) format('woff2');}}\n")
 
 
 def _norm(s: str) -> str:
@@ -176,7 +206,7 @@ def theme(gradient: str) -> dict:
 
 
 def css(t: dict) -> str:
-    return f"""
+    return body_font_face() + f"""
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ width:{W}px; height:{H}px; overflow:hidden; background:{INK};
          font-family:{BODY_F}; color:{t['fg']}; -webkit-font-smoothing:antialiased; }}
