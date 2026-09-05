@@ -31,6 +31,7 @@ import io
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -666,6 +667,175 @@ def write_pdfs() -> list:
     return made
 
 
+def rasterise(html: str) -> bytes:
+    """One slide's HTML to a 1080x1350 PNG, via headless Chrome.
+
+    Chrome is what gives the slides their look -- the layout is CSS, and a
+    Python drawing library would be a second, diverging implementation of it.
+    The cost is that this only runs where Chrome exists, which is the laptop
+    and not Snowflake; callers have to handle that.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        src, png = Path(tmp) / "slide.html", Path(tmp) / "slide.png"
+        src.write_text(html, encoding="utf-8")
+        subprocess.run(
+            [CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
+             "--force-device-scale-factor=1", f"--window-size={W},{H}",
+             f"--screenshot={png}", f"file://{src}"],
+            check=True, capture_output=True)
+        return png.read_bytes()
+
+
+def iqr_bands(pos, teams) -> dict:
+    """Interquartile finishing range per team, as '3.-7.'.
+
+    The 5-95 band is honest but far too wide to be useful on a slide (KooKoo
+    would read "1st-11th"); the IQR still carries 50-87% of the probability
+    mass and is legible at a glance.
+    """
+    bands = {}
+    if pos.empty:
+        return bands
+    cols = [f"rank_{i}" for i in range(1, 18)]
+    pos = pos.set_index("team")
+    for team in teams:
+        cum, lo_r, hi_r = 0.0, None, 17
+        for i, c in enumerate(cols, 1):
+            cum += float(pos.loc[team, c])
+            if lo_r is None and cum >= 0.25:
+                lo_r = i
+            if cum >= 0.75:
+                hi_r = i
+                break
+        lo_r = lo_r or 1
+        bands[team] = (f"{_ordinal(lo_r)}-{_ordinal(hi_r)}" if lo_r != hi_r
+                       else _ordinal(lo_r))
+    return bands
+
+
+def movement_slide(rows, t: dict, first_date: str, last_date: str) -> str:
+    """How far each team has moved since the very first prediction.
+
+    Reuses the standings slide's markup so the CSS applies unchanged -- a
+    parallel set of classes would drift from the carousel the first time
+    either was touched.
+
+    Points carry the movement rather than rank, because rank is a step
+    function: two teams can swap places on a tenth of a point and look like
+    a story, while a six-point drift that changes nothing looks like none.
+    """
+    # Otsikkoluku lasketaan NÄYTETYISTÄ pisteistä, ei tarkoista: 90,5 -> 97,3
+    # on +6,8 eli "+7", mutta rivillä lukee "91 -> 97", ja lukija laskee 6.
+    # Kahdesta oikeasta luvusta se joka on ristiriidassa näkyvän kanssa on
+    # väärä luku tällä dialla.
+    body = "".join(f"""
+      <div class="row">
+        <div class="rank">{arrow}</div>
+        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
+        <div class="name">{team}</div>
+        <div class="pts">
+          <div class="ptsn">{round(now) - round(was):+d}</div>
+          <div class="ptsl">{was:.0f} &rarr; {now:.0f} p</div>
+          <div class="ptsr">{rank_txt}</div>
+        </div>
+      </div>""" for team, was, now, delta, arrow, rank_txt in rows)
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026-27 &middot; Ennusteen liike</div>
+      <div class="title">Suurimmat muutokset</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body standings">{body}</div>
+    <div class="foot">Ennustetut loppupisteet {first_date} vs. {last_date} &middot;
+      suurimmat muutokset ensin</div>
+  </div>""")
+
+
+def _movement_rows(con, limit: int = 6) -> tuple:
+    """The biggest movers, plus the two dates being compared."""
+    h = query_df(con, """
+        SELECT snapshot_date, team, mean_points, proj_rank
+        FROM prediction_history""")
+    if h.empty or h["snapshot_date"].nunique() < 2:
+        return [], "", ""
+    h["snapshot_date"] = h["snapshot_date"].astype(str)
+    first, last = h["snapshot_date"].min(), h["snapshot_date"].max()
+    a = h[h["snapshot_date"] == first].set_index("team")
+    b = h[h["snapshot_date"] == last].set_index("team")
+    rows = []
+    for team in b.index:
+        if team not in a.index:
+            continue
+        was, now = float(a.loc[team, "mean_points"]), float(b.loc[team, "mean_points"])
+        # proj_rank is smaller when better, so the sign has to be flipped for
+        # the arrow to mean what a reader expects.
+        moved = int(a.loc[team, "proj_rank"]) - int(b.loc[team, "proj_rank"])
+        delta = now - was
+        shown = round(now) - round(was)
+        arrow = "\u25b2" if shown > 0 else ("\u25bc" if shown < 0 else "\u2013")
+        rank_txt = (f"{_ordinal(int(a.loc[team, 'proj_rank']))} "
+                    f"\u2192 {_ordinal(int(b.loc[team, 'proj_rank']))}"
+                    if moved else "sija ennallaan")
+        rows.append((team, was, now, delta, arrow, rank_txt))
+    rows.sort(key=lambda r: (abs(round(r[2]) - round(r[1])), abs(r[3])),
+              reverse=True)
+    return rows[:limit], _fi_date(first), _fi_date(last)
+
+
+def _fi_date(iso: str) -> str:
+    y, m, d = iso[:10].split("-")
+    return f"{int(d)}.{int(m)}.{y}"
+
+
+def slides_to_pdf(slides) -> bytes:
+    """The slides as one PDF, in order. LinkedIn carousels are PDFs.
+
+    Pillow only, no extra dependency -- the same route write_pdfs() takes for
+    the on-disk bundles.
+    """
+    pages = [Image.open(io.BytesIO(png)).convert("RGB") for _name, png in slides]
+    if not pages:
+        return b""
+    buf = io.BytesIO()
+    pages[0].save(buf, "PDF", save_all=True, append_images=pages[1:],
+                  resolution=PDF_DPI)
+    return buf.getvalue()
+
+
+def live_slides(con=None) -> list:
+    """The standings slides plus the movement slide, from the current tables.
+
+    Returns [(filename, png bytes)]. This is the entry point the Streamlit
+    app uses; `build()` still writes the full nine-slide carousel to disk.
+    """
+    own = con is None
+    con = con or get_connection()
+    try:
+        st = query_df(con, """SELECT proj_rank, team, mean_points, p05_points,
+                                     p95_points
+                              FROM standings_2026_27 ORDER BY proj_rank""")
+        pos = query_df(con, "SELECT * FROM position_distribution_2026_27")
+        movers, first, last = _movement_rows(con)
+    finally:
+        if own:
+            con.close()
+    if st.empty:
+        return []
+
+    bands = iqr_bands(pos, st["team"])
+    themes = [theme(g) for g in GRADIENTS]
+    out = []
+    for i, (lo, hi) in enumerate([(1, 6), (7, 12), (13, 17)]):
+        rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
+        out.append((f"sijat_{lo}-{hi}.png",
+                    standings_slide(rows, lo, hi, themes[i], bands)))
+    if movers:
+        out.append(("ennusteen_muutos.png",
+                    movement_slide(movers, themes[4], first, last)))
+    return [(name, rasterise(html)) for name, html in out]
+
+
 def build() -> None:
     OUT.mkdir(exist_ok=True)
     con = get_connection()
@@ -677,25 +847,7 @@ def build() -> None:
     finally:
         con.close()
 
-    # Interquartile finishing range per team. The 5-95 band is honest but far
-    # too wide to be useful on a slide (KooKoo would read "1st-11th"); the IQR
-    # still carries 50-87% of the probability mass and is legible at a glance.
-    bands = {}
-    if not pos.empty:
-        cols = [f"rank_{i}" for i in range(1, 18)]
-        pos = pos.set_index("team")
-        for team in st["team"]:
-            cum, lo_r, hi_r = 0.0, None, 17
-            for i, c in enumerate(cols, 1):
-                cum += float(pos.loc[team, c])
-                if lo_r is None and cum >= 0.25:
-                    lo_r = i
-                if cum >= 0.75:
-                    hi_r = i
-                    break
-            lo_r = lo_r or 1
-            bands[team] = (f"{_ordinal(lo_r)}–{_ordinal(hi_r)}" if lo_r != hi_r
-                           else _ordinal(lo_r))
+    bands = iqr_bands(pos, st["team"])
     if st.empty:
         raise SystemExit("standings_2026_27 empty — run scripts/refresh_standings.py")
 
@@ -722,11 +874,7 @@ def build() -> None:
     for i, html in enumerate(slides, 1):
         src, png = OUT / f"slide_{i}.html", OUT / f"slide_{i}.png"
         src.write_text(html, encoding="utf-8")
-        subprocess.run(
-            [CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
-             "--force-device-scale-factor=1", f"--window-size={W},{H}",
-             f"--screenshot={png}", f"file://{src}"],
-            check=True, capture_output=True)
+        png.write_bytes(rasterise(html))
         print(f"  wrote {png.name}  ({png.stat().st_size // 1024} KB)")
 
     print()

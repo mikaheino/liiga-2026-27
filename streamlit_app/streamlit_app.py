@@ -1182,6 +1182,88 @@ def sidebar_controls(log: pd.DataFrame, stamp: str,
 
 
 # --------------------------------------------------------------------------
+# Instagram- / LinkedIn-diat
+#
+# Diat rakentaa scripts/build_instagram.py, ei tämä tiedosto. Sama koodi
+# tuottaa myös levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
+# voi karata erilleen -- kaksi rinnakkaista toteutusta samasta ulkoasusta
+# eroaisi ensimmäisellä muutoksella.
+#
+# Hinta: rasterointi on headless Chrome, joka on läppärillä eikä
+# Snowflakessa. Osio kertoo sen ääneen sen sijaan että katoaisi hiljaa.
+# --------------------------------------------------------------------------
+def _slide_builder():
+    """scripts/build_instagram, tai None jos sitä ei voi ladata täältä."""
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent / "scripts" / "build_instagram.py"
+    if not path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("liiga_instagram", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@st.cache_data(show_spinner="Renderöidään dioja…")
+def build_slides(updated_at: str) -> tuple[list, bytes, str]:
+    """Diat ja niistä koottu PDF. Avaimena ennusteen aikaleima.
+
+    Rasterointi kestää sekunteja per dia, joten tätä ei ajeta jokaisella
+    uudelleenpiirrolla -- vain kun ennuste on oikeasti muuttunut.
+    """
+    try:
+        builder = _slide_builder()
+        if builder is None:
+            return [], b"", "scripts/build_instagram.py ei ole käytettävissä."
+        slides = builder.live_slides()
+        if not slides:
+            return [], b"", "standings_2026_27 on tyhjä."
+        # Yhden dian PDF kootaan tässä eikä nappia piirrettäessä: muuten
+        # build_instagram ladattaisiin uudelleen kerran per nappi joka
+        # uudelleenpiirrolla.
+        out = [(name, png, builder.slides_to_pdf([(name, png)]))
+               for name, png in slides]
+        return out, builder.slides_to_pdf(slides), ""
+    except Exception as exc:              # noqa: BLE001 -- kerro syy, älä katoa
+        return [], b"", str(exc).strip().splitlines()[0][:300]
+
+
+def render_slide_section(updated_at: str) -> None:
+    st.subheader("Diat jakoon")
+    st.caption(
+        "Samat 1080×1350 (4:5) diat kuin karusellissa, mutta tästä hetkestä: "
+        "sijat 1–6, 7–12 ja 13–17 sekä se, miten ennuste on liikkunut "
+        "ensimmäisestä ennusteesta. **Lataa kaikki** antaa yhden PDF:n, jonka "
+        "voi viedä LinkedIn-karuselliksi sellaisenaan.")
+
+    slides, pdf, problem = build_slides(updated_at)
+    if problem:
+        st.warning(
+            "Dioja ei voitu renderöidä: " + problem
+            + "  \nRasterointi vaatii headless Chromen, joka on paikallisella "
+              "koneella mutta ei Snowflakessa.")
+        return
+
+    st.download_button(
+        f"⬇ Lataa kaikki ({len(slides)} diaa, PDF)", data=pdf,
+        file_name=f"liiga-ennuste-{updated_at[:10]}.pdf",
+        mime="application/pdf", type="primary")
+
+    for row_start in range(0, len(slides), 4):
+        for col, (name, png, one_pdf) in zip(st.columns(4),
+                                             slides[row_start:row_start + 4]):
+            with col:
+                full_width(st.image, png)
+                # Yksittäinenkin lataus PDF:nä: LinkedIn ottaa karusellin
+                # PDF:nä, ja PNG olisi eri tiedostomuoto samasta napista.
+                st.download_button(
+                    "⬇ PDF", key=f"dl_{name}", data=one_pdf,
+                    file_name=name.replace(".png", ".pdf"),
+                    mime="application/pdf")
+
+
+# --------------------------------------------------------------------------
 def main() -> None:
     updated_at = load_updated_at()
     data = load_data(updated_at)
@@ -1288,6 +1370,9 @@ def main() -> None:
     render_history(data["history"],
                    standings.sort_values("proj_rank")["team"].tolist(),
                    opts["highlight"])
+
+    st.divider()
+    render_slide_section(updated_at)
 
 
 if __name__ == "__main__":

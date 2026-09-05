@@ -245,6 +245,40 @@ joukkuelistan erikseen — joukkue joka ei ole vielä pelannut puuttuu
 `team_game_log`:sta kokonaan, ja syyskuussa se on normaali tilanne, ei
 poikkeus.
 
+## Diat jakoon — Streamlitin alaosio (2026-09-05)
+
+Sovelluksen alimmainen osio tarjoaa neljä 1080×1350 (4:5) diaa **tästä
+hetkestä**: sijat 1–6, 7–12, 13–17 ja *Suurimmat muutokset* (ennusteen liike
+ensimmäisestä ennusteesta). Latausnapit antavat **PDF:ää, eivät PNG:tä** —
+LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto siihen mihin
+kuvia käytetään.
+
+**Diat rakentaa `scripts/build_instagram.py`, ei `streamlit_app.py`.** Sama
+koodi tuottaa levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
+voi karata erilleen. Streamlit lataa moduulin ajonaikaisesti
+(`_slide_builder()`), ei importilla tiedoston alussa — yhden tiedoston
+omavaraisuussääntö säilyy, ja Snowflakessa osio kertoo puuttumisesta ääneen
+sen sijaan että katoaisi.
+
+Jaetut osat skriptissä: `rasterise()` (HTML → PNG headless Chromella),
+`iqr_bands()`, `movement_slide()`, `live_slides()` ja `slides_to_pdf()`.
+
+Kaksi asiaa jotka eivät ole ilmeisiä:
+
+- **Rasterointi on Chrome.** Ulkoasu on CSS:ää, joten Python-piirtokirjasto
+  olisi toinen, ajan myötä eriytyvä toteutus samasta ilmeestä. Hinta on että
+  osio toimii läppärillä muttei Snowflakessa.
+- **Vaakunat näkyvät puolikkaina tarkoituksella.** `.chip` on
+  `overflow:hidden` ja logo ylisuuri; se on karusellin oma ratkaisu eikä
+  rikkinäinen kuva. Älä "korjaa" sitä.
+
+Otsikkoluku lasketaan **näytetyistä** pisteistä: 90,5 → 97,3 on +6,8 eli
+"+7", mutta rivillä lukisi "91 → 97" ja lukija laskee 6. Kahdesta oikeasta
+luvusta se joka on ristiriidassa näkyvän kanssa on dialla väärä.
+
+`build_instagram.py`:n ajaminen **ylikirjoittaa `site_instagram/`:n
+julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
+
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 
 The app is being developed locally and the Snowflake copy is deliberately
