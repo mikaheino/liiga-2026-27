@@ -150,7 +150,7 @@ request in the current conversation — "update the app" means the local one.
 | Endpoint | Used for | Health |
 |---|---|---|
 | `/games/{season}/{id}` | **primary** — result, goals, assists, xG, periods, lineups, goalies, penalties, referees | has served partial payloads (player lists only, no `game` object) |
-| `/standings?season=N` | **fallback** — cumulative table, snapshotted every run | 200 from both laptop and Snowflake |
+| `/standings?season=N` | **fallback** — cumulative table, snapshotted every run | reachable from both, but has answered 200 with an empty `{}` |
 | `/games?tournament=…&season=N` | **not used** | 502 for the current season from Snowflake's egress; fine for historical seasons |
 
 The season endpoint is not called at all. The fixture list is fixed and lives
@@ -165,6 +165,17 @@ consecutive snapshots: a team whose `games` rose by one played exactly one
 game, the fixture list says against whom, and the `goals`/`goals_against`
 deltas are the score. `ties` rising means it went past regulation. That
 recovers the margin too, which is what keeps Elo learning.
+
+**A 200 from liiga.fi is not proof the response has anything in it.** On
+2026-09-05, for about ten minutes, `/standings` returned a 2-byte `{}` for
+*every* season and the per-game endpoint returned the two player lists with no
+`game` object — from the laptop and from Snowflake's egress alike, minutes
+after both had served full payloads, and normal again afterwards. Upstream
+flapping, not a block and not an API change. So check the body:
+`ingest_results` refuses a payload with no `game.id`, `snapshot_standings`
+reports an empty table out loud rather than writing nothing quietly, and both
+`_latest_two` and `replace_rows` tolerate their table not existing yet. Retry
+the run; do not conclude the endpoint has been withdrawn.
 
 It refuses to guess: both teams must have gained exactly one game and the two
 sides must agree on the score, otherwise the fixture is left alone and

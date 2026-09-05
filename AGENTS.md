@@ -13,15 +13,23 @@ Predicts the **final regular-season standings of Liiga (Finnish hockey) for
 2026-27**, built bottom-up from **player goal production** rather than team
 history (because rosters churn heavily and Jokerit is newly promoted).
 
-Pipeline shape:
+Pipeline shape — **two models, blended per game**, not one:
 ```
 liiga.fi API ─▶ DuckDB ─▶ player goal rates ─▶ team expected goals
    (+ web-researched abroad stats)                    │
-                       2026-27 schedule ◀─ Poisson match model ◀┘
-                                  │
-                                  ▼
-                Monte Carlo ×10k ─▶ predicted standings
+                                            Poisson match model ─┐ 40%
+                                                                 ├▶ per-game
+                    results ─▶ MOV-Elo ratings ──────────────────┘ 60%  probs
+                                                                         │
+                       crowd prior ◀─ Monte Carlo ×10k ◀─────────────────┘
+                             │
+                             ▼
+                   predicted standings
 ```
+The blend is `pipeline.POISSON_WEIGHT = 0.4` applied to the four probability
+columns of each game (`ensemble._PROB_COLS`); `p_home_win` is recomputed from
+the result, never blended. Ratings are **not** blended -- that would be a
+different model.
 
 ---
 
@@ -241,15 +249,31 @@ Key tables: `standings_2026_27`, `position_distribution_2026_27`, `player_rates`
 ## 8. Local (DuckDB) vs production (Snowflake)
 
 `src/liiga/db.py` is the only backend-aware module. `database.target` in
-`config.yaml` switches between DuckDB (a local file) and Snowflake (credentials
-from env vars named in `config.yaml → database.snowflake`). SQL transforms are
-written portably; pipeline code is identical for both backends.
+`config.yaml` switches between DuckDB (a local file) and Snowflake. Credentials
+come from a named profile in `~/.snowflake/connections.toml`
+(`database.snowflake.connection_name`, currently `CONTAINER_SERVICES`) — not
+from secrets in this repo or in the environment. SQL transforms are written
+portably; pipeline code is identical for both backends.
 
-**Snowflake ML migration**: deferred until the 2026-27 season starts (see
-`docs/snowflake_ml_migration.md` for the initial plan — moving player rates,
-Elo, and the Monte Carlo sim into Snowpark stored procedures, and the daily
-pipeline from launchd into Snowflake Tasks). Not started; don't begin this
-work without an explicit ask.
+**The Snowflake migration is done** (2026-08-30). This section used to say it
+was deferred and not started; it is live. Account `uqb62234`, database `LIIGA`,
+warehouse `LIIGA_WH`. The whole pipeline runs there from a git mirror of this
+repo via the notebook `LIIGA.CODE.LIIGA_DAILY`, and it is a **second
+independent run**, not a copy of the Mac's results — it fetches from liiga.fi
+and recomputes everything itself.
+
+Two things cross the boundary and nothing else: code (`git push` → `ALTER GIT
+REPOSITORY … FETCH`) and the curated inputs the pipeline cannot derive
+(`scripts/sync_to_snowflake.py`, defaulting to `snowflake_sync.CURATED_TABLES`).
+Pushing local copies of derived tables over the top would replace Snowflake's
+own results with the Mac's, which defeats the point.
+
+**Nothing is scheduled there yet** — no tasks exist in `LIIGA`. A `TASK` calling
+`EXECUTE NOTEBOOK` is all that is missing, and it waits until the model has been
+checked against real in-season results. Read
+`docs/snowflake_architecture.md` before changing any of this; it records the
+portability traps (reserved words, procedures that cannot set schema context,
+Snowpark's rejection of aliased CTAS) that each cost real debugging.
 
 ---
 
