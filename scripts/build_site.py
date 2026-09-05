@@ -38,6 +38,13 @@ POISSON_PCT, ELO_PCT, CROWD_PCT = 40, 60, 20
 BACKTEST_MAE = 12.7
 N_SIMS = "10 000"
 
+# Sarjan vyöhykkeet. 2026-27 on ensimmäinen kausi jolla Liigasta putoaa:
+# kolme viimeistä siirtyy B-sarjaan. Lasketaan joukkuemäärästä, jotta
+# rajat eivät jää jälkeen jos sarjan koko muuttuu.
+N_TEAMS = 17
+PLAYOFF_CUT, QUALI_CUT, RELEGATION = 6, 10, 3
+RELEGATION_CUT = N_TEAMS - RELEGATION
+
 # players named in the "How does this model work?" walkthrough — not always
 # top-3 contributors, so their photos need explicit fetching (see load_data).
 ELI5_PLAYERS = ["Mikko Kousa", "Aidan Dudas", "Gabriel Fortier", "Patrik Bartosak"]
@@ -412,6 +419,10 @@ TEMPLATE = r"""
 
   tr.cutoff td { border-top: 2px solid var(--gold); }
   tr.cutoff10 td { border-top: 1px dashed var(--slate); }
+  tr.cutoffR td { border-top: 2px solid var(--red); }
+  tr.down .rnum, tr.down .tname { color: var(--red); }
+  tr.down .fill { background: var(--red); opacity: 0.30; }
+  tr.down .pin { background: var(--red); opacity: 0.9; }
 
   td { padding: 11px 16px; vertical-align: middle; }
   td.r { text-align: right; } td.c { text-align: center; }
@@ -470,6 +481,7 @@ TEMPLATE = r"""
   .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--label); }
   .leg-line { width: 24px; height: 2px; background: var(--gold); }
   .leg-dash { width: 24px; height: 0; border-top: 1px dashed var(--slate); }
+  .leg-red { width: 24px; height: 2px; background: var(--red); }
   .leg-bar  { width: 24px; height: 5px; background: var(--green); opacity: 0.4; border-radius: 0; }
 
   /* ── section scaffolding ── */
@@ -516,6 +528,7 @@ TEMPLATE = r"""
   .heat .sq.dim { font-weight: 400; font-size: 9px; }
   .heat th.cut, .heat td.cut { border-right: 2px solid var(--gold); }
   .heat th.cut10, .heat td.cut10 { border-right: 1px dashed var(--slate); }
+  .heat th.cutR, .heat td.cutR { border-right: 2px solid var(--red); }
   .heat-note { margin-top: 12px; font-size: 11px; color: var(--slate); line-height: 1.7; }
   .heat-note strong { color: var(--label); }
 
@@ -714,6 +727,7 @@ TEMPLATE = r"""
   <div class="footer">
     <div class="legend-item"><div class="leg-line"></div> Direct playoff cutoff (top 6)</div>
     <div class="legend-item"><div class="leg-dash"></div> Qualification-round cutoff (ranks 7–10)</div>
+    <div class="legend-item"><div class="leg-red"></div> Relegation to the B series (bottom 3)</div>
     <div class="legend-item"><div class="leg-bar"></div> 5th–95th percentile of simulated points</div>
     <div class="legend-item"><span class="delta up" style="font-size:10px">+3</span> Model higher than crowd</div>
     <div class="legend-item"><span class="delta dn" style="font-size:10px">−3</span> Crowd higher than model</div>
@@ -729,7 +743,8 @@ TEMPLATE = r"""
   <div class="section">
     <h2 class="sec-head">Where could each team finish?</h2>
     <div class="sec-sub">Probability of each final position across __NSIMS__ simulated seasons.
-      Gold line = direct playoffs (top 6), dashed line = qualification round (7–10).
+      Gold line = direct playoffs (top 6), dashed line = qualification round (7–10),
+      red line = relegation to the B series (bottom 3).
       A long light row means a genuine wild card; a short bright row means the simulations agree.</div>
     <div class="heat-wrap">
       <table class="heat" id="heat"></table>
@@ -898,7 +913,7 @@ TEMPLATE = r"""
 
   <div class="note">
     <strong>Model:</strong> Bottom-up player goal production (5-season recency-weighted history, age curve) → Poisson match model with goaltending-driven defense and an overtime-rate calibration (Liiga's observed 23% OT/SO share). Blended with margin-of-victory Elo (slow k, trained on 2022–2026 results). Crowd signal: mean predicted rank from 40 Jatkoaika.com forum members, converted to expected-points scale and weighted at 20%.
-    <br><strong>Playoffs:</strong> Top 6 advance directly to the quarterfinals. Ranks 7–10 play a best-of-three qualification round for the last two spots — shown as its own probability column above (the round itself is not simulated).
+    <br><strong>Playoffs:</strong> Top 6 advance directly to the quarterfinals. Ranks 7–10 play a best-of-three qualification round for the last two spots — shown as its own probability column above (the round itself is not simulated).<br><strong>Relegation:</strong> new for 2026-27 — the bottom three drop to the B series. The model does not treat those games differently; the red line only marks where the table splits.
     <br><strong>Regenerate:</strong> <code>python scripts/daily_update.py</code> (refetches results, re-predicts the remaining schedule, rebuilds this page)
   </div>
 
@@ -946,10 +961,12 @@ TEMPLATE = r"""
   const tbody = document.getElementById('tbody');
   rows.forEach(r => {
     const tr = document.createElement('tr');
-    if (r.rank === 7)  tr.classList.add('cutoff');
-    if (r.rank === 11) tr.classList.add('cutoff10');
-    if (r.rank >= 7 && r.rank <= 10) tr.classList.add('quali');
-    if (r.rank >= 11) tr.classList.add('out');
+    if (r.rank === __PLAYOFF_CUT__ + 1)  tr.classList.add('cutoff');
+    if (r.rank === __QUALI_CUT__ + 1) tr.classList.add('cutoff10');
+    if (r.rank === __RELEG_CUT__ + 1) tr.classList.add('cutoffR');
+    if (r.rank > __PLAYOFF_CUT__ && r.rank <= __QUALI_CUT__) tr.classList.add('quali');
+    if (r.rank > __QUALI_CUT__) tr.classList.add('out');
+    if (r.rank > __RELEG_CUT__) tr.classList.add('down');
 
     const left  = pctPos(r.p05);
     const width = ((r.p95 - r.p05) / PTS_SPAN * 100).toFixed(1) + '%';
@@ -1022,7 +1039,9 @@ TEMPLATE = r"""
   const heatTbl = document.getElementById('heat');
   const head = document.createElement('tr');
   head.innerHTML = '<th></th>' + Array.from({length: 17}, (_, i) => {
-    const cut = i === 5 ? ' class="cut"' : i === 9 ? ' class="cut10"' : '';
+    const cut = i === __PLAYOFF_CUT__ - 1 ? ' class="cut"'
+              : i === __QUALI_CUT__ - 1 ? ' class="cut10"'
+              : i === __RELEG_CUT__ - 1 ? ' class="cutR"' : '';
     return `<th${cut}>${i + 1}</th>`;
   }).join('');
   heatTbl.appendChild(head);
@@ -1040,7 +1059,9 @@ TEMPLATE = r"""
       else if (p >= 0.0005) label = '&lt;1';
       const strong = p >= 0.08;
       const ink = alpha > 0.45 ? '#FFFFFF' : strong ? 'var(--texthi)' : 'var(--label)';
-      const cut = i === 5 ? ' cut' : i === 9 ? ' cut10' : '';
+      const cut = i === __PLAYOFF_CUT__ - 1 ? ' cut'
+                : i === __QUALI_CUT__ - 1 ? ' cut10'
+                : i === __RELEG_CUT__ - 1 ? ' cutR' : '';
       const tip = `${row.team} — ${(p * 100).toFixed(1)}% chance of finishing ${i + 1}.`;
       html += `<td class="cell${cut}"><div class="sq${strong ? '' : ' dim'}" title="${tip}"
         style="background:rgba(51,102,153,${alpha.toFixed(3)});color:${ink}">${label}</div></td>`;
@@ -1208,6 +1229,9 @@ def render() -> str:
         .replace("__EW__", str(ELO_PCT))
         .replace("__CW__", str(meta["crowdPct"]))
         .replace("__MAE__", str(BACKTEST_MAE))
+        .replace("__PLAYOFF_CUT__", str(PLAYOFF_CUT))
+        .replace("__QUALI_CUT__", str(QUALI_CUT))
+        .replace("__RELEG_CUT__", str(RELEGATION_CUT))
         .replace("__PELICANS_RANGE__", f"{pelicans['p05']}–{pelicans['p95']}")
         .replace("__PELICANS_PTS__", f"{pelicans['pts']:.0f}")
         .replace("__PELICANS_RANK_ORD__", _ordinal(pelicans["rank"]))

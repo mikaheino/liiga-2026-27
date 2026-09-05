@@ -27,6 +27,10 @@ import streamlit as st
 TEAMS = 17
 PLAYOFF_CUT = 6          # 1-6 suoraan playoffeihin
 QUALI_CUT = 10           # 7-10 karsintoihin
+# 15.-17. putoaa B-sarjaan. Lasketaan joukkuemäärästä eikä kirjoiteta
+# 14:ää: sarjan koko on muuttunut ennenkin, putoajien määrä on se sääntö.
+RELEGATION = 3           # montako viimeistä putoaa
+RELEGATION_CUT = TEAMS - RELEGATION   # tämän jälkeen tulevat putoavat
 ACCENT = (0, 170, 70)    # #00aa46, Liigapörssi-designin pääväri
 ACCENT_LIGHT = "#c6ecd4"  # sama sävy vaaleana: palkin simuloitu osa
 N_SIMS = "10 000"        # pidä synkassa config.yaml -> simulation.n_simulations
@@ -304,7 +308,8 @@ def render_position_table(m: pd.DataFrame, highlight: set[str]) -> None:
     cols = ["110px"] + ["minmax(0,1fr)"] * TEAMS
     template = " ".join(cols)
     borders = {PLAYOFF_CUT + 1: "2px solid #00aa46",
-               QUALI_CUT + 1: "1px dashed #93dcae"}
+               QUALI_CUT + 1: "1px dashed #93dcae",
+               RELEGATION_CUT + 1: "2px solid #d3352b"}
 
     head = ['<div class="lp-hteam">Joukkue</div>']
     for rank in range(1, TEAMS + 1):
@@ -506,7 +511,8 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame,
         got = 100 * r["banked"] / widest
         sim = 100 * r["simuloitu"] / widest
         rows.append([
-            f'<span class="lp-num lp-dim">{rank}</span>',
+            f'<div class="lp-rank">{_qbar(rank)}'
+            f'<span class="lp-num lp-dim">{rank}</span></div>',
             f'<span class="lp-team">{_esc(r["team"])}</span>',
             f'{int(r["banked"])}',
             f'<div class="lp-split">'
@@ -526,6 +532,7 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame,
          f'<span><span style="width:14px;height:10px;border-radius:2px;'
          f'background:{ACCENT_LIGHT};display:inline-block"></span>'
          'Simuloitu loppukausi</span></div>')
+    zone_legend()
 
 
 def render_title_history(history: pd.DataFrame, top: list[str],
@@ -606,6 +613,7 @@ GREEN_200 = "#93dcae"
 GRID = "#e7ebe9"
 MUTED = "#8b958f"
 DANGER = "#d3352b"
+DANGER_SOFT = "#f2b8b3"  # putoamisvyöhyke: sama sävy vaaleana
 
 # Yksi <style>, ei per-solu-tyyliä: 17 riviä x 8 saraketta olisi 136
 # style-attribuuttia, ja luokat pitävät tuotetun HTML:n luettavana.
@@ -847,9 +855,32 @@ def form_cells(points: list[float]) -> str:
 
 
 def _qbar(rank: int) -> str:
-    colour = (BRAND if rank <= PLAYOFF_CUT
-              else GREEN_200 if rank <= QUALI_CUT else "transparent")
+    """The zone stripe next to a rank: playoff, qualification, relegation.
+
+    Colour never carries this alone -- the rank number sits beside it and
+    the legend under every table names the zones.
+    """
+    if rank <= PLAYOFF_CUT:
+        colour = BRAND
+    elif rank <= QUALI_CUT:
+        colour = GREEN_200
+    elif rank > RELEGATION_CUT:
+        colour = DANGER
+    else:
+        colour = "transparent"
     return f'<span class="lp-q" style="background:{colour}"></span>'
+
+
+def zone_legend() -> None:
+    """What the stripes mean. Repeated under every table that ranks teams."""
+    html('<div class="lp-legend">'
+         f'<span><span class="lp-q" style="background:{BRAND}"></span>'
+         'Puolivälierät suoraan (1.–6.)</span>'
+         f'<span><span class="lp-q" style="background:{GREEN_200}"></span>'
+         f'Karsinta (7.–{QUALI_CUT}.)</span>'
+         f'<span><span class="lp-q" style="background:{DANGER}"></span>'
+         f'Putoaa B-sarjaan ({RELEGATION_CUT + 1}.–{TEAMS}.)</span>'
+         '</div>')
 
 
 def _move(mv) -> str:
@@ -961,6 +992,7 @@ def render_form_table(log: pd.DataFrame, window: int, *,
         + ('<span>Vire = pisteet per ottelu, liukuva keskiarvo</span>'
            if show_spark else '')
         + '</div>')
+    zone_legend()
 
 
 def render_split_table(log: pd.DataFrame, highlight: set[str],
@@ -1002,6 +1034,7 @@ def render_split_table(log: pd.DataFrame, highlight: set[str],
                 cells += ["0", "0", "–"]
         rows.append(cells)
     render_grid(cols, rows, classes)
+    zone_legend()
 
 
 def render_goals_table(log: pd.DataFrame, highlight: set[str],
@@ -1028,6 +1061,7 @@ def render_goals_table(log: pd.DataFrame, highlight: set[str],
             _fi(r["xgf"], 1), _fi(r["xga"], 1),
             _fi(r["xg_share"], 1) + " %"])
     render_grid(cols, rows, classes)
+    zone_legend()
     st.caption(
         "xG-osuus on oman xG:n osuus ottelun kokonais-xG:stä. Se mittaa "
         "paikkojen laatua, **ei** kiekonhallintaa — liiga.fi ei julkaise "
@@ -1057,6 +1091,7 @@ def render_special_table(log: pd.DataFrame, highlight: set[str],
             _fi(r["pp_pct"], 1) + " %", str(int(r["sh_inst"])),
             str(int(r["pp_against"])), _fi(r["pk_pct"], 1) + " %"])
     render_grid(cols, rows, classes)
+    zone_legend()
     st.caption(
         "YV = ylivoima, AV = alivoima. **Päästetyt** on alivoimalla päästetyt "
         "maalit, ja AV-% on niiden osuus torjutuista alivoimista. Ilman "
@@ -1148,9 +1183,10 @@ def main() -> None:
 
     st.subheader("Mihin kukin joukkue päätyy")
     st.caption(
-        f"Todennäköisyys prosentteina, {TEAMS} sijaa. Yhtenäinen viiva on "
-        f"playoff-raja (6.) ja katkoviiva karsintaraja (10.). "
-        "Rivit ennustetussa järjestyksessä."
+        f"Todennäköisyys prosentteina, {TEAMS} sijaa. Vihreä viiva on "
+        f"playoff-raja ({PLAYOFF_CUT}.), katkoviiva karsintaraja "
+        f"({QUALI_CUT}.) ja punainen viiva putoamisraja "
+        f"({RELEGATION_CUT}.). Rivit ennustetussa järjestyksessä."
     )
     render_position_table(m, opts["highlight"])
 

@@ -139,6 +139,32 @@ re-query pointlessly.
 This is a Snowflake-account app, not a public one; the never-publish rule
 above is about the claude.ai artifact and still stands.
 
+## Sarjan vyöhykkeet — putoaminen on uutta 2026-27
+
+Kolme vyöhykettä, ja kolmas on tälle kaudelle uusi: **1.–6.** suoraan
+puolivälieriin, **7.–10.** karsintaan, **15.–17. putoaa B-sarjaan**.
+
+Rajat lasketaan joukkuemäärästä eikä kirjoiteta lukuina — putoajien määrä on
+se sääntö, ei sija 14:
+- `streamlit_app/streamlit_app.py`: `PLAYOFF_CUT` / `QUALI_CUT` /
+  `RELEGATION` → `RELEGATION_CUT`
+- `scripts/build_site.py`: samat, ja JS saa ne `__PLAYOFF_CUT__`-tyylisinä
+  paikanpitäjinä `render()`:ssä — älä kovakoodaa niitä takaisin skriptiin
+
+Näkyy joka taulukossa: vyöhykepalkki sijan vieressä (`_qbar`) ja
+`zone_legend()` alla, sivustolla rivin ylärajaviiva plus punainen nimi ja
+palkki, ja molempien sijaintijakaumissa pystyviiva sarakkeen 15 kohdalla.
+Väri ei koskaan kanna tätä yksin — sijaluku on vieressä ja selite nimeää
+vyöhykkeet.
+
+Huomaa että muototaulukko värittää **toteutuneen** sijan ja "Kuka voittaa
+runkosarjan?" **ennustetun** — sama raja, eri kysymys.
+
+**Malli ei tiedä putoamisesta eikä sen tarvitse.** Simulaatio tuottaa
+sijoitusjakauman; putoamisraja on vain viiva sen päällä. Jos joskus haluat
+mallin ottavan huomioon että putoamisuhan alla pelataan eri tavalla, se on
+oma muutoksensa eikä seuraa tästä.
+
 ## Streamlit: Liigapörssi-design (1b muototaulukko, 2026-09-05)
 
 Sovelluksen päänäkymä on toteutettu claude.ai/design-projektin
