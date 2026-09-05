@@ -10,8 +10,8 @@ auto-suspend 60s).
 ```mermaid
 flowchart TB
     subgraph SRC["Source — liiga.fi API"]
-        S1["/games?tournament=runkosarja&season=N<br/>1 call per season needed"]
-        S2["/games/{season}/{game_id}<br/>1 call per newly played game"]
+        S2["/games/{season}/{game_id}<br/>primary — 1 call per due game"]
+        S3["/standings?season=N<br/>fallback — 1 call, snapshotted"]
     end
 
     subgraph NET["Egress"]
@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph RAW["LIIGA.RAW — ingested, never derived"]
-        R1["raw_games · raw_goal_events · raw_assists<br/>raw_on_ice · raw_periods"]
+        R1["raw_games · raw_goal_events · raw_assists<br/>raw_on_ice · raw_periods · raw_standings"]
         R2["game_lineups · game_goalies<br/>game_penalties · game_referees"]
         R3["player_bio · roster_2026_27 · league_factors<br/>raw_external_player_seasons · raw_goalie_seasons"]
     end
@@ -44,8 +44,8 @@ flowchart TB
 
     MAC["Mac — development<br/>data/liiga.duckdb"]
 
-    S1 --> EA --> NB
-    S2 --> EA
+    S2 --> EA --> NB
+    S3 --> EA
     G --> NB
     PS --> NB
     NB --> R1 & R2
@@ -73,23 +73,30 @@ Egress goes through `LIIGA_FI_ACCESS`, whose network rule allows exactly
 
 ## Ingest — `LIIGA.RAW`
 
-`liiga.ingest.ingest_all()` handles the season endpoint,
-`liiga.results.ingest_results()` the per-game one. Both are incremental and
-both merge through `db.replace_rows`.
+`liiga.results.ingest_results()` is the whole ingest. It reads the fixed
+fixture list out of `raw_games` — nothing re-fetches the schedule — and asks
+`games_needing_update()` what is due: eight hours past a game's start, or the
+calendar day rolling over where the start time is unusable. One per-game
+response then fills every table, because its `game` object has the same shape
+as an entry in the old season list and the season-side flatteners take it
+unchanged.
 
-- **Season tables** are keyed on `season`. `ingest.seasons_to_ingest()` returns
-  the target season plus any configured season missing from `raw_games`, so a
-  cold database self-heals and a warm one costs one call.
-- **Per-game tables** are keyed on `game_id`. `ingest_results` asks the API
-  which games ended and the database which it already has, and fetches the
-  difference.
+`liiga.standings.snapshot_standings()` records the cumulative table each run,
+and `reconstruct_games()` derives a result from the movement between two
+snapshots when the per-game endpoint serves a partial payload. It refuses
+ambiguity: both teams must have gained exactly one game and agree on the
+score, or the fixture is left alone. Rows recovered this way carry
+`result_source = 'standings_delta'`.
 
-Both are idempotent: a re-run replaces its own rows rather than duplicating
-them, so a retry after a partial failure is safe.
+Everything merges through `db.replace_rows` and is keyed on `game_id`, so a
+re-run replaces its own rows rather than duplicating them and a retry after a
+partial failure is safe.
+
+`ingest_all()` survives for one job only: reloading the fixture list when the
+schedule genuinely changes, which is an exception the operator reports.
 
 `data/raw/` — the on-disk JSON cache — exists only on the Mac. Snowflake's
-`/tmp` is wiped between runs, which is exactly why the season fetch had to
-stop re-reading history.
+`/tmp` is wiped between runs, which is why nothing may depend on it.
 
 ## Transform — `LIIGA.MODEL`
 
@@ -120,7 +127,7 @@ only version worth scoring a played game against.
 1. **Bootstrap** — `ALTER GIT REPOSITORY … FETCH`, then pull `src/liiga`,
    `config.yaml` and the curated `data/*.csv|txt` out of the git stage onto
    `/tmp` and put them on `sys.path`. `data/raw` is deliberately not pulled:
-   2800 cached per-game JSONs, when six season calls give the same facts.
+   2800 cached per-game JSONs, none of which the run needs.
 2. **Context** — read `PIPELINE_SETTINGS` for tournament and target schemas,
    rewrite `config.yaml` to `database.target: snowflake`, then `USE SCHEMA`
    and `ALTER SESSION SET SEARCH_PATH`.
