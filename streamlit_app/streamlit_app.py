@@ -411,7 +411,9 @@ def render_history(history: pd.DataFrame, order: list[str],
 
     x = alt.X("snapshot_date:T", title=None,
               axis=alt.Axis(format="%-d.%-m.", grid=False, tickCount=3))
-    y = alt.Y("mean_points:Q", title="Ennustetut pisteet",
+    # Lyhyt otsikko: pitkä syö leveyttä jokaiselta riviltä, ja yksikkö
+    # selviää muutenkin osion kuvauksesta.
+    y = alt.Y("mean_points:Q", title="Pisteet",
               scale=alt.Scale(zero=False, nice=True))
 
     context = (alt.Chart()
@@ -430,12 +432,15 @@ def render_history(history: pd.DataFrame, order: list[str],
                               alt.Tooltip("games_played:Q",
                                           title="Otteluita")]))
 
+    # Paneelin leveys on kiinteä, koska Altairin facet ei osaa
+    # width="container":ia. 5 x 170 px plus akseli ja välit mahtuu siihen
+    # ~1040 px:iin jonka Streamlit antaa; 230 px levitti sivua 130 px yli.
     chart = (alt.layer(context, focus, data=big)
-             .properties(width=230, height=120)
+             .properties(width=170, height=105)
              .facet(facet=alt.Facet("panel:N", title=None, sort=panels,
-                                    header=alt.Header(labelFontSize=12,
+                                    header=alt.Header(labelFontSize=11,
                                                       labelFontWeight="bold")),
-                    columns=5))
+                    columns=5, spacing=8))
     full_width(st.altair_chart, dark(chart))
 
 
