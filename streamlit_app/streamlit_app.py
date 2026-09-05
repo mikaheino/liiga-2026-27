@@ -31,12 +31,16 @@ QUALI_CUT = 10           # 7-10 karsintoihin
 # 14:ää: sarjan koko on muuttunut ennenkin, putoajien määrä on se sääntö.
 RELEGATION = 3           # montako viimeistä putoaa
 RELEGATION_CUT = TEAMS - RELEGATION   # tämän jälkeen tulevat putoavat
-ACCENT = (0, 170, 70)    # #00aa46, Liigapörssi-designin pääväri
-ACCENT_LIGHT = "#c6ecd4"  # sama sävy vaaleana: palkin simuloitu osa
+# Paletti on poimittu Liigan logosta pikseleistä, ei silmämääräisesti:
+# kirkkain korostus #EBCA68, kulta #CCA752, keskikulta #69521E, ruskea
+# #36270D, varjo #2A1904. Tausta on musta, joten kaikki sävyt on valittu
+# toimimaan mustaa vasten eikä valkoista.
+ACCENT = (204, 167, 82)  # #CCA752, logon kulta
+ACCENT_LIGHT = "#4a3a18"  # tumma kulta: palkin simuloitu osa mustalla
 N_SIMS = "10 000"        # pidä synkassa config.yaml -> simulation.n_simulations
-HIT = "#00913b"          # malli osui
-MISS = "#d3352b"         # malli meni pieleen
-CONTEXT = "#d4dad7"      # taustaviivat pienissä kuvissa
+HIT = "#EBCA68"          # malli osui
+MISS = "#E0574B"         # malli meni pieleen
+CONTEXT = "#3a3226"      # taustaviivat pienissä kuvissa
 
 st.set_page_config(page_title="Liiga 2026-27 -ennuste",
                    page_icon="🏒", layout="wide")
@@ -253,6 +257,25 @@ def full_width(render, *args, **kwargs):
         return render(*args, use_container_width=True, **kwargs)
 
 
+def dark(chart):
+    """Paint an Altair chart for the black page.
+
+    Altair renders on white by default, which on this background reads as a
+    hole punched in the page rather than as a chart. Every part has to be
+    named -- axis lines, ticks, grid, labels, legend, facet headers -- because
+    each falls back to its own light default independently.
+    """
+    return (chart
+            .configure(background="#000000")
+            .configure_view(strokeWidth=0, fill="#000000")
+            .configure_axis(domainColor=GRID, tickColor=GRID, gridColor=GRID,
+                            labelColor=MUTED, titleColor=MUTED,
+                            labelFontSize=11, titleFontSize=11)
+            .configure_legend(labelColor="#D8D0BF", titleColor=MUTED,
+                              symbolStrokeWidth=3)
+            .configure_header(labelColor="#D8D0BF"))
+
+
 # --------------------------------------------------------------------------
 # Sijoitusjakauma
 # --------------------------------------------------------------------------
@@ -277,17 +300,34 @@ def rank_stdev(m: pd.DataFrame) -> pd.Series:
     return var.clip(lower=0) ** 0.5
 
 
+SURFACE = (13, 11, 7)    # --lp-gray-25, rivin pohja jota vasten solu sekoitetaan
+
+
 def _cell_style(p: float) -> str:
     """Solun väri. Sama potenssiramppi kuin sivustolla (build_site.py).
 
     Suora lineaarinen alpha hukuttaisi tasaiset keskikastin rivit, joiden
     huippu on ~9 %, samalla kun kärjen 43 % veisi kaiken kontrastin.
+
+    Kaksi asiaa on pakko tehdä näin, eikä ilmeisemmällä tavalla:
+
+    * **`background`, ei `background-color`.** Streamlitin HTML-sanitointi
+      pudottaa `background-color`:n inline-tyylistä ja jättää `color`:n --
+      todennettu DOM:ista, jossa 289 solusta jäi jäljelle pelkkä tekstiväri.
+      Kirkkaimmat solut muuttuivat siis mustaksi tekstiksi mustalla.
+    * **Valmiiksi laskettu heksa, ei alpha.** Sekoitus rivin pohjaa vasten
+      tehdään tässä, jolloin solu ei ole riippuvainen siitä mitä sen takana
+      sattuu olemaan.
     """
     if pd.isna(p) or p < 0.002:
-        return "background-color:rgba(0,0,0,0); color:#BBBBBB"
+        return "color:#4a443a"
     alpha = min(0.92, (p / 0.35) ** 0.6 * 0.92)
-    ink = "#FFFFFF" if alpha > 0.45 else ("#1A1A1A" if p >= 0.08 else "#666666")
-    return f"background-color:rgba{(*ACCENT, round(alpha, 3))}; color:{ink}"
+    mix = tuple(round(a * alpha + b * (1 - alpha))
+                for a, b in zip(ACCENT, SURFACE))
+    # Mustalla pohjalla musteet menevät päinvastoin kuin valkoisella: mitä
+    # kirkkaampi kultatäyttö, sitä tummempi teksti sen päälle.
+    ink = "#140f06" if alpha > 0.45 else ("#F2EDE2" if p >= 0.08 else MUTED)
+    return f"background:#{mix[0]:02x}{mix[1]:02x}{mix[2]:02x}; color:{ink}"
 
 
 def _cell_label(p: float) -> str:
@@ -307,9 +347,9 @@ def render_position_table(m: pd.DataFrame, highlight: set[str]) -> None:
     """
     cols = ["110px"] + ["minmax(0,1fr)"] * TEAMS
     template = " ".join(cols)
-    borders = {PLAYOFF_CUT + 1: "2px solid #00aa46",
-               QUALI_CUT + 1: "1px dashed #93dcae",
-               RELEGATION_CUT + 1: "2px solid #d3352b"}
+    borders = {PLAYOFF_CUT + 1: f"2px solid {BRAND_DARK}",
+               QUALI_CUT + 1: f"1px dashed {GOLD_MID}",
+               RELEGATION_CUT + 1: f"2px solid {DANGER}"}
 
     head = ['<div class="lp-hteam">Joukkue</div>']
     for rank in range(1, TEAMS + 1):
@@ -364,7 +404,7 @@ def render_history(history: pd.DataFrame, order: list[str],
               if highlight else order)
     big = h.merge(pd.DataFrame({"panel": panels}), how="cross")
     # Colour by the panel, not by the line, so a highlighted team's own panel
-    # stays green while the rest of the grid recedes.
+    # stays gold while the rest of the grid recedes.
     big["vari"] = big["panel"].map(
         lambda t: f"rgb{ACCENT}" if (not highlight or t in highlight)
         else "#b6bfbb")
@@ -396,7 +436,7 @@ def render_history(history: pd.DataFrame, order: list[str],
                                     header=alt.Header(labelFontSize=12,
                                                       labelFontWeight="bold")),
                     columns=5))
-    full_width(st.altair_chart, chart)
+    full_width(st.altair_chart, dark(chart))
 
 
 def _result_text(r) -> str:
@@ -425,7 +465,7 @@ def render_fixtures(games: pd.DataFrame, highlight: set[str]) -> None:
     """Fixtures with probability bars, and the outcome once played.
 
     The tick/cross carries the hit or miss on its own -- colour alone would
-    fail anyone who cannot separate the green from the red.
+    fail anyone who cannot separate the gold from the red.
     """
     rows, classes = [], []
     for _, g in games.iterrows():
@@ -436,7 +476,8 @@ def render_fixtures(games: pd.DataFrame, highlight: set[str]) -> None:
             verdict = ""
         else:
             hit = said >= 50
-            tint = ("rgba(0,170,70,0.14)" if hit else "rgba(211,53,43,0.10)")
+            tint = ("rgba(235,202,104,0.16)" if hit
+                    else "rgba(224,87,75,0.16)")
             verdict = (f'<span class="lp-tag" style="background:{tint};'
                        f'color:{HIT if hit else MISS}">'
                        f'{"✓" if hit else "✗"} {said:.0f} %</span>')
@@ -519,7 +560,7 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame,
             f'<i style="background:{BRAND};width:{got:.1f}%"></i>'
             f'<i style="background:{ACCENT_LIGHT};width:{sim:.1f}%"></i>'
             f'</div>',
-            f'<span class="lp-tag" style="background:{GREEN_100};'
+            f'<span class="lp-tag" style="background:{GOLD_DIM};'
             f'color:{BRAND_DARK}">{_fi(r["p_title"], 1)} %</span>'
             if r["p_title"] >= 1 else
             f'<span class="lp-num lp-dim">{_fi(r["p_title"], 1)} %</span>',
@@ -540,9 +581,9 @@ def render_title_history(history: pd.DataFrame, top: list[str],
     """Title probability over time for the contenders, plus any highlighted team.
 
     Six lines still read, but only if they can be told apart. The design is a
-    mono-green system, so the six get a dark-to-light green ramp ordered by
-    rank -- the ordering is itself information, which a categorical palette
-    would throw away.
+    mono-gold system taken from the Liiga logo, so the six get a
+    bright-to-dark gold ramp ordered by rank -- the ordering is itself
+    information, which a categorical palette would throw away.
     """
     if history.empty or history["snapshot_date"].nunique() < 2:
         return
@@ -553,10 +594,10 @@ def render_title_history(history: pd.DataFrame, top: list[str],
     h["snapshot_date"] = pd.to_datetime(h["snapshot_date"])
     h["p_title"] = h["p_title"].astype(float) * 100
 
-    ramp = ["#00531f", "#007531", "#00913b", "#00aa46", "#57c986", "#93dcae"]
+    ramp = ["#EBCA68", "#CCA752", "#B08F3F", "#9A7C33", "#7A6228", "#5C4A1E"]
     colours = {t: ramp[min(i, len(ramp) - 1)] for i, t in enumerate(shown)}
     if highlight:
-        colours = {t: (colours[t] if t in highlight else "#d4dad7")
+        colours = {t: (colours[t] if t in highlight else "#3a3226")
                    for t in shown}
     h["paksuus"] = h["team"].map(
         lambda t: 2.6 if (not highlight or t in highlight) else 1.2)
@@ -594,7 +635,7 @@ def render_title_history(history: pd.DataFrame, top: list[str],
     )
     # Selite, ei nimeä viivan päähän: neljä kärkijoukkuetta on tällä
     # hetkellä 10 %:n tuntumassa, ja päätylaput kirjoittuisivat päällekkäin.
-    full_width(st.altair_chart, line)
+    full_width(st.altair_chart, dark(line))
 
 
 # --------------------------------------------------------------------------
@@ -606,14 +647,14 @@ def render_title_history(history: pd.DataFrame, top: list[str],
 # st.markdown-lohkona -- sama ratkaisu toimii kummallakin backendillä, kun
 # taas st.column_config ei ole Snowflaken buildissa olemassakaan.
 # --------------------------------------------------------------------------
-BRAND = "#00aa46"        # designin pääväri
-BRAND_DARK = "#00913b"   # sama tekstikokoisena: kontrasti riittää vaalealla
-GREEN_100 = "#c6ecd4"
-GREEN_200 = "#93dcae"
-GRID = "#e7ebe9"
-MUTED = "#8b958f"
-DANGER = "#d3352b"
-DANGER_SOFT = "#f2b8b3"  # putoamisvyöhyke: sama sävy vaaleana
+BRAND = "#CCA752"        # logon kulta
+BRAND_DARK = "#EBCA68"   # kirkkain korostus -- mustalla tämä on se lukukelpoinen
+GOLD_MID = "#9A7C33"     # karsintavyöhyke
+GOLD_DIM = "#4a3a18"     # täytöt ja tummat pinnat
+GRID = "#2a2620"
+MUTED = "#A69B85"
+DANGER = "#E0574B"
+DANGER_SOFT = "#6b2b25"  # putoamisvyöhykkeen täyttö mustalla
 
 # Yksi <style>, ei per-solu-tyyliä: 17 riviä x 8 saraketta olisi 136
 # style-attribuuttia, ja luokat pitävät tuotetun HTML:n luettavana.
@@ -621,12 +662,16 @@ _CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&family=Roboto+Mono:wght@400;600&display=swap');
 :root{
-  --lp-brand:#00aa46; --lp-brand-dark:#00913b; --lp-green-700:#007531;
-  --lp-green-100:#c6ecd4; --lp-green-200:#93dcae;
-  --lp-gray-25:#fafbfa; --lp-gray-50:#f5f7f6; --lp-gray-100:#e7ebe9;
-  --lp-gray-200:#d4dad7; --lp-gray-300:#b6bfbb; --lp-gray-400:#8b958f;
-  --lp-ink:#141815; --lp-body:#363d39; --lp-muted:#6a746e;
-  --lp-danger:#d3352b;
+  /* Liigan logon paletti, poimittu pikseleistä. */
+  --lp-brand:#CCA752; --lp-brand-dark:#EBCA68; --lp-gold-mid:#9A7C33;
+  --lp-gold-dim:#4a3a18; --lp-brown:#36270D;
+  /* Tausta on musta; pinnat nousevat siitä lämpimin askelin, jotta rivit
+     erottuvat ilman että mikään muuttuu harmaaksi. */
+  --lp-bg:#000000; --lp-gray-25:#0d0b07; --lp-gray-50:#15110a;
+  --lp-gray-100:#221c12; --lp-gray-200:#2f2718; --lp-gray-300:#463a24;
+  --lp-gray-400:#7A7060;
+  --lp-ink:#F2EDE2; --lp-body:#D8D0BF; --lp-muted:#A69B85;
+  --lp-danger:#E0574B;
   /* Fontit tulevat Google Fontsista. Snowflaken Streamlit voi estää
      ulkoisen pyynnön, joten fallback on oikea pino eikä koriste. */
   --lp-sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -640,9 +685,9 @@ _CSS = """
 .lp-tbl{border:1px solid var(--lp-gray-200);border-radius:8px;
   overflow:hidden;font-family:var(--lp-sans)}
 .lp-row{display:grid;align-items:center;font-size:13.5px;
-  background:#fff;border-bottom:1px solid var(--lp-gray-100)}
+  background:var(--lp-gray-25);border-bottom:1px solid var(--lp-gray-100)}
 .lp-row:last-child{border-bottom:none}
-.lp-row:hover{background:var(--lp-gray-25)}
+.lp-row:hover{background:var(--lp-gray-100)}
 .lp-head{background:var(--lp-gray-50);border-bottom:1px solid var(--lp-gray-200);
   font:700 11.5px/1 var(--lp-sans);letter-spacing:.04em;text-transform:uppercase;
   color:var(--lp-muted)}
@@ -661,10 +706,11 @@ _CSS = """
   width:20px;height:20px;border-radius:5px;font:700 11px/1 var(--lp-sans)}
 .lp-forms{display:flex;gap:4px}
 .lp-bar{position:relative;height:22px;border-radius:4px;
-  background:var(--lp-gray-50);overflow:hidden}
+  background:var(--lp-gray-100);overflow:hidden}
 .lp-bar > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
 .lp-bar > span{position:absolute;left:8px;top:0;bottom:0;display:flex;
-  align-items:center;font:600 12.5px var(--lp-mono);color:var(--lp-ink)}
+  align-items:center;font:600 12.5px var(--lp-mono);color:var(--lp-ink);
+  text-shadow:0 1px 2px rgba(0,0,0,.9)}
 .lp-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;
   font:12px var(--lp-sans);color:var(--lp-muted)}
 .lp-legend span{display:flex;align-items:center;gap:6px}
@@ -672,7 +718,7 @@ _CSS = """
    korostusväri ei riitä 17 rivin taulukossa -- silmä löytää valitun vasta
    kun ympäriltä otetaan kontrastia pois. */
 .lp-off{opacity:.30}
-.lp-on{background:var(--lp-gray-25);box-shadow:inset 3px 0 0 var(--lp-brand)}
+.lp-on{background:var(--lp-gray-100);box-shadow:inset 3px 0 0 var(--lp-brand)}
 .lp-on .lp-team{color:var(--lp-brand-dark);font-weight:700}
 /* Sijaintijakauma: 17 x 17 ruutua, väri tulee solukohtaisesti. */
 .lp-heat > div{padding:6px 2px;text-align:center;font:12px var(--lp-mono)}
@@ -680,7 +726,7 @@ _CSS = """
   color:var(--lp-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Kaksiosainen palkki: kerätty + simuloitu, samassa mitassa. */
 .lp-split{position:relative;height:22px;border-radius:4px;
-  background:var(--lp-gray-50);overflow:hidden;display:flex}
+  background:var(--lp-gray-100);overflow:hidden;display:flex}
 .lp-split > i{display:block;height:100%}
 .lp-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;
   border-radius:5px;font:600 12px var(--lp-mono)}
@@ -689,6 +735,13 @@ _CSS = """
 .lp-side-s{font:12.5px var(--lp-sans);color:var(--lp-muted);margin-top:2px}
 .lp-side-f{font:11.5px/1.5 var(--lp-sans);color:var(--lp-gray-400);
   margin-top:6px}
+/* Streamlitin oma runko: taustan mustaus ei kulje tokeneiden kautta. */
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
+[data-testid="stSidebar"]{background:var(--lp-bg)}
+[data-testid="stSidebar"]{border-right:1px solid var(--lp-gray-200)}
+.stApp, .stMarkdown, .stCaption, p, label{color:var(--lp-body)}
+h1,h2,h3,h4{color:var(--lp-ink)}
+hr{border-color:var(--lp-gray-200)}
 </style>
 """
 
@@ -839,16 +892,16 @@ def form_cells(points: list[float]) -> str:
     out = []
     for p in points[-5:]:
         if p == 3:
-            style = f"background:{BRAND};color:#fff"
+            style = f"background:{BRAND};color:#1a1206"
             label = "V"
         elif p == 2:
-            style = f"background:{GREEN_200};color:#00531f"
+            style = f"background:{GOLD_MID};color:#0d0b07"
             label = "J"
         elif p == 1:
-            style = f"background:{GREEN_100};color:#007531"
+            style = f"background:{GOLD_DIM};color:{BRAND_DARK}"
             label = "H"
         else:
-            style = "background:#d4dad7;color:#363d39"
+            style = "background:#2a2620;color:#8b8375"
             label = "H"
         out.append(f'<span class="lp-chip" style="{style}">{label}</span>')
     return f'<div class="lp-forms">{"".join(out)}</div>'
@@ -863,7 +916,7 @@ def _qbar(rank: int) -> str:
     if rank <= PLAYOFF_CUT:
         colour = BRAND
     elif rank <= QUALI_CUT:
-        colour = GREEN_200
+        colour = GOLD_MID
     elif rank > RELEGATION_CUT:
         colour = DANGER
     else:
@@ -876,7 +929,7 @@ def zone_legend() -> None:
     html('<div class="lp-legend">'
          f'<span><span class="lp-q" style="background:{BRAND}"></span>'
          'Puolivälierät suoraan (1.–6.)</span>'
-         f'<span><span class="lp-q" style="background:{GREEN_200}"></span>'
+         f'<span><span class="lp-q" style="background:{GOLD_MID}"></span>'
          f'Karsinta (7.–{QUALI_CUT}.)</span>'
          f'<span><span class="lp-q" style="background:{DANGER}"></span>'
          f'Putoaa B-sarjaan ({RELEGATION_CUT + 1}.–{TEAMS}.)</span>'
@@ -971,7 +1024,7 @@ def render_form_table(log: pd.DataFrame, window: int, *,
             row.append(_spark(rolling))
         row.append(f'{int(r["gf"])}–{int(r["ga"])}')
         width = 100 * float(r["pts"]) / max_pts
-        fill = GREEN_200 if rank <= PLAYOFF_CUT else GRID
+        fill = GOLD_MID if rank <= PLAYOFF_CUT else GRID
         row.append(f'<div class="lp-bar"><i style="background:{fill};'
                    f'width:{width:.1f}%"></i>'
                    f'<span>{int(r["pts"])}</span></div>')
@@ -981,13 +1034,13 @@ def render_form_table(log: pd.DataFrame, window: int, *,
     render_grid(cols, rows, classes)
     html(
         '<div class="lp-legend">'
-        f'<span><span class="lp-chip" style="background:{BRAND};color:#fff">V'
+        f'<span><span class="lp-chip" style="background:{BRAND};color:#1a1206">V'
         '</span>Voitto</span>'
-        f'<span><span class="lp-chip" style="background:{GREEN_200};'
-        'color:#00531f">J</span>Voitto jatkoajalla</span>'
-        f'<span><span class="lp-chip" style="background:{GREEN_100};'
-        'color:#007531">H</span>Häviö jatkoajalla</span>'
-        '<span><span class="lp-chip" style="background:#d4dad7;color:#363d39">'
+        f'<span><span class="lp-chip" style="background:{GOLD_MID};'
+        'color:#0d0b07">J</span>Voitto jatkoajalla</span>'
+        f'<span><span class="lp-chip" style="background:{GOLD_DIM};'
+        f'color:{BRAND_DARK}">H</span>Häviö jatkoajalla</span>'
+        '<span><span class="lp-chip" style="background:#2a2620;color:#8b8375">'
         'H</span>Häviö</span>'
         + ('<span>Vire = pisteet per ottelu, liukuva keskiarvo</span>'
            if show_spark else '')
@@ -1183,7 +1236,7 @@ def main() -> None:
 
     st.subheader("Mihin kukin joukkue päätyy")
     st.caption(
-        f"Todennäköisyys prosentteina, {TEAMS} sijaa. Vihreä viiva on "
+        f"Todennäköisyys prosentteina, {TEAMS} sijaa. Kirkas viiva on "
         f"playoff-raja ({PLAYOFF_CUT}.), katkoviiva karsintaraja "
         f"({QUALI_CUT}.) ja punainen viiva putoamisraja "
         f"({RELEGATION_CUT}.). Rivit ennustetussa järjestyksessä."

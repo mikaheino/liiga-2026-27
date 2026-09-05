@@ -171,11 +171,20 @@ Sovelluksen päänäkymä on toteutettu claude.ai/design-projektin
 `Liigaporssi Streamlit.dc.html` suunnasta **1b** ("Kuka on kuumana?"):
 sivupalkki, neljä välilehteä ja rivikohtainen muoto + vire.
 
-**SOK-logoa ei ole eikä tule.** Design on SOK:n / S-ryhmän
-design-systeemistä. Paletti (`#00aa46` ja harmaat) on otettu käyttöön,
-`assets/sok-logo-full.png` **ei** — tämä repo on julkinen ja
-henkilökohtainen, eikä esitä itseään SOK:n tekemänä. Älä lisää logoa
-ilman erillistä pyyntöä.
+**Paletti on Liigan logosta, tausta musta (2026-09-05).** Sävyt on poimittu
+logokuvan pikseleistä eikä silmämääräisesti: korostus `#EBCA68`, kulta
+`#CCA752`, keskikulta `#69521E`, ruskea `#36270D`, varjo `#2A1904`. Vakiot
+ovat tiedoston alussa (`ACCENT`, `BRAND`, `GOLD_MID`, `GOLD_DIM`) ja
+CSS-tokeneina `--lp-*`. Aiempi S-ryhmän vihreä on kokonaan poissa.
+
+**SOK-logoa ei ole eikä tule.** Sivupalkin rakenne tulee SOK:n / S-ryhmän
+design-systeemistä, mutta `assets/sok-logo-full.png` **ei** — tämä repo on
+julkinen ja henkilökohtainen, eikä esitä itseään SOK:n tekemänä. Älä lisää
+logoa ilman erillistä pyyntöä.
+
+**Sivusto (`site/index.html`) ei muuttunut mustaksi.** Sen retro-2005-teema
+on erikseen pyydetty ja dokumentoitu alempana; älä yhtenäistä niitä
+oma-aloitteisesti.
 
 Rakenne, ylhäältä alas:
 
@@ -212,10 +221,19 @@ Kolme asiaa jotka eivät ole ilmeisiä:
   `render_grid()` piirtää CSS-gridin yhtenä `st.markdown`-lohkona, mikä
   toimii kummallakin backendillä toisin kuin `st.column_config`.
 - **`streamlit_app/.streamlit/config.toml` maalaa Streamlitin omat
-  widgetit.** Ilman sitä liukusäädin, valintaruutu ja välilehden
-  alleviivaus jäävät Streamlitin punaiseksi keskelle vihreää designia.
-  Onko Snowflake-deploy sen lukee, on **testaamatta** — jos widgetit ovat
-  siellä punaisia, syy on tässä.
+  widgetit** ja asettaa `base = "dark"`. Ilman sitä liukusäädin,
+  valintaruutu ja välilehden alleviivaus jäävät Streamlitin punaiseksi ja
+  tausta valkoiseksi — CSS-injektio ei yllä widgettien sisään. Onko
+  Snowflake-deploy sen lukee, on **testaamatta**.
+- **`background-color` ei selviä Streamlitin HTML-sanitoinnista**, mutta
+  lyhytmuoto `background` selviää. Sijaintijakauman 289 solusta jäi
+  jäljelle pelkkä tekstiväri, jolloin kirkkaimmat solut olivat mustaa
+  tekstiä mustalla. Todennettu DOM:ista, ei pääteltynä. `_cell_style`
+  laskee sekoituksen rivin pohjaa vasten valmiiksi heksaksi, joten se ei
+  ole myöskään alphan varassa.
+- **Altair renderöi valkoiselle** ellei jokaista osaa nimetä erikseen.
+  `dark()` asettaa taustan, akselit, ruudukon, selitteen ja fasettien
+  otsikot; jokainen niistä putoaisi muuten omaan vaaleaan oletukseensa.
 - **Fontit (Hanken Grotesk, Roboto Mono) tulevat Google Fontsista
   `@import`illa.** Snowflaken Streamlit voi estää ulkoisen pyynnön, joten
   fallback-pino on oikea eikä koriste.
