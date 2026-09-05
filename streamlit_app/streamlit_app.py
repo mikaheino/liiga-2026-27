@@ -27,11 +27,12 @@ import streamlit as st
 TEAMS = 17
 PLAYOFF_CUT = 6          # 1-6 suoraan playoffeihin
 QUALI_CUT = 10           # 7-10 karsintoihin
-ACCENT = (51, 102, 153)  # #336699, sama teräksensininen kuin sivustolla
+ACCENT = (0, 170, 70)    # #00aa46, Liigapörssi-designin pääväri
+ACCENT_LIGHT = "#c6ecd4"  # sama sävy vaaleana: palkin simuloitu osa
 N_SIMS = "10 000"        # pidä synkassa config.yaml -> simulation.n_simulations
-HIT = "#1F7A3D"          # playoff-vihreä: malli osui
-MISS = "#CC0000"         # punainen: malli meni pieleen
-CONTEXT = "#D8DEE5"      # taustaviivat pienissä kuvissa
+HIT = "#00913b"          # malli osui
+MISS = "#d3352b"         # malli meni pieleen
+CONTEXT = "#d4dad7"      # taustaviivat pienissä kuvissa
 
 st.set_page_config(page_title="Liiga 2026-27 -ennuste",
                    page_icon="🏒", layout="wide")
@@ -151,6 +152,24 @@ def banked_sql() -> str:
     """
 
 
+def team_log_sql() -> str:
+    """Every played game of the target season, one row per team per game.
+
+    This is the whole input to the form table: Liiga's 3/2/1/0 points make
+    win, overtime win, overtime loss and loss recoverable from `points`
+    alone, and the rest of the columns feed the goals and special-teams tabs.
+    """
+    log = _qualify("team_game_log")
+    return f"""
+        SELECT team, opponent, is_home, start_ts, goals_for, goals_against,
+               points, result_category, xg_for, xg_against,
+               pp_goals, pp_instances, sh_instances, pp_goals_against
+        FROM {log}
+        WHERE season = (SELECT MAX(season) FROM {log})
+        ORDER BY team, start_ts
+    """
+
+
 def load_updated_at() -> str:
     """Ennusteen aikaleima. Tätä EI kacheta -- se on välimuistin avain."""
     meta = read_sql("prediction_meta")
@@ -175,7 +194,16 @@ def load_data(updated_at: str) -> dict[str, pd.DataFrame]:
             "start_ts", "home_team", "away_team", "ended", "home_goals",
             "away_goals", "result_category", "p_home_win", "p_overtime"])
         upcoming_error = str(exc).strip().splitlines()[0][:200]
+    try:
+        team_log = run_query(team_log_sql())
+    except Exception:                     # noqa: BLE001 -- nothing played yet
+        team_log = pd.DataFrame(columns=[
+            "team", "opponent", "is_home", "start_ts", "goals_for",
+            "goals_against", "points", "result_category", "xg_for",
+            "xg_against", "pp_goals", "pp_instances", "sh_instances",
+            "pp_goals_against"])
     return {
+        "team_log": team_log,
         "standings": read_sql("standings_2026_27"),
         "position": read_sql("position_distribution_2026_27"),
         "history": read_sql("prediction_history"),
@@ -273,8 +301,8 @@ def render_position_table(m: pd.DataFrame) -> None:
                .map(_cell_style)
                .set_properties(**{"text-align": "center"}))
     # Pystyviivat playoff- ja karsintarajalle, kuten sivuston taulukossa
-    for col, border in ((PLAYOFF_CUT + 1, "2px solid #336699"),
-                        (QUALI_CUT + 1, "1px dashed #667788")):
+    for col, border in ((PLAYOFF_CUT + 1, "2px solid #00aa46"),
+                        (QUALI_CUT + 1, "1px dashed #93dcae")):
         styler = styler.set_properties(subset=[col],
                                        **{"border-left": border})
     full_width(st.dataframe, styler, height=(TEAMS + 1) * 35 + 3)
@@ -391,9 +419,9 @@ def render_fixtures(games: pd.DataFrame) -> None:
         preference, so it earns no credit.
         """
         return [("" if pd.isna(v) else
-                 f"background-color: rgba(31,122,61,0.14); color: {HIT}"
+                 f"background-color: rgba(0,170,70,0.14); color: {HIT}"
                  if v >= 50 else
-                 f"background-color: rgba(204,0,0,0.10); color: {MISS}")
+                 f"background-color: rgba(211,53,43,0.10); color: {MISS}")
                 for v in said]
 
     bars = ["Koti voittaa", "Vieras voittaa"]
@@ -453,7 +481,7 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame) -> None:
                 "osa:N", title=None,
                 scale=alt.Scale(domain=["Kerätyt pisteet",
                                         "Simuloitu loppukausi"],
-                                range=[f"rgb{ACCENT}", "#B9C9DA"]),
+                                range=[f"rgb{ACCENT}", ACCENT_LIGHT]),
                 legend=alt.Legend(orient="top")),
             order=alt.Order("osa:N", sort="ascending"),
             tooltip=[alt.Tooltip("team:N", title="Joukkue"),
@@ -490,7 +518,10 @@ def render_title_history(history: pd.DataFrame, top: list[str]) -> None:
         .encode(
             x=alt.X("snapshot_date:T", title=None,
                     axis=alt.Axis(format="%-d.%-m.", grid=False)),
-            y=alt.Y("p_title:Q", title="Todennäköisyys (%)"),
+            # Todennäköisyys ei voi olla negatiivinen: vapaa skaala vei
+            # kolmanneksen korkeudesta tyhjään ja ulotti akselin -30 %:iin.
+            y=alt.Y("p_title:Q", title="Todennäköisyys (%)",
+                    scale=alt.Scale(domainMin=0, nice=True, clamp=True)),
             color=alt.Color("team:N", title="Joukkue", sort=top,
                             scale=alt.Scale(scheme="tableau10")),
             tooltip=[alt.Tooltip("team:N", title="Joukkue"),
@@ -506,28 +537,516 @@ def render_title_history(history: pd.DataFrame, top: list[str]) -> None:
 
 
 # --------------------------------------------------------------------------
+# Muototaulukko -- Liigapörssi-designin suunta 1b
+#
+# Designin taulukossa on rivikohtainen sparkline ja V/J/H-ruudut, joita
+# st.dataframe ei osaa piirtää: se antaa solulle vain tekstin ja tyylin.
+# Siksi tämä osa on HTML-taulukko (CSS grid + inline-SVG) yhtenä
+# st.markdown-lohkona -- sama ratkaisu toimii kummallakin backendillä, kun
+# taas st.column_config ei ole Snowflaken buildissa olemassakaan.
+# --------------------------------------------------------------------------
+BRAND = "#00aa46"        # designin pääväri
+BRAND_DARK = "#00913b"   # sama tekstikokoisena: kontrasti riittää vaalealla
+GREEN_100 = "#c6ecd4"
+GREEN_200 = "#93dcae"
+GRID = "#e7ebe9"
+MUTED = "#8b958f"
+DANGER = "#d3352b"
+
+# Yksi <style>, ei per-solu-tyyliä: 17 riviä x 8 saraketta olisi 136
+# style-attribuuttia, ja luokat pitävät tuotetun HTML:n luettavana.
+_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&family=Roboto+Mono:wght@400;600&display=swap');
+:root{
+  --lp-brand:#00aa46; --lp-brand-dark:#00913b; --lp-green-700:#007531;
+  --lp-green-100:#c6ecd4; --lp-green-200:#93dcae;
+  --lp-gray-25:#fafbfa; --lp-gray-50:#f5f7f6; --lp-gray-100:#e7ebe9;
+  --lp-gray-200:#d4dad7; --lp-gray-300:#b6bfbb; --lp-gray-400:#8b958f;
+  --lp-ink:#141815; --lp-body:#363d39; --lp-muted:#6a746e;
+  --lp-danger:#d3352b;
+  /* Fontit tulevat Google Fontsista. Snowflaken Streamlit voi estää
+     ulkoisen pyynnön, joten fallback on oikea pino eikä koriste. */
+  --lp-sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --lp-mono:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.lp-kicker{font:700 11px/1 var(--lp-sans);letter-spacing:.12em;
+  text-transform:uppercase;color:var(--lp-brand-dark);margin-bottom:8px}
+.lp-h1{font:800 34px/1.1 var(--lp-sans);letter-spacing:-.025em;
+  color:var(--lp-ink);margin:0 0 6px}
+.lp-sub{font:400 14.5px/1.45 var(--lp-sans);color:var(--lp-muted);margin:0}
+.lp-tbl{border:1px solid var(--lp-gray-200);border-radius:8px;
+  overflow:hidden;font-family:var(--lp-sans)}
+.lp-row{display:grid;align-items:center;font-size:13.5px;
+  background:#fff;border-bottom:1px solid var(--lp-gray-100)}
+.lp-row:last-child{border-bottom:none}
+.lp-row:hover{background:var(--lp-gray-25)}
+.lp-head{background:var(--lp-gray-50);border-bottom:1px solid var(--lp-gray-200);
+  font:700 11.5px/1 var(--lp-sans);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--lp-muted)}
+.lp-head > div{padding:9px 12px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.lp-row > div{padding:8px 12px;min-width:0}
+.lp-num{font-family:var(--lp-mono);text-align:right;white-space:nowrap}
+.lp-dim{color:var(--lp-muted)}
+.lp-team{font-weight:600;color:var(--lp-ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.lp-team-on{color:var(--lp-brand-dark);font-weight:700}
+.lp-rank{display:flex;align-items:center;gap:7px}
+.lp-q{width:4px;height:16px;border-radius:2px;flex:none}
+.lp-mv{font:600 11.5px var(--lp-mono)}
+.lp-chip{display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:5px;font:700 11px/1 var(--lp-sans)}
+.lp-forms{display:flex;gap:4px}
+.lp-bar{position:relative;height:22px;border-radius:4px;
+  background:var(--lp-gray-50);overflow:hidden}
+.lp-bar > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.lp-bar > span{position:absolute;left:8px;top:0;bottom:0;display:flex;
+  align-items:center;font:600 12.5px var(--lp-mono);color:var(--lp-ink)}
+.lp-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;
+  font:12px var(--lp-sans);color:var(--lp-muted)}
+.lp-legend span{display:flex;align-items:center;gap:6px}
+.lp-side-h{font:800 20px/1.2 var(--lp-sans);letter-spacing:-.02em;
+  color:var(--lp-ink)}
+.lp-side-s{font:12.5px var(--lp-sans);color:var(--lp-muted);margin-top:2px}
+.lp-side-f{font:11.5px/1.5 var(--lp-sans);color:var(--lp-gray-400);
+  margin-top:6px}
+</style>
+"""
+
+
+def html(markup: str) -> None:
+    st.markdown(markup, unsafe_allow_html=True)
+
+
+def _esc(s) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+                  .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _fi(x, decimals: int = 2) -> str:
+    """Finnish decimal comma. Every number in this view is read, not parsed."""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return "–"
+    return f"{x:.{decimals}f}".replace(".", ",")
+
+
+def season_table(log: pd.DataFrame,
+                 teams: list[str] | None = None) -> pd.DataFrame:
+    """One row per team: record, points, goals, xG and special teams.
+
+    Liiga awards 3/2/1/0, so `points` alone separates a regulation win from
+    an overtime one and an overtime loss from a plain loss. Deriving the
+    record from it rather than from `result_category` keeps the two columns
+    from ever disagreeing.
+
+    `teams` is the full league. A club that has not played yet is absent from
+    `team_game_log` entirely, and a standings table that quietly drops it
+    would be wrong -- early in the season the fixture list is uneven, so this
+    is the normal case, not an edge one.
+    """
+    if log.empty:
+        if not teams:
+            return pd.DataFrame()
+        log = log.reindex(columns=[
+            "team", "points", "goals_for", "goals_against", "xg_for",
+            "xg_against", "pp_goals", "pp_instances", "sh_instances",
+            "pp_goals_against"])
+    d = log.copy()
+    d["points"] = d["points"].astype(float)
+    for c in ("goals_for", "goals_against", "xg_for", "xg_against",
+              "pp_goals", "pp_instances", "sh_instances", "pp_goals_against"):
+        d[c] = pd.to_numeric(d[c], errors="coerce")
+
+    g = d.groupby("team")
+    t = pd.DataFrame({
+        "gp": g.size(),
+        "pts": g["points"].sum(),
+        "w": g["points"].apply(lambda s: int((s == 3).sum())),
+        "otw": g["points"].apply(lambda s: int((s == 2).sum())),
+        "otl": g["points"].apply(lambda s: int((s == 1).sum())),
+        "l": g["points"].apply(lambda s: int((s == 0).sum())),
+        "gf": g["goals_for"].sum(),
+        "ga": g["goals_against"].sum(),
+        "xgf": g["xg_for"].sum(),
+        "xga": g["xg_against"].sum(),
+        "ppg_goals": g["pp_goals"].sum(),
+        "pp_inst": g["pp_instances"].sum(),
+        "sh_inst": g["sh_instances"].sum(),
+        "pp_against": g["pp_goals_against"].sum(),
+    })
+    if teams:
+        t = t.reindex(sorted(set(teams) | set(t.index))).fillna(0)
+        t.index.name = "team"
+    t["ppg"] = t["pts"] / t["gp"].clip(lower=1)
+    t["gf_pg"] = t["gf"] / t["gp"].clip(lower=1)
+    t["ga_pg"] = t["ga"] / t["gp"].clip(lower=1)
+    # Denominators can legitimately be zero this early: a team that has never
+    # been a man up has no power-play percentage, and 0/0 must read as "–"
+    # rather than 0 %.
+    t["pp_pct"] = 100 * t["ppg_goals"] / t["pp_inst"].replace(0, pd.NA)
+    t["pk_pct"] = 100 * (1 - t["pp_against"] / t["sh_inst"].replace(0, pd.NA))
+    t["xg_share"] = 100 * t["xgf"] / (t["xgf"] + t["xga"]).replace(0, pd.NA)
+    return t.sort_values(["pts", "gf"], ascending=False)
+
+
+def _rank_series(t: pd.DataFrame) -> pd.Series:
+    return pd.Series(range(1, len(t) + 1), index=t.index)
+
+
+def rank_movement(log: pd.DataFrame, window: int,
+                  teams: list[str] | None = None) -> pd.Series:
+    """Places gained since `window` games ago, per team.
+
+    Each team's own last `window` games are removed and the table recomputed,
+    so the comparison is "where would this team be without its recent run".
+    A team that has not played more than `window` games yet has no earlier
+    table to compare against and gets NaN, which renders as a dash.
+    """
+    if log.empty:
+        return pd.Series(dtype=float)
+    now = _rank_series(season_table(log, teams))
+    # Drop each team's last `window` games by position. groupby().apply() was
+    # the obvious way and is wrong here: it drops the grouping column when a
+    # group comes back empty, which it does whenever a team has played fewer
+    # games than the window -- the normal case in September.
+    d = log.sort_values(["team", "start_ts"]).copy()
+    d["_n"] = d.groupby("team").cumcount()
+    earlier = d[d["_n"] < d.groupby("team")["_n"].transform("size") - window]
+    if earlier.empty:
+        return pd.Series(pd.NA, index=now.index, dtype="Float64")
+    then = _rank_series(season_table(earlier.drop(columns="_n"), teams))
+    played = log.groupby("team").size()
+    move = then.reindex(now.index) - now          # positive = moved up
+    return move.where(played.reindex(now.index).fillna(0) > window)
+
+
+def _spark(vals: list[float], w: int = 88, h: int = 24) -> str:
+    """Rolling points-per-game as an inline SVG, one per row.
+
+    Returns "" for fewer than two points -- a single dot is not a trend, and
+    drawing one would imply a shape the data does not have.
+    """
+    if len(vals) < 2:
+        return ""
+    lo, hi = 0.0, 3.0                    # Liiga's points-per-game range
+    px = lambda k: 2 + (k / (len(vals) - 1)) * (w - 4)
+    py = lambda v: h - 3 - ((v - lo) / (hi - lo)) * (h - 6)
+    pts = " ".join(("L" if k else "M") + f"{px(k):.1f} {py(v):.1f}"
+                   for k, v in enumerate(vals))
+    half = max(len(vals) // 2, 1)
+    rising = sum(vals[-half:]) / half >= sum(vals[:half]) / half
+    colour, fill = ((BRAND_DARK, "rgba(0,145,59,.10)") if rising
+                    else (MUTED, "rgba(139,149,143,.10)"))
+    area = f"{pts} L{px(len(vals) - 1):.1f} {h - 3} L2 {h - 3} Z"
+    return (
+        f'<svg viewBox="0 0 {w} {h}" style="display:block;width:{w - 8}px;'
+        f'height:{h}px">'
+        f'<line x1="0" y1="{h / 2:.0f}" x2="{w}" y2="{h / 2:.0f}" '
+        f'stroke="{GRID}" stroke-width="1"/>'
+        f'<path d="{area}" fill="{fill}" stroke="none"/>'
+        f'<path d="{pts}" fill="none" stroke="{colour}" stroke-width="1.6" '
+        f'stroke-linejoin="round" stroke-linecap="round"/>'
+        f'<circle cx="{px(len(vals) - 1):.1f}" cy="{py(vals[-1]):.1f}" '
+        f'r="2.2" fill="{colour}"/></svg>')
+
+
+def form_cells(points: list[float]) -> str:
+    """The last five results as V / J / H chips.
+
+    Overtime is its own chip rather than a shade of win or loss: in Liiga it
+    is worth two points and one, and collapsing it into either would hide
+    exactly the games that decide a tight table.
+    """
+    out = []
+    for p in points[-5:]:
+        if p == 3:
+            style = f"background:{BRAND};color:#fff"
+            label = "V"
+        elif p == 2:
+            style = f"background:{GREEN_200};color:#00531f"
+            label = "J"
+        elif p == 1:
+            style = f"background:{GREEN_100};color:#007531"
+            label = "H"
+        else:
+            style = "background:#d4dad7;color:#363d39"
+            label = "H"
+        out.append(f'<span class="lp-chip" style="{style}">{label}</span>')
+    return f'<div class="lp-forms">{"".join(out)}</div>'
+
+
+def _qbar(rank: int) -> str:
+    colour = (BRAND if rank <= PLAYOFF_CUT
+              else GREEN_200 if rank <= QUALI_CUT else "transparent")
+    return f'<span class="lp-q" style="background:{colour}"></span>'
+
+
+def _move(mv) -> str:
+    if mv is None or pd.isna(mv):
+        return '<span class="lp-mv" style="color:#b6bfbb">–</span>'
+    mv = int(mv)
+    if mv == 0:
+        return '<span class="lp-mv" style="color:#b6bfbb">–</span>'
+    arrow, colour = ("▲", BRAND_DARK) if mv > 0 else ("▼", DANGER)
+    return f'<span class="lp-mv" style="color:{colour}">{arrow} {abs(mv)}</span>'
+
+
+def render_grid(cols: list[tuple[str, str, str]], rows: list[list[str]]) -> None:
+    """A CSS-grid table. `cols` is (label, css width, alignment class)."""
+    template = " ".join(c[1] for c in cols)
+    head = "".join(
+        f'<div style="text-align:{"right" if c[2] else "left"}">{_esc(c[0])}</div>'
+        for c in cols)
+    body = []
+    for r in rows:
+        cells = "".join(
+            f'<div class="{c[2]}">{v}</div>' for c, v in zip(cols, r))
+        body.append(
+            f'<div class="lp-row" style="grid-template-columns:{template}">'
+            f'{cells}</div>')
+    html(f'<div class="lp-tbl">'
+         f'<div class="lp-row lp-head" style="grid-template-columns:{template}">'
+         f'{head}</div>{"".join(body)}</div>')
+
+
+def render_form_table(log: pd.DataFrame, window: int, *,
+                      show_spark: bool, show_xg: bool,
+                      highlight: set[str], teams: list[str]) -> None:
+    """The design's headline table: standing, recent form, trend, points."""
+    t = season_table(log, teams)
+    if t.empty:
+        st.info("Kausi ei ole vielä alkanut — ei pelattuja otteluita.")
+        return
+    moves = rank_movement(log, window, teams)
+    by_team = {k: v.sort_values("start_ts") for k, v in log.groupby("team")}
+    max_pts = max(float(t["pts"].max()), 1.0)
+
+    cols = [("Sija", "56px", ""), ("Joukkue", "minmax(0,1fr)", ""),
+            ("O", "46px", "lp-num lp-dim")]
+    if show_xg:
+        cols.append(("xG-osuus", "94px", "lp-num"))
+    cols.append(("Muoto (viim. 5)", "128px", ""))
+    if show_spark:
+        cols.append((f"Vire ({window})", "104px", ""))
+    cols += [("TM–PM", "92px", "lp-num lp-dim"), ("P", "168px", "")]
+
+    rows = []
+    for rank, (team, r) in enumerate(t.iterrows(), start=1):
+        pts_list = (by_team[team]["points"].astype(float).tolist()
+                    if team in by_team else [])
+        recent = pts_list[-window:]
+        # Rolling mean, not raw points: three games of 3-0-3 is a flat run at
+        # 2.0, and the raw series would draw it as a zigzag.
+        rolling = [sum(recent[:k + 1]) / (k + 1) for k in range(len(recent))]
+        on = team in highlight
+        name = (f'<span class="lp-team {"lp-team-on" if on else ""}">'
+                f'{_esc(team)}</span>')
+        row = [
+            f'<div class="lp-rank">{_qbar(rank)}'
+            f'<span class="lp-num lp-dim">{rank}</span></div>',
+            f'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+            f'{name}{_move(moves.get(team))}</div>',
+            str(int(r["gp"])),
+        ]
+        if show_xg:
+            row.append(_fi(r["xg_share"], 1) + " %")
+        row.append(form_cells(pts_list))
+        if show_spark:
+            row.append(_spark(rolling))
+        row.append(f'{int(r["gf"])}–{int(r["ga"])}')
+        width = 100 * float(r["pts"]) / max_pts
+        fill = GREEN_200 if rank <= PLAYOFF_CUT else GRID
+        row.append(f'<div class="lp-bar"><i style="background:{fill};'
+                   f'width:{width:.1f}%"></i>'
+                   f'<span>{int(r["pts"])}</span></div>')
+        rows.append(row)
+
+    render_grid(cols, rows)
+    html(
+        '<div class="lp-legend">'
+        f'<span><span class="lp-chip" style="background:{BRAND};color:#fff">V'
+        '</span>Voitto</span>'
+        f'<span><span class="lp-chip" style="background:{GREEN_200};'
+        'color:#00531f">J</span>Voitto jatkoajalla</span>'
+        f'<span><span class="lp-chip" style="background:{GREEN_100};'
+        'color:#007531">H</span>Häviö jatkoajalla</span>'
+        '<span><span class="lp-chip" style="background:#d4dad7;color:#363d39">'
+        'H</span>Häviö</span>'
+        + ('<span>Vire = pisteet per ottelu, liukuva keskiarvo</span>'
+           if show_spark else '')
+        + '</div>')
+
+
+def render_split_table(log: pd.DataFrame, highlight: set[str],
+                       teams: list[str]) -> None:
+    """Home and away records side by side."""
+    if log.empty:
+        st.info("Ei vielä pelattuja otteluita.")
+        return
+    order = season_table(log, teams).index.tolist()
+    d = log.copy()
+    d["points"] = d["points"].astype(float)
+    d["is_home"] = d["is_home"].astype(bool)
+
+    def side(home: bool) -> pd.DataFrame:
+        s = d[d["is_home"] == home].groupby("team")
+        return pd.DataFrame({"gp": s.size(), "pts": s["points"].sum(),
+                             "gf": s["goals_for"].sum(),
+                             "ga": s["goals_against"].sum()})
+
+    h, a = side(True), side(False)
+    cols = [("Sija", "56px", ""), ("Joukkue", "minmax(0,1fr)", ""),
+            ("Koti O", "72px", "lp-num lp-dim"), ("Koti P", "72px", "lp-num"),
+            ("Koti TM–PM", "108px", "lp-num lp-dim"),
+            ("Vieras O", "88px", "lp-num lp-dim"),
+            ("Vieras P", "88px", "lp-num"),
+            ("Vieras TM–PM", "124px", "lp-num lp-dim")]
+    rows = []
+    for rank, team in enumerate(order, start=1):
+        on = team in highlight
+        cells = [f'<div class="lp-rank">{_qbar(rank)}'
+                 f'<span class="lp-num lp-dim">{rank}</span></div>',
+                 f'<span class="lp-team {"lp-team-on" if on else ""}">'
+                 f'{_esc(team)}</span>']
+        for frame in (h, a):
+            if team in frame.index:
+                r = frame.loc[team]
+                cells += [str(int(r["gp"])), str(int(r["pts"])),
+                          f'{int(r["gf"])}–{int(r["ga"])}']
+            else:
+                cells += ["0", "0", "–"]
+        rows.append(cells)
+    render_grid(cols, rows)
+
+
+def render_goals_table(log: pd.DataFrame, highlight: set[str],
+                       teams: list[str]) -> None:
+    """Scoring and conceding, with the xG version of the same two numbers."""
+    t = season_table(log, teams)
+    if t.empty:
+        st.info("Ei vielä pelattuja otteluita.")
+        return
+    cols = [("Sija", "56px", ""), ("Joukkue", "minmax(0,1fr)", ""),
+            ("O", "46px", "lp-num lp-dim"), ("TM", "56px", "lp-num"),
+            ("PM", "56px", "lp-num"), ("TM/ottelu", "92px", "lp-num"),
+            ("PM/ottelu", "92px", "lp-num"), ("xG puolesta", "104px", "lp-num"),
+            ("xG vastaan", "104px", "lp-num"), ("xG-osuus", "92px", "lp-num")]
+    rows = []
+    for rank, (team, r) in enumerate(t.iterrows(), start=1):
+        on = team in highlight
+        rows.append([
+            f'<div class="lp-rank">{_qbar(rank)}'
+            f'<span class="lp-num lp-dim">{rank}</span></div>',
+            f'<span class="lp-team {"lp-team-on" if on else ""}">'
+            f'{_esc(team)}</span>',
+            str(int(r["gp"])), str(int(r["gf"])), str(int(r["ga"])),
+            _fi(r["gf_pg"]), _fi(r["ga_pg"]),
+            _fi(r["xgf"], 1), _fi(r["xga"], 1),
+            _fi(r["xg_share"], 1) + " %"])
+    render_grid(cols, rows)
+    st.caption(
+        "xG-osuus on oman xG:n osuus ottelun kokonais-xG:stä. Se mittaa "
+        "paikkojen laatua, **ei** kiekonhallintaa — liiga.fi ei julkaise "
+        "laukauksia, aloituksia eikä hallinta-aikaa.")
+
+
+def render_special_table(log: pd.DataFrame, highlight: set[str],
+                         teams: list[str]) -> None:
+    """Power play and penalty kill."""
+    t = season_table(log, teams)
+    if t.empty:
+        st.info("Ei vielä pelattuja otteluita.")
+        return
+    cols = [("Sija", "56px", ""), ("Joukkue", "minmax(0,1fr)", ""),
+            ("O", "46px", "lp-num lp-dim"), ("YV-maalit", "96px", "lp-num"),
+            ("YV-kerrat", "96px", "lp-num"), ("YV-%", "84px", "lp-num"),
+            ("AV-kerrat", "96px", "lp-num"),
+            ("Päästetyt", "96px", "lp-num"), ("AV-%", "84px", "lp-num")]
+    rows = []
+    for rank, (team, r) in enumerate(t.iterrows(), start=1):
+        on = team in highlight
+        rows.append([
+            f'<div class="lp-rank">{_qbar(rank)}'
+            f'<span class="lp-num lp-dim">{rank}</span></div>',
+            f'<span class="lp-team {"lp-team-on" if on else ""}">'
+            f'{_esc(team)}</span>',
+            str(int(r["gp"])), str(int(r["ppg_goals"])), str(int(r["pp_inst"])),
+            _fi(r["pp_pct"], 1) + " %", str(int(r["sh_inst"])),
+            str(int(r["pp_against"])), _fi(r["pk_pct"], 1) + " %"])
+    render_grid(cols, rows)
+    st.caption(
+        "YV = ylivoima, AV = alivoima. **Päästetyt** on alivoimalla päästetyt "
+        "maalit, ja AV-% on niiden osuus torjutuista alivoimista. Ilman "
+        "yhtään ylivoimaa YV-% on “–”, ei nolla.")
+
+
+def sidebar_controls(log: pd.DataFrame, stamp: str,
+                     teams: list[str]) -> dict:
+    """The design's left rail: form window, team highlight, toggles."""
+    with st.sidebar:
+        html('<div class="lp-side-h">Liigapörssi</div>'
+             '<div class="lp-side-s">Kausi 2026–27, runkosarja</div>')
+        st.divider()
+        window = st.select_slider("Muotoikkuna", options=[5, 10, 20], value=10,
+                                  help="Kuinka monta viimeisintä ottelua vire "
+                                       "ja sijoitusmuutos kattavat.")
+        highlight = st.multiselect("Korosta joukkueet", teams, default=[],
+                                   help="Korostetut joukkueet erottuvat "
+                                        "taulukoissa.")
+        show_spark = st.checkbox("Näytä muotokäyrä", value=True)
+        show_xg = st.checkbox("Näytä xG-luvut", value=False)
+        st.divider()
+        html('<div class="lp-side-f">Lähde: Liiga.fi<br>'
+             f'Päivitetty {_esc(stamp)}<br>'
+             + ("Snowflake (LIIGA.MODEL)" if backend() == "snowflake"
+                else "Paikallinen DuckDB")
+             + '</div>')
+    return {"window": window, "highlight": set(highlight),
+            "show_spark": show_spark, "show_xg": show_xg}
+
+
+# --------------------------------------------------------------------------
 def main() -> None:
     updated_at = load_updated_at()
     data = load_data(updated_at)
     standings, meta = data["standings"], data["meta"]
 
-    st.title("Liiga 2026-27 — ennuste")
+    html(_CSS)
 
     played = int(meta.iloc[0]["games_played"]) if not meta.empty else 0
     total = int(meta.iloc[0]["games_total"]) if not meta.empty else 0
     try:
         stamp = (dt.datetime.fromisoformat(updated_at)
-                 .strftime("%-d.%-m.%Y %H:%M"))
+                 .strftime("%-d.%-m.%Y klo %H.%M"))
     except (ValueError, TypeError):
         stamp = updated_at or "ei tiedossa"
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Ennuste päivitetty (UTC)", stamp)
-    c2.metric("Otteluita pelattu", f"{played} / {total}")
-    c3.metric("Datalähde",
-              "Snowflake (LIIGA.MODEL)" if backend() == "snowflake"
-              else "Paikallinen DuckDB")
+    log = data["team_log"]
+    all_teams = sorted(standings["team"].tolist())
+    opts = sidebar_controls(log, stamp, all_teams)
 
+    html(f'<div class="lp-kicker">Runkosarja {played}/{total} pelattu</div>'
+         '<div class="lp-h1">Kuka on kuumana?</div>'
+         '<p class="lp-sub">Sarjataulukko ja viimeisten otteluiden vire '
+         'samassa näkymässä. Toteutuneet tulokset — mallin ennuste on '
+         'alempana.</p>')
+    st.write("")
+
+    tabs = st.tabs(["Sarjataulukko", "Koti / vieras", "Maalinteko",
+                    "Erikoistilanteet"])
+    with tabs[0]:
+        render_form_table(log, opts["window"], show_spark=opts["show_spark"],
+                          show_xg=opts["show_xg"],
+                          highlight=opts["highlight"], teams=all_teams)
+    with tabs[1]:
+        render_split_table(log, opts["highlight"], all_teams)
+    with tabs[2]:
+        render_goals_table(log, opts["highlight"], all_teams)
+    with tabs[3]:
+        render_special_table(log, opts["highlight"], all_teams)
+
+    st.divider()
     st.subheader("Kuka voittaa runkosarjan?")
     st.caption(
         f"Palkin pituus on ennustetut loppupisteet: tumma osa on jo kerätty "

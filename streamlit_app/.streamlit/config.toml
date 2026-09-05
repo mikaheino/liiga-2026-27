@@ -1,0 +1,9 @@
+# Streamlitin omat widgetit (liukusäädin, valintaruutu, välilehden alleviivaus)
+# maalataan tästä. Ilman tätä ne jäävät Streamlitin punaiseksi keskelle
+# Liigapörssi-designin vihreää, ja käyttöliittymässä olisi kaksi aksenttia.
+[theme]
+primaryColor = "#00aa46"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f7f6"
+textColor = "#141815"
+font = "sans serif"

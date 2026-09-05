@@ -139,6 +139,53 @@ re-query pointlessly.
 This is a Snowflake-account app, not a public one; the never-publish rule
 above is about the claude.ai artifact and still stands.
 
+## Streamlit: Liigapörssi-design (1b muototaulukko, 2026-09-05)
+
+Sovelluksen päänäkymä on toteutettu claude.ai/design-projektin
+`Liigaporssi Streamlit.dc.html` suunnasta **1b** ("Kuka on kuumana?"):
+sivupalkki, neljä välilehteä ja rivikohtainen muoto + vire.
+
+**SOK-logoa ei ole eikä tule.** Design on SOK:n / S-ryhmän
+design-systeemistä. Paletti (`#00aa46` ja harmaat) on otettu käyttöön,
+`assets/sok-logo-full.png` **ei** — tämä repo on julkinen ja
+henkilökohtainen, eikä esitä itseään SOK:n tekemänä. Älä lisää logoa
+ilman erillistä pyyntöä.
+
+Rakenne, ylhäältä alas:
+
+1. **Kuka on kuumana?** — neljä välilehteä samasta `team_game_log`-datasta:
+   Sarjataulukko (muotoruudut + vire-sparkline), Koti / vieras, Maalinteko
+   (TM/PM/xG), Erikoistilanteet (YV / AV)
+2. **Kuka voittaa runkosarjan?** — pankitut vs. simuloidut pisteet
+3. **Mihin kukin joukkue päätyy** — sijaintijakauma
+4. **Ottelut** — ✓/✗ sen mukaan osuiko malli
+5. **Miten ennuste on liikkunut** — pienoiskuvaajat
+
+Kohdat 3 ja 4 ovat ainoa paikka jossa **mallin toteuma** näkyy; älä poista
+niitä designin tieltä.
+
+Kolme asiaa jotka eivät ole ilmeisiä:
+
+- **Muototaulukko on HTML, ei `st.dataframe`.** Rivikohtaista SVG-sparklinea
+  ja V/J/H-ruutuja ei saa Stylerilla: solu ottaa vain tekstin ja tyylin.
+  `render_grid()` piirtää CSS-gridin yhtenä `st.markdown`-lohkona, mikä
+  toimii kummallakin backendillä toisin kuin `st.column_config`.
+- **`streamlit_app/.streamlit/config.toml` maalaa Streamlitin omat
+  widgetit.** Ilman sitä liukusäädin, valintaruutu ja välilehden
+  alleviivaus jäävät Streamlitin punaiseksi keskelle vihreää designia.
+  Onko Snowflake-deploy sen lukee, on **testaamatta** — jos widgetit ovat
+  siellä punaisia, syy on tässä.
+- **Fontit (Hanken Grotesk, Roboto Mono) tulevat Google Fontsista
+  `@import`illa.** Snowflaken Streamlit voi estää ulkoisen pyynnön, joten
+  fallback-pino on oikea eikä koriste.
+
+Sarjataulukko rakennetaan `points`-sarakkeesta, ei `result_category`:sta:
+Liiga jakaa 3/2/1/0, joten V / VJA / HJA / H on suoraan johdettavissa eivätkä
+kaksi saraketta voi koskaan olla eri mieltä. `season_table()` saa koko
+joukkuelistan erikseen — joukkue joka ei ole vielä pelannut puuttuu
+`team_game_log`:sta kokonaan, ja syyskuussa se on normaali tilanne, ei
+poikkeus.
+
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 
 The app is being developed locally and the Snowflake copy is deliberately
