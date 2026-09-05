@@ -253,11 +253,17 @@ PNG:tä** — LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto
 siihen mihin kuvia käytetään.
 
 **Rivillä on kolme sijaa, eikä niitä saa sekoittaa.** Iso laatikko on
-nykyinen, nuolen alla `ed.` on edellinen ajo, ja pistemäärän vieressä
-`alkup.` on ensimmäinen ennuste. Alaviite nimeää kaikki kolme — kolme paljasta
-lukua samalla rivillä olisi arvoitus. `rank_context()` laskee ne, ja nuoli
-vertaa **edelliseen**, ei ensimmäiseen: `proj_rank` on pienempi kun sija on
-parempi, joten luvun lasku on dialla nousu.
+nykyinen, nuolen alla `alkup.` on ensimmäinen ennuste, ja pistemäärän vieressä
+`ed.` on edellinen ajo. Alaviite nimeää kaikki kolme päivämäärineen — kolme
+paljasta lukua samalla rivillä olisi arvoitus.
+
+**Nuoli vertaa ENSIMMÄISEEN ennusteeseen, ei edelliseen ajoon**, ja luku sen
+alla on se johon se vertaa. Päivittäinen ajo liikuttaa joukkueita pisteen
+kymmenesosilla, joten päivävertailu näyttäisi nuolen joukkueelle joka istuu
+täsmälleen siinä sijassa jonka se sai kesäkuussa — KooKoo oli 2., putosi
+välissä 3:een ja on taas 2. `proj_rank` on pienempi kun sija on parempi,
+joten luvun lasku on dialla nousu; tämä on se kohta jonka saa helposti
+väärinpäin.
 
 **Diat rakentaa `scripts/build_instagram.py`, ei `streamlit_app.py`.** Sama
 koodi tuottaa levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei

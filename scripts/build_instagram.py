@@ -318,6 +318,7 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
     bare numbers in one row would be a puzzle.
     """
     ctx = ctx or {}
+    FIRST_DATE = ctx.get("__first_date__", "kesäkuu 2026")
     body = "".join(f"""
       <div class="row">
         <div class="rank">{int(r.proj_rank)}</div>
@@ -344,8 +345,8 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
     <div class="rule"></div>
     <div class="body standings">{body}</div>
     <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 %
-      lopputuloksista · nuoli ja ”ed.” = sija edellisessä ennusteessa,
-      ”alkup.” = sija ensimmäisessä</div>
+      lopputuloksista · nuoli ja ”alkup.” = sija ensimmäisessä ennusteessa
+      ({FIRST_DATE}), ”ed.” = sija edellisessä ajossa</div>
   </div>""")
 
 
@@ -766,16 +767,26 @@ def rank_context(con) -> dict:
     r_first, r_prev, r_now = ranks(first), ranks(prev), ranks(now)
     out = {}
     for team in r_now.index:
-        if team not in r_prev.index:
+        if team not in r_first.index:
             continue
+        # The arrow measures the whole season's drift, not the overnight one:
+        # a daily run moves teams around on tenths of a point, so a
+        # day-over-day arrow says "KooKoo climbed" about a team sitting in
+        # exactly the place it was given in June.
+        #
         # proj_rank is smaller when better, so a fall in the number is a rise
         # on the slide; getting this backwards is the obvious way to be wrong.
-        moved = int(r_prev[team]) - int(r_now[team])
+        moved = int(r_first[team]) - int(r_now[team])
         arrow, colour = (("\u25b2", GOLD) if moved > 0 else
                          ("\u25bc", MUTED) if moved < 0 else ("\u2013", MUTED))
-        out[team] = (arrow, colour, f"ed. {_ordinal(int(r_prev[team]))}",
-                     (f"alkup. {_ordinal(int(r_first[team]))}"
-                      if team in r_first.index else ""))
+        # The number under the arrow is the one the arrow compares against.
+        # Putting the other rank there is what makes a reader mistrust both.
+        out[team] = (arrow, colour, f"alkup. {_ordinal(int(r_first[team]))}",
+                     (f"ed. {_ordinal(int(r_prev[team]))}"
+                      if team in r_prev.index else ""))
+    # Alaviite tarvitsee päivämäärän: "ensimmäinen ennuste" on tyhjä
+    # ilmaisu ilman sitä. Avain ei voi törmätä joukkueen nimeen.
+    out["__first_date__"] = _fi_date(first)
     return out
 
 
