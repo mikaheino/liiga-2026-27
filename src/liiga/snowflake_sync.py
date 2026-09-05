@@ -46,6 +46,10 @@ RAW_TABLES = {
     "game_lineups",
     "game_goalies",
     "game_penalties",
+    "game_referees",
+    # Season-endpoint detail (liiga.ingest) -- likewise ingested.
+    "raw_on_ice",
+    "raw_periods",
 }
 
 
