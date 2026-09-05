@@ -1,7 +1,19 @@
 # Snowflake ML migration
 
-**Status: phase 1 done (2026-08-30).** All data now lives in Snowflake;
-the model still runs locally. Phases 2-4 below are not started.
+**Status: the pipeline runs in Snowflake (updated 2026-09-05).** Phase 1
+moved the data (2026-08-30); the line that used to stand here -- "the model
+still runs locally" -- is no longer true. `LIIGA.CODE.LIIGA_DAILY` now runs the
+whole thing on Snowflake compute, ingest through simulation, from a git mirror
+of this repo. What it did *not* need was phases 2-4: the pipeline stayed
+ordinary Python and moved as a **notebook**, not as Snowpark stored procedures.
+A procedure cannot set its own schema context, which the portable transforms
+require, so that route is closed rather than merely unstarted.
+
+**Nothing is scheduled.** No tasks exist in `LIIGA`; the notebook is run on
+demand until the model has been checked against real in-season results.
+
+`docs/snowflake_architecture.md` is the current wiring diagram. Read that
+first; this file is the record of how it got there.
 
 ## Phase 1 as built
 
@@ -10,8 +22,8 @@ Account `uqb62234`, connection profile `CONTAINER_SERVICES`.
 | Object | Purpose |
 |---|---|
 | `LIIGA_WH` | X-Small, auto-suspend 60s |
-| `LIIGA.RAW` | ingested + hand-collected source tables (8) |
-| `LIIGA.MODEL` | everything the pipeline derives (13) |
+| `LIIGA.RAW` | ingested + hand-collected source tables (8 at the time, 15 now) |
+| `LIIGA.MODEL` | everything the pipeline derives (13 at the time, 14 now) |
 | `LIIGA.CODE.LIIGA_REPO` | git repo, `main`, public HTTPS origin -- no secret |
 | `LIIGA.CODE.LOAD_STAGE` | Parquet landing zone used by the migration script |
 | `LIIGA_GITHUB_API` | API integration, prefix `https://github.com/mikaheino` |
