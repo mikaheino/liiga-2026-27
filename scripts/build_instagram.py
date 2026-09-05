@@ -309,8 +309,8 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
     """One band of the table, with where each team came from.
 
     Two ranks on the row: the big box is now, `alkup.` under the arrow is the
-    first prediction, and the arrow is the difference between them. The foot
-    names both and dates the comparison.
+    pre-season prediction, and the arrow is the difference between them. The
+    foot names both and dates the comparison.
     """
     ctx = ctx or {}
     FIRST_DATE = ctx.get("__first_date__", "kesäkuu 2026")
@@ -339,8 +339,8 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
     <div class="rule"></div>
     <div class="body standings">{body}</div>
     <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 %
-      lopputuloksista · nuoli ja ”alkup.” = sija ensimmäisessä
-      ennusteessa ({FIRST_DATE})</div>
+      lopputuloksista · nuoli ja ”alkup.” = sija ennusteessa ennen kauden
+      alkua ({FIRST_DATE})</div>
   </div>""")
 
 
@@ -741,19 +741,27 @@ _NO_CTX = ("\u2013", MUTED, "")
 
 
 def rank_context(con) -> dict:
-    """Per team: arrow, arrow colour, previous rank, first-ever rank.
+    """Per team: arrow, arrow colour, and the pre-season rank it compares to.
 
-    Two different comparisons on one row, which is the point: the arrow
-    answers "did today's run move it" and `alkup.` answers "how far has it
-    come since June". Neither alone tells you both.
+    The baseline is the **last prediction before the season started**, not
+    the oldest row in the table. That is the prediction that was published,
+    and it is what "originally" means for this project -- the June rows are
+    an early draft that moved nine of seventeen teams before opening night.
+
+    Found by `games_played = 0` rather than by a date, so it stays correct
+    next season and says in the query what it means. The run on opening day
+    still counts: the pipeline runs in the morning and the games are played
+    in the evening.
     """
     h = query_df(con, """
-        SELECT snapshot_date, team, proj_rank FROM prediction_history""")
+        SELECT snapshot_date, team, proj_rank, games_played
+        FROM prediction_history""")
     if h.empty or h["snapshot_date"].nunique() < 2:
         return {}
     h["snapshot_date"] = h["snapshot_date"].astype(str)
     dates = sorted(h["snapshot_date"].unique())
-    first, now = dates[0], dates[-1]
+    pre = sorted(h.loc[h["games_played"] == 0, "snapshot_date"].unique())
+    first, now = (pre[-1] if pre else dates[0]), dates[-1]
 
     def ranks(d):
         return h[h["snapshot_date"] == d].set_index("team")["proj_rank"]
@@ -763,10 +771,10 @@ def rank_context(con) -> dict:
     for team in r_now.index:
         if team not in r_first.index:
             continue
-        # The arrow measures the whole season's drift, not the overnight one:
-        # a daily run moves teams around on tenths of a point, so a
+        # The arrow measures drift since opening night, not the overnight
+        # one: a daily run moves teams around on tenths of a point, so a
         # day-over-day arrow says "KooKoo climbed" about a team sitting in
-        # exactly the place it was given in June.
+        # exactly the place it started the season in.
         #
         # proj_rank is smaller when better, so a fall in the number is a rise
         # on the slide; getting this backwards is the obvious way to be wrong.
@@ -776,8 +784,8 @@ def rank_context(con) -> dict:
         # The number under the arrow is the one the arrow compares against.
         # Putting any other rank there is what makes a reader mistrust both.
         out[team] = (arrow, colour, f"alkup. {_ordinal(int(r_first[team]))}")
-    # Alaviite tarvitsee päivämäärän: "ensimmäinen ennuste" on tyhjä
-    # ilmaisu ilman sitä. Avain ei voi törmätä joukkueen nimeen.
+    # Alaviite tarvitsee päivämäärän: "ennen kauden alkua" on tyhjä ilmaisu
+    # ilman sitä. Avain ei voi törmätä joukkueen nimeen.
     out["__first_date__"] = _fi_date(first)
     return out
 

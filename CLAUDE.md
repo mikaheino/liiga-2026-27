@@ -256,13 +256,20 @@ siihen mihin kuvia käytetään.
 on ensimmäinen ennuste; nuoli on niiden erotus. Alaviite nimeää molemmat ja
 päivää vertailun.
 
-⚠️ **`alkup.` on `prediction_history`:n ensimmäinen snapshot (28.6.2026), joka
-EI ole sama kuin julkaistu karuselli.** `site_instagram/slide_1.png` on
-committoitu 30.8. ja vastaa snapshotteja 28.8.–1.9. — pisteet 115/107/105/104/
-99/99. Ensimmäisen ja julkaistun välillä on **9 sijaeroa 17:stä**: HIFK 6.→5.,
-Jokerit 8.→6., SaiPa 5.→7., K-Espoo 11.→9. Kolme kärkeä (Tappara, KooKoo,
-Ilves) on molemmissa sama, joten ne eivät paljasta kumpaa vertailukohtaa
-käytetään — tarkista muualta jos tämä tulee kysymykseksi.
+**`alkup.` on viimeisin ennuste ENNEN kauden alkua, ei `prediction_history`:n
+vanhin rivi.** Tämä on käyttäjän määritelmä sanalle "alkuperäinen": se ennuste
+joka julkaistiin. `rank_context()` etsii sen ehdolla **`games_played = 0`**
+eikä päivämäärällä — niin se pysyy oikeana ensi kaudellakin ja kertoo
+kyselyssä mitä tarkoittaa. Avauspäivän ajo lasketaan mukaan: putki ajetaan
+aamulla ja ottelut pelataan illalla.
+
+2026-27:llä se on **1.9.2026**, ja sen kärki (115/107/105/104/99/99) vastaa
+täsmälleen `site_instagram/slide_1.png`:ää.
+
+⚠️ Vanhin rivi on **28.6.2026** ja se on eri ennuste — **9 sijaeroa 17:stä**:
+HIFK 6.→5., Jokerit 8.→6., SaiPa 5.→7., K-Espoo 11.→9. Tappara, KooKoo ja
+Ilves istuvat molemmissa samalla sijalla, joten kärkeä katsomalla ei näe
+kumpaa vertailukohtaa käytetään. Älä "korjaa" tätä vanhimmaksi riviksi.
 
 **Nuoli vertaa ENSIMMÄISEEN ennusteeseen, ei edelliseen ajoon**, ja luku sen
 alla on se johon se vertaa. Päivittäinen ajo liikuttaa joukkueita pisteen

@@ -1233,8 +1233,9 @@ def render_slide_section(updated_at: str) -> None:
     st.subheader("Diat jakoon")
     st.caption(
         "Kolme 1080×1350 (4:5) diaa tästä hetkestä: sijat 1–6, 7–12 ja 13–17. "
-        "Jokaisella rivillä nuoli ja **alkup.** kertovat sijan ensimmäisessä "
-        "ennusteessa. **Lataa kaikki** antaa "
+        "Jokaisella rivillä nuoli ja **alkup.** kertovat sijan siinä "
+        "ennusteessa joka oli voimassa ennen kauden alkua — sama kuin "
+        "julkaistussa karusellissa. **Lataa kaikki** antaa "
         "yhden PDF:n, jonka voi viedä LinkedIn-karuselliksi sellaisenaan.")
 
     slides, pdf, problem = build_slides(updated_at)
