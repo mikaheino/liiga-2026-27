@@ -1232,10 +1232,10 @@ def build_slides(updated_at: str) -> tuple[list, bytes, str]:
 def render_slide_section(updated_at: str) -> None:
     st.subheader("Diat jakoon")
     st.caption(
-        "Samat 1080×1350 (4:5) diat kuin karusellissa, mutta tästä hetkestä: "
-        "sijat 1–6, 7–12 ja 13–17 sekä se, miten ennuste on liikkunut "
-        "ensimmäisestä ennusteesta. **Lataa kaikki** antaa yhden PDF:n, jonka "
-        "voi viedä LinkedIn-karuselliksi sellaisenaan.")
+        "Kolme 1080×1350 (4:5) diaa tästä hetkestä: sijat 1–6, 7–12 ja 13–17. "
+        "Jokaisella rivillä nuoli ja **ed.** kertovat sijan edellisessä "
+        "ennusteessa ja **alkup.** sijan ensimmäisessä. **Lataa kaikki** antaa "
+        "yhden PDF:n, jonka voi viedä LinkedIn-karuselliksi sellaisenaan.")
 
     slides, pdf, problem = build_slides(updated_at)
     if problem:

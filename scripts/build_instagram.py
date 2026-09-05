@@ -223,6 +223,17 @@ def css(t: dict) -> str:
   .chip img {{ width:156px; height:156px; max-width:none; object-fit:contain; }}
   .name {{ flex:1; font-family:{HEAD_F}; font-size:42px; text-transform:uppercase;
           letter-spacing:-0.5px; font-style:italic; }}
+  /* Liike edelliseen ennusteeseen: iso nuoli ja sen alla edellinen sija.
+     Nuoli itse kantaa suunnan, joten väri saa olla pelkkä korostus -- kukaan
+     ei jää ilman tietoa jos se ei erotu. */
+  .move {{ width:96px; flex-shrink:0; text-align:center; }}
+  .mv-a {{ font-size:34px; line-height:1; }}
+  .mv-r {{ display:block; font-size:18px; color:{t['muted']}; margin-top:6px;
+          font-variant-numeric:tabular-nums; }}
+  /* Alkuperäinen ennuste pistemäärän vasemmalla puolella: pieni ja vaimea,
+     koska se on vertailukohta eikä tämän hetken luku. */
+  .orig {{ font-family:{BODY_F}; font-size:19px; font-style:normal;
+          color:{t['muted']}; margin-right:14px; vertical-align:middle; }}
   .pts {{ text-align:right; }}
   .ptsn {{ font-family:{HEAD_F}; font-size:54px; line-height:1; font-style:italic;
           font-variant-numeric:tabular-nums; color:{CREAM}; }}
@@ -297,14 +308,29 @@ def page(t: dict, inner: str) -> str:
             f"<style>{css(t)}</style></head><body>{inner}</body></html>")
 
 
-def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
+def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict,
+                    ctx: dict | None = None) -> str:
+    """One band of the table, with where each team came from.
+
+    Three ranks are on the row and they must not be confusable: the big box
+    is now, `ed.` under the arrow is the previous run, `alkup.` beside the
+    points is the very first prediction. The foot names all three -- three
+    bare numbers in one row would be a puzzle.
+    """
+    ctx = ctx or {}
     body = "".join(f"""
       <div class="row">
         <div class="rank">{int(r.proj_rank)}</div>
         <div class="chip"><img src="{logo_uri(r.team)}" alt=""></div>
         <div class="name">{r.team}</div>
+        <div class="move">
+          <span class="mv-a" style="color:{ctx.get(r.team, _NO_CTX)[1]}"
+            >{ctx.get(r.team, _NO_CTX)[0]}</span>
+          <span class="mv-r">{ctx.get(r.team, _NO_CTX)[2]}</span>
+        </div>
         <div class="pts">
-          <div class="ptsn">{r.mean_points:.0f}</div>
+          <div class="ptsn"><span class="orig"
+            >{ctx.get(r.team, _NO_CTX)[3]}</span>{r.mean_points:.0f}</div>
           <div class="ptsl">{int(r.p05_points)}–{int(r.p95_points)} p</div>
           <div class="ptsr">todennäk. {bands[r.team]}</div>
         </div>
@@ -317,7 +343,9 @@ def standings_slide(rows, lo: int, hi: int, t: dict, bands: dict) -> str:
     </div>
     <div class="rule"></div>
     <div class="body standings">{body}</div>
-    <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 % lopputuloksista</div>
+    <div class="foot">{N_SIMS} simuloitua kautta · ”todennäk.” = keskimmäiset 50 %
+      lopputuloksista · nuoli ja ”ed.” = sija edellisessä ennusteessa,
+      ”alkup.” = sija ensimmäisessä</div>
   </div>""")
 
 
@@ -713,74 +741,42 @@ def iqr_bands(pos, teams) -> dict:
     return bands
 
 
-def movement_slide(rows, t: dict, first_date: str, last_date: str) -> str:
-    """How far each team has moved since the very first prediction.
+# Kun historiaa ei vielä ole, rivi ei saa jäädä tyhjäksi eikä valehdella.
+_NO_CTX = ("\u2013", MUTED, "", "")
 
-    Reuses the standings slide's markup so the CSS applies unchanged -- a
-    parallel set of classes would drift from the carousel the first time
-    either was touched.
 
-    Points carry the movement rather than rank, because rank is a step
-    function: two teams can swap places on a tenth of a point and look like
-    a story, while a six-point drift that changes nothing looks like none.
+def rank_context(con) -> dict:
+    """Per team: arrow, arrow colour, previous rank, first-ever rank.
+
+    Two different comparisons on one row, which is the point: the arrow
+    answers "did today's run move it" and `alkup.` answers "how far has it
+    come since June". Neither alone tells you both.
     """
-    # Otsikkoluku lasketaan NÄYTETYISTÄ pisteistä, ei tarkoista: 90,5 -> 97,3
-    # on +6,8 eli "+7", mutta rivillä lukee "91 -> 97", ja lukija laskee 6.
-    # Kahdesta oikeasta luvusta se joka on ristiriidassa näkyvän kanssa on
-    # väärä luku tällä dialla.
-    body = "".join(f"""
-      <div class="row">
-        <div class="rank">{arrow}</div>
-        <div class="chip"><img src="{logo_uri(team)}" alt=""></div>
-        <div class="name">{team}</div>
-        <div class="pts">
-          <div class="ptsn">{round(now) - round(was):+d}</div>
-          <div class="ptsl">{was:.0f} &rarr; {now:.0f} p</div>
-          <div class="ptsr">{rank_txt}</div>
-        </div>
-      </div>""" for team, was, now, delta, arrow, rank_txt in rows)
-    return page(t, f"""
-  <div class="slide">
-    <div class="head">
-      <div class="kicker">Liiga 2026-27 &middot; Ennusteen liike</div>
-      <div class="title">Suurimmat muutokset</div>
-    </div>
-    <div class="rule"></div>
-    <div class="body standings">{body}</div>
-    <div class="foot">Ennustetut loppupisteet {first_date} vs. {last_date} &middot;
-      suurimmat muutokset ensin</div>
-  </div>""")
-
-
-def _movement_rows(con, limit: int = 6) -> tuple:
-    """The biggest movers, plus the two dates being compared."""
     h = query_df(con, """
-        SELECT snapshot_date, team, mean_points, proj_rank
-        FROM prediction_history""")
+        SELECT snapshot_date, team, proj_rank FROM prediction_history""")
     if h.empty or h["snapshot_date"].nunique() < 2:
-        return [], "", ""
+        return {}
     h["snapshot_date"] = h["snapshot_date"].astype(str)
-    first, last = h["snapshot_date"].min(), h["snapshot_date"].max()
-    a = h[h["snapshot_date"] == first].set_index("team")
-    b = h[h["snapshot_date"] == last].set_index("team")
-    rows = []
-    for team in b.index:
-        if team not in a.index:
+    dates = sorted(h["snapshot_date"].unique())
+    first, prev, now = dates[0], dates[-2], dates[-1]
+
+    def ranks(d):
+        return h[h["snapshot_date"] == d].set_index("team")["proj_rank"]
+
+    r_first, r_prev, r_now = ranks(first), ranks(prev), ranks(now)
+    out = {}
+    for team in r_now.index:
+        if team not in r_prev.index:
             continue
-        was, now = float(a.loc[team, "mean_points"]), float(b.loc[team, "mean_points"])
-        # proj_rank is smaller when better, so the sign has to be flipped for
-        # the arrow to mean what a reader expects.
-        moved = int(a.loc[team, "proj_rank"]) - int(b.loc[team, "proj_rank"])
-        delta = now - was
-        shown = round(now) - round(was)
-        arrow = "\u25b2" if shown > 0 else ("\u25bc" if shown < 0 else "\u2013")
-        rank_txt = (f"{_ordinal(int(a.loc[team, 'proj_rank']))} "
-                    f"\u2192 {_ordinal(int(b.loc[team, 'proj_rank']))}"
-                    if moved else "sija ennallaan")
-        rows.append((team, was, now, delta, arrow, rank_txt))
-    rows.sort(key=lambda r: (abs(round(r[2]) - round(r[1])), abs(r[3])),
-              reverse=True)
-    return rows[:limit], _fi_date(first), _fi_date(last)
+        # proj_rank is smaller when better, so a fall in the number is a rise
+        # on the slide; getting this backwards is the obvious way to be wrong.
+        moved = int(r_prev[team]) - int(r_now[team])
+        arrow, colour = (("\u25b2", GOLD) if moved > 0 else
+                         ("\u25bc", MUTED) if moved < 0 else ("\u2013", MUTED))
+        out[team] = (arrow, colour, f"ed. {_ordinal(int(r_prev[team]))}",
+                     (f"alkup. {_ordinal(int(r_first[team]))}"
+                      if team in r_first.index else ""))
+    return out
 
 
 def _fi_date(iso: str) -> str:
@@ -816,7 +812,7 @@ def live_slides(con=None) -> list:
                                      p95_points
                               FROM standings_2026_27 ORDER BY proj_rank""")
         pos = query_df(con, "SELECT * FROM position_distribution_2026_27")
-        movers, first, last = _movement_rows(con)
+        ctx = rank_context(con)
     finally:
         if own:
             con.close()
@@ -829,10 +825,7 @@ def live_slides(con=None) -> list:
     for i, (lo, hi) in enumerate([(1, 6), (7, 12), (13, 17)]):
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
         out.append((f"sijat_{lo}-{hi}.png",
-                    standings_slide(rows, lo, hi, themes[i], bands)))
-    if movers:
-        out.append(("ennusteen_muutos.png",
-                    movement_slide(movers, themes[4], first, last)))
+                    standings_slide(rows, lo, hi, themes[i], bands, ctx)))
     return [(name, rasterise(html)) for name, html in out]
 
 
@@ -844,6 +837,7 @@ def build() -> None:
                                      p95_points
                               FROM standings_2026_27 ORDER BY proj_rank""")
         pos = query_df(con, "SELECT * FROM position_distribution_2026_27")
+        ctx = rank_context(con)
     finally:
         con.close()
 
@@ -855,7 +849,7 @@ def build() -> None:
     slides = []
     for i, (lo, hi) in enumerate([(1, 6), (7, 12), (13, 17)]):
         rows = list(st[(st.proj_rank >= lo) & (st.proj_rank <= hi)].itertuples())
-        slides.append(standings_slide(rows, lo, hi, themes[i], bands))
+        slides.append(standings_slide(rows, lo, hi, themes[i], bands, ctx))
     slides.append(how_slide(themes[3]))
 
     # Individual awards, read off the same projections as the table.

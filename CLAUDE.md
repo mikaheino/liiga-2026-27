@@ -247,11 +247,17 @@ poikkeus.
 
 ## Diat jakoon — Streamlitin alaosio (2026-09-05)
 
-Sovelluksen alimmainen osio tarjoaa neljä 1080×1350 (4:5) diaa **tästä
-hetkestä**: sijat 1–6, 7–12, 13–17 ja *Suurimmat muutokset* (ennusteen liike
-ensimmäisestä ennusteesta). Latausnapit antavat **PDF:ää, eivät PNG:tä** —
-LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto siihen mihin
-kuvia käytetään.
+Sovelluksen alimmainen osio tarjoaa kolme 1080×1350 (4:5) diaa **tästä
+hetkestä**: sijat 1–6, 7–12 ja 13–17. Latausnapit antavat **PDF:ää, eivät
+PNG:tä** — LinkedIn-karuselli on PDF, joten PNG olisi väärä tiedostomuoto
+siihen mihin kuvia käytetään.
+
+**Rivillä on kolme sijaa, eikä niitä saa sekoittaa.** Iso laatikko on
+nykyinen, nuolen alla `ed.` on edellinen ajo, ja pistemäärän vieressä
+`alkup.` on ensimmäinen ennuste. Alaviite nimeää kaikki kolme — kolme paljasta
+lukua samalla rivillä olisi arvoitus. `rank_context()` laskee ne, ja nuoli
+vertaa **edelliseen**, ei ensimmäiseen: `proj_rank` on pienempi kun sija on
+parempi, joten luvun lasku on dialla nousu.
 
 **Diat rakentaa `scripts/build_instagram.py`, ei `streamlit_app.py`.** Sama
 koodi tuottaa levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
@@ -261,7 +267,7 @@ omavaraisuussääntö säilyy, ja Snowflakessa osio kertoo puuttumisesta äänee
 sen sijaan että katoaisi.
 
 Jaetut osat skriptissä: `rasterise()` (HTML → PNG headless Chromella),
-`iqr_bands()`, `movement_slide()`, `live_slides()` ja `slides_to_pdf()`.
+`iqr_bands()`, `rank_context()`, `live_slides()` ja `slides_to_pdf()`.
 
 Kaksi asiaa jotka eivät ole ilmeisiä:
 
@@ -271,10 +277,6 @@ Kaksi asiaa jotka eivät ole ilmeisiä:
 - **Vaakunat näkyvät puolikkaina tarkoituksella.** `.chip` on
   `overflow:hidden` ja logo ylisuuri; se on karusellin oma ratkaisu eikä
   rikkinäinen kuva. Älä "korjaa" sitä.
-
-Otsikkoluku lasketaan **näytetyistä** pisteistä: 90,5 → 97,3 on +6,8 eli
-"+7", mutta rivillä lukisi "91 → 97" ja lukija laskee 6. Kahdesta oikeasta
-luvusta se joka on ristiriidassa näkyvän kanssa on dialla väärä.
 
 `build_instagram.py`:n ajaminen **ylikirjoittaa `site_instagram/`:n
 julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
