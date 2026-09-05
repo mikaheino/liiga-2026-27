@@ -90,6 +90,22 @@ def _flatten_games(games: list[dict], season: int) -> pd.DataFrame:
                 "result_category": cat,         # regulation / overtime / shootout
                 "winner": winner,               # home / away (None if unplayed)
                 "spectators": g.get("spectators"),
+                "home_xg": home.get("expectedGoals"),
+                "away_xg": away.get("expectedGoals"),
+                "home_pp_goals": home.get("powerplayGoals"),
+                "away_pp_goals": away.get("powerplayGoals"),
+                "home_pp_instances": home.get("powerplayInstances"),
+                "away_pp_instances": away.get("powerplayInstances"),
+                "home_sh_goals": home.get("shortHandedGoals"),
+                "away_sh_goals": away.get("shortHandedGoals"),
+                "home_sh_instances": home.get("shortHandedInstances"),
+                "away_sh_instances": away.get("shortHandedInstances"),
+                "home_timeout_s": home.get("timeOut"),
+                "away_timeout_s": away.get("timeOut"),
+                "home_ranking": home.get("ranking"),
+                "away_ranking": away.get("ranking"),
+                "home_team_id": home.get("teamId"),
+                "away_team_id": away.get("teamId"),
             }
         )
     return pd.DataFrame(rows)
@@ -124,6 +140,12 @@ def _flatten_goal_events(games: list[dict], season: int) -> pd.DataFrame:
                         "is_empty_net": "TM" in gtypes,
                         "is_powerplay": "YV" in gtypes or "YV2" in gtypes,
                         "is_shootout": "VL" in gtypes,
+                        "game_time": ev.get("gameTime"),
+                        "event_id": ev.get("eventId"),
+                        "home_score_after": ev.get("homeTeamScore"),
+                        "away_score_after": ev.get("awayTeamScore"),
+                        "scorer_goals_so_far": ev.get("goalsSoFarInSeason"),
+                        "video_url": ev.get("videoClipUrl"),
                     }
                 )
     df = pd.DataFrame(rows)
@@ -145,6 +167,7 @@ def _flatten_assists(games: list[dict], season: int) -> pd.DataFrame:
                 gtypes = ev.get("goalTypes") or []
                 if "VL" in gtypes:        # shootout "goals" have no real assists
                     continue
+                so_far = ev.get("assistsSoFarInSeason") or {}
                 for i, pid in enumerate(ids):
                     nm = names[i] if i < len(names) else {}
                     rows.append(
@@ -155,9 +178,72 @@ def _flatten_assists(games: list[dict], season: int) -> pd.DataFrame:
                             "player_id": pid,
                             "first_name": (nm or {}).get("firstName"),
                             "last_name": (nm or {}).get("lastName"),
+                            "assists_so_far": so_far.get(str(pid)),
                         }
                     )
     return pd.DataFrame(rows)
+
+
+def _flatten_on_ice(games: list[dict], season: int) -> pd.DataFrame:
+    """One row per skater on the ice for a goal event.
+
+    plusPlayerIds/minusPlayerIds are, despite the name, space-separated
+    strings of JERSEY NUMBERS, not player ids. Special-teams goals
+    (goalTypes containing YV/AV/VL/TM) legitimately carry empty lists --
+    that's real hockey scoring, not missing data -- so they're just skipped.
+    """
+    rows = []
+    for g in games:
+        if not g.get("ended"):
+            continue
+        for side in ("homeTeam", "awayTeam"):
+            team = g.get(side, {})
+            team_name = team.get("teamName")
+            for ev in team.get("goalEvents", []) or []:
+                event_id = ev.get("eventId")
+                for on_ice_side, key in (("plus", "plusPlayerIds"), ("minus", "minusPlayerIds")):
+                    raw = ev.get(key) or ""
+                    numbers = [int(n) for n in raw.split() if n]
+                    # A repeated jersey number means a skater is missing from
+                    # the list -- flag the whole list so analysis can drop it
+                    # rather than be silently skewed (~22% of ES goals).
+                    duplicated = len(numbers) != len(set(numbers))
+                    for jersey in numbers:
+                        rows.append(
+                            {
+                                "game_id": g.get("id"),
+                                "season": g.get("season", season),
+                                "event_id": event_id,
+                                "team": team_name,
+                                "side": on_ice_side,
+                                "jersey": jersey,
+                                "is_duplicated": duplicated,
+                            }
+                        )
+    return pd.DataFrame(rows, columns=["game_id", "season", "event_id", "team",
+                                       "side", "jersey", "is_duplicated"])
+
+
+def _flatten_periods(games: list[dict], season: int) -> pd.DataFrame:
+    rows = []
+    for g in games:
+        if not g.get("ended"):
+            continue
+        for p in g.get("periods", []) or []:
+            rows.append(
+                {
+                    "game_id": g.get("id"),
+                    "season": g.get("season", season),
+                    "period_index": p.get("index"),
+                    "home_goals": p.get("homeTeamGoals"),
+                    "away_goals": p.get("awayTeamGoals"),
+                    "category": p.get("category"),
+                    "start_time": p.get("startTime"),
+                    "end_time": p.get("endTime"),
+                }
+            )
+    return pd.DataFrame(rows, columns=["game_id", "season", "period_index", "home_goals",
+                                       "away_goals", "category", "start_time", "end_time"])
 
 
 def _position_group(role: str | None) -> str | None:
@@ -282,20 +368,25 @@ def ingest_all(*, seasons: list[int] | None = None,
         if seasons is None:
             seasons = seasons_to_ingest(con, cfg)
         if not seasons:
-            return {"raw_games": 0, "raw_goal_events": 0, "raw_assists": 0}
+            return {"raw_games": 0, "raw_goal_events": 0, "raw_assists": 0,
+                     "raw_on_ice": 0, "raw_periods": 0}
 
-        all_games, all_events, all_assists = [], [], []
+        all_games, all_events, all_assists, all_on_ice, all_periods = [], [], [], [], []
         for season in seasons:
             games = fetch_season(season, force=force)
             all_games.append(_flatten_games(games, season))
             all_events.append(_flatten_goal_events(games, season))
             all_assists.append(_flatten_assists(games, season))
+            all_on_ice.append(_flatten_on_ice(games, season))
+            all_periods.append(_flatten_periods(games, season))
             print(f"  season {season}: {len(games)} games")
 
         fresh = {
             "raw_games": pd.concat(all_games, ignore_index=True),
             "raw_goal_events": pd.concat(all_events, ignore_index=True),
             "raw_assists": pd.concat(all_assists, ignore_index=True),
+            "raw_on_ice": pd.concat(all_on_ice, ignore_index=True),
+            "raw_periods": pd.concat(all_periods, ignore_index=True),
         }
         for table, df in fresh.items():
             combined = replace_rows(con, table, list(df.columns),
