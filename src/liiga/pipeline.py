@@ -65,6 +65,7 @@ def refresh_results(season: int | None = None, con=None) -> dict:
     must stay free of anything laptop-specific.
     """
     from .results import ingest_results
+    from .standings import reconstruct_games, snapshot_standings
     from .transform import run_transforms
 
     cfg = load_config()
@@ -73,7 +74,14 @@ def refresh_results(season: int | None = None, con=None) -> dict:
     own = con is None
     con = con or get_connection()
     try:
+        # Snapshot first, always: the delta between consecutive snapshots is
+        # what lets a result be recovered when the per-game endpoint serves a
+        # partial payload, and a snapshot taken after the fact is too late.
+        snapshot_standings(con, season)
         detail = ingest_results(season, con=con)
+        # Anything the per-game endpoint could not deliver, try to derive
+        # from the standings movement instead.
+        rebuilt = reconstruct_games(con, season)
         run_transforms(con)
         counts = query_df(con, f"""
             SELECT COUNT(*) AS n_total,
@@ -87,7 +95,9 @@ def refresh_results(season: int | None = None, con=None) -> dict:
             "games_total": int(counts["n_total"].iloc[0] or 0),
             "games_played": int(counts["n_played"].iloc[0] or 0),
             "detail_games": detail["games_fetched"],
-            "detail_rows": detail["rows"], "detail_failed": detail["failed"]}
+            "detail_rows": detail["rows"], "detail_failed": detail["failed"],
+            "reconstructed": rebuilt.get("resolved", 0),
+            "reconstruct_skipped": rebuilt.get("skipped", 0)}
 
 
 def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:

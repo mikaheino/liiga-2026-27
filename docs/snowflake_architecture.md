@@ -63,8 +63,9 @@ way it is.
 
 | Endpoint | Gives | Calls per run |
 |---|---|---|
-| `/games?tournament=…&season=N` | results, goals, assists, xG, special teams, periods — **the whole season at once** | 1 (target season only; a cold database fetches all six) |
-| `/games/{season}/{id}` | lineups, goalies, penalties, referees | 1 per **newly played** game |
+| `/games/{season}/{id}` | everything for one game: result, goals, assists, xG, periods, lineups, goalies, penalties, referees | 1 per game the schedule says is due |
+| `/standings?season=N` | cumulative table per team; snapshotted so consecutive deltas can rebuild a result | 1 |
+| `/games?tournament=…&season=N` | **not used** — returns 502 for the current season from this egress | 0 |
 
 Egress goes through `LIIGA_FI_ACCESS`, whose network rule allows exactly
 `www.liiga.fi:443`. The account also has a blanket `ALLOW_ALL_INTEGRATION`

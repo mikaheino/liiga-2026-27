@@ -145,6 +145,33 @@ The app is being developed locally and the Snowflake copy is deliberately
 left behind. **Do not run `snow streamlit deploy`** without an explicit
 request in the current conversation — "update the app" means the local one.
 
+## Three doors into liiga.fi, and which one is used
+
+| Endpoint | Used for | Health |
+|---|---|---|
+| `/games/{season}/{id}` | **primary** — result, goals, assists, xG, periods, lineups, goalies, penalties, referees | has served partial payloads (player lists only, no `game` object) |
+| `/standings?season=N` | **fallback** — cumulative table, snapshotted every run | 200 from both laptop and Snowflake |
+| `/games?tournament=…&season=N` | **not used** | 502 for the current season from Snowflake's egress; fine for historical seasons |
+
+The season endpoint is not called at all. The fixture list is fixed and lives
+in `raw_games`; `results.games_needing_update()` decides what is due — eight
+hours past a game's start, or the calendar day rolling over when the start
+time is unusable. A schedule change is the exception the operator reports, and
+`ingest_all(seasons=[...])` reloads the fixture list.
+
+When the per-game endpoint serves a partial payload, `standings.
+reconstruct_games()` derives the result from the movement between two
+consecutive snapshots: a team whose `games` rose by one played exactly one
+game, the fixture list says against whom, and the `goals`/`goals_against`
+deltas are the score. `ties` rising means it went past regulation. That
+recovers the margin too, which is what keeps Elo learning.
+
+It refuses to guess: both teams must have gained exactly one game and the two
+sides must agree on the score, otherwise the fixture is left alone and
+counted in `skipped`. Overtime and shootout are indistinguishable this way
+(both score 2-1 and raise `ties`), so reconstructed rows are tagged
+`result_source = 'standings_delta'` — exclude them from tie-rate calibration.
+
 ## Incremental ingest (since 2026-09-05)
 
 `ingest_all()` reads only the seasons the database is missing plus the target

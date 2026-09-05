@@ -50,6 +50,7 @@ RAW_TABLES = {
     # Season-endpoint detail (liiga.ingest) -- likewise ingested.
     "raw_on_ice",
     "raw_periods",
+    "raw_standings",
 }
 
 

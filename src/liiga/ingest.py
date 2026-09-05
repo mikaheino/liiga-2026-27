@@ -90,6 +90,10 @@ def _flatten_games(games: list[dict], season: int) -> pd.DataFrame:
                 "result_category": cat,         # regulation / overtime / shootout
                 "winner": winner,               # home / away (None if unplayed)
                 "spectators": g.get("spectators"),
+                # Where the result came from. The standings-delta path fills
+                # this with "standings_delta" so tie-rate calibration can
+                # exclude rows where overtime and shootout are indistinguishable.
+                "result_source": "api",
                 "home_xg": home.get("expectedGoals"),
                 "away_xg": away.get("expectedGoals"),
                 "home_pp_goals": home.get("powerplayGoals"),
