@@ -139,6 +139,33 @@ re-query pointlessly.
 This is a Snowflake-account app, not a public one; the never-publish rule
 above is about the claude.ai artifact and still stands.
 
+## ⚠️ Streamlit: do NOT deploy to Snowflake
+
+The app is being developed locally and the Snowflake copy is deliberately
+left behind. **Do not run `snow streamlit deploy`** without an explicit
+request in the current conversation — "update the app" means the local one.
+
+## Incremental ingest (since 2026-09-05)
+
+`ingest_all()` reads only the seasons the database is missing plus the target
+season (`ingest.seasons_to_ingest`). Historical seasons never change, and in
+Snowflake re-reading them is not free — there is no disk cache there, so each
+one was an HTTP call. Six per run became one; a cold database still self-heals
+by fetching all six.
+
+Pass an explicit list to re-read specific seasons — that is how a historical
+backfill from the on-disk cache is done, **with no API calls**:
+`ingest_all(seasons=[2022, 2023, 2024, 2025, 2026, 2027])`.
+
+`run_transforms()` stays a full rebuild on purpose: four
+`CREATE OR REPLACE ... AS SELECT` over ~2900 rows is cheap, and incremental
+SQL would break the "same portable SQL on both backends" property.
+Incrementality is about **fetching**, which is what loads the API.
+
+All three writers now merge through `db.replace_rows` — read the table, drop
+the rows this run owns, append the fresh ones. There is no portable UPDATE, so
+the merge has to happen in pandas.
+
 ## In-season: per-game detail (since 2026-09-02)
 
 `liiga.results.ingest_results()` fetches what the season endpoint cannot see —
@@ -164,6 +191,14 @@ Two API traps, both handled in `results.py` — don't re-derive them:
   not the starter.
 - Goals-against nets off empty-net goals (`goalTypes` contains `TM`),
   otherwise every trailing team's goalie looks worse than he was.
+- **A penalty is filed under the OPPONENT's team object.** An event in
+  `homeTeam.penaltyEvents` was committed by an away player and gave the home
+  team its power play — verified 265/265 with a resolvable offender. Hence
+  `penalised_team` and `drew_team`; do not reintroduce a bare `team`.
+- **`suffererPlayerId` is not the fouled player.** It equals `playerId` in
+  92% of cases and where it differs the named player is on the offender's own
+  team. It is who serves the penalty → `server_player_id`. Who was fouled is
+  not in the API, and cannot be derived.
 
 ## In-season: prediction_games is the evidence table
 

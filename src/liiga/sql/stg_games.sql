@@ -29,5 +29,18 @@ SELECT
         WHEN winner = 'home' AND result_category = 'regulation' THEN 0
         WHEN winner = 'home'                                    THEN 1
     END AS away_points,
-    spectators
+    spectators,
+    -- Straight from the API: expected goals and special-teams counts. Carried
+    -- through so team_season can derive PK%, PP% and xG share without
+    -- reaching back into raw_games.
+    home_xg,
+    away_xg,
+    home_pp_goals,
+    away_pp_goals,
+    home_pp_instances,
+    away_pp_instances,
+    home_sh_goals,
+    away_sh_goals,
+    home_sh_instances,
+    away_sh_instances
 FROM raw_games;
