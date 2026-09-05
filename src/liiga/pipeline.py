@@ -18,7 +18,7 @@ import pandas as pd
 
 from .config import load_config
 from .crowd import blend_with_model
-from .db import get_connection, query_df, register_df
+from .db import get_connection, query_df, register_df, replace_rows
 from .elo import elo_game_probs, elo_ratings_current, _ot_rate_before
 from .ensemble import ensemble_game_probs
 from .model import calibrate_ties, predict_games
@@ -169,13 +169,7 @@ def forecast(con=None, cfg=None) -> dict:
 def _replace_today(con, table: str, columns: list[str], today: str,
                    fresh: pd.DataFrame) -> pd.DataFrame:
     """Existing rows minus today's, plus today's -- idempotent per day."""
-    try:
-        old = query_df(con, f"SELECT * FROM {table}")
-        old = old[[c for c in columns if c in old.columns]]
-        old = old[old["snapshot_date"].astype(str) != today]
-    except Exception:                   # noqa: BLE001 -- first ever run
-        old = pd.DataFrame(columns=columns)
-    return pd.concat([old, fresh[columns]], ignore_index=True)
+    return replace_rows(con, table, columns, "snapshot_date", [today], fresh)
 
 
 def persist(res: dict, con=None) -> None:

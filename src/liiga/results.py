@@ -29,7 +29,7 @@ import pandas as pd
 import requests
 
 from .config import load_config
-from .db import get_connection, query_df, register_df
+from .db import get_connection, query_df, register_df, replace_rows
 
 # Tables this module owns. Each is keyed by game_id, so a re-fetch of one game
 # replaces exactly its own rows.
@@ -44,8 +44,10 @@ GOALIE_COLUMNS = ["game_id", "season", "team", "is_home", "player_id",
                   "first_name", "last_name", "jersey", "depth", "started",
                   "played", "goals_against", "empty_net_seconds"]
 
-PENALTY_COLUMNS = ["game_id", "season", "team", "is_home", "player_id",
-                   "period", "game_time", "minutes", "fault"]
+PENALTY_COLUMNS = ["game_id", "season", "penalised_team", "drew_team",
+                   "is_home", "player_id", "server_player_id", "period",
+                   "game_time", "begin_time", "end_time", "minutes",
+                   "fault", "fault_type", "penalty_info", "event_id"]
 
 # liiga.fi's `role` is a position slot, not a position group. Anything that is
 # not the goalie or one of the defence slots is a forward -- the slot names are
@@ -178,18 +180,43 @@ def _parse_goalies(detail: dict, season: int) -> pd.DataFrame:
 
 
 def _parse_penalties(detail: dict, season: int) -> pd.DataFrame:
+    """Penalties, attributed to the team that actually committed them.
+
+    The API files a penalty under the **opponent's** team object: an event in
+    `homeTeam.penaltyEvents` was committed by an away player and gave the home
+    team its power play. Verified over 265 penalties with a resolvable
+    offender -- 265 of 265, no exceptions. Reading `teamName` off the object
+    the event sits in therefore names the team that DREW the penalty, which is
+    the opposite of what a column called `team` would mean to anyone. Both
+    sides are stored under names that say which is which.
+
+    `suffererPlayerId` is not the fouled player. It equals `playerId` in 92%
+    of cases, and where it differs the named player is on the offender's own
+    team -- nobody boards their own team-mate. It is who serves the penalty,
+    so it is stored as `server_player_id`. Who was fouled is not in the API.
+    """
     game = detail.get("game", {})
     rows = []
-    for team_key, is_home in (("homeTeam", True), ("awayTeam", False)):
-        team_obj = game.get(team_key) or {}
-        for e in team_obj.get("penaltyEvents") or []:
+    for team_key, other_key in (("homeTeam", "awayTeam"),
+                                ("awayTeam", "homeTeam")):
+        drew = (game.get(team_key) or {}).get("teamName")
+        penalised = (game.get(other_key) or {}).get("teamName")
+        for e in (game.get(team_key) or {}).get("penaltyEvents") or []:
             rows.append({
                 "game_id": game.get("id"), "season": season,
-                "team": team_obj.get("teamName"), "is_home": is_home,
-                "player_id": e.get("playerId"), "period": e.get("period"),
-                "game_time": e.get("gameTime"),
+                "penalised_team": penalised, "drew_team": drew,
+                # is_home follows the offender, not the filing object.
+                "is_home": other_key == "homeTeam",
+                "player_id": e.get("playerId"),
+                "server_player_id": e.get("suffererPlayerId"),
+                "period": e.get("period"), "game_time": e.get("gameTime"),
+                "begin_time": e.get("penaltyBegintime"),
+                "end_time": e.get("penaltyEndtime"),
                 "minutes": e.get("penaltyMinutes"),
                 "fault": e.get("penaltyFaultName"),
+                "fault_type": e.get("penaltyFaultType"),
+                "penalty_info": e.get("penaltyInfo"),
+                "event_id": e.get("eventId"),
             })
     return pd.DataFrame(rows, columns=PENALTY_COLUMNS)
 
@@ -203,22 +230,11 @@ def _existing_game_ids(con, table: str) -> set[int]:
 
 
 def _upsert(con, table: str, columns: list[str], fresh: pd.DataFrame) -> int:
-    """Replace the fetched games' rows, keep everything else.
-
-    register_df overwrites the whole table, so the merge happens in pandas:
-    read what is there, drop the game_ids we just fetched, append the new
-    rows. That is portable across DuckDB and Snowpark, which is the point.
-    """
+    """Replace the fetched games' rows, keep everything else."""
     if fresh.empty:
         return 0
-    try:
-        old = query_df(con, f"SELECT * FROM {table}")
-        old = old[[c for c in columns if c in old.columns]]
-        touched = set(fresh["game_id"])
-        old = old[~old["game_id"].isin(touched)]
-    except Exception:               # noqa: BLE001 -- first ever run
-        old = pd.DataFrame(columns=columns)
-    combined = pd.concat([old, fresh[columns]], ignore_index=True)
+    combined = replace_rows(con, table, columns, "game_id",
+                            fresh["game_id"], fresh)
     register_df(con, table, combined)
     return len(fresh)
 

@@ -196,6 +196,33 @@ def register_df(con, name: str, df: pd.DataFrame) -> None:
     write_pandas(con, df, name.upper(), auto_create_table=True, overwrite=True)
 
 
+def replace_rows(con, table: str, columns: list[str], key_col: str,
+                 keys, fresh: pd.DataFrame) -> pd.DataFrame:
+    """Swap out the rows matching `keys`, keep the rest, return the union.
+
+    `register_df` replaces a whole table -- there is no UPDATE that works the
+    same on DuckDB and on a Snowpark session. So the merge happens in pandas:
+    read what is there, drop the rows this run is responsible for, append the
+    fresh ones. That is what makes every writer here idempotent -- a re-run
+    replaces its own rows instead of duplicating them.
+
+    Callers pass the key explicitly (`season`, `game_id`, `snapshot_date`)
+    because the three of them key on different things.
+
+    Does NOT write; the caller decides whether to `register_df` the result,
+    which lets it build several frames before touching the database.
+    """
+    keys = set(keys)
+    try:
+        old = query_df(con, f"SELECT * FROM {table}")
+        old = old[[c for c in columns if c in old.columns]]
+        if key_col in old.columns:
+            old = old[~old[key_col].isin(keys)]
+    except Exception:               # noqa: BLE001 -- table not created yet
+        old = pd.DataFrame(columns=columns)
+    return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+
+
 def _is_duckdb(con) -> bool:
     # DuckDB's connection class lives in the "_duckdb" module.
     return "duckdb" in con.__class__.__module__

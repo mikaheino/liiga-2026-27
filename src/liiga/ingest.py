@@ -19,7 +19,7 @@ import pandas as pd
 import requests
 
 from .config import load_config, resolve_path
-from .db import get_connection, query_df, register_df
+from .db import get_connection, query_df, register_df, replace_rows
 
 
 def _season_url(season: int) -> str:
@@ -240,36 +240,71 @@ def harvest_bios(*, force: bool = False) -> int:
     return len(bios_df)
 
 
-def ingest_all(*, force: bool = False) -> dict[str, int]:
-    """Fetch every configured season and load raw tables. Returns row counts."""
+def _seasons_already_loaded(con) -> set[int]:
+    """Seasons that already have rows in raw_games."""
+    try:
+        df = query_df(con, "SELECT DISTINCT season FROM raw_games")
+        return {int(s) for s in df["season"].dropna()}
+    except Exception:               # noqa: BLE001 -- first ever run
+        return set()
+
+
+def seasons_to_ingest(con, cfg: dict | None = None) -> list[int]:
+    """Which seasons this run has to (re)read.
+
+    Always the target season -- it gains games every day. Plus any configured
+    season the database does not have yet, which makes the run self-healing:
+    a cold Snowflake fetches all six, every later run fetches one.
+
+    Historical seasons never change, so re-reading them is pure waste. In
+    Snowflake it is not even cheap: there is no disk cache there, so each one
+    is an HTTP call to liiga.fi.
+    """
+    cfg = cfg or load_config()["ingestion"]
+    target = cfg["target_season"]
+    configured = list(cfg["train_seasons"]) + [target]
+    have = _seasons_already_loaded(con)
+    return sorted({s for s in configured if s not in have} | {target})
+
+
+def ingest_all(*, seasons: list[int] | None = None,
+               force: bool = False) -> dict[str, int]:
+    """Load raw tables for the seasons that need it. Returns rows written.
+
+    `seasons=None` picks them per `seasons_to_ingest` (incremental).
+    Pass an explicit list to re-read specific seasons -- that is how the
+    historical backfill from the on-disk cache is done, with no API calls.
+    """
     cfg = load_config()["ingestion"]
-    seasons = list(cfg["train_seasons"]) + [cfg["target_season"]]
-
-    all_games, all_events, all_assists = [], [], []
-    for season in seasons:
-        games = fetch_season(season, force=force)
-        all_games.append(_flatten_games(games, season))
-        all_events.append(_flatten_goal_events(games, season))
-        all_assists.append(_flatten_assists(games, season))
-        print(f"  season {season}: {len(games)} games")
-
-    games_df = pd.concat(all_games, ignore_index=True)
-    events_df = pd.concat(all_events, ignore_index=True)
-    assists_df = pd.concat(all_assists, ignore_index=True)
 
     con = get_connection()
     try:
-        register_df(con, "raw_games", games_df)
-        register_df(con, "raw_goal_events", events_df)
-        register_df(con, "raw_assists", assists_df)
+        if seasons is None:
+            seasons = seasons_to_ingest(con, cfg)
+        if not seasons:
+            return {"raw_games": 0, "raw_goal_events": 0, "raw_assists": 0}
+
+        all_games, all_events, all_assists = [], [], []
+        for season in seasons:
+            games = fetch_season(season, force=force)
+            all_games.append(_flatten_games(games, season))
+            all_events.append(_flatten_goal_events(games, season))
+            all_assists.append(_flatten_assists(games, season))
+            print(f"  season {season}: {len(games)} games")
+
+        fresh = {
+            "raw_games": pd.concat(all_games, ignore_index=True),
+            "raw_goal_events": pd.concat(all_events, ignore_index=True),
+            "raw_assists": pd.concat(all_assists, ignore_index=True),
+        }
+        for table, df in fresh.items():
+            combined = replace_rows(con, table, list(df.columns),
+                                    "season", seasons, df)
+            register_df(con, table, combined)
     finally:
         con.close()
 
-    return {
-        "raw_games": len(games_df),
-        "raw_goal_events": len(events_df),
-        "raw_assists": len(assists_df),
-    }
+    return {t: len(df) for t, df in fresh.items()}
 
 
 if __name__ == "__main__":
