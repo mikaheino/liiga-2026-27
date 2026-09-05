@@ -36,10 +36,13 @@ from .db import get_connection, query_df, register_df, replace_rows
 LINEUP_TABLE = "game_lineups"
 GOALIE_TABLE = "game_goalies"
 PENALTY_TABLE = "game_penalties"
+REFEREE_TABLE = "game_referees"
 
 LINEUP_COLUMNS = ["game_id", "season", "team", "is_home", "player_id",
                   "first_name", "last_name", "role", "position_group", "line",
-                  "jersey", "captain", "injured", "removed"]
+                  "jersey", "captain", "injured", "removed",
+                  "handedness", "height", "weight", "date_of_birth",
+                  "nationality", "rookie", "suspended", "alternate_captain"]
 GOALIE_COLUMNS = ["game_id", "season", "team", "is_home", "player_id",
                   "first_name", "last_name", "jersey", "depth", "started",
                   "played", "goals_against", "empty_net_seconds"]
@@ -48,6 +51,9 @@ PENALTY_COLUMNS = ["game_id", "season", "penalised_team", "drew_team",
                    "is_home", "player_id", "server_player_id", "period",
                    "game_time", "begin_time", "end_time", "minutes",
                    "fault", "fault_type", "penalty_info", "event_id"]
+
+REFEREE_COLUMNS = ["game_id", "season", "official_id", "first_name",
+                    "last_name", "jersey", "role"]
 
 # liiga.fi's `role` is a position slot, not a position group. Anything that is
 # not the goalie or one of the defence slots is a forward -- the slot names are
@@ -114,6 +120,13 @@ def _parse_lineups(detail: dict, season: int) -> pd.DataFrame:
                 "captain": bool(p.get("captain")),
                 "injured": bool(p.get("injured")),
                 "removed": bool(p.get("removed")),
+                "handedness": p.get("handedness"), "height": p.get("height"),
+                "weight": p.get("weight"),
+                "date_of_birth": p.get("dateOfBirth"),
+                "nationality": p.get("nationality"),
+                "rookie": bool(p.get("rookie")),
+                "suspended": bool(p.get("suspended")),
+                "alternate_captain": bool(p.get("alternateCaptain")),
             })
     return pd.DataFrame(rows, columns=LINEUP_COLUMNS)
 
@@ -221,6 +234,19 @@ def _parse_penalties(detail: dict, season: int) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=PENALTY_COLUMNS)
 
 
+def _parse_referees(detail: dict, season: int) -> pd.DataFrame:
+    game = detail.get("game", {})
+    rows = []
+    for r in game.get("referees") or []:
+        rows.append({
+            "game_id": game.get("id"), "season": season,
+            "official_id": r.get("officialID"),
+            "first_name": r.get("firstName"), "last_name": r.get("lastName"),
+            "jersey": r.get("jersey"), "role": r.get("roleName"),
+        })
+    return pd.DataFrame(rows, columns=REFEREE_COLUMNS)
+
+
 def _existing_game_ids(con, table: str) -> set[int]:
     try:
         df = query_df(con, f"SELECT DISTINCT game_id FROM {table}")
@@ -271,7 +297,7 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
             have = set() if refetch else _existing_game_ids(con, LINEUP_TABLE)
             game_ids = [g for g in ended if g not in have]
 
-        lineups, goalies, penalties = [], [], []
+        lineups, goalies, penalties, referees = [], [], [], []
         failed: list[tuple[int, str]] = []
         for gid in game_ids:
             try:
@@ -280,9 +306,20 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
                 # One bad game must not lose the others already fetched.
                 failed.append((gid, str(exc).splitlines()[0][:120]))
                 continue
+            # The endpoint has been observed returning only the two player
+            # lists, with no `game` object at all. Every row parsed from that
+            # gets game_id None, and _upsert keys on game_id -- so NULL
+            # matches nothing, the rows append instead of replacing, and the
+            # table silently doubles. Refuse the payload instead: a loud
+            # failure beats a quiet duplicate.
+            if not (detail.get("game") or {}).get("id"):
+                failed.append((gid, "payload has no game.id -- endpoint "
+                                    "returned a partial response"))
+                continue
             lineups.append(_parse_lineups(detail, season))
             goalies.append(_parse_goalies(detail, season))
             penalties.append(_parse_penalties(detail, season))
+            referees.append(_parse_referees(detail, season))
 
         def _frame(parts, columns):
             return (pd.concat(parts, ignore_index=True) if parts
@@ -295,6 +332,8 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
                                   _frame(goalies, GOALIE_COLUMNS)),
             PENALTY_TABLE: _upsert(con, PENALTY_TABLE, PENALTY_COLUMNS,
                                    _frame(penalties, PENALTY_COLUMNS)),
+            REFEREE_TABLE: _upsert(con, REFEREE_TABLE, REFEREE_COLUMNS,
+                                   _frame(referees, REFEREE_COLUMNS)),
         }
     finally:
         if own:
