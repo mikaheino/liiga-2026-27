@@ -164,6 +164,21 @@ Rakenne, ylhäältä alas:
 Kohdat 3 ja 4 ovat ainoa paikka jossa **mallin toteuma** näkyy; älä poista
 niitä designin tieltä.
 
+**Kaikki viisi osiota käyttävät samaa muotokieltä ja samaa palettia.**
+Mestaruuspalkit, sijaintijakauma ja ottelulista ovat kaikki `render_grid()`:n
+CSS-gridejä — ei Altairia eikä `st.dataframe`a. Se ei ole pelkkä ulkonäköasia:
+Styler ei osaa haalentaa riviä, joten sivupalkin korostus ei muuten ylettyisi
+niihin.
+
+**Korostus haalentaa muut, ei vain korosta valittua.** `dim_class()` antaa
+riville `lp-on` tai `lp-off`; jälkimmäinen pudottaa opacityn 0,30:een. 17 rivin
+taulukossa tai 289 solun lämpökartassa pelkkä korostusväri ei riitä — silmä
+löytää valitun vasta kun ympäriltä otetaan kontrastia pois. Kun mitään ei ole
+valittu, kaikki on täydessä voimassa: 17 rivin haalentaminen korostamatta
+yhtäkään tekisi sivusta vain vaikealukuisemman. Ottelurivi korostuu jos
+**kumpi tahansa** joukkue on valittu, ja pienoiskuvaajissa korostetut paneelit
+nousevat ensimmäisiksi.
+
 Kolme asiaa jotka eivät ole ilmeisiä:
 
 - **Muototaulukko on HTML, ei `st.dataframe`.** Rivikohtaista SVG-sparklinea

@@ -295,23 +295,45 @@ def _cell_label(p: float) -> str:
     return f"{round(p * 100):.0f}"
 
 
-def render_position_table(m: pd.DataFrame) -> None:
-    styler = (m.style
-               .format(_cell_label)
-               .map(_cell_style)
-               .set_properties(**{"text-align": "center"}))
-    # Pystyviivat playoff- ja karsintarajalle, kuten sivuston taulukossa
-    for col, border in ((PLAYOFF_CUT + 1, "2px solid #00aa46"),
-                        (QUALI_CUT + 1, "1px dashed #93dcae")):
-        styler = styler.set_properties(subset=[col],
-                                       **{"border-left": border})
-    full_width(st.dataframe, styler, height=(TEAMS + 1) * 35 + 3)
+def render_position_table(m: pd.DataFrame, highlight: set[str]) -> None:
+    """Probability of every finishing place, one row per team.
+
+    Hand-built rather than a Styler for the same reason as the form table:
+    the sidebar highlight has to reach it, and a Styler cannot fade a row.
+    """
+    cols = ["110px"] + ["minmax(0,1fr)"] * TEAMS
+    template = " ".join(cols)
+    borders = {PLAYOFF_CUT + 1: "2px solid #00aa46",
+               QUALI_CUT + 1: "1px dashed #93dcae"}
+
+    head = ['<div class="lp-hteam">Joukkue</div>']
+    for rank in range(1, TEAMS + 1):
+        edge = f";border-left:{borders[rank]}" if rank in borders else ""
+        head.append(f'<div style="text-align:center{edge}">{rank}</div>')
+
+    body = []
+    for team, row in m.iterrows():
+        cells = [f'<div class="lp-hteam">{_esc(team)}</div>']
+        for rank in range(1, TEAMS + 1):
+            p = row[rank]
+            edge = f";border-left:{borders[rank]}" if rank in borders else ""
+            cells.append(f'<div style="{_cell_style(p)}{edge}">'
+                         f'{_cell_label(p)}</div>')
+        body.append(
+            f'<div class="lp-row lp-heat {dim_class(team, highlight)}" '
+            f'style="grid-template-columns:{template}">{"".join(cells)}</div>')
+
+    html(f'<div class="lp-tbl">'
+         f'<div class="lp-row lp-head lp-heat" '
+         f'style="grid-template-columns:{template}">{"".join(head)}</div>'
+         f'{"".join(body)}</div>')
 
 
 # --------------------------------------------------------------------------
 # Ennusteen liike
 # --------------------------------------------------------------------------
-def render_history(history: pd.DataFrame, order: list[str]) -> None:
+def render_history(history: pd.DataFrame, order: list[str],
+                   highlight: set[str]) -> None:
     """Small multiples, not seventeen lines in one frame.
 
     One panel per team is the standard fix for a spaghetti chart: with all
@@ -332,7 +354,15 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
     # focus layer picks its own team out of it. Altair needs a single
     # top-level dataset to facet a layered chart, so the context cannot just
     # be a second frame.
-    big = h.merge(pd.DataFrame({"panel": order}), how="cross")
+    panels = ([t for t in order if t in highlight] + [t for t in order
+                                                     if t not in highlight]
+              if highlight else order)
+    big = h.merge(pd.DataFrame({"panel": panels}), how="cross")
+    # Colour by the panel, not by the line, so a highlighted team's own panel
+    # stays green while the rest of the grid recedes.
+    big["vari"] = big["panel"].map(
+        lambda t: f"rgb{ACCENT}" if (not highlight or t in highlight)
+        else "#b6bfbb")
 
     x = alt.X("snapshot_date:T", title=None,
               axis=alt.Axis(format="%-d.%-m.", grid=False, tickCount=3))
@@ -343,10 +373,10 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
                .mark_line(strokeWidth=1, color=CONTEXT, interpolate="monotone")
                .encode(x=x, y=y, detail="team:N"))
     focus = (alt.Chart()
-             .mark_line(strokeWidth=2, color=f"rgb{ACCENT}",
-                        interpolate="monotone")
+             .mark_line(strokeWidth=2, interpolate="monotone")
              .transform_filter("datum.team === datum.panel")
              .encode(x=x, y=y,
+                     color=alt.Color("vari:N", scale=None, legend=None),
                      tooltip=[alt.Tooltip("team:N", title="Joukkue"),
                               alt.Tooltip("snapshot_date:T", title="Päivä",
                                           format="%-d.%-m.%Y"),
@@ -357,7 +387,7 @@ def render_history(history: pd.DataFrame, order: list[str]) -> None:
 
     chart = (alt.layer(context, focus, data=big)
              .properties(width=230, height=120)
-             .facet(facet=alt.Facet("panel:N", title=None, sort=order,
+             .facet(facet=alt.Facet("panel:N", title=None, sort=panels,
                                     header=alt.Header(labelFontSize=12,
                                                       labelFontWeight="bold")),
                     columns=5))
@@ -386,61 +416,63 @@ def _model_said(r) -> float:
     return p if r["home_goals"] > r["away_goals"] else 100 - p
 
 
-def render_fixtures(games: pd.DataFrame) -> None:
-    """Fixtures with in-cell probability bars, and the outcome once played.
+def render_fixtures(games: pd.DataFrame, highlight: set[str]) -> None:
+    """Fixtures with probability bars, and the outcome once played.
 
-    Drawn with a pandas Styler rather than st.column_config: Streamlit in
-    Snowflake ships a build with no `column_config` attribute at all, and the
-    heatmap above already proves Styler renders the same on both.
+    The tick/cross carries the hit or miss on its own -- colour alone would
+    fail anyone who cannot separate the green from the red.
     """
-    df = games.copy()
-    said = df.apply(_model_said, axis=1)      # NaN until the game is played
-    out = pd.DataFrame({
-        "Päivä": pd.to_datetime(df["start_ts"]).dt.strftime("%-d.%-m."),
-        "Ottelu": df["home_team"] + " – " + df["away_team"],
-        "Koti voittaa": df["p_home_win"].astype(float) * 100,
-        "Vieras voittaa": 100 - df["p_home_win"].astype(float) * 100,
-        "Jatkoaika": df["p_overtime"].astype(float) * 100,
-        "Tulos": df.apply(_result_text, axis=1),
-        # Pre-formatted as text, not left as a float with NaN: Streamlit
-        # renders the underlying null as "None" for an unplayed game rather
-        # than honouring the Styler's na_rep, which does produce "".
-        # The tick/cross carries the hit/miss on its own -- colour alone
-        # would fail anyone who cannot separate the green from the red.
-        "Malli antoi voittajalle": said.map(
-            lambda v: "" if pd.isna(v)
-            else f"{'✓' if v >= 50 else '✗'}  {v:.0f} %"),
-    })
+    rows, classes = [], []
+    for _, g in games.iterrows():
+        p_home = (float(g["p_home_win"]) * 100
+                  if pd.notna(g["p_home_win"]) else float("nan"))
+        said = _model_said(g)
+        if pd.isna(said):
+            verdict = ""
+        else:
+            hit = said >= 50
+            tint = ("rgba(0,170,70,0.14)" if hit else "rgba(211,53,43,0.10)")
+            verdict = (f'<span class="lp-tag" style="background:{tint};'
+                       f'color:{HIT if hit else MISS}">'
+                       f'{"✓" if hit else "✗"} {said:.0f} %</span>')
+        rows.append([
+            pd.to_datetime(g["start_ts"]).strftime("%-d.%-m."),
+            f'<span class="lp-team">{_esc(g["home_team"])} – '
+            f'{_esc(g["away_team"])}</span>',
+            _prob_bar(p_home), _prob_bar(100 - p_home if p_home == p_home
+                                         else float("nan")),
+            "–" if pd.isna(g["p_overtime"])
+            else f'{float(g["p_overtime"]) * 100:.0f} %',
+            _result_text(g),
+            verdict,
+        ])
+        involved = {g["home_team"], g["away_team"]}
+        classes.append("" if not highlight
+                       else ("lp-on" if involved & highlight else "lp-off"))
 
-    def _hit_shading(_col):
-        """Green where the model favoured the eventual winner, red where not.
-
-        50% exactly counts as a miss rather than a hit: the model expressed no
-        preference, so it earns no credit.
-        """
-        return [("" if pd.isna(v) else
-                 f"background-color: rgba(0,170,70,0.14); color: {HIT}"
-                 if v >= 50 else
-                 f"background-color: rgba(211,53,43,0.10); color: {MISS}")
-                for v in said]
-
-    bars = ["Koti voittaa", "Vieras voittaa"]
-    nums = bars + ["Jatkoaika"]
-    styler = (out.style
-                 .format({c: "{:.0f} %" for c in nums}, na_rep="")
-                 # A bar reads faster than a number when the question is
-                 # "who is favoured, and by how much". vmin/vmax pinned to
-                 # 0-100 so bars are comparable between rows.
-                 .bar(subset=bars, color=f"rgba{(*ACCENT, 0.35)}",
-                      vmin=0, vmax=100)
-                 .apply(_hit_shading, subset=["Malli antoi voittajalle"])
-                 .set_properties(subset=nums + ["Malli antoi voittajalle"],
-                                 **{"text-align": "right"}))
-    full_width(st.dataframe, styler, hide_index=True,
-               height=min(len(out) + 1, 26) * 35 + 3)
+    cols = [("Päivä", "70px", "lp-num lp-dim"),
+            ("Ottelu", "minmax(0,1fr)", ""),
+            ("Koti voittaa", "132px", ""), ("Vieras voittaa", "132px", ""),
+            ("Jatkoaika", "100px", "lp-num lp-dim"),
+            ("Tulos", "92px", "lp-num"),
+            ("Malli antoi voittajalle", "196px", "lp-num")]
+    render_grid(cols, rows, classes)
 
 
-def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame) -> None:
+def _prob_bar(pct: float) -> str:
+    """A probability as a bar with the number inside it.
+
+    Pinned to 0-100 rather than to the column's own range, so the bars are
+    comparable between rows instead of only within one.
+    """
+    if pct != pct:                       # NaN: no forecast was captured
+        return '<span class="lp-num lp-dim">–</span>'
+    return (f'<div class="lp-bar"><i style="background:{ACCENT_LIGHT};'
+            f'width:{pct:.1f}%"></i><span>{pct:.0f} %</span></div>')
+
+
+def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame,
+                      highlight: set[str]) -> None:
     """Who wins the regular season -- and how much of it is already decided.
 
     Bar length is projected final points, split by colour into points a team
@@ -448,8 +480,9 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame) -> None:
     the season the earned segment is a sliver, which is the honest message:
     almost all of this is still simulation. It grows as the season does.
 
-    Order and the right-hand label carry the actual question (P(title)), so
-    the chart answers "who is favoured" and "how much is real" at once.
+    Drawn as the same CSS grid as the form table rather than as an Altair
+    chart, so one visual language covers the page and the sidebar's team
+    highlight reaches this section too.
     """
     cur = (standings[["team", "p_title", "mean_points"]].copy()
            .assign(p_title=lambda d: d["p_title"].astype(float) * 100,
@@ -462,68 +495,88 @@ def render_title_race(standings: pd.DataFrame, banked: pd.DataFrame) -> None:
     # start) cannot produce a negative segment.
     cur["simuloitu"] = (cur["mean_points"] - cur["banked"]).clip(lower=0.0)
     cur = cur.sort_values("p_title", ascending=False)
-    order = cur["team"].tolist()
+    widest = max(float(cur["mean_points"].max()), 1.0)
 
-    long = cur.melt(id_vars=["team", "p_title", "mean_points"],
-                    value_vars=["banked", "simuloitu"],
-                    var_name="osa", value_name="pisteet")
-    long["osa"] = long["osa"].map({"banked": "Kerätyt pisteet",
-                                   "simuloitu": "Simuloitu loppukausi"})
-
-    bars = (
-        alt.Chart(long)
-        .mark_bar()
-        .encode(
-            x=alt.X("pisteet:Q", title="Ennustetut pisteet", stack="zero"),
-            y=alt.Y("team:N", title=None, sort=order,
-                    axis=alt.Axis(labelOverlap=False, labelFontSize=12)),
-            color=alt.Color(
-                "osa:N", title=None,
-                scale=alt.Scale(domain=["Kerätyt pisteet",
-                                        "Simuloitu loppukausi"],
-                                range=[f"rgb{ACCENT}", ACCENT_LIGHT]),
-                legend=alt.Legend(orient="top")),
-            order=alt.Order("osa:N", sort="ascending"),
-            tooltip=[alt.Tooltip("team:N", title="Joukkue"),
-                     alt.Tooltip("osa:N", title=None),
-                     alt.Tooltip("pisteet:Q", title="Pisteitä", format=".1f"),
-                     alt.Tooltip("p_title:Q", title="Voittaa runkosarjan",
-                                 format=".1f")],
-        )
-        .properties(height=max(len(cur) * 30, 200))
-    )
-    labels = (
-        alt.Chart(cur)
-        .mark_text(align="left", dx=5, fontSize=11)
-        .encode(x=alt.X("mean_points:Q"),
-                y=alt.Y("team:N", sort=order,
-                        axis=alt.Axis(labelOverlap=False)),
-                text=alt.Text("p_title:Q", format=".1f"))
-    )
-    full_width(st.altair_chart, bars + labels)
+    cols = [("Sija", "56px", ""), ("Joukkue", "minmax(0,1fr)", ""),
+            ("Kerätyt", "76px", "lp-num"),
+            ("Ennustetut pisteet", "minmax(240px,2fr)", ""),
+            ("Voittaa sarjan", "150px", "lp-num")]
+    rows, classes = [], []
+    for rank, (_, r) in enumerate(cur.iterrows(), start=1):
+        got = 100 * r["banked"] / widest
+        sim = 100 * r["simuloitu"] / widest
+        rows.append([
+            f'<span class="lp-num lp-dim">{rank}</span>',
+            f'<span class="lp-team">{_esc(r["team"])}</span>',
+            f'{int(r["banked"])}',
+            f'<div class="lp-split">'
+            f'<i style="background:{BRAND};width:{got:.1f}%"></i>'
+            f'<i style="background:{ACCENT_LIGHT};width:{sim:.1f}%"></i>'
+            f'</div>',
+            f'<span class="lp-tag" style="background:{GREEN_100};'
+            f'color:{BRAND_DARK}">{_fi(r["p_title"], 1)} %</span>'
+            if r["p_title"] >= 1 else
+            f'<span class="lp-num lp-dim">{_fi(r["p_title"], 1)} %</span>',
+        ])
+        classes.append(dim_class(r["team"], highlight))
+    render_grid(cols, rows, classes)
+    html('<div class="lp-legend">'
+         f'<span><span style="width:14px;height:10px;border-radius:2px;'
+         f'background:{BRAND};display:inline-block"></span>Kerätyt pisteet</span>'
+         f'<span><span style="width:14px;height:10px;border-radius:2px;'
+         f'background:{ACCENT_LIGHT};display:inline-block"></span>'
+         'Simuloitu loppukausi</span></div>')
 
 
-def render_title_history(history: pd.DataFrame, top: list[str]) -> None:
-    """Six contenders' title probability over time. Six lines still read."""
+def render_title_history(history: pd.DataFrame, top: list[str],
+                         highlight: set[str]) -> None:
+    """Title probability over time for the contenders, plus any highlighted team.
+
+    Six lines still read, but only if they can be told apart. The design is a
+    mono-green system, so the six get a dark-to-light green ramp ordered by
+    rank -- the ordering is itself information, which a categorical palette
+    would throw away.
+    """
     if history.empty or history["snapshot_date"].nunique() < 2:
         return
-    h = history[history["team"].isin(top)].copy()
+    shown = list(dict.fromkeys(top + sorted(highlight)))
+    h = history[history["team"].isin(shown)].copy()
+    if h.empty:
+        return
     h["snapshot_date"] = pd.to_datetime(h["snapshot_date"])
     h["p_title"] = h["p_title"].astype(float) * 100
 
-    st.caption("Miten mestaruussuosikki on vaihtunut — kuusi kärkijoukkuetta.")
+    ramp = ["#00531f", "#007531", "#00913b", "#00aa46", "#57c986", "#93dcae"]
+    colours = {t: ramp[min(i, len(ramp) - 1)] for i, t in enumerate(shown)}
+    if highlight:
+        colours = {t: (colours[t] if t in highlight else "#d4dad7")
+                   for t in shown}
+    h["paksuus"] = h["team"].map(
+        lambda t: 2.6 if (not highlight or t in highlight) else 1.2)
+
+    # Ylärajaan väljyyttä, jotta viivan päähän kirjoitettu nimi mahtuu.
+    ymax = min(100.0, max(float(h["p_title"].max()) * 1.25, 10.0))
+
+    st.caption("Miten mestaruussuosikki on vaihtunut — kuusi kärkijoukkuetta"
+               + (" ja korostetut." if highlight else "."))
     line = (
         alt.Chart(h)
-        .mark_line(strokeWidth=2, interpolate="monotone")
+        .mark_line(interpolate="monotone")
         .encode(
             x=alt.X("snapshot_date:T", title=None,
                     axis=alt.Axis(format="%-d.%-m.", grid=False)),
-            # Todennäköisyys ei voi olla negatiivinen: vapaa skaala vei
-            # kolmanneksen korkeudesta tyhjään ja ulotti akselin -30 %:iin.
+            # Kiinteä alue, ei domainMin: kerrostettuna toisen tason skaala
+            # yhdistyy tähän ja venytti akselin -150 %:iin asti. Prosentti ei
+            # voi olla negatiivinen eikä yli sadan.
             y=alt.Y("p_title:Q", title="Todennäköisyys (%)",
-                    scale=alt.Scale(domainMin=0, nice=True, clamp=True)),
-            color=alt.Color("team:N", title="Joukkue", sort=top,
-                            scale=alt.Scale(scheme="tableau10")),
+                    scale=alt.Scale(domain=[0, ymax], clamp=True)),
+            color=alt.Color(
+                "team:N", title="Joukkue",
+                sort=shown,
+                scale=alt.Scale(domain=shown,
+                                range=[colours[t] for t in shown]),
+                legend=alt.Legend(orient="right")),
+            strokeWidth=alt.StrokeWidth("paksuus:Q", scale=None, legend=None),
             tooltip=[alt.Tooltip("team:N", title="Joukkue"),
                      alt.Tooltip("snapshot_date:T", title="Päivä",
                                  format="%-d.%-m.%Y"),
@@ -531,8 +584,9 @@ def render_title_history(history: pd.DataFrame, top: list[str]) -> None:
                      alt.Tooltip("games_played:Q", title="Otteluita")],
         )
         .properties(height=320)
-        .interactive()
     )
+    # Selite, ei nimeä viivan päähän: neljä kärkijoukkuetta on tällä
+    # hetkellä 10 %:n tuntumassa, ja päätylaput kirjoittuisivat päällekkäin.
     full_width(st.altair_chart, line)
 
 
@@ -606,6 +660,22 @@ _CSS = """
 .lp-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;
   font:12px var(--lp-sans);color:var(--lp-muted)}
 .lp-legend span{display:flex;align-items:center;gap:6px}
+/* Korostus: valittu rivi jää täyteen voimaan, muut haalistuvat. Pelkkä
+   korostusväri ei riitä 17 rivin taulukossa -- silmä löytää valitun vasta
+   kun ympäriltä otetaan kontrastia pois. */
+.lp-off{opacity:.30}
+.lp-on{background:var(--lp-gray-25);box-shadow:inset 3px 0 0 var(--lp-brand)}
+.lp-on .lp-team{color:var(--lp-brand-dark);font-weight:700}
+/* Sijaintijakauma: 17 x 17 ruutua, väri tulee solukohtaisesti. */
+.lp-heat > div{padding:6px 2px;text-align:center;font:12px var(--lp-mono)}
+.lp-heat .lp-hteam{padding:6px 10px;text-align:left;font:600 13px var(--lp-sans);
+  color:var(--lp-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Kaksiosainen palkki: kerätty + simuloitu, samassa mitassa. */
+.lp-split{position:relative;height:22px;border-radius:4px;
+  background:var(--lp-gray-50);overflow:hidden;display:flex}
+.lp-split > i{display:block;height:100%}
+.lp-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;
+  border-radius:5px;font:600 12px var(--lp-mono)}
 .lp-side-h{font:800 20px/1.2 var(--lp-sans);letter-spacing:-.02em;
   color:var(--lp-ink)}
 .lp-side-s{font:12.5px var(--lp-sans);color:var(--lp-muted);margin-top:2px}
@@ -792,19 +862,35 @@ def _move(mv) -> str:
     return f'<span class="lp-mv" style="color:{colour}">{arrow} {abs(mv)}</span>'
 
 
-def render_grid(cols: list[tuple[str, str, str]], rows: list[list[str]]) -> None:
+def dim_class(team: str, highlight: set[str]) -> str:
+    """Row class for the sidebar's team highlight.
+
+    With nothing selected every row renders at full strength -- fading
+    seventeen rows to emphasise none of them would only make the page
+    harder to read. Once a team is picked the others drop to a third
+    opacity, which is what makes the selection findable in a
+    seventeen-row table or a 289-cell heatmap.
+    """
+    if not highlight:
+        return ""
+    return "lp-on" if team in highlight else "lp-off"
+
+
+def render_grid(cols: list[tuple[str, str, str]], rows: list[list[str]],
+                row_classes: list[str] | None = None) -> None:
     """A CSS-grid table. `cols` is (label, css width, alignment class)."""
     template = " ".join(c[1] for c in cols)
     head = "".join(
         f'<div style="text-align:{"right" if c[2] else "left"}">{_esc(c[0])}</div>'
         for c in cols)
+    classes = row_classes or [""] * len(rows)
     body = []
-    for r in rows:
+    for r, extra in zip(rows, classes):
         cells = "".join(
             f'<div class="{c[2]}">{v}</div>' for c, v in zip(cols, r))
         body.append(
-            f'<div class="lp-row" style="grid-template-columns:{template}">'
-            f'{cells}</div>')
+            f'<div class="lp-row {extra}" '
+            f'style="grid-template-columns:{template}">{cells}</div>')
     html(f'<div class="lp-tbl">'
          f'<div class="lp-row lp-head" style="grid-template-columns:{template}">'
          f'{head}</div>{"".join(body)}</div>')
@@ -831,7 +917,7 @@ def render_form_table(log: pd.DataFrame, window: int, *,
         cols.append((f"Vire ({window})", "104px", ""))
     cols += [("TM–PM", "92px", "lp-num lp-dim"), ("P", "168px", "")]
 
-    rows = []
+    rows, classes = [], []
     for rank, (team, r) in enumerate(t.iterrows(), start=1):
         pts_list = (by_team[team]["points"].astype(float).tolist()
                     if team in by_team else [])
@@ -839,9 +925,7 @@ def render_form_table(log: pd.DataFrame, window: int, *,
         # Rolling mean, not raw points: three games of 3-0-3 is a flat run at
         # 2.0, and the raw series would draw it as a zigzag.
         rolling = [sum(recent[:k + 1]) / (k + 1) for k in range(len(recent))]
-        on = team in highlight
-        name = (f'<span class="lp-team {"lp-team-on" if on else ""}">'
-                f'{_esc(team)}</span>')
+        name = f'<span class="lp-team">{_esc(team)}</span>'
         row = [
             f'<div class="lp-rank">{_qbar(rank)}'
             f'<span class="lp-num lp-dim">{rank}</span></div>',
@@ -861,8 +945,9 @@ def render_form_table(log: pd.DataFrame, window: int, *,
                    f'width:{width:.1f}%"></i>'
                    f'<span>{int(r["pts"])}</span></div>')
         rows.append(row)
+        classes.append(dim_class(team, highlight))
 
-    render_grid(cols, rows)
+    render_grid(cols, rows, classes)
     html(
         '<div class="lp-legend">'
         f'<span><span class="lp-chip" style="background:{BRAND};color:#fff">V'
@@ -902,13 +987,12 @@ def render_split_table(log: pd.DataFrame, highlight: set[str],
             ("Vieras O", "88px", "lp-num lp-dim"),
             ("Vieras P", "88px", "lp-num"),
             ("Vieras TM–PM", "124px", "lp-num lp-dim")]
-    rows = []
+    rows, classes = [], []
     for rank, team in enumerate(order, start=1):
-        on = team in highlight
+        classes.append(dim_class(team, highlight))
         cells = [f'<div class="lp-rank">{_qbar(rank)}'
                  f'<span class="lp-num lp-dim">{rank}</span></div>',
-                 f'<span class="lp-team {"lp-team-on" if on else ""}">'
-                 f'{_esc(team)}</span>']
+                 f'<span class="lp-team">{_esc(team)}</span>']
         for frame in (h, a):
             if team in frame.index:
                 r = frame.loc[team]
@@ -917,7 +1001,7 @@ def render_split_table(log: pd.DataFrame, highlight: set[str],
             else:
                 cells += ["0", "0", "–"]
         rows.append(cells)
-    render_grid(cols, rows)
+    render_grid(cols, rows, classes)
 
 
 def render_goals_table(log: pd.DataFrame, highlight: set[str],
@@ -932,19 +1016,18 @@ def render_goals_table(log: pd.DataFrame, highlight: set[str],
             ("PM", "56px", "lp-num"), ("TM/ottelu", "92px", "lp-num"),
             ("PM/ottelu", "92px", "lp-num"), ("xG puolesta", "104px", "lp-num"),
             ("xG vastaan", "104px", "lp-num"), ("xG-osuus", "92px", "lp-num")]
-    rows = []
+    rows, classes = [], []
     for rank, (team, r) in enumerate(t.iterrows(), start=1):
-        on = team in highlight
+        classes.append(dim_class(team, highlight))
         rows.append([
             f'<div class="lp-rank">{_qbar(rank)}'
             f'<span class="lp-num lp-dim">{rank}</span></div>',
-            f'<span class="lp-team {"lp-team-on" if on else ""}">'
-            f'{_esc(team)}</span>',
+            f'<span class="lp-team">{_esc(team)}</span>',
             str(int(r["gp"])), str(int(r["gf"])), str(int(r["ga"])),
             _fi(r["gf_pg"]), _fi(r["ga_pg"]),
             _fi(r["xgf"], 1), _fi(r["xga"], 1),
             _fi(r["xg_share"], 1) + " %"])
-    render_grid(cols, rows)
+    render_grid(cols, rows, classes)
     st.caption(
         "xG-osuus on oman xG:n osuus ottelun kokonais-xG:stä. Se mittaa "
         "paikkojen laatua, **ei** kiekonhallintaa — liiga.fi ei julkaise "
@@ -963,18 +1046,17 @@ def render_special_table(log: pd.DataFrame, highlight: set[str],
             ("YV-kerrat", "96px", "lp-num"), ("YV-%", "84px", "lp-num"),
             ("AV-kerrat", "96px", "lp-num"),
             ("Päästetyt", "96px", "lp-num"), ("AV-%", "84px", "lp-num")]
-    rows = []
+    rows, classes = [], []
     for rank, (team, r) in enumerate(t.iterrows(), start=1):
-        on = team in highlight
+        classes.append(dim_class(team, highlight))
         rows.append([
             f'<div class="lp-rank">{_qbar(rank)}'
             f'<span class="lp-num lp-dim">{rank}</span></div>',
-            f'<span class="lp-team {"lp-team-on" if on else ""}">'
-            f'{_esc(team)}</span>',
+            f'<span class="lp-team">{_esc(team)}</span>',
             str(int(r["gp"])), str(int(r["ppg_goals"])), str(int(r["pp_inst"])),
             _fi(r["pp_pct"], 1) + " %", str(int(r["sh_inst"])),
             str(int(r["pp_against"])), _fi(r["pk_pct"], 1) + " %"])
-    render_grid(cols, rows)
+    render_grid(cols, rows, classes)
     st.caption(
         "YV = ylivoima, AV = alivoima. **Päästetyt** on alivoimalla päästetyt "
         "maalit, ja AV-% on niiden osuus torjutuista alivoimista. Ilman "
@@ -1033,6 +1115,9 @@ def main() -> None:
          'alempana.</p>')
     st.write("")
 
+    if opts["highlight"]:
+        st.caption("Korostettu: **" + "**, **".join(sorted(opts["highlight"]))
+                   + "** — muut on haalennettu koko sivulla.")
     tabs = st.tabs(["Sarjataulukko", "Koti / vieras", "Maalinteko",
                     "Erikoistilanteet"])
     with tabs[0]:
@@ -1053,11 +1138,11 @@ def main() -> None:
         f"({played}/{total} ottelua pelattu), vaalea on {N_SIMS} simuloidun "
         "kauden keskiarvo lopuista. Luku palkin perässä on todennäköisyys "
         "prosentteina, että joukkue on runkosarjan ykkönen.")
-    render_title_race(standings, data["banked"])
+    render_title_race(standings, data["banked"], opts["highlight"])
     render_title_history(
         data["history"],
         standings.sort_values("p_title", ascending=False)["team"]
-                 .head(6).tolist())
+                 .head(6).tolist(), opts["highlight"])
 
     m = position_matrix(data["position"], standings)
 
@@ -1067,7 +1152,7 @@ def main() -> None:
         f"playoff-raja (6.) ja katkoviiva karsintaraja (10.). "
         "Rivit ennustetussa järjestyksessä."
     )
-    render_position_table(m)
+    render_position_table(m, opts["highlight"])
 
     sd = rank_stdev(m).sort_values(ascending=False)
     wild = ", ".join(f"{t} (σ {v:.1f})" for t, v in sd.head(2).items())
@@ -1100,12 +1185,15 @@ def main() -> None:
             month_keys, index=default,
             format_func=lambda k: (f"{MONTHS_FI[int(k[5:7]) - 1]} {k[:4]}"
                                    .capitalize()))
-        render_fixtures(upcoming[upcoming["start_ts"].str[:7] == chosen])
+        render_fixtures(upcoming[upcoming["start_ts"].str[:7] == chosen],
+                        opts["highlight"])
 
     st.subheader("Miten ennuste on liikkunut")
     st.caption("Ennustetut lopputilanteen pisteet, yksi piste per päivitysajo. "
                "Oma paneeli per joukkue — harmaana kaikki muut vertailukohdaksi.")
-    render_history(data["history"], standings.sort_values("proj_rank")["team"].tolist())
+    render_history(data["history"],
+                   standings.sort_values("proj_rank")["team"].tolist(),
+                   opts["highlight"])
 
 
 if __name__ == "__main__":
