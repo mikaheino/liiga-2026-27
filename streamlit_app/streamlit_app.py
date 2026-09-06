@@ -838,7 +838,20 @@ def season_table(log: pd.DataFrame,
     t["pp_pct"] = 100 * t["ppg_goals"] / t["pp_inst"].replace(0, pd.NA)
     t["pk_pct"] = 100 * (1 - t["pp_against"] / t["sh_inst"].replace(0, pd.NA))
     t["xg_share"] = 100 * t["xgf"] / (t["xgf"] + t["xga"]).replace(0, pd.NA)
-    return t.sort_values(["pts", "gf"], ascending=False)
+    t["gd"] = t["gf"] - t["ga"]
+    # Points, then goal difference, then goals for -- liiga.fi's own order.
+    # Verified against `raw_standings.ranking`, the ranking the API itself
+    # returns: this rule reproduces all 17 places exactly, while sorting on
+    # goals for alone missed 10 of them. Goals for on its own rewards an open
+    # game rather than a good one -- HPK sat third on 7 scored while having
+    # conceded 6.
+    #
+    # Games played does NOT enter into it: SaiPa and JYP rank 6th and 9th on
+    # one game while Lukko is 3rd on two. liiga.fi's own bundle carries a
+    # `sortByPointsPerGameSeason` switch, so some season has ordered by
+    # points per game -- it is off this season, and turning it on here would
+    # put SaiPa and JYP on top and disagree with the official table.
+    return t.sort_values(["pts", "gd", "gf"], ascending=False)
 
 
 def _rank_series(t: pd.DataFrame) -> pd.Series:

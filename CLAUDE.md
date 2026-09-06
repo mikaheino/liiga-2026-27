@@ -238,6 +238,23 @@ Kolme asiaa jotka eivät ole ilmeisiä:
   `@import`illa.** Snowflaken Streamlit voi estää ulkoisen pyynnön, joten
   fallback-pino on oikea eikä koriste.
 
+**Lajittelu on pisteet → maaliero → tehdyt maalit**, eli liiga.fi:n oma
+järjestys. Todennettu `raw_standings.ranking`-saraketta vasten, jonka API itse
+palauttaa: tämä sääntö toistaa kaikki 17 sijaa, kun taas aiempi pisteet →
+tehdyt maalit meni pieleen 10:ssä. Pelkkä maalimäärä palkitsee avoimesta
+pelistä eikä hyvästä — HPK oli kolmantena 7 tehdyllä vaikka oli päästänyt 6.
+
+**Ottelumäärä ei vaikuta järjestykseen.** SaiPa ja JYP ovat 6. ja 9. yhdellä
+ottelulla, Lukko 3. kahdella. liiga.fi:n omassa bundlessa on kytkin
+`sortByPointsPerGameSeason`, joten jonain kautena järjestys on ollut pisteet
+per ottelu — tällä kaudella se ei ole päällä, ja sen käyttö nostaisi SaiPan ja
+JYP:n kärkeen eli eri järjestykseen kuin virallinen taulukko.
+
+⚠️ Tämä on **liiga.fi:n palauttama järjestys, ei todennettu sarjasääntö**.
+Keskinäiset ottelut eivät ole vielä erottaneet ketään, joten jos oikea sääntö
+sisältää ne, se ei näy tästä aineistosta. Tarkista uudelleen
+`raw_standings.ranking`ia vasten jos järjestys alkaa poiketa.
+
 Sarjataulukko rakennetaan `points`-sarakkeesta, ei `result_category`:sta:
 Liiga jakaa 3/2/1/0, joten V / VJA / HJA / H on suoraan johdettavissa eivätkä
 kaksi saraketta voi koskaan olla eri mieltä. `season_table()` saa koko
