@@ -365,6 +365,23 @@ reports an empty table out loud rather than writing nothing quietly, and both
 `_latest_two` and `replace_rows` tolerate their table not existing yet. Retry
 the run; do not conclude the endpoint has been withdrawn.
 
+⚠️ **Kaksi suojausta estävät deltan käyttämisen kahdesti (korjattu 2026-09-06).**
+Ilman niitä `reconstruct_games` kirjoitti viisi jo haettua tulosta toiseen
+kertaan **paluuotteluun kuukausia myöhemmin**: Jukurit 4-0 Sport 5.9. ilmestyi
+uudelleen muodossa Sport 0-4 Jukurit 11.12., koska syyskuun ottelu oli jo
+`ended` ja seuraava pelaamaton pari oli vierasottelu. Sama viidellä ottelulla.
+
+- **Vain kirjaamattomat ottelut ovat rekonstruoitavissa.** Jos standings
+  sanoo joukkueen pelanneen yhtä monta ottelua kuin meillä on tuloksia,
+  mitään ei puutu ja delta selittää ottelun joka on jo tallessa.
+- **Tulevaisuuden ottelua ei ole pelattu.** `start_time <= now`, riippumaton
+  ensimmäisestä ja halvempi.
+
+Oire jonka tästä tunnistaa: joukkueella on sarjataulukossa enemmän otteluita
+kuin muilla, ja `raw_games`:ssa on `ended`-rivi jonka `start_time` on
+tulevaisuudessa. Tarkistus:
+`SELECT * FROM raw_games WHERE ended AND start_time > <tänään>` pitää olla tyhjä.
+
 It refuses to guess: both teams must have gained exactly one game and the two
 sides must agree on the score, otherwise the fixture is left alone and
 counted in `skipped`. Overtime and shootout are indistinguishable this way

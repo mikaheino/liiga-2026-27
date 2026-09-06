@@ -1952,3 +1952,10 @@ wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
 serve with: python -m http.server 8765 --directory site
 snowflake sync SKIPPED: the Snowflake CLI ('snow') is not on PATH -- install it, or set snowflake_sync.enabled: false in config.yaml to publish manually
 === done ===
+=== 2026-09-06 08:32:55 daily update ===
+season 2027: 21/544 played, detail fetched for 5 new game(s)
+updated: 21/544 games played, crowd weight 0.19
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync SKIPPED: the Snowflake CLI ('snow') is not on PATH -- install it, or set snowflake_sync.enabled: false in config.yaml to publish manually
+=== done ===

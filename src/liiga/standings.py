@@ -138,6 +138,18 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
     is unambiguous: both teams gained exactly one game, and one side's goals
     scored equals the other's goals conceded. Anything else is left alone and
     counted in `skipped` -- a wrong score is worse than a missing one.
+
+    Two guards keep a delta from being spent twice. Without them this wrote
+    five real results a second time onto the RETURN fixtures months later --
+    Jukurit 4-0 Sport on 5 Sep reappeared as Sport 0-4 Jukurit on 11 Dec,
+    because the September fixture was already `ended` and the next unplayed
+    pairing was the away leg:
+
+    * **Only unaccounted games are reconstructable.** If the standings say a
+      team has played as many games as we already hold results for, there is
+      nothing missing and its delta explains a game we already have.
+    * **A fixture in the future has not been played.** Independent of the
+      count, and the cheaper check of the two.
     """
     cfg = load_config()["ingestion"]
     season = season or cfg["target_season"]
@@ -151,6 +163,20 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
                     "note": "need two snapshots before a delta exists"}
         prev, cur = pair
 
+        # Results already stored, per team. The per-game endpoint runs before
+        # this in the pipeline, so anything it fetched is counted here and its
+        # delta is already spent.
+        stored = query_df(
+            con,
+            f"""SELECT team, COUNT(*) AS n FROM (
+                    SELECT home_team AS team FROM raw_games
+                     WHERE season = {int(season)} AND ended
+                    UNION ALL
+                    SELECT away_team FROM raw_games
+                     WHERE season = {int(season)} AND ended
+                ) GROUP BY team""")
+        held = dict(zip(stored["team"], stored["n"])) if not stored.empty else {}
+
         played_once = set()
         delta = {}
         for team in cur.index:
@@ -160,13 +186,16 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
                  for c in ("games", "points", "goals", "goals_against",
                            "ties", "overtime_wins")}
             delta[team] = d
-            if d["games"] == 1:
+            missing = (_num(cur.loc[team, "games"]) or 0) - int(held.get(team, 0))
+            if d["games"] == 1 and missing >= 1:
                 played_once.add(team)
 
+        now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
         pending = query_df(
             con,
             f"""SELECT game_id, home_team, away_team FROM raw_games
                 WHERE season = {int(season)} AND NOT ended
+                  AND start_time <= '{now}'
                 ORDER BY start_time""")
 
         resolved, skipped = [], 0
