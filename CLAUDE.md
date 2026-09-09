@@ -344,6 +344,45 @@ Kaksi asiaa jotka eivät ole ilmeisiä:
 `build_instagram.py`:n ajaminen **ylikirjoittaa `site_instagram/`:n
 julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
 
+## Snowflake ajastaa itse itsensä (2026-09-09)
+
+Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/tasks.sql`**.
+
+| taski | ajastus | compute | tekee |
+|---|---|---|---|
+| `LIIGA_CHECK` | `CRON 0 6 * * * Europe/Helsinki` | serverless | laskee montako ottelua on hakematta, palauttaa luvun |
+| `LIIGA_DAILY_RUN` | `AFTER LIIGA_CHECK`, `WHEN … > 0` | `LIIGA_WH` | `EXECUTE NOTEBOOK LIIGA_DAILY()` |
+
+**Ehto ei ole "oliko eilen kierros" vaan "onko jokin ottelu alkanut yli 8 h
+sitten ja yhä hakematta".** Normaalina päivänä sama asia, mutta itsekorjaava:
+väliin jäänyt tai epäonnistunut ajo napataan kiinni seuraavana aamuna sen
+sijaan että ottelu jäisi pysyvästi puuttumaan. Todennettu: nyt 0 → SKIPPED,
+huomenna 6 → ajaa.
+
+Neljä asiaa jotka maksoivat oikeaa selvittelyä — älä johda näitä uudelleen:
+
+- **`WHEN` ei tue taulukyselyä.** Vain `SYSTEM$STREAM_HAS_DATA` ja
+  `SYSTEM$GET_PREDECESSOR_RETURN_VALUE` plus boolean-operaattorit. Siksi ehto
+  on kaksiosainen ketju eikä yksi taski. Ehdon arviointi tapahtuu cloud
+  services -kerroksessa eikä käynnistä varastoa.
+- **`SYSTEM$SET_RETURN_VALUE` vaatii vakion** eikä hyväksy `:muuttujaa`, eikä
+  sitä saa kutsua proseduurin sisältä (*function with side effects*). Luku
+  upotetaan literaalina `EXECUTE IMMEDIATE`-lauseeseen.
+- **`snow sql -f` ei kelpaa tähän.** CLI katkoo lauseet puolipisteestä, mikä
+  rikkoo Scripting-lohkon, eikä taskin runko hyväksy `$$`-rajoja. Aja
+  Python-konnektorilla.
+- **`CREATE TASK` on tarkka lausejärjestyksestä**: `COMMENT` ennen `AFTER`:ia,
+  `WHEN` viimeisenä. Ja juuren `CREATE OR REPLACE` katkaisee lasten linkin —
+  lapsi on luotava uudelleen sen jälkeen. Käynnistys: **lapsi ensin, juuri
+  viimeisenä.**
+
+⚠️ **Kuratoidut taulut eivät päivity tästä.** Notebook laskee tulokset itse
+liiga.fi:stä, mutta rosterit, `player_rates` ja ulkomaiset tilastot tulevat
+`sync_to_snowflake.py`:llä paikallisesta ajosta. launchd-ajo **ohittaa sen
+joka aamu** (`snow` ei ole launchdin PATH:ssa, 9 kertaa lokissa), joten
+roosterimuutos ei kulkeudu Snowflakeen ennen kuin joku ajaa synkan käsin.
+Korjaus olisi absoluuttinen polku `daily_update.sh`:ssä tai `PATH` plistiin.
+
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 
 The app is being developed locally and the Snowflake copy is deliberately
