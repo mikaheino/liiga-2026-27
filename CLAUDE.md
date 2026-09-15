@@ -638,11 +638,31 @@ jälkeen: `set(ext.league) - set(league_factors.league)` pitää olla tyhjä.
 `stg_games WHERE season = target`, kaikki 544 ottelua, eikä tunne
 pankitettuja pisteitä eikä vaimennettua crowd-painoa. Se on esikauden polku.
 
+**Ero on kahdessa kohdassa, ja Elo on niistä isompi:**
+
+| | `refresh_standings.py` | `forecast()` |
+|---|---|---|
+| Elo | `elo_ratings_as_of(target)` — jäädytetty kauden **alkuun** | `elo_ratings_current(target)` — sisältää pelatut |
+| ottelut | kaikki 544 nollasta | pelatut pankitetaan, loput simuloidaan |
+| crowd | `crowd_weight` täytenä | `× (1 − frac_played)` |
+
+Crowd ei selitä mitään (0,200 vs. 0,1915). Elo selittää: 15.9. nykyisen ja
+esikauden Elon ero oli **JYP +32,5, Pelicans +29,4, KooKoo −34,0** — 66
+pistettä JYP:n ja KooKoon välillä pelkästä hetken valinnasta.
+
 Ajoin sen 15.9. roster-muutoksen jälkeen ja se ylikirjoitti sarjataulukon
-esikausityylisellä ennusteella: JYP 3. → 8., Pelicans 8. → 11., Jokerit
-9. → 6. Näytti siltä että viiden pelaajan lisäys mullisti kauden. Oikealla
-skriptillä sama muutos liikutti eniten KooKoota 0,4 pisteellä eikä vaihtanut
-yhtäkään sijaa.
+esikausityylisellä ennusteella: JYP 3. → 8., Pelicans 8. → 11., KooKoo
+4. → 2. Näytti siltä että viiden laitapelaajan ja kolmen varamaalivahdin
+lisäys mullisti kauden.
+
+⚠️ **Se ei ollut data, vaan menetelmä.** Sama skripti olisi tuottanut saman
+tuloksen koskemattomalla datalla. Hyvin alkaneet joukkueet menettävät sekä
+Elo-nousunsa että pankitut pisteensä; huonosti alkaneet saavat esikauden
+luokituksensa takaisin eikä tappioita kirjata. KooKoolla oli **0 pistettä
+pankissa ja silti +6,6** — se ei voi tulla sen omista peleistä.
+
+Oikea vertailu on sama skripti ennen ja jälkeen: yksikään joukkue ei
+vaihtanut sijaa ja suurin liike oli KooKoo −0,4.
 
 Tunnistat sen tästä: **`prediction_meta.updated_at` ei päivity**, koska
 `refresh_standings.py` ei kirjoita sitä. Taulut jäävät keskenään eri ajoista.
