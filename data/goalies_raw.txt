@@ -173,3 +173,20 @@ Roope Taponen|2023|Liiga|41|0.912|HIFK
 Roope Taponen|2024|Liiga|41|0.907|HIFK
 Roope Taponen|2025|Liiga|26|0.899|HIFK
 Roope Taponen|2026|Liiga|6|0.846|Ilves
+Niclas Westerholm|2022|Liiga|43|0.898|SaiPa
+Niclas Westerholm|2023|Liiga|42|0.888|SaiPa
+Niclas Westerholm|2023|Liiga|4|0.833|Kärpät
+Niclas Westerholm|2024|Liiga|37|0.911|Kärpät
+Niclas Westerholm|2025|Liiga|18|0.881|Kärpät
+Niclas Westerholm|2026|Czechia|3|0.890|Mladá Boleslav
+Niclas Westerholm|2026|Czechia|9|0.903|České Budějovice
+Niclas Westerholm|2026|Allsvenskan|10|0.908|Södertälje SK
+Jacob Crespin|2025|Allsvenskan|29|0.905|Kalmar HC
+Jacob Crespin|2026|Allsvenskan|37|0.921|Kalmar HC
+Rasmus Korhonen|2022|Mestis|23|0.900|Hermes Kokkola
+Rasmus Korhonen|2022|Liiga|3|0.896|Sport
+Rasmus Korhonen|2022|AHL|5|0.889|Tucson Roadrunners
+Rasmus Korhonen|2023|Liiga|15|0.879|Ässät
+Rasmus Korhonen|2024|Liiga|24|0.903|Jukurit
+Rasmus Korhonen|2025|Allsvenskan|44|0.899|Västerås IK
+Rasmus Korhonen|2026|Allsvenskan|35|0.899|Västerås IK

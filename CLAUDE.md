@@ -549,6 +549,82 @@ Neljä ansaa, kaikki koettu:
 Hyökkääjien `kh`/`lh` ei merkitse mallille mitään — molemmat ovat `F`.
 Kokoonpanon `role` kertoo todellisen paikan (STRIKER, RIGHT_WING, …).
 
+## Ulkoiset tilastot: hockeydb, ei EliteProspects (2026-09-15)
+
+**`r.jina.ai` + EliteProspects on kuollut.** Proxy vastaa, EliteProspects
+torjuu sen: 403 sekä proxyn kautta että suoraan, myös täysillä
+selainotsikoilla. eurohockey 403, liiga.fi:n pelaajatilastot 403.
+`gql.eliteprospects.com` vastaa 400 eikä 403 — palvelin on pystyssä mutta
+introspektio on kiinni, joten skeemaa ei voi arvata.
+
+**Toimiva reitti on hockeydb.com, suoralla curlilla.** CLAUDE.md väitti sen
+Cloudflare-estävän elokuusta 2026 — ei estä enää.
+
+```
+haku:    https://www.hockeydb.com/ihdb/stats/find_player.php?full_name=<sukunimi>
+pelaaja: https://www.hockeydb.com/ihdb/stats/pdisplay.php?pid=<pid>
+```
+
+Viisi ansaa, kaikki koettu:
+
+- **Hakuun vain sukunimi.** `full_name=Osipov+Aleksandr` antaa **HTTP 404**,
+  pelkkä `Osipov` toimii. 404 ei siis tarkoita estoa.
+- **Otsikkorivi on eri kohdassa kenttäpelaajalla ja maalivahdilla.**
+  Maalivahtisivulla ryhmäotsikot ja sarakenimet ovat samalla rivillä,
+  kenttäpelaajalla kahdella. Etsi se rivi jolla lukee `Season`.
+- **Sivu lainaa `class`-attribuutin kaksoislainausmerkein**, hakusivu
+  yksinkertaisin. Yhdelle viritetty regex löytää nolla riviä toiselta.
+- **Torjunta-% on sarakkeessa `Pct`, ei `SV%`.** Se on siellä, vaikka
+  merkkijonohaku `SV%` ei löydä mitään — tämän takia luulin ensin ettei
+  torjuntaprosentteja ole.
+- **Osalla riveistä `Pct` on tyhjä** (vanhat tai vähäiset kaudet). Jätä rivi
+  pois, älä oleta nollaa.
+
+Kausinumerointi: hockeydb `2024-25` = meidän `season = 2025`.
+
+Skripti johon nämä on jo koodattu: istunnon `hdb.py` / `extract.py`. Jos
+teet siitä pysyvän, muista `time.sleep` — sivusto on ilmainen.
+
+## Näkymätön Liiga-historia: pisteetön pelaaja ei ole kannassa
+
+`player_season_scoring` rakentuu maali- ja syöttötapahtumista, joten
+**pelaaja joka ei tehnyt pistettäkään ei ole siellä lainkaan** — ei myöskään
+`player_bio`:ssa. Ossi Sippola pelasi 14 Liiga-ottelua 2025-26 ja Ilari
+Mäkinen 5, ja kanta sanoi molemmista `has_liiga_history = False`.
+
+Tämä on eri asia kuin 5.9. korjattu nimibugi (joka koski pelaajia joilla oli
+syöttöjä muttei maaleja). Tätä ei voi korjata nimikorjauksella: rivi
+puuttuu kokonaan. Ennen kautta 2026-27 ainoa korjaus on ulkoinen lähde;
+`game_lineups` kattaa vasta kuluvan kauden.
+
+⚠️ **Nollatuotoksen lisääminen NOSTI arviota.** Mäkinen oli replacement
+0,128 p/ottelu ja on 5 pisteettömän Liiga-ottelun jälkeen 0,219. Syy:
+`regression_strength: 20` vetää pienen otoksen kohti **pelipaikan
+keskiarvoa** (~0,27 hyökkääjällä), joka on paljon korkeampi kuin
+replacement-vakio. Pelaaja jolla on vähän huonoa dataa arvottuu siis
+korkeammalle kuin pelaaja jolla ei ole dataa lainkaan. Se on aito
+epäjohdonmukaisuus mallissa — **älä korjaa kesken kauden** (AGENTS.md §10),
+mutta muista se kun viritys on ajankohtainen.
+
+## ⚠️ Kesken kauden: `refresh_standings.py` on VÄÄRÄ skripti
+
+`refresh_standings.py` simuloi **koko kauden alusta** — se lukee
+`stg_games WHERE season = target`, kaikki 544 ottelua, eikä tunne
+pankitettuja pisteitä eikä vaimennettua crowd-painoa. Se on esikauden polku.
+
+Ajoin sen 15.9. roster-muutoksen jälkeen ja se ylikirjoitti sarjataulukon
+esikausityylisellä ennusteella: JYP 3. → 8., Pelicans 8. → 11., Jokerit
+9. → 6. Näytti siltä että viiden pelaajan lisäys mullisti kauden. Oikealla
+skriptillä sama muutos liikutti eniten KooKoota 0,4 pisteellä eikä vaihtanut
+yhtäkään sijaa.
+
+Tunnistat sen tästä: **`prediction_meta.updated_at` ei päivity**, koska
+`refresh_standings.py` ei kirjoita sitä. Taulut jäävät keskenään eri ajoista.
+
+Kauden aikana aja aina **`python scripts/daily_update.py`**. CLAUDE.md:n
+kohta "Adding new players" askel 7 neuvoo yhä `refresh_standings.py`:tä —
+se neuvo pätee vain ennen kauden avausta.
+
 ## ⚠️ EliteProspects-reitti on kuollut (2026-09-15)
 
 CLAUDE.md:n dokumentoima menetelmä **ei enää toimi**:
