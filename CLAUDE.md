@@ -606,6 +606,32 @@ korkeammalle kuin pelaaja jolla ei ole dataa lainkaan. Se on aito
 epäjohdonmukaisuus mallissa — **älä korjaa kesken kauden** (AGENTS.md §10),
 mutta muista se kun viritys on ajankohtainen.
 
+## ⚠️ Kaksi raakataulua ajautuu erilleen tiedostoistaan
+
+`raw_external_player_seasons` ja `raw_goalie_seasons` ovat **kopioita**
+`data/external_players.csv`:stä ja `data/goalies_raw.txt`:stä, eikä mikään
+päivittäisen ajon vaihe kirjoita niitä: `load_goalie_seasons()` ei ole
+missään ajopolussa, eikä `raw_external_player_seasons`:lle löydy kirjoittajaa
+lainkaan.
+
+15.9. tiedostossa oli 466 riviä ja taulussa 366, eli **taulu oli 87 riviä
+jäljessä jo ennen tämän päivän muokkauksia**. Maalivahdeissa 192 vs. 175.
+
+**Malli ei kärsi tästä**: `players.py:165` ja `external.py:_read_csv` lukevat
+CSV:n suoraan, joten ennuste on aina tiedostojen mukainen. Jäljessä ovat vain
+Snowflaken raportointi ja semanttinen näkymä. Päivitys käsin:
+
+```python
+register_df(con, "raw_external_player_seasons",
+            pd.read_csv(resolve_path(cfg["paths"]["external_players_csv"]), comment="#"))
+register_df(con, "raw_goalie_seasons", parse_goalie_seasons())
+```
+
+⚠️ **Tuntematon sarjanimi saa kertoimen 1.0.** `external.py` tekee
+`ext["league"].map(fmap).fillna(1.0)`, joten kirjoitusvirhe sarjan nimessä
+kohtelee kautta **Liiga-tasoisena** eikä kaadu mihinkään. Tarkista lisäysten
+jälkeen: `set(ext.league) - set(league_factors.league)` pitää olla tyhjä.
+
 ## ⚠️ Kesken kauden: `refresh_standings.py` on VÄÄRÄ skripti
 
 `refresh_standings.py` simuloi **koko kauden alusta** — se lukee
