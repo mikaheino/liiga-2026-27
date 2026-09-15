@@ -513,6 +513,61 @@ out in `docs/model_improvements_in_season.md`, which also holds the ordered
 list of what to improve and when. Measure after ~20 games, tune only after
 the season is complete (AGENTS.md §10: log-loss and MAE, never ρ).
 
+## Kauden alettua: kokoonpanot ovat rosterin totuus (2026-09-15)
+
+`game_lineups` kertoo ketkä oikeasti pukeutuivat. Se on parempi lähde kuin
+mikään siirtosivusto, ja se on jo kannassa. Täsmäytys:
+
+```sql
+-- pelannut mutta ei rosterissa  (pitää olla tyhjä)
+-- vertaa SUKUNIMI + joukkue + pelipaikka, ei koko nimeä (ks. ansa alla)
+```
+
+Ensimmäinen ajo 15.9. löysi **21 pelaajaa jotka olivat pelanneet muttei olleet
+rosterissa**, mikä on paljon enemmän kuin siirtosivuston 9 siirtoa. Rosteri on
+esikausiartikkelin diff eikä pysy perässä.
+
+Neljä ansaa, kaikki koettu:
+
+- **Roster tulee SOPIMUSLISTOISTA, ei `+`/`–`-riveistä.** `parse_article`
+  lukee rivit `Maalivahdit (3): Nimi (2027), ...`; `+`-rivit menevät vain
+  `incoming_rows`:iin ulkoisten tilastojen lähdeklubia varten. Pelaajan
+  lisääminen `+`-rivinä **ei tee mitään** rosterille. Päivitä myös suluissa
+  oleva lukumäärä.
+- **Lähtijät on merkitty ajatusviivalla `–` (U+2013), ei tavuviivalla.**
+  `grep "^-"` löytää nolla riviä.
+- **liiga.fi:n kokoonpanot käyttävät eri etunimimuotoa kuin sopimuslista**:
+  Jakob/Jacob Crespin, Matthew/Matt Caito, Jussi/Juho Olkinuora,
+  Nicholas/Nick Zabaneh. Koko nimellä täsmäytys luo **duplikaatteja** —
+  lisäsin neljä ennen kuin huomasin. Tarkista aina saman joukkueen saman
+  sukunimen parit. Aidot parit ovat olemassa (Erholtzin veljekset Kärpissä,
+  Aleksi ja Antti Saarela Lukossa, Verner ja Veeti Miettinen KooKoossa).
+- **`player_season_scoring` tallentaa nimet VERSAALEINA.** `last_name =
+  'Lindbohm'` löytää nolla riviä, `ilike` löytää pelaajan täydellisine
+  historioineen. Älä päättele tästä että historiaa ei ole.
+
+Hyökkääjien `kh`/`lh` ei merkitse mallille mitään — molemmat ovat `F`.
+Kokoonpanon `role` kertoo todellisen paikan (STRIKER, RIGHT_WING, …).
+
+## ⚠️ EliteProspects-reitti on kuollut (2026-09-15)
+
+CLAUDE.md:n dokumentoima menetelmä **ei enää toimi**:
+
+| reitti | tulos |
+|---|---|
+| `r.jina.ai` mihin tahansa | **HTTP 000** — proxy ei vastaa lainkaan |
+| eliteprospects.com suoraan | 403, Cloudflare-haaste |
+| eurohockey.com | 403 |
+| liiga.fi `/players/stats/...` | 403, *Missing Authentication Token* |
+
+Mikä toimi: **Wikipedia** (`en.wikipedia.org/wiki/<Nimi>`) antoi Petteri
+Lindbohmin kausikohtaiset tilastot oikein — mutta vain tunnetuille pelaajille.
+
+Seuraus: **maalivahtien torjunta-%:a ei saa mistään.** 13 rosterin
+maalivahdilla ei ole riviä `goalies_raw.txt`:ssä. Malli sietää sen
+(regressio priorii kohti), mutta uutta maalivahtia ei voi arvottaa oikein
+ennen kuin joku syöttää torjuntaprosentit käsin.
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):

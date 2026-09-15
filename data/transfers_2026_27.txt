@@ -38,11 +38,11 @@ Sopimuspelaajat
 
 Maalivahdit (3): Hugo Alnefelt (2027), Rastislav Elias (2027), Tim Juel (2027)
 
-Puolustajat (10): Jesper Ahlroth (2028), Verneri Arkko (2027+1), Bruno Jalasti (2028), Aron Kiviharju (2027), Ilari Melart (2027), Lukas Pilö (2027), Kasper Puutio (2028), Viljami Savolainen (2028), Saku Salmela (2027), Eelis Uronen (2028)
+Puolustajat (12): Jesper Ahlroth (2028), Verneri Arkko (2027+1), Bruno Jalasti (2028), Aron Kiviharju (2027), Ilari Melart (2027), Lukas Pilö (2027), Kasper Puutio (2028), Viljami Savolainen (2028), Saku Salmela (2027), Eelis Uronen (2028), Ossi Sippola, Linus Nässen
 
 Keskushyökkääjät (5): Atte Joki (2028), Jori Lehterä (2027), Jake Leschyshyn (2027), Lauri Sinivuori (2027), Anttoni Uronen (2028)
 
-Laitahyökkääjät (11): Niko Huuhtanen (2028), Aatu Karjalainen (2027), Ottoville Leppänen (2028), Eetu Liukas (2028), Vincent Marleau (2027), Daniel Mäkiaho (2027), Iiro Pakarinen (2027), Sebastian Repo (2027), Jere Somervuori (2027), Hannes Tiainen (2027), Lassi Vanhatalo (2028)
+Laitahyökkääjät (12): Niko Huuhtanen (2028), Aatu Karjalainen (2027), Ottoville Leppänen (2028), Eetu Liukas (2028), Vincent Marleau (2027), Daniel Mäkiaho (2027), Iiro Pakarinen (2027), Sebastian Repo (2027), Jere Somervuori (2027), Hannes Tiainen (2027), Lassi Vanhatalo (2028), Frans Karjalahti
 
 Valmennus: Olli Jokinen (2027+1), Mika Hyvärinen (2027), Anders Carlsson (2027), Riku Helenius (2027), Matias Sarvela (2027), Ari Halttunen, Jan Lundell, Roope Matilainen
 
@@ -79,11 +79,11 @@ Sopimuspelaajat
 
 Maalivahdit (3): Jacob Crespin (2028), Kim Saarinen (NHL), Max Väyrynen (2028)
 
-Puolustajat (9): Arturs Andzans (2027), Hugo Gabrielson (2027+1), Viljami Jokirinne (2028), Akseli Ketonen (2027), Miska Kukkonen (2028), Chad Nychuk (2027), Valtteri Piironen (2028), Garrett Pyke (2027), Eerik Wallenius (2027)
+Puolustajat (10): Arturs Andzans (2027), Hugo Gabrielson (2027+1), Viljami Jokirinne (2028), Akseli Ketonen (2027), Miska Kukkonen (2028), Chad Nychuk (2027), Valtteri Piironen (2028), Garrett Pyke (2027), Eerik Wallenius (2027), Gabriel Nitz
 
 Keskushyökkääjät (5): Heikki Huttunen (2027), Harri Kainulainen (2027), Connor MacEachern (2027), Sami Päivärinta (2027), Brendan Ranford (2027)
 
-Laitahyökkääjät (9): Vili Alitalo (2027), Ethan De Jong (2027), Anrei Hakulinen (2027), Oliver Kopiloff (2028), Olli Korhonen (2028), Andrej Kukuca (2027+1), Joonas Oden (2028), Rasmus Tallqvist (2028), Roope Vesterinen (2027)
+Laitahyökkääjät (10): Vili Alitalo (2027), Ethan De Jong (2027), Anrei Hakulinen (2027), Oliver Kopiloff (2028), Olli Korhonen (2028), Andrej Kukuca (2027+1), Joonas Oden (2028), Rasmus Tallqvist (2028), Roope Vesterinen (2027), Ilari Mäkinen
 
 Valmennus: Mikko Manner (2027), Olli Hällfors (2027), Ari-Pekka Selin (2027), Joni Puurula (2027+1), Markus Jokinen (2027)
 
@@ -172,7 +172,7 @@ Puolustajat (11): Matt Caito (2027), Aleksi Elorinne (2027), Saku Forsblom (2027
 
 Keskushyökkääjät (7): Patrick Curry (2027+1), Alexander Forslund (2029), Bruno Kallio (2027), Aleksi Mustonen (2028), Henri Nikkanen (2028), Kristo Pitkänen (2028+1), Patrik Virta (2028)
 
-Laitahyökkääjät (10): Maxime Fortier (2028), Jere Henriksson (2027), Markus Hännikäinen (2029), Antti Kalapudas (2028), Emil Kuusla (2028), Rasmus Lahnaviik (2027), Jesse Liuksiala (2027), Miro Nalli (2027), Oliver Suni (2027), Teemu Turunen (2029), Eetu Tuulola (2027)
+Laitahyökkääjät (11): Maxime Fortier (2028), Jere Henriksson (2027), Markus Hännikäinen (2029), Antti Kalapudas (2028), Emil Kuusla (2028), Rasmus Lahnaviik (2027), Jesse Liuksiala (2027), Miro Nalli (2027), Oliver Suni (2027), Teemu Turunen (2029), Eetu Tuulola (2027)
 
 Valmennus: Tomek Valtonen (2028+1), Juuso Hahl (2028), Waltteri Immonen (2028+1), Samuli Nordman (2028), Jaakko Forssell, Kim Forsblom
 
@@ -204,13 +204,13 @@ JUKURIT, Mikkeli
 – Sakke Hämäläinen / lh (Pelicans)
 Sopimuspelaajat
 
-Maalivahdit (3): Matthieu Herpin (2027), Ville Kolehmainen (2027), Jesper Myrenberg (2027)
+Maalivahdit (4): Matthieu Herpin (2027), Ville Kolehmainen (2027), Jesper Myrenberg (2027), Aleksandr Osipov
 
-Puolustajat (11): Johan Fisk (2027+1), Bogdans Hodass (2027+1), Niko Korkola (2027), Arttu Kärki (2027), Elias Ruusu (tryout), Eemeli Saari (2028), Patrik Satosaari (2027+1), Alberts Smits (NHL), Sebastian Soini (2027), Andrej Sustr (2027), Luka Tiihonen (2027)
+Puolustajat (12): Johan Fisk (2027+1), Bogdans Hodass (2027+1), Niko Korkola (2027), Arttu Kärki (2027), Elias Ruusu (tryout), Eemeli Saari (2028), Patrik Satosaari (2027+1), Alberts Smits (NHL), Sebastian Soini (2027), Andrej Sustr (2027), Luka Tiihonen (2027), Alex Lintuniemi
 
 Keskushyökkääjät (6): Justin Addamo (2027), Louis Boudon (2028), Connor Ford (2027), Elias Koponen (2028), Oskari Remes (2027), Viljam Sandvik (2027)
 
-Laitahyökkääjät (8): Verneri Ahonen (2028), Aaro Chrons (2028), Jiro Frilander (2027+1), Jacob Hayhurst (2027), Bence Horvath (2027+1), Jesper Olofsson (2027), Jeremi Tammela (2027), Verner Valojärvi (2027+1)
+Laitahyökkääjät (12): Verneri Ahonen (2028), Aaro Chrons (2028), Jiro Frilander (2027+1), Jacob Hayhurst (2027), Bence Horvath (2027+1), Jesper Olofsson (2027), Jeremi Tammela (2027), Verner Valojärvi (2027+1), Rasmus Baggström, Thomas Olsen, Linus Sjödin, Natan Gashaw Teshome
 
 Valmennus: Jonne Virtanen (2027), Jukka Ahvenjärvi (2027), Jesse Welling (2027), Mika Järvinen (2027), Juuso Laukkanen (2027)
 
@@ -308,7 +308,7 @@ Puolustajat (9): Ville Arkiomaa (2027), Arvid Aronsson (2028), Connor Corcoran (
 
 Keskushyökkääjät (5): Matti Järvinen (2027), Carter King (2027), Jani Lajunen (2028), Elias Puolanne (2027), Aarne Talvitie (2027)
 
-Laitahyökkääjät (10): Mathias From (2027), Janne Hämäläinen (2027), Iikka Kangasniemi (2028), Jere Sallinen (2029), Eeli Salovaara (2028), Tuomas Suoniemi (2027), Lukas Svejkovsky (2027), Arttu Tuomaala (2027), Jere Väisänen (2027), Linus Öberg (2027)
+Laitahyökkääjät (11): Mathias From (2027), Janne Hämäläinen (2027), Iikka Kangasniemi (2028), Jere Sallinen (2029), Eeli Salovaara (2028), Tuomas Suoniemi (2027), Lukas Svejkovsky (2027), Arttu Tuomaala (2027), Jere Väisänen (2027), Linus Öberg (2027), Juho Keinänen
 
 Valmennus: Jyrki Aho (2027), Kurtis McLean (2027), Rolf von Hedenberg (2027), Levi Earl (2027), Patrik Björkskog (2027)
 
@@ -329,7 +329,7 @@ KOOKOO, Kouvola
 – Joonas Oden / lh (HPK)
 Sopimuspelaajat
 
-Maalivahdit (2): Jasper Patrikainen (2027+1), Eetu Randelin (2028)
+Maalivahdit (4): Jasper Patrikainen (2027+1), Eetu Randelin (2028), Niclas Westerholm, Samuel Heikkinen
 
 Puolustajat (9): Joseph Berger (2027), Ari Gröndahl (2027), Kim Nousiainen (2027), Niklas Nykyri (2027), Aleksi Pakaslahti (2028), Arttu Pelli (2028), Ville Puhakka (2027), Jiri Pärssinen (2027+1), Joona Riekkinen (2027)
 
@@ -438,13 +438,13 @@ PELICANS, Lahti
 – Joonas Paqvalin / lh (IPK FIN-2)
 Sopimuspelaajat
 
-Maalivahdit (3): Patrik Bartosak (2028), Juho Olkinuora (2027), Frantisek Poletin (2027)
+Maalivahdit (4): Patrik Bartosak (2028), Juho Olkinuora (2027), Frantisek Poletin (2027), Jasper Lattu
 
-Puolustajat (9): Hampus Falk (2027), Hannes Häkkilä (2028), Johannes Johannesen (2027), Michal Jordan (2027), Mikko Kousa (2027), Onni Käyhkö (2027+1), Carl-Johan Lerby (2027), Einari Luhanka (2027), Valtteri Nurmi (2028), Markus Nutivaara (2027)
+Puolustajat (11): Hampus Falk (2027), Hannes Häkkilä (2028), Johannes Johannesen (2027), Michal Jordan (2027), Mikko Kousa (2027), Onni Käyhkö (2027+1), Carl-Johan Lerby (2027), Einari Luhanka (2027), Valtteri Nurmi (2028), Markus Nutivaara (2027), Onni Amhamdi
 
 Keskushyökkääjät (7): Oskars Batna (2028), Christoffer Forsberg (2027), Anton Kettunen (2028), Joona Kumpula (2027+1), Brett Stapley (2027), Oleksii Myklukha (2027+1), Miro Väänänen (2028)
 
-Laitahyökkääjät (11): Aidan Dudas (2027), Gabriel Fortier (2027), Vertti Haikala (2027), Liam Hawel (2027), Sakke Hämäläinen (2028), Roni Karvinen (2027), Eerik Kolehmainen (2028+1), Onni Lind (2027), Aatu Pohjalainen (2027), Eelis Teutari (2028), Lukas Zetterberg (2027)
+Laitahyökkääjät (10): Aidan Dudas (2027), Gabriel Fortier (2027), Vertti Haikala (2027), Liam Hawel (2027), Sakke Hämäläinen (2028), Roni Karvinen (2027), Eerik Kolehmainen (2028+1), Onni Lind (2027), Aatu Pohjalainen (2027), Eelis Teutari (2028)
 
 Valmennus: Sami Kapanen (2027), Teemu Leppänen (2027), Ville-Matti Koponen (2027), Toni Pasuri (2027), Aleksi Salonen (2027), Tuomo Kärki (2027), Juha Nakari (2027)
 
@@ -480,7 +480,7 @@ Puolustajat (8): Karri Aho (2027), Santeri Airola (2027), Brian Kramer (2027), S
 
 Keskushyökkääjät (5): Samu Bau (2027), Otto Hokkanen (2027), Aarne Intonen (2027), Mikko Perttu (2028), Miikka Salomäki (2027)
 
-Laitahyökkääjät (13): Einar Emanuelsson (2027), Petr Fridrich (2027), Juuso Heikkilä (2028), Eero Klintrup (2028), Veeti Moilanen (2027), Janne Naukkarinen (2027), Petrus Palmu (2027), Joonas Rajala (2028), Patrik Siikanen (2027), Miro Tauslahti (2028), Nick Zabaneh (2027), Anze Zezelj (2028)
+Laitahyökkääjät (12): Einar Emanuelsson (2027), Petr Fridrich (2027), Juuso Heikkilä (2028), Eero Klintrup (2028), Veeti Moilanen (2027), Janne Naukkarinen (2027), Petrus Palmu (2027), Joonas Rajala (2028), Patrik Siikanen (2027), Miro Tauslahti (2028), Nick Zabaneh (2027), Anze Zezelj (2028)
 
 Valmennus: Raimo Helminen (2027), Janne Hietaniemi (2027), Vesa Viitakoski (2027), Tomas Duba (2027)
 
@@ -528,7 +528,7 @@ Maalivahdit (3): Masi Härkönen (2028), Jesse Juntunen (2028), Joni Ortio (2027
 
 Puolustajat (12): Eric Bürger (2028), Kalle Ervasti (2028), Theodor Johnsson (2027), Kalle Kangas (2028), Onni Kohvakka (2027+1), Miika Koivisto (2027), Eetu Koivunen (2027), Max Laatikainen (2027), Jasper Valtanen (2027+1), Valtteri Viljanen (2027), Emil Vänninen (2027+1), Simon Åkerström (2027)
 
-Keskushyökkääjät (6): George Diaco (2027), Kalle Miketinac (2027+1), Benjamin Pietilä (2028), Anton Stråka (2027), Johan Sundström (2028), Samuel Timonen (2027), Kalle Östman (2027)
+Keskushyökkääjät (7): George Diaco (2027), Kalle Miketinac (2027+1), Benjamin Pietilä (2028), Anton Stråka (2027), Johan Sundström (2028), Samuel Timonen (2027), Kalle Östman (2027)
 
 Laitahyökkääjät (14): Thierry Andrey (2027), Charles Bertrand (2027), Tim Ekman (2027+1), Luke Grainger (2027+1), Philip Granath (2027), Lari Heikkinen (2027), Oliver Hult (2027), Matti Härmä (2027), Waltteri Koivunen (2028), Eetu Levänen (2027), Elias Mourujärvi (2027+1), Viljami Nieminen (2028), Waltteri Toivainen (2028), Isak Walther (2027)
 
@@ -601,7 +601,7 @@ Sopimuspelaajat
 
 Maalivahdit (4): Eetu Mäkiniemi (2027), Aatu Niittymäki (2028), Markus Ruusu (2027), Noa Vali (2027)
 
-Puolustajat (12): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1)
+Puolustajat (13): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1), Petteri Lindbohm
 
 Keskushyökkääjät (7): Lukas Haudum (2027), Aatos Koivu (2027), Hannu Kuru (2028), Vili Munkki (2027), Joel Määttä (2027), Otto Paajanen (2028), Atte Uusikartano (2027+1)
 
@@ -641,7 +641,7 @@ Sopimuspelaajat
 
 Maalivahdit (3): Jan Bednar (2027), Pyry Lammi (2028), Roope Taponen (2027)
 
-Puolustajat (10): Aleksi Anttalainen (2028), Lasse Boelius (2027), Eemeli Heinilä (2028+1), Casimir Jürgens (2027), Miro Karjalainen (2027), Rami Määttä (2028), Petteri Nikkilä (2028), Petteri Nurmi (2027), Juuso Pulli (10/2026), Petteri Riihinen (2027)
+Puolustajat (11): Aleksi Anttalainen (2028), Lasse Boelius (2027), Eemeli Heinilä (2028+1), Casimir Jürgens (2027), Miro Karjalainen (2027), Rami Määttä (2028), Petteri Nikkilä (2028), Petteri Nurmi (2027), Juuso Pulli (10/2026), Petteri Riihinen (2027), Maxim Saarimäki
 
 Keskushyökkääjät (7): Cameron Hillis (2027), Patrik Juhola (2028), Feetu Knihti (2027), Kasperi Ojantakanen (), Balazs Sebok (2027), Peter Tiivola (2027), Eeli Äijälä (2027)
 
