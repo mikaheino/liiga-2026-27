@@ -704,6 +704,44 @@ maalivahdilla ei ole riviä `goalies_raw.txt`:ssä. Malli sietää sen
 (regressio priorii kohti), mutta uutta maalivahtia ei voi arvottaa oikein
 ennen kuin joku syöttää torjuntaprosentit käsin.
 
+## ⚠️ Debytantti menetti ulkomaantilastonsa (korjattu 2026-09-15)
+
+`players.py`:n `assemble_player_seasons` yhdistää Liiga-rivit ja
+`external_players.csv`:n rivit avaimella joka on **player_id jos se on
+tiedossa, muuten normalisoitu nimi**. Ulkomaanrivit tulevat ilman id:tä,
+joten ne tarvitsevat sillan nimestä id:hen.
+
+Silta rakennettiin **vain kausista `< target`**. Tuontipelaajalla ei ole
+yhtään sellaista: hän saa id:n vasta ensimmäisestä Liiga-pisteestään. Sinä
+päivänä rosterin avain muuttuu nimestä numeroksi, ulkomaanrivit jäävät nimen
+taakse, osuma jää saamatta — eikä kuluva kausi kelpaa tilalle, koska tahdin
+ikkuna on sekin `season < target`.
+
+**Pelaaja siis putosi replacement-lattialle juuri sinä päivänä kun hän
+aloitti Liigassa.** George Diaco 0,275 → 0,050, Kalle Östman 0,249 → 0,050.
+15.9. tällaisia oli **31 pelaajaa 14 joukkueessa**; Sportilla ja K-Espoolla
+kuusi kummallakin, eli kokonainen maali per ottelu. Ennusteessa se oli
+molemmilla noin −6 pistettä.
+
+Korjaus: silta rakennetaan kaikista kausista, **`ORDER BY season`** ja
+`setdefault`. Kuluvan kauden rivi voi silloin vallata vain nimen jolla ei ole
+aiempaa kautta — eli täsmälleen debytantit — eikä yksikään olemassa oleva
+osuma voi siirtyä.
+
+Kaksi asiaa jotka tämä opetti:
+
+- **`player_rates` rakentuu uudelleen vain roster-muutoksesta**, joten bugi
+  oli piilossa koko syyskuun ja purkautui kerralla ensimmäisessä
+  uudelleenrakennuksessa. Harvoin ajettava rebuild ei ole halpa vaan
+  kerryttävä.
+- **Pelaajan identiteetti vaihtuu kesken kauden.** Jokainen uusi
+  pelaajia yhdistävä koodi pitää testata debytantilla, ei vain
+  vakiintuneella pelaajalla.
+
+Avoin päätös siitä miten loukkaantumisiin ja rosterimuutoksiin suhtaudutaan
+jatkossa: `docs/model_improvements_in_season.md`, "TODO — decide the
+in-season roster policy".
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):

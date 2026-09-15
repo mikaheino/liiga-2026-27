@@ -175,8 +175,26 @@ def assemble_player_seasons(con) -> pd.DataFrame:
     # Resolve external rows lacking a player_id to a Liiga id by name, so a
     # returnee's abroad rows merge with their Liiga seasons (vs staying orphaned).
     from .transfers import _norm
+    # The bridge must span EVERY season, not just the history window above.
+    # A newcomer's first Liiga game earns him a player_id, and the roster then
+    # carries it; if the bridge cannot see that season his researched abroad
+    # rows stay keyed by name, miss the roster's now-numeric key, and he drops
+    # to the replacement floor on the very day he debuts. 31 players were
+    # sitting there on 2026-09-15 -- six of Sport's and six of K-Espoo's.
+    # Ordered oldest-first with setdefault, so a current-season row only ever
+    # claims a name that had no earlier season: existing mappings cannot move.
+    # (A name shared by two real players -- there are two Linus Nassens -- is
+    # still resolved by whoever played first. Unchanged by this fix.)
+    ids = query_df(
+        con,
+        """SELECT player_id, season,
+                  first_name || ' ' || last_name AS name
+           FROM player_season_scoring
+           WHERE player_id IS NOT NULL
+           ORDER BY season""",
+    )
     name_to_id = {}
-    for pid, nm in zip(liiga["player_id"], liiga["name"]):
+    for pid, nm in zip(ids["player_id"], ids["name"]):
         if pid is not None and not pd.isna(pid):
             name_to_id.setdefault(_norm(nm), int(pid))
     resolved = []

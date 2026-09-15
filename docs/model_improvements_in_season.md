@@ -134,3 +134,60 @@ weakness once real games exist.
 the backup plays half the games, the real figure is something else. The
 season shows actual start distributions for the first time — see the
 goalie-census caveat in the backtest notes.
+
+## TODO — decide the in-season roster policy (opened 2026-09-15)
+
+Nothing here is decided. It needs deciding before the next roster batch,
+because the current answer is "whenever someone notices", and that has now
+cost us once.
+
+**The trigger problem.** `player_rates` rebuilds only when the roster file is
+edited. Between 1 Sep and 15 Sep nobody edited it, so the rates were frozen
+at their pre-season values while the underlying data moved underneath them.
+The 15 Sep rebuild then applied two weeks of accumulated change at once, and
+a latent bug with it (31 newcomers orphaned off their external stats the day
+they debuted — fixed, see CLAUDE.md). A rebuild that runs only on a manual
+edit is a rebuild that hides whatever is accruing.
+
+Options, cheapest first:
+
+1. Rebuild `player_rates` on every daily run. It is seconds of compute. The
+   cost is that the forecast then moves for data reasons on days when no
+   game was played, which the slide arrow cannot distinguish from the season
+   teaching us something (see CLAUDE.md on what the arrow measures).
+2. Rebuild weekly, deliberately, and note it in `prediction_history`.
+3. Keep it manual but add a check to the daily run that *reports* drift
+   without acting — e.g. reconcile `game_lineups` against `roster_2026_27`
+   and print anyone playing who is not rostered.
+
+Option 3 is the smallest honest step and does not touch the forecast.
+
+**Injuries.** Still the clearest weakness, and the season now gives us the
+signal it needs: `game_lineups` says who actually dressed, per game. A
+player who stops appearing is either injured, scratched, or gone. Questions
+to settle:
+
+- Is availability a *rate* adjustment (scale a player's contribution by his
+  recent dress rate) or a *roster* adjustment (drop him, promote the next
+  man)? The first is smoother and needs no judgement call; the second
+  matches how a coach actually fills the hole.
+- How many games of absence before it counts? A one-game scratch is noise;
+  three weeks is a different team.
+- Does it decay back when he returns, or snap?
+- **Do not backtest this on 2026-27.** We have `game_lineups` only from this
+  season, so there is no out-of-sample window. Any availability weighting
+  shipped this season is a judgement call, not a validated one — which is an
+  argument for keeping it simple and visible.
+
+**Mid-season signings and departures.** Today's reconciliation found 21
+players who had dressed without being rostered at all, against 9 moves on
+the transfer site. Kokoonpanot, not transfer sites, are the truth once the
+season starts (CLAUDE.md has the procedure and its four traps). Decide
+whether that reconciliation is a weekly chore, a check in the daily run
+(option 3 above), or left to whenever someone asks.
+
+**A player's identity changes when he debuts.** A newcomer has no Liiga
+`player_id` until he first appears; then he has one, and every join keyed on
+identity shifts under him. That is what caused the orphaning bug. Any new
+code that joins players across sources has to survive that transition — test
+it with a player who debuts mid-season, not only with an established one.
