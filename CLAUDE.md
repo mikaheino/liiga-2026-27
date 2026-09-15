@@ -306,6 +306,20 @@ välissä 3:een ja on taas 2. `proj_rank` on pienempi kun sija on parempi,
 joten luvun lasku on dialla nousu; tämä on se kohta jonka saa helposti
 väärinpäin.
 
+⚠️ **Nuoli mittaa ennusteen liikettä, ei pelkkää kauden opetusta.** Siihen
+sisältyy myös se mitä korjaamme omasta datastamme, eikä dia erota niitä.
+
+Mittaus 15.9.: otteluita ei pelattu 10.9. jälkeen, joten `games_played` oli 23
+joka päivä ja 14.9. → 15.9. -ero on **pelkkää dataa**. Silti seitsemän
+joukkuetta vaihtoi sijaa: K-Espoo 7. → 10. (−6,0 p), HIFK 9. → 7., KooKoo
+6. → 4., Jokerit 11. → 9., Sport −6,2 p. Syy oli kokoonpanojen täsmäytys ja
+5.9. tehty nimikorjaus joka pääsi vihdoin `player_rates`:iin.
+
+Esikauden rivi itse on turvassa: `prediction_history` on append-only eikä
+roster-muokkaus kirjoita siihen takautuvasti. Todennettu 15.9. — 1.9. rivi on
+yhä 115,3 / 107,4 / 104,8 / 104,1 / 99,0 / 98,7 eli sama kuin julkaistu
+`site_instagram/slide_1.png`.
+
 **Typografia on jaettu vain osittain, tarkoituksella.** Otsikot, sijanumerot,
 joukkueiden nimet ja pistemäärät ovat Arial Blackia (`HEAD_F`) — dian ilme on
 sen massassa, eikä julkaistun karusellin ulkoasu saa muuttua tunnistettavasti.
