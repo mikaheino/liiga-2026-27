@@ -364,7 +364,7 @@ Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/tasks.sql`**.
 
 | taski | ajastus | compute | tekee |
 |---|---|---|---|
-| `LIIGA_CHECK` | `CRON 0 6 * * * Europe/Helsinki` | serverless | laskee montako ottelua on hakematta, palauttaa luvun |
+| `LIIGA_CHECK` | `CRON 0 5 * * * Europe/Helsinki` | serverless | laskee montako ottelua on hakematta, palauttaa luvun |
 | `LIIGA_DAILY_RUN` | `AFTER LIIGA_CHECK`, `WHEN … > 0` | `LIIGA_WH` | `EXECUTE NOTEBOOK LIIGA_DAILY()` |
 
 **Ehto ei ole "oliko eilen kierros" vaan "onko jokin ottelu alkanut yli 8 h
@@ -372,6 +372,34 @@ sitten ja yhä hakematta".** Normaalina päivänä sama asia, mutta itsekorjaava
 väliin jäänyt tai epäonnistunut ajo napataan kiinni seuraavana aamuna sen
 sijaan että ottelu jäisi pysyvästi puuttumaan. Todennettu: nyt 0 → SKIPPED,
 huomenna 6 → ajaa.
+
+**05:00 on lattia, ei mieltymys (siirretty 06:00 → 05:00, 2026-09-18).**
+Myöhäisimmät ottelut alkavat **17:30 UTC eli 20:30 Suomen aikaa** (16 kpl
+kaudessa), ja 8 tunnin grace tekee niistä haettavia vasta **04:30**. 05:00
+jättää 30 min pelivaraa. Aiempi kellonaika **ei** ole pelkkä cron-muutos:
+`grace_hours` pitää laskea sekä `src/liiga/results.py`:ssä että
+`snowflake/tasks.sql`:n `DATEADD(hour, -8, ...)`:ssa, ja liiga.fi on palvellut
+vajaita vastauksia, joten lyhyempi grace kasvattaa sitä riskiä.
+
+**Ajan muuttaminen: `ALTER`, ei `CREATE OR REPLACE`.** Juuri on keskeytettävä
+muokkauksen ajaksi, mutta `ALTER` **säilyttää lapsen linkin** — todennettu
+18.9., `predecessors` oli muutoksen jälkeen yhä
+`["LIIGA.CODE.LIIGA_CHECK"]`. Tässä järjestyksessä, yhtenä `snow sql -f`
+-tiedostona (tämä toimii, koska mukana ei ole Scripting-lohkoa):
+
+```sql
+ALTER TASK LIIGA.CODE.LIIGA_CHECK SUSPEND;
+ALTER TASK LIIGA.CODE.LIIGA_CHECK SET SCHEDULE = 'USING CRON 0 5 * * * Europe/Helsinki';
+ALTER TASK LIIGA.CODE.LIIGA_CHECK RESUME;
+```
+
+⚠️ **`SHOW TASKS` tulostuu tyhjänä `snow sql`:ssä** — sarakkeet tulevat ilman
+otsikoita. Lue se `RESULT_SCAN`:illa: `SELECT "name", "state", "schedule",
+"predecessors" FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))`. Ja seuraava ajoaika
+on `LIIGA.INFORMATION_SCHEMA.TASK_HISTORY` — ilman tietokannan etuliitettä
+tulee *Invalid identifier*. Se palauttaa ajat **tilin aikavyöhykkeessä
+(Tyynenmeren)**, ei Helsingin: `19:00 -0700` on seuraavan päivän 05:00
+Suomen aikaa. Älä säikähdä siitä.
 
 Neljä asiaa jotka maksoivat oikeaa selvittelyä — älä johda näitä uudelleen:
 

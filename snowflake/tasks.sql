@@ -15,7 +15,11 @@
 -- eikä 10 000 kauden simulaatiota ajeta turhaan.
 
 CREATE OR REPLACE TASK LIIGA.CODE.LIIGA_CHECK
-  SCHEDULE = 'USING CRON 0 6 * * * Europe/Helsinki'
+  SCHEDULE = 'USING CRON 0 5 * * * Europe/Helsinki'
+  -- 05:00, ei aiemmin: myohaisin ottelu alkaa 17:30 UTC (20:30 Suomen aikaa)
+  -- ja 8 h:n grace tekee siita haettavan vasta 04:30, joten tassa on 30 min
+  -- pelivaraa. Aiempi kellonaika vaatii grace_hours-arvon laskemisen
+  -- (src/liiga/results.py JA taman tiedoston DATEADD), ei pelkkaa cronia.
   USER_TASK_TIMEOUT_MS = 60000
   COMMENT = 'Montako ottelua pelattu mutta hakematta; luku menee lapsitaskille.'
 AS
