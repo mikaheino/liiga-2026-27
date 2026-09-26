@@ -466,6 +466,42 @@ def _model_said(r) -> float:
     return p if r["home_goals"] > r["away_goals"] else 100 - p
 
 
+def render_scoreboard(games: pd.DataFrame) -> None:
+    """Season-total hit rate over every scored game, not the chosen month.
+
+    Scored the same way as the per-game tick: _model_said is the probability
+    the model gave the eventual winner, and >= 50 % means it had the right
+    side. Reusing that one function is the point -- a second rule here would
+    let the headline and the column disagree.
+
+    Two numbers, because the first one alone flatters or slanders the model
+    depending on the week. The average probability given to winners is the
+    fairer summary: it separates "wrong on a 52/48" from "gave the winner
+    20 %", which a hit rate cannot see.
+    """
+    said = games.apply(_model_said, axis=1).dropna()
+    if said.empty:
+        return
+    n = len(said)
+    hits = int((said >= 50).sum())
+    rate = 100.0 * hits / n
+    avg = float(said.mean())
+    # 50 % is the coin flip, and for this model it is the honest reference:
+    # the backtest edge was 0.672 log-loss against a 0.686 base rate, so the
+    # sample has to be large before either side of 50 means anything.
+    tone = HIT if rate >= 50 else MISS
+    html(
+        '<div class="lp-score">'
+        f'<div class="box"><div class="k">Oikein arvattu voittaja</div>'
+        f'<div class="n" style="color:{tone}">{rate:.0f} %</div>'
+        f'<div class="s">{hits}/{n} pelattua ottelua</div></div>'
+        f'<div class="box"><div class="k">Malli antoi voittajalle</div>'
+        f'<div class="n">{avg:.0f} %</div>'
+        f'<div class="s">keskimäärin — 50 % on kolikonheitto</div></div>'
+        '</div>'
+    )
+
+
 def render_fixtures(games: pd.DataFrame, highlight: set[str]) -> None:
     """Fixtures with probability bars, and the outcome once played.
 
@@ -737,6 +773,16 @@ _CSS = """
 .lp-split > i{display:block;height:100%}
 .lp-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;
   border-radius:5px;font:600 12px var(--lp-mono)}
+.lp-score{display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 14px}
+.lp-score .box{flex:1 1 150px;min-width:150px;padding:10px 13px;
+  border:1px solid var(--lp-gray-200);border-radius:8px;
+  background:var(--lp-gray-25)}
+.lp-score .n{font:800 25px/1.1 var(--lp-mono);letter-spacing:-.02em;
+  color:var(--lp-ink)}
+.lp-score .k{font:600 10.5px/1 var(--lp-sans);letter-spacing:.09em;
+  text-transform:uppercase;color:var(--lp-brand-dark);margin-bottom:6px}
+.lp-score .s{font:11.5px/1.45 var(--lp-sans);color:var(--lp-gray-400);
+  margin-top:4px}
 .lp-side-h{font:800 20px/1.2 var(--lp-sans);letter-spacing:-.02em;
   color:var(--lp-ink)}
 .lp-side-s{font:12.5px var(--lp-sans);color:var(--lp-muted);margin-top:2px}
@@ -1381,6 +1427,9 @@ def main() -> None:
                    "”Malli antoi voittajalle” on se todennäköisyys, jonka "
                    "malli antoi ennen ottelua sille joukkueelle, joka lopulta "
                    "voitti — mitä pienempi, sitä enemmän ennuste meni pieleen.")
+
+        # Koko kauden luku, ei valitun kuukauden -- siksi ennen valitsinta.
+        render_scoreboard(upcoming)
 
         month_keys = sorted(upcoming["start_ts"].str[:7].unique())
         this_month = dt.date.today().strftime("%Y-%m")

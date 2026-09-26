@@ -315,7 +315,7 @@ tables:
           - pelipäivä
           - ottelupäivä
           - päivämäärä
-        description: Game date derived from start timestamp. Use TO_DATE(START_TS) to filter games by date. For today's games use WHERE TO_DATE(START_TS) = CURRENT_DATE.
+        description: Game date derived from start timestamp. Use TO_DATE(START_TS) to filter games by date. For today's games use WHERE game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP())).
         expr: TO_DATE(START_TS)
         data_type: DATE
         access_modifier: public_access
@@ -1081,9 +1081,15 @@ module_custom_instructions:
     SEASON 2025 means 2025-26 season. Points: 3 reg win, 2 OT win, 1 OT loss, 0 reg loss.
     Round to 1-2 decimals. Compare teams side by side.
 
+    TIMEZONE: Liiga games are in Finland (Europe/Helsinki, UTC+2/+3).
+    The Snowflake session timezone may differ. When referencing "today", "yesterday", "tomorrow" etc., always use Finnish time:
+    - Instead of CURRENT_DATE, use CURRENT_DATE() AT TIME ZONE 'Europe/Helsinki' or TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))
+    - For "yesterday": DATEADD(DAY, -1, TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP())))
+    - For "today": TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))
+
     IMPORTANT - today's games / daily match predictions:
     To find games for a specific date, join SCHEDULE with GAME_PREDICTIONS on GAME_ID.
-    Filter SCHEDULE by TO_DATE(START_TS) = <date> (use CURRENT_DATE for today).
+    Filter SCHEDULE by game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP())) for today.
     Always filter GAME_PREDICTIONS by snapshot_date = (SELECT MAX(gp2.snapshot_date) FROM __game_predictions gp2) to get the latest predictions.
     Show home_team, away_team, home win %, away win %, overtime %, and predicted winner.
 
@@ -1107,7 +1113,7 @@ verified_queries:
              ROUND(top_playoff_probability * 100, 1) AS playoff_pct
       FROM __standings
       ORDER BY projected_rank
-    question: What are the predicted standings?
+    question: "Mik\u00e4 on ennustettu sarjataulukko?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: true
@@ -1131,7 +1137,7 @@ verified_queries:
       WHERE gl.role NOT IN ('GOALIE')
         AND gl.injured = FALSE AND gl.removed = FALSE
       ORDER BY gl.team, gl.line, gl.role
-    question: "Mik\u00e4 on joukkueen todenn\u00e4k\u00f6inen kokoonpano?"
+    question: "Mik\u00e4 on joukkueen todenn\u00e4k\u00f6inen kokoonpano? (esim. Tappara, HIFK)"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: true
@@ -1164,7 +1170,7 @@ verified_queries:
       FROM __standings
       WHERE title_probability > 0.01
       ORDER BY title_probability DESC
-    question: Who wins the championship?
+    question: "Kuka voittaa mestaruuden?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: true
@@ -1177,7 +1183,7 @@ verified_queries:
       WHERE position_group = 'F'
       ORDER BY projected_goals_per_game DESC
       LIMIT 20
-    question: Who are the top scorers?
+    question: "Ketk\u00e4 ovat parhaat maalintekij\u00e4t?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: true
@@ -1187,7 +1193,7 @@ verified_queries:
              ROUND(exp_gf_player, 2) AS exp_goals_per_game
       FROM __team_strength
       ORDER BY off_rating DESC
-    question: Which team has best offense?
+    question: "Mik\u00e4 joukkue hy\u00f6kk\u00e4\u00e4 parhaiten?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: false
@@ -1198,7 +1204,7 @@ verified_queries:
       FROM __team_strength ts
       JOIN __goaltending tg ON ts.team = tg.team
       ORDER BY ts.def_rating ASC
-    question: Which team has best defense?
+    question: "Mik\u00e4 joukkue puolustaa parhaiten?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: false
@@ -1209,10 +1215,10 @@ verified_queries:
       FROM __team_seasons
       WHERE season = 2025
       ORDER BY season_points DESC
-    question: How did teams do last season?
+    question: "Miten joukkueet menestyiv\u00e4t viime kaudella?"
     verified_at: 1725019200
     verified_by: mheino
-    use_as_onboarding_question: false
+    use_as_onboarding_question: true
   - name: CROWD_VS_MODEL
     sql: |
       SELECT team, projected_rank AS model_rank, crowd_rank,
@@ -1220,7 +1226,7 @@ verified_queries:
              ROUND(crowd_points, 1) AS crowd_points
       FROM __standings
       ORDER BY ABS(projected_rank - crowd_rank) DESC
-    question: How does model differ from crowd prediction?
+    question: "Miten malli eroaa yleis\u00f6ennusteesta?"
     verified_at: 1725019200
     verified_by: mheino
     use_as_onboarding_question: false
@@ -1240,7 +1246,7 @@ verified_queries:
         CASE WHEN gp.home_win_prob >= 0.5 THEN s.home_team ELSE s.away_team END AS predicted_winner
       FROM __game_predictions gp
       JOIN __schedule s ON gp.game_id = s.game_id
-      WHERE s.game_date = CURRENT_DATE
+      WHERE s.game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))
         AND gp.snapshot_date = (SELECT MAX(gp2.snapshot_date) FROM __game_predictions gp2)
       ORDER BY s.start_ts ASC
     question: Miten tämän päivän pelit päättyvät?
