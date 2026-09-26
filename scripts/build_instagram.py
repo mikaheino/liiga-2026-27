@@ -358,6 +358,14 @@ def css(t: dict) -> str:
   .d17 {{ font-family:{HEAD_F}; font-size:24px; text-align:right;
          font-variant-numeric:tabular-nums; }}
 
+  /* ---- kuusi pelaajaa yhdellä dialla (maalivahdit) ---- */
+  .award.six .aw .ava {{ width:104px; height:104px; }}
+  .award.six .aw .ava .face {{ width:104px; height:104px; }}
+  .award.six .aw .ava .crest {{ width:72px; height:72px; }}
+  .award.six .aw-name {{ font-size:40px; }}
+  .award.six .aw-sub {{ font-size:20px; margin-top:8px; }}
+  .award.six .aw-num {{ font-size:48px; }}
+
   /* ---- yksi iso luku ---- */
   .hero {{ display:flex; flex-direction:column; justify-content:center; flex:1;
           gap:30px; padding-bottom:10px; }}
@@ -1154,7 +1162,8 @@ def xg_history(con) -> dict:
     if _XG_HIST:
         return _XG_HIST
     d = query_df(con, """
-        SELECT l.season, l.team, l.points, l.goals_for, l.xg_for, l.xg_against,
+        SELECT l.season, l.team, l.points, l.goals_for, l.goals_against,
+               l.xg_for, l.xg_against,
                ROW_NUMBER() OVER (PARTITION BY l.season, l.team
                                   ORDER BY g.start_ts) AS n
         FROM team_game_log l
@@ -1165,13 +1174,15 @@ def xg_history(con) -> dict:
         return {}
     d["xp"] = _xpts(d["xg_for"].to_numpy(float), d["xg_against"].to_numpy(float))
     d["fin"] = d["goals_for"] - d["xg_for"]
-    early = d[d["n"] <= 10].groupby(["season", "team"])[["points", "xp", "fin"]].mean()
-    late = d[d["n"] > 10].groupby(["season", "team"])[["points", "fin"]].mean()
+    d["gk"] = d["xg_against"] - d["goals_against"]
+    early = d[d["n"] <= 10].groupby(["season", "team"])[["points", "xp", "fin", "gk"]].mean()
+    late = d[d["n"] > 10].groupby(["season", "team"])[["points", "fin", "gk"]].mean()
     m = early.join(late, rsuffix="_l").dropna()
     _XG_HIST.update({
         "r_real": float(m["points"].corr(m["points_l"])),
         "r_xg": float(m["xp"].corr(m["points_l"])),
         "r_fin": float(m["fin"].corr(m["fin_l"])),
+        "r_gk": float(m["gk"].corr(m["gk_l"])),
         "seasons": int(d["season"].nunique()), "n": len(m)})
     return _XG_HIST
 
@@ -1385,6 +1396,115 @@ def forty_teams_slide(t: dict, f: dict) -> str:
     <div class="foot">Tilanne kahden erän jälkeen · "johti → voitti" = voitot / johtoasemat ·
       tasan = ei johtoa 40 minuutin kohdalla</div>
   </div>""")
+
+
+def goalie_saves(con, min_games: int = 3):
+    """Maalivahdit keskivertomaalivahtiin verrattuna, samoista paikoista.
+
+    Mitä verrataan, ja miksi juuri niin:
+
+    * Maalivahdin OMAT päästetyt (game_goalies nettoaa tyhjät maalit), ei
+      joukkueen. liiga.fi:n xG ei sisällä tyhjää maalia kohti laukaistuja
+      paikkoja: 2022-26 ottelutasolla (maalit - xG) nousee +1,61 ± 0,06 per
+      tyhjä maali. Joukkueen päästetyillä maalivahti vastaisi maaleista
+      joiden aikana hän istui penkillä -- Saarinen olisi −2 väärin.
+    * Odotus = vastustajan xG × kauden keskivertomaalivahdin päästösuhde.
+      Raaka xG yliarvioi tällä kaudella maalit ~8 % (ja historiassa samaan
+      suuntaan), jolloin lähes jokainen maalivahti näyttäisi hyvältä ja
+      keskitasoinen päätyisi "heikoimpiin".
+    * Vain ottelut joissa pelasi yksi maalivahti: peliaikaa ei ole, joten
+      jaettua ottelua ei voi jakaa (2/114 kun tämä tehtiin).
+    """
+    d = query_df(con, """
+        WITH cur AS (SELECT MAX(season) AS s FROM game_goalies),
+        solo AS (SELECT season, game_id, team FROM game_goalies
+                 WHERE played AND season = (SELECT s FROM cur)
+                 GROUP BY season, game_id, team HAVING COUNT(*) = 1)
+        SELECT g.team, g.player_id, MAX(g.first_name) AS first_name,
+               MAX(g.last_name) AS last_name, COUNT(*) AS o,
+               SUM(g.goals_against) AS ga, SUM(l.xg_against) AS xga
+        FROM game_goalies g
+        JOIN solo s ON s.season = g.season AND s.game_id = g.game_id
+                   AND s.team = g.team
+        JOIN team_game_log l ON l.season = g.season AND l.game_id = g.game_id
+                            AND l.team = g.team
+        WHERE g.played
+        GROUP BY g.team, g.player_id""")
+    if d.empty:
+        return d
+    scale = float(d["ga"].sum() / d["xga"].sum())
+    d["exp"] = d["xga"] * scale
+    d["saved"] = d["exp"] - d["ga"]
+    out = (d[d["o"] >= min_games].sort_values("saved", ascending=False)
+             .reset_index(drop=True))
+    out.attrs.update(scale=scale, min_games=min_games)
+    return out
+
+
+def goalie_slide(t: dict, rows, kicker: str, title: str, foot: str) -> str:
+    items = []
+    for r in rows.itertuples():
+        full = f"{r.first_name} {r.last_name}"
+        col = XG_UP if r.saved > 0 else XG_DOWN
+        items.append(f"""
+      <div class="aw">
+        {face_or_crest(full, r.team)}
+        <div class="aw-txt">
+          <div class="aw-name">{r.last_name}</div>
+          <div class="aw-sub">{r.team} · {r.o} ottelua · päästi {int(r.ga)},
+            keskiverto olisi päästänyt {_fi(r.exp)}</div>
+        </div>
+        <div>
+          <div class="aw-num" style="color:{col}">{_fi(r.saved, sign=True)}</div>
+          <div class="aw-unit">maalia</div>
+        </div>
+      </div>""")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">{kicker}</div>
+      <div class="title">{title}</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="award six">{"".join(items)}</div>
+    </div>
+    <div class="foot">{foot}</div>
+  </div>""")
+
+
+def goalie_post(con=None, n: int = 6) -> list:
+    """Maalivahtipostaus: kärki ja häntäpää. [(tiedostonimi, png)]."""
+    own = con is None
+    con = con or get_connection()
+    try:
+        g, hist = goalie_saves(con), xg_history(con)
+    finally:
+        if own:
+            con.close()
+    if g.empty:
+        return []
+    k = g.attrs["min_games"]
+    # "Torjunut" eikä "päästänyt": plus tarkoittaa VÄHEMMÄN päästettyjä, ja
+    # "päästänyt enemmän (+)" sanoi 26.9. ensimmäisessä versiossa päinvastoin
+    # kuin luku. Torjunnoilla sana ja merkki osoittavat samaan suuntaan.
+    what = ("Maalia = kuinka monta maalia maalivahti on torjunut enemmän (+) "
+            "tai vähemmän (−) kuin keskivertomaalivahti samoista vastustajan "
+            f"maalipaikoista · vähintään {k} ottelua")
+    fade = ""
+    if hist and "r_gk" in hist:
+        seasons = _GEN.get(hist["seasons"], str(hist["seasons"]))
+        fade = (f". {seasons.capitalize()} edellisen kauden aikana alkukauden "
+                "maalivahtipelin etu " + ("tasoittui suurelta osin."
+                                          if hist["r_gk"] < 0.3 else "jatkui osittain."))
+    kicker = "Liiga 2026–27 · Maalivahdit"
+    out = [("maalivahdit_karki.png",
+            goalie_slide(theme(GRADIENTS[3]), g.head(n), kicker,
+                         "Kovimmat<br>torjujat", what)),
+           ("maalivahdit_vaikein_alku.png",
+            goalie_slide(theme(GRADIENTS[7]), g.tail(n).iloc[::-1], kicker,
+                         "Vaikein<br>alku", what + fade))]
+    return [(name, rasterise(html)) for name, html in out]
 
 
 def xg_post(con=None) -> list:

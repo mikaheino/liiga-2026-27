@@ -416,6 +416,36 @@ JYP:n vaakunasta näkyy vain kaistale, koska sen pyörre on oikealla ja
 karusellin ilme näyttää vain vasemman puolikkaan. Sama kuin julkaistussa
 karusellissa; ei korjattu (ks. "Vaakunat näkyvät puolikkaina tarkoituksella").
 
+### Maalivahtipostaus (`goalie_post`, 2026-09-26)
+
+Kaksi diaa, "Kovimmat torjujat" ja "Vaikein alku", kuusi maalivahtia kummassakin,
+vähintään 3 ottelua. Kenttäpelaajille samaa **ei voi** tehdä: liiga.fi antaa xG:n
+vain joukkueelle per ottelu, ei laukaukselle eikä pelaajalle.
+
+Kolme valintaa, jokainen mitattu:
+
+- **Maalivahdin OMAT päästetyt, ei joukkueen.** liiga.fi:n xG ei sisällä
+  tyhjää maalia kohti laukaistuja paikkoja: 2022–26, 4 730 joukkueottelua,
+  (maalit − xG) nousee **+1,61 ± 0,06 per tyhjä maali** — jos tyhjän maalin
+  paikka olisi xG:ssä, nousu olisi ~0,2. `game_goalies.goals_against` nettoaa
+  tyhjät jo valmiiksi. Joukkueen päästetyillä Saarinen olisi −2 väärin.
+- **Vertailu keskivertomaalivahtiin, ei raakaan xG:hen.** Raaka xG yliarvioi
+  tämän kauden maalit (maalivahdit päästävät 92 % xG:stä, ja historiassa
+  suunta on sama). Raakana 12/20 oli plussalla ja lähes keskitasoinen
+  päätyi "heikoimpiin". Odotus = vastustajan xG × kauden päästösuhde.
+- **Vain ottelut joissa pelasi yksi maalivahti** — peliaikaa ei ole, joten
+  jaettua ottelua ei voi jakaa (2/114). Näissä `goals_against` on NaN.
+
+⚠️ **Plus tarkoittaa VÄHEMMÄN päästettyjä.** Ensimmäinen alaviite sanoi
+"päästänyt enemmän (+)" — päinvastoin kuin luku. Alaviite puhuu nyt
+*torjunnoista*, jolloin sana ja merkki osoittavat samaan suuntaan. Sama ansa
+kuin diojen nuolissa: tarkista merkin suunta dialta, älä koodista.
+
+"Vaikein alku" eikä "heikoimmat" tarkoituksella: kyse on oikeista ihmisistä
+julkisessa postauksessa, ja historia tukee sanavalintaa — `xg_history()`:n
+`r_gk` = **0,17**, eli alkukauden maalivahtipelin etu tasoittuu suurelta osin.
+Alaviite laskee tämän ja sanoo sen.
+
 ## ⚠️ `game_id` EI ole yksilöllinen — avain on `(season, game_id)`
 
 Kaudet 2022–26 numeroivat ottelunsa samoilla luvuilla: **1 055 eri `game_id`:tä

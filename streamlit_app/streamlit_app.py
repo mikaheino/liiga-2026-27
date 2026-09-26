@@ -1425,7 +1425,8 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
         if builder is None:
             return {}, "scripts/build_instagram.py ei ole käytettävissä."
         out = {}
-        for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post)):
+        for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post),
+                          ("mv", builder.goalie_post)):
             slides = make()
             out[key] = (slides, builder.slides_to_pdf(slides) if slides else b"")
         return out, ""
@@ -1441,6 +1442,11 @@ POSTS = [
      "pisteitä joukkue on saanut kuin paikat antaisivat odottaa. Toinen dia "
      "nostaa suurimmat erot ja kertoo, kumpaan taulukkoon viisi edellistä "
      "kautta sanovat kannattavan uskoa."),
+    ("mv", "Maalivahdit", "maalivahdit",
+     "Maalivahdit keskivertomaalivahtiin verrattuna samoista vastustajan "
+     "maalipaikoista: kuka on torjunut eniten yli odotusten ja kenellä on "
+     "ollut vaikein alku. Kenttäpelaajille samaa ei voi laskea — liiga.fi "
+     "antaa maalipaikkojen arvon vain joukkueelle, ei pelaajalle."),
     ("forty", "Peli ratkeaa 40 minuutissa", "40-minuuttia",
      "Kuinka usein kahden erän jälkeen johtava joukkue voittaa: tämä kausi "
      "viittä edellistä vasten, ja joukkueittain kuka pitää johtonsa ja kuka "
