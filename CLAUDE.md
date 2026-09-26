@@ -358,7 +358,7 @@ Kaksi asiaa jotka eivät ole ilmeisiä:
 `build_instagram.py`:n ajaminen **ylikirjoittaa `site_instagram/`:n
 julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
 
-## Erilliset postaukset: varjotaulukko ja 40 minuuttia (2026-09-26)
+## Erilliset postaukset: varjosarjataulukko ja 40 minuuttia (2026-09-26)
 
 Streamlitin diaosion alla on **"Erilliset postaukset"**, kaksi postausta omina
 PDF:inään. Rakentajat ovat `scripts/build_instagram.py`:ssä (`xg_post()`,
@@ -366,26 +366,26 @@ PDF:inään. Rakentajat ovat `scripts/build_instagram.py`:ssä (`xg_post()`,
 `site_instagram/` pysyy koskemattomana, `build()` on edelleen ainoa joka
 kirjoittaa sinne. Luvut lasketaan renderöintihetkellä, ei kovakoodattuina.
 
-**Varjotaulukko** (`xg_shadow`): odotetut sarjapisteet maalipaikoista.
+**Varjosarjataulukko** (`xg_shadow`): odotetut sarjapisteet maalipaikoista.
 Kumpikin joukkue tekee maaleja Poissonin mukaan omalla xG:llään; voitto 3,
 tasapeli 1,5 (jatkoajan 2 tai 1). Ottelu jakaa siis aina 3 pistettä, joten
 **summa on sama kuin oikeassa taulukossa** — 171 = 171,0 kun tämä tehtiin —
 ja taulukot ovat suoraan vertailukelpoisia. "Sarjassa" on liiga.fi:n järjestys
 (pisteet → maaliero → tehdyt), sama kuin sovelluksessa.
 
-Toinen dia väittää että varjotaulukkoon kannattaa uskoa. Väite on **testattu
+Toinen dia väittää että varjosarjataulukkoon kannattaa uskoa. Väite on **testattu
 eikä oletettu**, ja `xg_history()` laskee sen uudelleen joka renderöinnillä:
 10 ensimmäisen ottelun jälkeen kaudet 2022–26 (77 joukkuekautta)
 
 | ennustaa loppukauden pisteitä / ottelu | r |
 |---|---|
 | oikea sarjataulukko | 0,26 |
-| **varjotaulukko** | **0,32** |
+| **varjosarjataulukko** | **0,32** |
 | viimeistelyonnen (maalit − xG) pysyvyys | **0,08** |
 | pelin hallinnan (xG-ero) pysyvyys | 0,53 |
 
 Eli viimeistelyn "onni" on käytännössä sattumaa joka tasoittuu. Kumpikaan
-taulukko ei ennusta 10 ottelun kohdalla hyvin — varjotaulukko vain paremmin.
+taulukko ei ennusta 10 ottelun kohdalla hyvin — varjosarjataulukko vain paremmin.
 Dia sanoo sen noin eikä enempää.
 
 **Peli ratkeaa 40 minuutissa** (`forty_minutes`): kahden erän jälkeinen
@@ -398,6 +398,19 @@ summat eivät täsmää. Ensimmäinen versio laski jokaisen tasapelin molemmille
 tappioasemaksi (tasatilanne on pandasissa `NaN`, ei `None`, eikä `is None`
 tunnista sitä) ja näytti 16 käännöstä kolmen sijaan. Se näkyi vasta kun diaa
 katsoi.
+
+**Nimi on "varjosarjataulukko", ja sarakkeet on kirjoitettu lukijalle
+(2026-09-26).** "xP" ja "Ero" eivät kertoneet kenellekään mitään, joten ne
+ovat nyt "Paikkojen mukaan", "Oikeat pisteet" ja "Yli / ali", ja alaviite
+sanoo selkokielellä mitä yli / ali tarkoittaa. Otsikko on 18 merkkiä eikä
+mahdu 76 px:llä yhdelle riville, joten sillä on oma `.title.long` (62 px) —
+kahdelle riville jaettuna 17 riviä ei mahtuisi.
+
+⚠️ **Muutos `build_instagram.py`:hyn ei näy sovelluksessa ennen
+uudelleenkäynnistystä.** `build_posts` ja `build_slides` ovat
+`@st.cache_data`-funktioita, joiden avain on niiden oma koodi ja ennusteen
+aikaleima — ei ladatun moduulin koodi. Kun muutat diaa, käynnistä Streamlit
+uudelleen, tai sovellus tarjoaa vanhaa diaa uuden sijaan.
 
 JYP:n vaakunasta näkyy vain kaistale, koska sen pyörre on oikealla ja
 karusellin ilme näyttää vain vasemman puolikkaan. Sama kuin julkaistussa

@@ -329,7 +329,8 @@ def css(t: dict) -> str:
           opacity:0.8; }}
   .next b {{ color:{t['accent']}; opacity:1; }}
 
-  /* ---- 17 joukkuetta yhdellä dialla: varjotaulukko ja 40 min ---- */
+  /* ---- 17 joukkuetta yhdellä dialla: varjosarjataulukko ja 40 min ---- */
+  .title.long {{ font-size:62px; }}
   .body.tbl17 {{ display:flex; flex-direction:column; padding-bottom:6px; }}
   .g17 {{ display:grid; align-items:center; column-gap:14px; }}
   .g17.xg {{ grid-template-columns:58px 40px minmax(0,1fr) 40px 104px 96px 96px 108px; }}
@@ -1069,7 +1070,7 @@ def live_slides(con=None) -> list:
 
 
 # ============================================================================
-# Kaksi erillistä postausta: xG-varjotaulukko ja "peli ratkeaa 40 minuutissa"
+# Kaksi erillistä postausta: xG-varjosarjataulukko ja "peli ratkeaa 40 minuutissa"
 # ============================================================================
 # Kumpikin renderöi tämän hetken datasta eikä koske site_instagram/:iin --
 # build() on ainoa joka kirjoittaa julkaistun karusellin.
@@ -1176,9 +1177,10 @@ def xg_history(con) -> dict:
 
 
 def xg_table_slide(t: dict, g) -> str:
-    head = ('<div class="g17 xg hd"><div>Varjo</div><div></div>'
+    head = ('<div class="g17 xg hd"><div>Sija</div><div></div>'
             '<div class="l">Joukkue</div><div>O</div><div>Sarjassa</div>'
-            '<div>xP</div><div>Pisteet</div><div>Ero</div></div>')
+            '<div>Paikkojen mukaan</div><div>Oikeat pisteet</div>'
+            '<div>Yli / ali</div></div>')
     rows = []
     for r in g.itertuples():
         col = XG_UP if r.diff > 0.05 else (XG_DOWN if r.diff < -0.05 else MUTED)
@@ -1197,12 +1199,13 @@ def xg_table_slide(t: dict, g) -> str:
   <div class="slide">
     <div class="head">
       <div class="kicker">Liiga 2026–27 · Jos maalipaikat ratkaisisivat</div>
-      <div class="title">Varjotaulukko</div>
+      <div class="title long">Varjosarjataulukko</div>
     </div>
     <div class="rule"></div>
     <div class="body tbl17">{head}{"".join(rows)}</div>
-    <div class="foot">xP = pisteet, jotka joukkue olisi saanut maalipaikkojensa
-      laadun perusteella · summa on sama kuin sarjataulukossa · ero = pisteet − xP</div>
+    <div class="foot">Paikkojen mukaan = pisteet, jotka joukkue olisi saanut
+      maalipaikkojensa perusteella · yli / ali = kuinka paljon enemmän (+) tai
+      vähemmän (−) pisteitä joukkue on saanut kuin paikat antaisivat odottaa</div>
   </div>""")
 
 
@@ -1212,9 +1215,9 @@ def xg_insight_slide(t: dict, g, hist: dict) -> str:
         <div class="duo-r">
           <div class="c17"><img src="{logo_uri(r.team)}" alt=""></div>
           <div class="duo-t"><div class="duo-nm">{r.team}</div>
-            <div class="duo-sub">sarjassa {r.real_rank}. · varjotaulukossa {r.xg_rank}.</div></div>
+            <div class="duo-sub">sarjassa {r.real_rank}. · varjosarjataulukossa {r.xg_rank}.</div></div>
           <div class="duo-n" style="color:{XG_UP if r.diff > 0 else XG_DOWN}"
-            >{_fi(r.diff, sign=True)}</div>
+            >{_fi(r.diff, sign=True)} p</div>
         </div>""" for r in df.itertuples())
         return f'<div><div class="duo-h">{title}</div>{rows}</div>'
 
@@ -1224,11 +1227,11 @@ def xg_insight_slide(t: dict, g, hist: dict) -> str:
     if hist:
         n = _GEN.get(hist["seasons"], str(hist["seasons"]))
         if hist["r_xg"] > hist["r_real"]:
-            claim = (f"{n.capitalize()} edellisen kauden aikana varjotaulukko ennusti "
+            claim = (f"{n.capitalize()} edellisen kauden aikana varjosarjataulukko ennusti "
                      "loppukauden pisteitä <b>paremmin kuin oikea sarjataulukko</b>")
         else:
             claim = (f"{n.capitalize()} edellisen kauden aikana oikea sarjataulukko ennusti "
-                     "loppukautta paremmin kuin varjotaulukko")
+                     "loppukautta paremmin kuin varjosarjataulukko")
         luck = ("ja viimeistelyn onni <b>tasoittui lähes kokonaan</b>."
                 if hist["r_fin"] < 0.2 else "ja viimeistelyn etu jatkui osittain.")
         call = (f'<div class="callout"><b>Kumpaan uskoa?</b>'
@@ -1236,7 +1239,7 @@ def xg_insight_slide(t: dict, g, hist: dict) -> str:
     return page(t, f"""
   <div class="slide">
     <div class="head">
-      <div class="kicker">Liiga 2026–27 · Varjotaulukko</div>
+      <div class="kicker">Liiga 2026–27 · Varjosarjataulukko</div>
       <div class="title">Yli vai ali<br>varojen?</div>
     </div>
     <div class="rule"></div>
@@ -1247,7 +1250,8 @@ def xg_insight_slide(t: dict, g, hist: dict) -> str:
       </div>
       {call}
     </div>
-    <div class="foot">Luku = toteutuneet pisteet − maalipaikkojen perusteella odotetut pisteet</div>
+    <div class="foot">Luku = kuinka monta pistettä enemmän (+) tai vähemmän (−) joukkue
+      on saanut kuin sen maalipaikat antaisivat odottaa</div>
   </div>""")
 
 
@@ -1384,7 +1388,7 @@ def forty_teams_slide(t: dict, f: dict) -> str:
 
 
 def xg_post(con=None) -> list:
-    """Varjotaulukko-postaus: [(tiedostonimi, png)]."""
+    """Varjosarjataulukko-postaus: [(tiedostonimi, png)]."""
     own = con is None
     con = con or get_connection()
     try:
@@ -1394,7 +1398,7 @@ def xg_post(con=None) -> list:
             con.close()
     if g.empty:
         return []
-    out = [("varjotaulukko.png", xg_table_slide(theme(GRADIENTS[2]), g)),
+    out = [("varjosarjataulukko.png", xg_table_slide(theme(GRADIENTS[2]), g)),
            ("yli_ali_varojen.png", xg_insight_slide(theme(GRADIENTS[5]), g, hist))]
     return [(name, rasterise(html)) for name, html in out]
 

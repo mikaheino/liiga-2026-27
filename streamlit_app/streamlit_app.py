@@ -1434,11 +1434,13 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
 
 
 POSTS = [
-    ("xg", "Varjotaulukko", "varjotaulukko",
-     "Sarjataulukko sellaisena kuin maalipaikkojen laatu (xG) sen jakaisi — "
-     "summa on sama kuin oikeassa taulukossa, vain eri tavalla jaettu. "
-     "Toinen dia nostaa suurimmat erot ja kertoo, kumpaan taulukkoon viisi "
-     "edellistä kautta sanovat kannattavan uskoa."),
+    ("xg", "Varjosarjataulukko", "varjosarjataulukko",
+     "Sarjataulukko sellaisena kuin maalipaikat (xG) sen jakaisivat — "
+     "pisteitä on sama määrä kuin oikeassa taulukossa, vain eri tavalla "
+     "jaettuna. Yli / ali kertoo, kuinka paljon enemmän tai vähemmän "
+     "pisteitä joukkue on saanut kuin paikat antaisivat odottaa. Toinen dia "
+     "nostaa suurimmat erot ja kertoo, kumpaan taulukkoon viisi edellistä "
+     "kautta sanovat kannattavan uskoa."),
     ("forty", "Peli ratkeaa 40 minuutissa", "40-minuuttia",
      "Kuinka usein kahden erän jälkeen johtava joukkue voittaa: tämä kausi "
      "viittä edellistä vasten, ja joukkueittain kuka pitää johtonsa ja kuka "
