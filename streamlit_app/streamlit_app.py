@@ -1303,6 +1303,66 @@ def build_slides(updated_at: str) -> tuple[list, bytes, str]:
         return [], b"", str(exc).strip().splitlines()[0][:300]
 
 
+@st.cache_data(show_spinner="Renderöidään postauksia…")
+def build_posts(updated_at: str) -> tuple[dict, str]:
+    """Erilliset postaukset, kukin omana PDF:nään. Avaimena ennusteen aikaleima.
+
+    Samat funktiot tekevät levyltä esikatseltavat diat, joten sovelluksen ja
+    tiedostojen ilme ei voi karata erilleen. Ne eivät kirjoita mihinkään --
+    site_instagram/ pysyy koskemattomana.
+    """
+    try:
+        builder = _slide_builder()
+        if builder is None:
+            return {}, "scripts/build_instagram.py ei ole käytettävissä."
+        out = {}
+        for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post)):
+            slides = make()
+            out[key] = (slides, builder.slides_to_pdf(slides) if slides else b"")
+        return out, ""
+    except Exception as exc:              # noqa: BLE001 -- kerro syy, älä katoa
+        return {}, str(exc).strip().splitlines()[0][:300]
+
+
+POSTS = [
+    ("xg", "Varjotaulukko", "varjotaulukko",
+     "Sarjataulukko sellaisena kuin maalipaikkojen laatu (xG) sen jakaisi — "
+     "summa on sama kuin oikeassa taulukossa, vain eri tavalla jaettu. "
+     "Toinen dia nostaa suurimmat erot ja kertoo, kumpaan taulukkoon viisi "
+     "edellistä kautta sanovat kannattavan uskoa."),
+    ("forty", "Peli ratkeaa 40 minuutissa", "40-minuuttia",
+     "Kuinka usein kahden erän jälkeen johtava joukkue voittaa: tämä kausi "
+     "viittä edellistä vasten, ja joukkueittain kuka pitää johtonsa ja kuka "
+     "kääntää."),
+]
+
+
+def render_post_section(updated_at: str) -> None:
+    st.subheader("Erilliset postaukset")
+    st.caption("Kukin omana PDF:nään LinkedIniin. Luvut lasketaan tästä "
+               "hetkestä, joten postaus kannattaa ladata vasta sinä aamuna "
+               "kun se julkaistaan.")
+    posts, problem = build_posts(updated_at)
+    if problem:
+        st.warning("Postauksia ei voitu renderöidä: " + problem
+                   + "  \nRasterointi vaatii headless Chromen, joka on "
+                     "paikallisella koneella mutta ei Snowflakessa.")
+        return
+    for key, title, fname, caption in POSTS:
+        slides, pdf = posts.get(key, ([], b""))
+        if not slides:
+            continue
+        st.markdown(f"#### {title}")
+        st.caption(caption)
+        st.download_button(
+            f"⬇ Lataa postaus ({len(slides)} diaa, PDF)", data=pdf,
+            file_name=f"liiga-{fname}-{updated_at[:10]}.pdf",
+            mime="application/pdf", key=f"dlpost_{key}")
+        for col, (_name, png) in zip(st.columns(4), slides):
+            with col:
+                full_width(st.image, png)
+
+
 def render_slide_section(updated_at: str) -> None:
     st.subheader("Diat jakoon")
     st.caption(
@@ -1453,6 +1513,7 @@ def main() -> None:
 
     st.divider()
     render_slide_section(updated_at)
+    render_post_section(updated_at)
 
 
 if __name__ == "__main__":

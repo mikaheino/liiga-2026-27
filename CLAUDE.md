@@ -358,6 +358,100 @@ Kaksi asiaa jotka eivät ole ilmeisiä:
 `build_instagram.py`:n ajaminen **ylikirjoittaa `site_instagram/`:n
 julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
 
+## Erilliset postaukset: varjotaulukko ja 40 minuuttia (2026-09-26)
+
+Streamlitin diaosion alla on **"Erilliset postaukset"**, kaksi postausta omina
+PDF:inään. Rakentajat ovat `scripts/build_instagram.py`:ssä (`xg_post()`,
+`forty_post()`), eivät sovelluksessa, ja ne **eivät kirjoita mihinkään** —
+`site_instagram/` pysyy koskemattomana, `build()` on edelleen ainoa joka
+kirjoittaa sinne. Luvut lasketaan renderöintihetkellä, ei kovakoodattuina.
+
+**Varjotaulukko** (`xg_shadow`): odotetut sarjapisteet maalipaikoista.
+Kumpikin joukkue tekee maaleja Poissonin mukaan omalla xG:llään; voitto 3,
+tasapeli 1,5 (jatkoajan 2 tai 1). Ottelu jakaa siis aina 3 pistettä, joten
+**summa on sama kuin oikeassa taulukossa** — 171 = 171,0 kun tämä tehtiin —
+ja taulukot ovat suoraan vertailukelpoisia. "Sarjassa" on liiga.fi:n järjestys
+(pisteet → maaliero → tehdyt), sama kuin sovelluksessa.
+
+Toinen dia väittää että varjotaulukkoon kannattaa uskoa. Väite on **testattu
+eikä oletettu**, ja `xg_history()` laskee sen uudelleen joka renderöinnillä:
+10 ensimmäisen ottelun jälkeen kaudet 2022–26 (77 joukkuekautta)
+
+| ennustaa loppukauden pisteitä / ottelu | r |
+|---|---|
+| oikea sarjataulukko | 0,26 |
+| **varjotaulukko** | **0,32** |
+| viimeistelyonnen (maalit − xG) pysyvyys | **0,08** |
+| pelin hallinnan (xG-ero) pysyvyys | 0,53 |
+
+Eli viimeistelyn "onni" on käytännössä sattumaa joka tasoittuu. Kumpikaan
+taulukko ei ennusta 10 ottelun kohdalla hyvin — varjotaulukko vain paremmin.
+Dia sanoo sen noin eikä enempää.
+
+**Peli ratkeaa 40 minuutissa** (`forty_minutes`): kahden erän jälkeinen
+johtaja voitti historiassa 86,3 % (1 779 ottelua, 2022–26) ja tällä kaudella
+93,2 % (41/44). Ero ei ole vielä merkitsevä (z = 1,3), ja dian alaviite
+laskee tämän itse ja sanoo sen ääneen.
+
+`forty_minutes` **kaatuu tarkoituksella** jos johtoasemien ja tappioasemien
+summat eivät täsmää. Ensimmäinen versio laski jokaisen tasapelin molemmille
+tappioasemaksi (tasatilanne on pandasissa `NaN`, ei `None`, eikä `is None`
+tunnista sitä) ja näytti 16 käännöstä kolmen sijaan. Se näkyi vasta kun diaa
+katsoi.
+
+JYP:n vaakunasta näkyy vain kaistale, koska sen pyörre on oikealla ja
+karusellin ilme näyttää vain vasemman puolikkaan. Sama kuin julkaistussa
+karusellissa; ei korjattu (ks. "Vaakunat näkyvät puolikkaina tarkoituksella").
+
+## ⚠️ `game_id` EI ole yksilöllinen — avain on `(season, game_id)`
+
+Kaudet 2022–26 numeroivat ottelunsa samoilla luvuilla: **1 055 eri `game_id`:tä
+2 852 ottelulle**. Kausi 2027 käyttää uutta numerointia (2 701 274 →), joten
+kaikki kuluvan kauden koodi toimii — ja juuri siksi virhe ei näy.
+
+Pelkällä `game_id`:llä liitetty historiallinen kysely yhdistää **viiden eri
+ottelun** rivit yhdeksi. Se tapahtui 15.–26.9. kahdesti:
+
+- viimeistelyonnen pysyvyydeksi tuli r = +0,39 (oikea +0,08) ja pelin
+  hallinnan +0,66 (oikea +0,53); rivejä 22 208 oikean 4 616:n sijaan
+- 40 minuutin johtajan historialliseksi voittoprosentiksi tuli 61 %
+  (oikea 86 %)
+
+**Mallin oma SQL on turvassa** — tarkistettu 26.9.: `player_season_scoring`
+ryhmittelee `(player_id, season, team)` eikä liitä otteluihin, `team_season`
+liittää `(team, season)`. Vaara on uusissa ad hoc -kyselyissä ja uudessa
+koodissa.
+
+Tunnistat sen: historiallinen luku on jääkiekoksi outo, tai rivimäärä on
+moninkertainen. Liitä aina `ON a.season = b.season AND a.game_id = b.game_id`
+ja ikkunoi `PARTITION BY season, game_id`.
+
+## ⚠️ Maalitapahtuma ei ole aina maali
+
+`raw_goal_events` sisältää tapahtumia joissa tilanne ei muutu. Todennettu
+`(season, game_id)`-ikkunalla vertaamalla `home_score_after`-arvoa edelliseen:
+
+| `goal_types` | kpl | tilanne nousi | mitä on |
+|---|---|---|---|
+| `RL` | 78 | 78 | onnistunut rangaistuslaukaus |
+| `RL0` | 176 | **0** | **epäonnistunut rangaistuslaukaus** |
+| `VT` | 232 | 232 | maali videotarkistuksen jälkeen |
+| `VT0` | 299 | 1 | hylätty videotarkistuksessa |
+
+Siksi tilanne otetaan tapahtuman omasta tilanneluvusta
+(`MAX(home_score_after)`) eikä laskemalla rivejä — laskettuna 8/57 ottelun
+40 minuutin tilanne meni väärin. Validoitu: 57/57 eräaineistoa vasten,
+2 087/2 088 historian lopputulosta vasten.
+
+⚠️ **AVOIN BUGI: `player_season_scoring` laskee `RL0`:t maaleiksi.** `VT0`:lla
+ei ole pelaajaa, joten se putoaa pois `player_id <> 0` -ehdolla — mutta
+jokainen `RL0` on kirjattu laukojalle ja `goals`-CTE laskee `COUNT(*)`. 172
+haamumaalia kausilla 2022–26 (1,4 % kaikista), 127 pelaajaa, enintään 3 per
+pelaaja per kausi; nykyrosterissa 55 pelaajaa ja 76 maalia. Kasvattaa juuri
+rangaistuslaukauksia laukovien kärkihyökkääjien tahtia. **Ei korjattu**, koska
+korjaus muuttaa mallin syötettä ja siten julkaistua ennustetta — odottaa
+käyttäjän päätöstä.
+
 ## Snowflake ajastaa itse itsensä (2026-09-09)
 
 Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/tasks.sql`**.

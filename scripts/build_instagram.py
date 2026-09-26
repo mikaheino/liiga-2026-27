@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import base64
 import io
+import math
 import re
 import subprocess
 import sys
@@ -39,6 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from PIL import Image                                    # noqa: E402
+import numpy as np                                       # noqa: E402
 
 from liiga.config import load_config                     # noqa: E402
 from liiga.db import get_connection, query_df           # noqa: E402
@@ -326,6 +328,68 @@ def css(t: dict) -> str:
   .next {{ font-size:18px; line-height:1.38; margin-top:12px; color:{t['fg']};
           opacity:0.8; }}
   .next b {{ color:{t['accent']}; opacity:1; }}
+
+  /* ---- 17 joukkuetta yhdellä dialla: varjotaulukko ja 40 min ---- */
+  .body.tbl17 {{ display:flex; flex-direction:column; padding-bottom:6px; }}
+  .g17 {{ display:grid; align-items:center; column-gap:14px; }}
+  .g17.xg {{ grid-template-columns:58px 40px minmax(0,1fr) 40px 104px 96px 96px 108px; }}
+  .g17.ft {{ grid-template-columns:40px minmax(0,1fr) 178px 196px 70px; }}
+  .g17.hd {{ font-family:{HEAD_F}; font-size:14px; letter-spacing:2px;
+            text-transform:uppercase; color:{t['muted']}; padding-bottom:9px;
+            border-bottom:2px solid {GOLD_LO}; }}
+  .g17.hd > div {{ text-align:right; }}
+  .g17.hd > div.l {{ text-align:left; }}
+  .g17.r {{ flex:1; border-bottom:1px solid {t['panel']}; }}
+  .g17.r:last-child {{ border-bottom:none; }}
+  .r17 {{ font-family:{HEAD_F}; font-size:25px; font-style:italic; color:{INK};
+         background:{CREAM}; text-align:center; padding:3px 0;
+         transform:skewX(-6deg); }}
+  .c17 {{ width:40px; height:50px; overflow:hidden; display:flex;
+         align-items:center; }}
+  .c17 img {{ width:80px; height:80px; max-width:none; object-fit:contain; }}
+  .n17 {{ font-family:{HEAD_F}; font-size:26px; text-transform:uppercase;
+         font-style:italic; letter-spacing:-0.5px; white-space:nowrap;
+         overflow:hidden; text-overflow:ellipsis; }}
+  .m17 {{ font-size:22px; color:{t['muted']}; text-align:right;
+         font-variant-numeric:tabular-nums; }}
+  .b17 {{ font-family:{HEAD_F}; font-size:29px; font-style:italic; color:{CREAM};
+         text-align:right; font-variant-numeric:tabular-nums; }}
+  .d17 {{ font-family:{HEAD_F}; font-size:24px; text-align:right;
+         font-variant-numeric:tabular-nums; }}
+
+  /* ---- yksi iso luku ---- */
+  .hero {{ display:flex; flex-direction:column; justify-content:center; flex:1;
+          gap:30px; padding-bottom:10px; }}
+  .hero-n {{ font-family:{HEAD_F}; font-size:230px; line-height:0.9;
+            font-style:italic; letter-spacing:-6px; transform:skewX(-6deg);
+            transform-origin:left bottom;
+            background:linear-gradient(180deg,{GOLD_HI} 0%,{GOLD} 52%,{GOLD_LO} 100%);
+            -webkit-background-clip:text; background-clip:text; color:transparent;
+            filter:drop-shadow(0 4px 0 rgba(0,0,0,0.35));
+            margin-bottom:34px; }}
+  .hero-t {{ font-size:34px; line-height:1.3; color:{t['fg']}; max-width:900px; }}
+  .hero-s {{ font-size:24px; color:{t['muted']}; margin-top:8px; }}
+  .versus {{ display:flex; gap:22px; }}
+  .versus .callout {{ flex:1; }}
+  .vnum {{ font-family:{HEAD_F}; font-size:56px; font-style:italic; color:{CREAM};
+          line-height:1; margin:2px 0 10px; }}
+
+  /* ---- yli / ali varojen ---- */
+  .duo {{ display:flex; flex-direction:column; gap:30px; flex:1;
+         justify-content:center; padding-bottom:8px; }}
+  .duo-h {{ font-family:{HEAD_F}; font-size:21px; letter-spacing:3px;
+           text-transform:uppercase; color:{t['accent']}; margin-bottom:8px; }}
+  .duo-r {{ display:flex; align-items:center; gap:20px; padding:8px 0;
+           border-bottom:1px solid {t['panel']}; }}
+  .duo-r:last-child {{ border-bottom:none; }}
+  .duo-r .c17 {{ width:52px; height:66px; }}
+  .duo-r .c17 img {{ width:104px; height:104px; }}
+  .duo-t {{ flex:1; }}
+  .duo-nm {{ font-family:{HEAD_F}; font-size:38px; text-transform:uppercase;
+            font-style:italic; letter-spacing:-0.5px; line-height:1; }}
+  .duo-sub {{ font-size:20px; color:{t['muted']}; margin-top:8px; }}
+  .duo-n {{ font-family:{HEAD_F}; font-size:44px; font-style:italic;
+           text-align:right; font-variant-numeric:tabular-nums; }}
 """
 
 
@@ -1001,6 +1065,353 @@ def live_slides(con=None) -> list:
                 award_status_slide(themes[4], _award_picks(), stats)))
     out.append(("tulokkaat_toteuma.png",
                 newcomers_status_slide(themes[8], _newcomer_picks(), stats)))
+    return [(name, rasterise(html)) for name, html in out]
+
+
+# ============================================================================
+# Kaksi erillistä postausta: xG-varjotaulukko ja "peli ratkeaa 40 minuutissa"
+# ============================================================================
+# Kumpikin renderöi tämän hetken datasta eikä koske site_instagram/:iin --
+# build() on ainoa joka kirjoittaa julkaistun karusellin.
+#
+# ⚠️ Kaikki otteluliitokset ovat (season, game_id). game_id toistuu joka
+# kaudella 2022-26 (1 055 eri arvoa 2 852 ottelulle), ja pelkällä game_id:llä
+# rivit monistuvat viisinkertaisiksi. Se virhe antoi 15.9. viimeistelyonnen
+# pysyvyydeksi r = +0,39; oikea on +0,08.
+
+XG_UP, XG_DOWN = GOLD_HI, "#e0574b"
+_GEN = {3: "kolmen", 4: "neljän", 5: "viiden", 6: "kuuden", 7: "seitsemän"}
+_NOM = {3: "Kolme", 4: "Neljä", 5: "Viisi", 6: "Kuusi", 7: "Seitsemän"}
+
+
+def _fi(x: float, d: int = 1, sign: bool = False) -> str:
+    """Suomalainen luku: desimaalipilkku ja oikea miinusmerkki."""
+    s = f"{x:+.{d}f}" if sign else f"{x:.{d}f}"
+    return s.replace("-", "−").replace(".", ",")
+
+
+def _thou(n: int) -> str:
+    return f"{int(n):,}".replace(",", " ")
+
+
+def _xpts(xf: np.ndarray, xa: np.ndarray, k_max: int = 13) -> np.ndarray:
+    """Odotetut sarjapisteet per ottelu maalipaikoista.
+
+    Kumpikin joukkue tekee maaleja Poisson-jakauman mukaan omalla xG:llään.
+    Voitto 3; tasapeli menee jatkoajalle, josta saa 2 tai 1 -- odotus 1,5.
+    Ottelu jakaa siis aina tasan 3 pistettä kuten oikeakin taulukko, joten
+    varjotaulukon ja sarjataulukon pistesummat ovat samat.
+    """
+    k = np.arange(k_max)
+    fact = np.array([math.factorial(i) for i in k], dtype=float)
+    pf = np.exp(-xf[:, None]) * xf[:, None] ** k / fact
+    pa = np.exp(-xa[:, None]) * xa[:, None] ** k / fact
+    win = (pf[:, 1:] * np.cumsum(pa, axis=1)[:, :-1]).sum(axis=1)
+    tie = (pf * pa).sum(axis=1)
+    return 3 * win + 1.5 * tie
+
+
+def xg_shadow(con):
+    """Kauden pisteet sellaisina kuin maalipaikat ne jakaisivat.
+
+    "Sarjassa" on liiga.fi:n järjestys (pisteet, maaliero, tehdyt) -- sama
+    sääntö kuin sovelluksessa, joten luku on sama kuin oikeassa taulukossa.
+    """
+    d = query_df(con, """
+        SELECT team, xg_for, xg_against, points, goals_for, goals_against
+        FROM team_game_log
+        WHERE season = (SELECT MAX(season) FROM team_game_log)
+          AND xg_for IS NOT NULL AND xg_against IS NOT NULL""")
+    if d.empty:
+        return d
+    d["xp"] = _xpts(d["xg_for"].to_numpy(float), d["xg_against"].to_numpy(float))
+    g = (d.groupby("team")
+          .agg(o=("points", "size"), p=("points", "sum"), xp=("xp", "sum"),
+               gf=("goals_for", "sum"), ga=("goals_against", "sum"))
+          .reset_index())
+    g["gd"] = g["gf"] - g["ga"]
+    real = g.sort_values(["p", "gd", "gf"], ascending=False)["team"].tolist()
+    g["real_rank"] = g["team"].map({t: i + 1 for i, t in enumerate(real)})
+    g = g.sort_values(["xp", "gd"], ascending=False).reset_index(drop=True)
+    g["xg_rank"] = range(1, len(g) + 1)
+    g["diff"] = g["p"] - g["xp"]
+    return g
+
+
+_XG_HIST: dict = {}
+
+
+def xg_history(con) -> dict:
+    """Mitä edelliset kaudet sanovat, 10 ensimmäisen ottelun kohdalta.
+
+      r_xg / r_real : ennustaako varjo- vai oikea taulukko loppukauden
+                      pisteitä per ottelu paremmin
+      r_fin         : jatkuuko viimeistelyonni (maalit - xG) loppukaudelle
+
+    Historia ei muutu, joten tulos pidetään muistissa istunnon ajan.
+    """
+    if _XG_HIST:
+        return _XG_HIST
+    d = query_df(con, """
+        SELECT l.season, l.team, l.points, l.goals_for, l.xg_for, l.xg_against,
+               ROW_NUMBER() OVER (PARTITION BY l.season, l.team
+                                  ORDER BY g.start_ts) AS n
+        FROM team_game_log l
+        JOIN stg_games g ON g.season = l.season AND g.game_id = l.game_id
+        WHERE l.season < (SELECT MAX(season) FROM team_game_log)
+          AND l.xg_for IS NOT NULL AND l.xg_against IS NOT NULL""")
+    if d.empty:
+        return {}
+    d["xp"] = _xpts(d["xg_for"].to_numpy(float), d["xg_against"].to_numpy(float))
+    d["fin"] = d["goals_for"] - d["xg_for"]
+    early = d[d["n"] <= 10].groupby(["season", "team"])[["points", "xp", "fin"]].mean()
+    late = d[d["n"] > 10].groupby(["season", "team"])[["points", "fin"]].mean()
+    m = early.join(late, rsuffix="_l").dropna()
+    _XG_HIST.update({
+        "r_real": float(m["points"].corr(m["points_l"])),
+        "r_xg": float(m["xp"].corr(m["points_l"])),
+        "r_fin": float(m["fin"].corr(m["fin_l"])),
+        "seasons": int(d["season"].nunique()), "n": len(m)})
+    return _XG_HIST
+
+
+def xg_table_slide(t: dict, g) -> str:
+    head = ('<div class="g17 xg hd"><div>Varjo</div><div></div>'
+            '<div class="l">Joukkue</div><div>O</div><div>Sarjassa</div>'
+            '<div>xP</div><div>Pisteet</div><div>Ero</div></div>')
+    rows = []
+    for r in g.itertuples():
+        col = XG_UP if r.diff > 0.05 else (XG_DOWN if r.diff < -0.05 else MUTED)
+        rows.append(f"""
+      <div class="g17 xg r">
+        <div class="r17">{r.xg_rank}</div>
+        <div class="c17"><img src="{logo_uri(r.team)}" alt=""></div>
+        <div class="n17">{r.team}</div>
+        <div class="m17">{r.o}</div>
+        <div class="m17">{r.real_rank}.</div>
+        <div class="b17">{_fi(r.xp)}</div>
+        <div class="m17">{int(r.p)}</div>
+        <div class="d17" style="color:{col}">{_fi(r.diff, sign=True)}</div>
+      </div>""")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Jos maalipaikat ratkaisisivat</div>
+      <div class="title">Varjotaulukko</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body tbl17">{head}{"".join(rows)}</div>
+    <div class="foot">xP = pisteet, jotka joukkue olisi saanut maalipaikkojensa
+      laadun perusteella · summa on sama kuin sarjataulukossa · ero = pisteet − xP</div>
+  </div>""")
+
+
+def xg_insight_slide(t: dict, g, hist: dict) -> str:
+    def block(title: str, df) -> str:
+        rows = "".join(f"""
+        <div class="duo-r">
+          <div class="c17"><img src="{logo_uri(r.team)}" alt=""></div>
+          <div class="duo-t"><div class="duo-nm">{r.team}</div>
+            <div class="duo-sub">sarjassa {r.real_rank}. · varjotaulukossa {r.xg_rank}.</div></div>
+          <div class="duo-n" style="color:{XG_UP if r.diff > 0 else XG_DOWN}"
+            >{_fi(r.diff, sign=True)}</div>
+        </div>""" for r in df.itertuples())
+        return f'<div><div class="duo-h">{title}</div>{rows}</div>'
+
+    over = g.sort_values("diff", ascending=False).head(3)
+    under = g.sort_values("diff").head(3)
+    call = ""
+    if hist:
+        n = _GEN.get(hist["seasons"], str(hist["seasons"]))
+        if hist["r_xg"] > hist["r_real"]:
+            claim = (f"{n.capitalize()} edellisen kauden aikana varjotaulukko ennusti "
+                     "loppukauden pisteitä <b>paremmin kuin oikea sarjataulukko</b>")
+        else:
+            claim = (f"{n.capitalize()} edellisen kauden aikana oikea sarjataulukko ennusti "
+                     "loppukautta paremmin kuin varjotaulukko")
+        luck = ("ja viimeistelyn onni <b>tasoittui lähes kokonaan</b>."
+                if hist["r_fin"] < 0.2 else "ja viimeistelyn etu jatkui osittain.")
+        call = (f'<div class="callout"><b>Kumpaan uskoa?</b>'
+                f'<span>{claim} {luck}</span></div>')
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Varjotaulukko</div>
+      <div class="title">Yli vai ali<br>varojen?</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="duo">
+        {block("Enemmän pisteitä kuin paikkoja", over)}
+        {block("Vähemmän pisteitä kuin paikkoja", under)}
+      </div>
+      {call}
+    </div>
+    <div class="foot">Luku = toteutuneet pisteet − maalipaikkojen perusteella odotetut pisteet</div>
+  </div>""")
+
+
+def forty_minutes(con) -> dict:
+    """Kuka johti kahden erän jälkeen, ja voittiko se.
+
+    Tilanne otetaan maalitapahtumien omasta tilanneluvusta
+    (MAX(home_score_after) erissä 1-2) eikä laskemalla tapahtumia: VT0
+    (hylätty videotarkistuksessa) ja RL0 (epäonnistunut rangaistuslaukaus)
+    ovat tapahtumia joissa tilanne ei muutu. Laskettuna ne tekivät 8/57
+    ottelusta väärän. Validoitu 2027:n eräaineistoa vasten 57/57 ja
+    historiassa lopputulosta vasten 2087/2088.
+    """
+    g = query_df(con, """
+        WITH e AS (SELECT season, game_id,
+                          MAX(home_score_after) AS h40, MAX(away_score_after) AS a40
+                   FROM raw_goal_events WHERE period <= 2
+                   GROUP BY season, game_id)
+        SELECT g.season, g.home_team, g.away_team, g.home_goals, g.away_goals,
+               COALESCE(e.h40, 0) AS h40, COALESCE(e.a40, 0) AS a40
+        FROM stg_games g
+        LEFT JOIN e ON e.season = g.season AND e.game_id = g.game_id
+        WHERE g.ended""")
+    if g.empty:
+        return {}
+    cur_season = int(g["season"].max())
+    g["lead"] = np.where(g.h40 > g.a40, g.home_team,
+                         np.where(g.a40 > g.h40, g.away_team, None))
+    g["win"] = np.where(g.home_goals > g.away_goals, g.home_team, g.away_team)
+    led = g[g["lead"].notna()]
+    cur, hist = led[led.season == cur_season], led[led.season < cur_season]
+
+    def rate(x):
+        return float((x["lead"] == x["win"]).mean()) if len(x) else float("nan")
+
+    p_hist = rate(hist)
+    n_cur, won_cur = len(cur), int((cur["lead"] == cur["win"]).sum())
+    sd = math.sqrt(n_cur * p_hist * (1 - p_hist)) if n_cur else 0.0
+    teams = {}
+    for r in g[g.season == cur_season].itertuples():
+        for team in (r.home_team, r.away_team):
+            s = teams.setdefault(team, {"led": 0, "held": 0, "trail": 0,
+                                        "turned": 0, "tied": 0})
+            # Tasatilanne on pandas-sarakkeessa NaN, ei None -- `is None`
+            # laski jokaisen tasapelin molemmille tappioasemaksi.
+            if not isinstance(r.lead, str):
+                s["tied"] += 1
+            elif r.lead == team:
+                s["led"] += 1
+                s["held"] += int(r.win == team)
+            else:
+                s["trail"] += 1
+                s["turned"] += int(r.win == team)
+    # Jokaisella johdolla on vastapuolella tappioasema, ja jokainen käännös on
+    # jonkun menetetty johto. Jos nämä eivät täsmää, joukkuedia valehtelee.
+    led_sum = sum(v["led"] for v in teams.values())
+    assert led_sum == sum(v["trail"] for v in teams.values()) == n_cur, \
+        (led_sum, sum(v["trail"] for v in teams.values()), n_cur)
+    assert sum(v["turned"] for v in teams.values()) == n_cur - won_cur
+    return {"cur_rate": won_cur / n_cur if n_cur else float("nan"),
+            "cur_n": n_cur, "cur_won": won_cur, "cur_turned": n_cur - won_cur,
+            "hist_rate": p_hist, "hist_n": len(hist),
+            "hist_seasons": int(hist["season"].nunique()),
+            "z": (won_cur - n_cur * p_hist) / sd if sd else 0.0,
+            "teams": teams}
+
+
+def forty_hero_slide(t: dict, f: dict) -> str:
+    every = round(1 / (1 - f["hist_rate"])) if f["hist_rate"] < 1 else 0
+    seasons = _NOM.get(f["hist_seasons"], str(f["hist_seasons"]))
+    verdict = ("Ero historiaan on vielä normaalin vaihtelun rajoissa — "
+               f"{f['cur_n']} ottelua on pieni otos."
+               if abs(f["z"]) < 2 else
+               "Ero historiaan on selvä, ei pelkkää vaihtelua.")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Kahden erän jälkeen</div>
+      <div class="title">Peli ratkeaa<br>40 minuutissa</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="hero">
+        <div>
+          <div class="hero-n">{f['cur_rate'] * 100:.0f} %</div>
+          <div class="hero-t">Kun joukkue on johtanut toisen erän jälkeen,
+            se on voittanut ottelun.</div>
+          <div class="hero-s">{f['cur_won']} / {f['cur_n']} ottelua tällä kaudella</div>
+        </div>
+        <div class="versus">
+          <div class="callout"><b>{seasons} edellistä kautta</b>
+            <div class="vnum">{f['hist_rate'] * 100:.0f} %</div>
+            <span>{_thou(f['hist_n'])} ottelua</span></div>
+          <div class="callout"><b>Johto käännetty</b>
+            <div class="vnum">{f['cur_turned']} kertaa</div>
+            <span>tällä kaudella · historiassa joka {every}. kerta</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">{verdict} Voitto sisältää jatkoajan ja voittolaukaukset.</div>
+  </div>""")
+
+
+def forty_teams_slide(t: dict, f: dict) -> str:
+    head = ('<div class="g17 ft hd"><div></div><div class="l">Joukkue</div>'
+            '<div>Johti → voitti</div><div>Tappiolla → voitti</div>'
+            '<div>Tasan</div></div>')
+    order = sorted(f["teams"].items(),
+                   key=lambda kv: (-kv[1]["led"], -kv[1]["held"], kv[1]["trail"], kv[0]))
+    rows = []
+    for team, s in order:
+        led = f"{s['held']} / {s['led']}" if s["led"] else "–"
+        trl = f"{s['turned']} / {s['trail']}" if s["trail"] else "–"
+        tcol = XG_UP if s["turned"] else MUTED
+        rows.append(f"""
+      <div class="g17 ft r">
+        <div class="c17"><img src="{logo_uri(team)}" alt=""></div>
+        <div class="n17">{team}</div>
+        <div class="b17">{led}</div>
+        <div class="d17" style="color:{tcol}">{trl}</div>
+        <div class="m17">{s['tied']}</div>
+      </div>""")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Peli ratkeaa 40 minuutissa</div>
+      <div class="title">Joukkueittain</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body tbl17">{head}{"".join(rows)}</div>
+    <div class="foot">Tilanne kahden erän jälkeen · "johti → voitti" = voitot / johtoasemat ·
+      tasan = ei johtoa 40 minuutin kohdalla</div>
+  </div>""")
+
+
+def xg_post(con=None) -> list:
+    """Varjotaulukko-postaus: [(tiedostonimi, png)]."""
+    own = con is None
+    con = con or get_connection()
+    try:
+        g, hist = xg_shadow(con), xg_history(con)
+    finally:
+        if own:
+            con.close()
+    if g.empty:
+        return []
+    out = [("varjotaulukko.png", xg_table_slide(theme(GRADIENTS[2]), g)),
+           ("yli_ali_varojen.png", xg_insight_slide(theme(GRADIENTS[5]), g, hist))]
+    return [(name, rasterise(html)) for name, html in out]
+
+
+def forty_post(con=None) -> list:
+    """"Peli ratkeaa 40 minuutissa" -postaus: [(tiedostonimi, png)]."""
+    own = con is None
+    con = con or get_connection()
+    try:
+        f = forty_minutes(con)
+    finally:
+        if own:
+            con.close()
+    if not f:
+        return []
+    out = [("40min.png", forty_hero_slide(theme(GRADIENTS[0]), f)),
+           ("40min_joukkueittain.png", forty_teams_slide(theme(GRADIENTS[6]), f))]
     return [(name, rasterise(html)) for name, html in out]
 
 
