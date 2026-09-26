@@ -502,6 +502,115 @@ def render_scoreboard(games: pd.DataFrame) -> None:
     )
 
 
+def _fi1(x: float, sign: bool = False) -> str:
+    """Yksi desimaali suomeksi: pilkku ja oikea miinusmerkki."""
+    if abs(x) < 0.05:
+        x = 0.0                  # ei "−0,0": pyöristys ei saa keksiä suuntaa
+    txt = f"{x:+.1f}" if sign and x else f"{x:.1f}"
+    return txt.replace("-", "\u2212").replace(".", ",")
+
+
+def render_misses(games: pd.DataFrame, highlight: set[str]) -> None:
+    """Where the forecast goes wrong: by team, by confidence, worst games.
+
+    Everything is scored through _model_said on the same fixtures frame the
+    tick column uses, so no number here can disagree with the list above.
+    Season-wide, not the chosen month.
+
+    The team table is the one that answers "where": a model that is merely
+    unlucky scatters its misses; one that has a team wrong keeps missing the
+    same way. The flag separates those. Wins are a sum of independent
+    Bernoulli draws at the model's own probabilities, so their spread is
+    sqrt(sum p(1-p)) -- beyond two of those, chance is an unlikely excuse.
+    """
+    said = games.apply(_model_said, axis=1)
+    d = games[said.notna()].copy()
+    if d.empty:
+        return
+    d["said"] = said[said.notna()].astype(float)
+    p = d["p_home_win"].astype(float)
+    home_won = (d["home_goals"] > d["away_goals"]).astype(int)
+
+    st.subheader("Missä malli menee pieleen")
+    st.caption(
+        f"Koko kausi, {len(d)} pelattua ottelua. Kotijoukkueille malli odotti "
+        f"{_fi1(float(p.sum()))} voittoa, toteutui {int(home_won.sum())}. "
+        "Korostettuna joukkueet, joiden kohdalla ero on niin suuri, ettei se "
+        "todennäköisesti ole pelkkää sattumaa — muut erot ovat tällä "
+        "otoksella usein vain vaihtelua.")
+
+    rows, classes = [], []
+    teams = sorted(set(d["home_team"]) | set(d["away_team"]))
+    stats = []
+    for team in teams:
+        h, a = d["home_team"] == team, d["away_team"] == team
+        pw = pd.concat([p[h], 1 - p[a]])
+        won = int(home_won[h].sum() + (1 - home_won[a]).sum())
+        exp = float(pw.sum())
+        sd = float((pw * (1 - pw)).sum()) ** 0.5
+        stats.append((team, int(h.sum() + a.sum()), exp, won, won - exp,
+                      (won - exp) / sd if sd else 0.0))
+    for team, n, exp, won, diff, z in sorted(stats, key=lambda r: -r[4]):
+        sure = abs(z) >= 2
+        colour = (HIT if diff > 0 else MISS) if sure else MUTED
+        label = ((" aliarvioi" if diff > 0 else " yliarvioi") if sure else "")
+        weight = "700" if sure else "400"
+        rows.append([
+            f'<span class="lp-team">{_esc(team)}</span>',
+            str(n), _fi1(exp), str(won),
+            f'<span style="color:{colour};font-weight:{weight}">'
+            f'{_fi1(diff, sign=True)}{label}</span>'])
+        classes.append(dim_class(team, highlight))
+    render_grid([("Joukkue", "minmax(0,1fr)", ""), ("O", "56px", "lp-num lp-dim"),
+                 ("Malli odotti voittoja", "170px", "lp-num"),
+                 ("Voitti", "80px", "lp-num"),
+                 ("Ero", "190px", "lp-num")], rows, classes)
+    st.write("")
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Kuinka varma malli oli**")
+        conf = pd.concat([p, 1 - p], axis=1).max(axis=1)
+        pick_home = p >= 0.5
+        hit = (pick_home & (home_won == 1)) | (~pick_home & (home_won == 0))
+        crow = []
+        for lo, hi, name in [(.50, .55, "50–55 %"), (.55, .60, "55–60 %"),
+                             (.60, .65, "60–65 %"), (.65, 1.01, "yli 65 %")]:
+            m = (conf >= lo) & (conf < hi)
+            if not m.any():
+                continue
+            crow.append([name, str(int(m.sum())),
+                         f"{conf[m].mean() * 100:.0f} %",
+                         f"{hit[m].mean() * 100:.0f} %"])
+        render_grid([("Suosikin todennäköisyys", "minmax(0,1fr)", ""),
+                     ("Otteluita", "90px", "lp-num lp-dim"),
+                     ("Lupasi", "80px", "lp-num"), ("Osui", "72px", "lp-num")],
+                    crow)
+        st.caption("Hyvin kalibroitu malli osuu suunnilleen niin usein kuin "
+                   "lupaa. Pienissä ryhmissä luvut heittelevät.")
+    with right:
+        st.markdown("**Suurimmat hutit**")
+        worst = d.nsmallest(5, "said")
+        wrow, wcls = [], []
+        for _, g in worst.iterrows():
+            wrow.append([
+                pd.to_datetime(g["start_ts"]).strftime("%-d.%-m."),
+                f'<span class="lp-team">{_esc(g["home_team"])} – '
+                f'{_esc(g["away_team"])}</span>',
+                _result_text(g),
+                f'<span style="color:{MISS};font-weight:700">'
+                f'{g["said"]:.0f} %</span>'])
+            involved = {g["home_team"], g["away_team"]}
+            wcls.append("" if not highlight
+                        else ("lp-on" if involved & highlight else "lp-off"))
+        render_grid([("Pvm", "52px", "lp-num lp-dim"),
+                     ("Ottelu", "minmax(0,1fr)", ""),
+                     ("Tulos", "64px", "lp-num"),
+                     ("Voittajalle", "116px", "lp-num")], wrow, wcls)
+        st.caption("Ottelut, joissa malli antoi lopulliselle voittajalle "
+                   "pienimmän todennäköisyyden.")
+
+
 def render_fixtures(games: pd.DataFrame, highlight: set[str]) -> None:
     """Fixtures with probability bars, and the outcome once played.
 
@@ -1503,6 +1612,8 @@ def main() -> None:
                                    .capitalize()))
         render_fixtures(upcoming[upcoming["start_ts"].str[:7] == chosen],
                         opts["highlight"])
+        st.write("")
+        render_misses(upcoming, opts["highlight"])
 
     st.subheader("Miten ennuste on liikkunut")
     st.caption("Ennustetut lopputilanteen pisteet, yksi piste per päivitysajo. "
