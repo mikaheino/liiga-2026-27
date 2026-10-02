@@ -467,37 +467,45 @@ def _model_said(r) -> float:
 
 
 def render_scoreboard(games: pd.DataFrame) -> None:
-    """Season-total hit rate over every scored game, not the chosen month.
+    """Season-total hit rate, beside the yardstick that makes it mean something.
 
     Scored the same way as the per-game tick: _model_said is the probability
     the model gave the eventual winner, and >= 50 % means it had the right
     side. Reusing that one function is the point -- a second rule here would
     let the headline and the column disagree.
 
-    Two numbers, because the first one alone flatters or slanders the model
-    depending on the week. The average probability given to winners is the
-    fairer summary: it separates "wrong on a 52/48" from "gave the winner
-    20 %", which a hit rate cannot see.
+    The reference is "the home team always wins", not a coin flip. Against
+    50 % the hit rate looked comfortably good; on 2 Oct 2026 both stood at
+    41/70, so the model had added nothing yet over the simplest pick there
+    is. The earlier second box -- average probability given to the winner --
+    is gone: the user could not tell what it meant or which number to read.
+    "Ennusti", not "arvattu": the model does not guess.
     """
-    said = games.apply(_model_said, axis=1).dropna()
-    if said.empty:
+    said = games.apply(_model_said, axis=1)
+    scored = games[said.notna()]
+    if scored.empty:
         return
-    n = len(said)
-    hits = int((said >= 50).sum())
-    rate = 100.0 * hits / n
-    avg = float(said.mean())
-    # 50 % is the coin flip, and for this model it is the honest reference:
-    # the backtest edge was 0.672 log-loss against a 0.686 base rate, so the
-    # sample has to be large before either side of 50 means anything.
-    tone = HIT if rate >= 50 else MISS
+    n = len(scored)
+    hits = int((said.dropna() >= 50).sum())
+    home = int((scored["home_goals"] > scored["away_goals"]).sum())
+    rate, base = 100.0 * hits / n, 100.0 * home / n
+    gap = hits - home
+    tone = HIT if gap > 0 else (MISS if gap < 0 else "var(--lp-ink)")
+    if gap > 0:
+        verdict = f"{gap} osumaa enemmän kuin pelkkä kotijoukkue"
+    elif gap < 0:
+        verdict = f"{-gap} osumaa vähemmän kuin pelkkä kotijoukkue"
+    else:
+        verdict = "tasoissa pelkän kotijoukkueen kanssa"
     html(
         '<div class="lp-score">'
-        f'<div class="box"><div class="k">Oikein arvattu voittaja</div>'
+        f'<div class="box"><div class="k">Malli ennusti voittajan oikein</div>'
         f'<div class="n" style="color:{tone}">{rate:.0f} %</div>'
-        f'<div class="s">{hits}/{n} pelattua ottelua</div></div>'
-        f'<div class="box"><div class="k">Malli antoi voittajalle</div>'
-        f'<div class="n">{avg:.0f} %</div>'
-        f'<div class="s">keskimäärin — 50 % on kolikonheitto</div></div>'
+        f'<div class="s">{hits}/{n} ottelussa · {verdict}</div></div>'
+        f'<div class="box"><div class="k">Vertailu: aina kotijoukkue</div>'
+        f'<div class="n">{base:.0f} %</div>'
+        f'<div class="s">{home}/{n} — näin usein kotijoukkue voitti. Malli on '
+        'hyödyllinen vasta kun se ylittää tämän.</div></div>'
         '</div>'
     )
 
