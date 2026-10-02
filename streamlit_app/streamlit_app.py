@@ -1610,9 +1610,23 @@ def main() -> None:
 
         month_keys = sorted(upcoming["start_ts"].str[:7].unique())
         this_month = dt.date.today().strftime("%Y-%m")
-        # Default to the running month; before the season opens that month has
-        # no games at all, so fall back to the first month that does.
-        default = month_keys.index(this_month) if this_month in month_keys else 0
+        played = sorted(upcoming.loc[upcoming["ended"].astype(bool),
+                                     "start_ts"].str[:7].unique())
+        # Default to the running month only once a game in it has been
+        # played. On 1-2 Oct 2026 the running month held 90 unplayed games and
+        # no results, so the results and "malli antoi voittajalle" columns
+        # looked as if they had vanished -- September's 70 were one click away.
+        # Until then, the latest month with results; before the season opens,
+        # the running month, else the first one.
+        if this_month in played:
+            default_key = this_month
+        elif played:
+            default_key = played[-1]
+        elif this_month in month_keys:
+            default_key = this_month
+        else:
+            default_key = month_keys[0]
+        default = month_keys.index(default_key)
         chosen = st.selectbox(
             "Kuukausi",
             month_keys, index=default,
