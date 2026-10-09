@@ -948,10 +948,28 @@ When the user says to add a new player (new signing, transfer update):
    ```
 7. **Re-run standings + rebuild site:**
    ```bash
-   python scripts/refresh_standings.py
-   python scripts/build_site.py
+   python scripts/daily_update.py        # in season -- NOT refresh_standings.py
    ```
+   Before the season opens `refresh_standings.py` + `build_site.py` is the
+   path; once games are played it throws away banked points and current Elo
+   (see "Kesken kauden: refresh_standings.py on VÄÄRÄ skripti").
 8. **Verify:** `python scripts/check_roster_coverage.py` — confirm the players you just touched are no longer flagged STALE (or, if they legitimately didn't play a full season anywhere last year — injury, juniors — confirm that's genuinely the case rather than a missed lookup).
+
+9. **Commit the roster, then log its effect:**
+   ```bash
+   python scripts/roster_impact.py
+   ```
+   Rewrites `docs/roster_impact.md` and `data/roster_impact.csv` -- every
+   committed roster version run through the pre-season forecast with
+   everything else held fixed, so the delta is the roster alone. The user
+   asked for this record to be kept (2026-10-09); commit the two files with
+   the batch. It reads versions from git, so an uncommitted roster is not in it.
+
+   Adding a goalie can LOWER a team: `team_goaltending` weights rostered
+   goalies by recent games, so a weaker veteran with many games pulls the
+   average down (Jokerit −0,7 with Karhunen, 9.10.). That is the model's
+   goalie-starts assumption, already an open item in
+   docs/model_improvements_in_season.md -- not a bug in this script.
 
 Players with prior Liiga history (e.g. returning from abroad) skip straight to step 3's coverage check instead of assuming they're covered — only skip step 4/5 (external stats) if that check confirms their most recent season is already in the DB.
 
