@@ -1027,8 +1027,11 @@ def rank_movement(log: pd.DataFrame, window: int,
 
     Each team's own last `window` games are removed and the table recomputed,
     so the comparison is "where would this team be without its recent run".
-    A team that has not played more than `window` games yet has no earlier
-    table to compare against and gets NaN, which renders as a dash.
+    A team needs at least `window` games BEFORE the window as well, otherwise
+    it gets NaN and renders as a dash. Without that floor the "earlier" table
+    in October was built on 0-2 games per team: Jukurit showed ▲15 on
+    9 Oct 2026, which said only that it lost its first two games, not that
+    its last ten had been good.
     """
     if log.empty:
         return pd.Series(dtype=float)
@@ -1045,7 +1048,7 @@ def rank_movement(log: pd.DataFrame, window: int,
     then = _rank_series(season_table(earlier.drop(columns="_n"), teams))
     played = log.groupby("team").size()
     move = then.reindex(now.index) - now          # positive = moved up
-    return move.where(played.reindex(now.index).fillna(0) > window)
+    return move.where(played.reindex(now.index).fillna(0) >= 2 * window)
 
 
 def _spark(vals: list[float], w: int = 88, h: int = 24) -> str:
@@ -1132,14 +1135,22 @@ def zone_legend() -> None:
          '</div>')
 
 
-def _move(mv) -> str:
+def _move(mv, window: int = 10) -> str:
+    """Places gained over the last `window` games, explained on hover."""
     if mv is None or pd.isna(mv):
-        return '<span class="lp-mv" style="color:#b6bfbb">–</span>'
+        tip = (f"Sijamuutos näytetään, kun joukkue on pelannut vähintään "
+               f"{2 * window} ottelua")
+        return (f'<span class="lp-mv" title="{tip}" '
+                'style="color:#b6bfbb">–</span>')
     mv = int(mv)
     if mv == 0:
-        return '<span class="lp-mv" style="color:#b6bfbb">–</span>'
+        return (f'<span class="lp-mv" title="Sama sija kuin {window} ottelua '
+                'sitten" style="color:#b6bfbb">–</span>')
     arrow, colour = ("▲", BRAND_DARK) if mv > 0 else ("▼", DANGER)
-    return f'<span class="lp-mv" style="color:{colour}">{arrow} {abs(mv)}</span>'
+    tip = (f"{'Noussut' if mv > 0 else 'Laskenut'} {abs(mv)} sijaa "
+           f"viimeisen {window} ottelun aikana")
+    return (f'<span class="lp-mv" title="{tip}" style="color:{colour}">'
+            f'{arrow} {abs(mv)}</span>')
 
 
 def dim_class(team: str, highlight: set[str]) -> str:
@@ -1210,7 +1221,7 @@ def render_form_table(log: pd.DataFrame, window: int, *,
             f'<div class="lp-rank">{_qbar(rank)}'
             f'<span class="lp-num lp-dim">{rank}</span></div>',
             f'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
-            f'{name}{_move(moves.get(team))}</div>',
+            f'{name}{_move(moves.get(team), window)}</div>',
             str(int(r["gp"])),
         ]
         if show_xg:
@@ -1356,7 +1367,10 @@ def sidebar_controls(log: pd.DataFrame, stamp: str,
         st.divider()
         window = st.select_slider("Muotoikkuna", options=[5, 10, 20], value=10,
                                   help="Kuinka monta viimeisintä ottelua vire "
-                                       "ja sijoitusmuutos kattavat.")
+                                       "ja sijoitusmuutos kattavat. Sijamuutos "
+                                       "(▲/▼) näkyy vasta kun joukkue on "
+                                       "pelannut kaksi kertaa ikkunan verran "
+                                       "otteluita.")
         highlight = st.multiselect("Korosta joukkueet", teams, default=[],
                                    help="Korostetut joukkueet erottuvat "
                                         "taulukoissa.")
