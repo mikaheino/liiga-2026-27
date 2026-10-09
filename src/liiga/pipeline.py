@@ -59,7 +59,8 @@ def refresh_results(season: int | None = None, con=None) -> dict:
     from some networks while serving historical seasons fine.
 
     A schedule change is the exception the operator reports, and
-    `ingest_all(seasons=[...])` reloads the fixture list when it happens.
+    `ingest.refresh_schedule()` moves the unplayed games when it happens.
+    (Not `ingest_all`: it reads the disk cache from the first load.)
 
     Called by both the local daily run and the in-Snowflake notebook, so this
     must stay free of anything laptop-specific.

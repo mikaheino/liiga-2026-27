@@ -579,8 +579,30 @@ request in the current conversation — "update the app" means the local one.
 The season endpoint is not called at all. The fixture list is fixed and lives
 in `raw_games`; `results.games_needing_update()` decides what is due — eight
 hours past a game's start, or the calendar day rolling over when the start
-time is unusable. A schedule change is the exception the operator reports, and
-`ingest_all(seasons=[...])` reloads the fixture list.
+time is unusable.
+
+⚠️ **Otteluohjelman muutokset: `ingest.refresh_schedule()`, EI `ingest_all`.**
+Ohje sanoi aiemmin että `ingest_all(seasons=[...])` lataa ohjelman uudelleen —
+**ei lataa**: `fetch_season()` palauttaa levyvälimuistin (`data/raw/games_2027.json`,
+tallennettu 5.9.) ellei `force=True`, ja `force`:lla se kirjoittaisi kaikki
+kauden raakataulut uudelleen kauden päätepisteestä tuloksineen. 9.10. ohjelmassa
+oli **8 siirrettyä ottelua**, pahimpana Sport–Jukurit 7.3. → 20.10.
+
+`refresh_schedule()` hakee kauden tuoreena ja päivittää **vain pelaamattomien
+otteluiden `start_time`:n**. Pelattuihin se ei koske (per-game-päätepiste on
+niiden auktoriteetti), ja se **kieltäytyy** jos ottelujoukko tai joukkuepari
+eroaa, koska se ei ole siirto vaan jotain mikä vaatii ihmisen. Idempotentti:
+toinen ajo palauttaa 0 muutosta. `apply=False` näyttää muutokset kirjoittamatta.
+
+```python
+from liiga.ingest import refresh_schedule
+refresh_schedule()            # tämän jälkeen daily_update.py
+```
+
+Ottelu voi saada kokoonpanon ennen kuin se pelataan: HIFK–TPS (2701360, 14.10.)
+on haettu siirron jälkeen, ja `game_lineups`:ssa on sille 63 riviä. Se korjaantuu
+itsestään kun ottelu haetaan pelattuna (korvaus on `game_id`-kohtainen), mutta
+siihen asti kaikki kokoonpanoihin perustuva pitää rajata `stg_games.ended`:llä.
 
 When the per-game endpoint serves a partial payload, `standings.
 reconstruct_games()` derives the result from the movement between two

@@ -357,6 +357,55 @@ def seasons_to_ingest(con, cfg: dict | None = None) -> list[int]:
     return sorted({s for s in configured if s not in have} | {target})
 
 
+def refresh_schedule(season: int | None = None, *, apply: bool = True) -> list[dict]:
+    """Bring unplayed games' start times in line with liiga.fi. Returns changes.
+
+    The fixture list is loaded once and the daily run never re-reads it, so a
+    rescheduled game keeps its old date: on 9 Oct 2026 eight games were wrong,
+    one by five months (Sport-Jukurit, 7 Mar -> 20 Oct). The old advice,
+    `ingest_all(seasons=[...])`, does not fix this -- fetch_season() returns
+    the disk cache from the first load unless force=True -- and with force it
+    would rewrite every 2027 raw table from the season endpoint, results
+    included.
+
+    This fetches the season fresh and touches one column of unplayed games.
+    Played games are left alone even if their stored time differs: their
+    results came from the per-game endpoint and are the authority. It refuses
+    to act if the game set or a pairing differs, because that is not a
+    reschedule and wants a person looking at it.
+    """
+    cfg = load_config()["ingestion"]
+    season = season or cfg["target_season"]
+    games = fetch_season(season, force=True)          # also renews the cache
+    api = {int(g["id"]): (g["start"], g["homeTeam"]["teamName"],
+                          g["awayTeam"]["teamName"]) for g in games}
+    con = get_connection()
+    try:
+        raw = query_df(con, "SELECT * FROM raw_games")
+        cur = raw[raw["season"] == season]
+        ids = set(cur["game_id"].astype(int))
+        if ids != set(api):
+            raise ValueError(f"game set differs: {len(ids - set(api))} only stored, "
+                             f"{len(set(api) - ids)} only on liiga.fi -- not a reschedule")
+        changes = []
+        for i, r in cur.iterrows():
+            start, home, away = api[int(r["game_id"])]
+            if (r["home_team"], r["away_team"]) != (home, away):
+                raise ValueError(f"game {r['game_id']} pairing differs: "
+                                 f"{r['home_team']}-{r['away_team']} vs {home}-{away}")
+            if bool(r["ended"]) or pd.to_datetime(r["start_time"], utc=True) == \
+                    pd.to_datetime(start, utc=True):
+                continue
+            changes.append({"game_id": int(r["game_id"]), "home": home, "away": away,
+                            "old": r["start_time"], "new": start})
+            raw.loc[i, "start_time"] = start
+        if changes and apply:
+            register_df(con, "raw_games", raw)
+    finally:
+        con.close()
+    return changes
+
+
 def ingest_all(*, seasons: list[int] | None = None,
                force: bool = False) -> dict[str, int]:
     """Load raw tables for the seasons that need it. Returns rows written.
@@ -364,6 +413,8 @@ def ingest_all(*, seasons: list[int] | None = None,
     `seasons=None` picks them per `seasons_to_ingest` (incremental).
     Pass an explicit list to re-read specific seasons -- that is how the
     historical backfill from the on-disk cache is done, with no API calls.
+    It reads the cache, so it does NOT pick up a rescheduled game; use
+    refresh_schedule() for that.
     """
     cfg = load_config()["ingestion"]
 
