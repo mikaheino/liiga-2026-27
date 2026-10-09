@@ -190,3 +190,19 @@ Rasmus Korhonen|2023|Liiga|15|0.879|Ässät
 Rasmus Korhonen|2024|Liiga|24|0.903|Jukurit
 Rasmus Korhonen|2025|Allsvenskan|44|0.899|Västerås IK
 Rasmus Korhonen|2026|Allsvenskan|35|0.899|Västerås IK
+Niko Hovinen|2022|Liiga|18|0.909|Sport
+Niko Hovinen|2023|Liiga|20|0.893|Sport
+Niko Hovinen|2023|Liiga|4|0.915|Tappara
+Niko Hovinen|2024|Liiga|22|0.920|HIFK
+Niko Hovinen|2025|Liiga|32|0.905|HIFK
+Niko Hovinen|2026|Liiga|14|0.856|HIFK
+Tomi Karhunen|2022|DEL|25|0.887|Straubing Tigers
+Tomi Karhunen|2022|ICEHL|3|0.863|VSV EC
+Tomi Karhunen|2023|Liiga|1|0.882|HIFK
+Tomi Karhunen|2023|SHL|6|0.826|Brynäs IF
+Tomi Karhunen|2024|Liiga|16|0.907|Kärpät
+Tomi Karhunen|2025|Liiga|35|0.882|Kärpät
+Tomi Karhunen|2026|Liiga|6|0.859|HPK
+Tomi Karhunen|2026|Liiga|12|0.893|SaiPa
+Vili Varonen|2026|Liiga|1|0.889|HIFK
+Emils Vitols|2026|Liiga|2|0.865|Jukurit
