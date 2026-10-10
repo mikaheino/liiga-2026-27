@@ -634,6 +634,15 @@ optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
 - **Työkalun kuvaus päättää kutsutaanko työkalua lainkaan:** aihe jota ei
   mainita (ylivoima, yleisö) sai vastauksen "ei dataa" ilman kutsua.
 - Budjetti on katto: 300 s. Tokenraja 20 000 ei katkaise mitään.
+- **Agentti on versioitu (10.10. alkaen).** Tuotantovienti tekee uuden
+  `VERSION$N`:n (`COMMIT`, kommentissa git-commit), siirtää aliaksen
+  `production` ja oletusversion siihen. Skillit luetaan versiokohtaisesta
+  kansiosta `@LIIGA.CODE.AGENT_SKILLS/<git-sha>/` -- älä ylikirjoita niitä
+  käsin `snow stage copy`llä, se muuttaa tuotannon käytöksen ilman versiota
+  (tein niin kerran 10.10.). **Älä käytä `CREATE OR REPLACE AGENT`** tuotannossa:
+  se nollaa historian `VERSION$1`:een. `VERSION$1` on aamupäivän tila ennen
+  versiointia, `VERSION$2` (010d045) ensimmäinen versioitu.
+  Palautus: `ALTER AGENT … SET DEFAULT_VERSION = 'VERSION$N'`.
 
 **Miksi kaksi ja miksi näkymät: tokenit.** Cortex Analyst lukee koko
 semanttisen mallin joka kutsulla, ja agentti yritti monivaiheisia

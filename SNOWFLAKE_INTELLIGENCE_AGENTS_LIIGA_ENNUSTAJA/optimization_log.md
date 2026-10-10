@@ -101,3 +101,9 @@
   "johtoryhmävisualisointi" (4/4), ei pelkällä "HTML-sivu"-pyynnöllä (0/2). Väärä
   laukeaminen tavallisiin kysymyksiin jää ~6 %:iin (1/12, 1/22, 1/14), hinta ~111 000
   vs. 37 000 tokenia. Varma esto olisi erillinen agentti; valittiin sama agentti.
+
+## Agent versions (Snowflake)
+| versio | alias | git | sisältö |
+|---|---|---|---|
+| `VERSION$1` | – | (ennen versiointia) | aamupäivän tila; skill luki ylikirjoitettavaa kansiota |
+| `VERSION$2` | production, oletus | 010d045 | kaksi semanttista mallia, 20 metriikkaa, kierroksen esikatselu, johtoryhmävisualisointi raporttina |
