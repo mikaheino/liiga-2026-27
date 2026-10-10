@@ -1448,7 +1448,8 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
             return {}, "scripts/build_instagram.py ei ole käytettävissä."
         out = {}
         for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post),
-                          ("mv", builder.goalie_post)):
+                          ("mv", builder.goalie_post),
+                          ("surprise", builder.surprise_post)):
             slides = make()
             out[key] = (slides, builder.slides_to_pdf(slides) if slides else b"")
         return out, ""
@@ -1457,6 +1458,11 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
 
 
 POSTS = [
+    ("surprise", "Alkukauden yllättäjät", "yllattajat",
+     "Pisteet tähän mennessä verrattuna siihen, mitä esikauden ennuste "
+     "(1.9.) antoi juuri pelatuista otteluista — vastustajat ja koti/vieras "
+     "huomioiden. Toinen dia on yllättäjien kokoonpano — kolme hyökkääjää, kaksi "
+     "puolustajaa ja maalivahti — oman esikauden ennusteensa ylittäneistä."),
     ("xg", "Varjosarjataulukko", "varjosarjataulukko",
      "Sarjataulukko sellaisena kuin maalipaikat (xG) sen jakaisivat — "
      "pisteitä on sama määrä kuin oikeassa taulukossa, vain eri tavalla "

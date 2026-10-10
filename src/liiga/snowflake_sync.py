@@ -42,6 +42,9 @@ RAW_TABLES = {
     "player_bio",
     "roster_2026_27",
     "league_factors",
+    # Frozen pre-season player expectations (data/preseason_player_rates.csv)
+    # -- the yardstick for "who surprised"; player_rates moves in season.
+    "preseason_player_rates",
     # Per-game detail from the API (liiga.results) -- ingested, not derived.
     "game_lineups",
     "game_goalies",
@@ -68,6 +71,7 @@ CURATED_TABLES = [
     "player_rates",                  # the model itself
     "player_rates_liiga",
     "player_rates_unified",
+    "preseason_player_rates",        # frozen 1 Sep 2026 expectations
 ]
 
 

@@ -335,6 +335,7 @@ def css(t: dict) -> str:
   .g17 {{ display:grid; align-items:center; column-gap:14px; }}
   .g17.xg {{ grid-template-columns:58px 40px minmax(0,1fr) 40px 104px 96px 96px 108px; }}
   .g17.ft {{ grid-template-columns:40px minmax(0,1fr) 178px 196px 70px; }}
+  .g17.sp {{ grid-template-columns:40px minmax(0,1fr) 40px 112px 112px 112px; }}
   .g17.hd {{ font-family:{HEAD_F}; font-size:14px; letter-spacing:2px;
             text-transform:uppercase; color:{t['muted']}; padding-bottom:9px;
             border-bottom:2px solid {GOLD_LO}; }}
@@ -360,6 +361,22 @@ def css(t: dict) -> str:
 
   /* ---- kuusi pelaajaa yhdellä dialla (maalivahdit) ---- */
   .award.six .aw .ava {{ width:104px; height:104px; }}
+  .lineup {{ display:flex; flex-direction:column; justify-content:space-evenly;
+            height:100%; gap:14px; }}
+  .ln-row {{ display:flex; justify-content:center; gap:22px; }}
+  .ln {{ width:300px; background:{t['panel']}; border-top:6px solid {t['bar']};
+        padding:12px 14px 12px; display:flex; flex-direction:column;
+        align-items:center; text-align:center; }}
+  .ln .ava {{ width:72px; height:72px; }}
+  .ln .ava .face {{ width:72px; height:72px; }}
+  .ln .ava .crest {{ width:50px; height:50px; }}
+  .ln .aw-cat {{ font-size:14px; margin:8px 0 3px; }}
+  .ln-name {{ font-family:{HEAD_F}; font-size:30px; text-transform:uppercase;
+             letter-spacing:-1px; line-height:1.05; font-style:italic;
+             white-space:nowrap; }}
+  .ln-sub {{ font-size:17px; color:{t['muted']}; margin-top:4px; line-height:1.25; }}
+  .ln-num {{ font-family:{HEAD_F}; font-size:34px; margin-top:6px; line-height:1; }}
+  .ln-unit {{ font-size:16px; color:{t['muted']}; }}
   .award.six .aw .ava .face {{ width:104px; height:104px; }}
   .award.six .aw .ava .crest {{ width:72px; height:72px; }}
   .award.six .aw-name {{ font-size:40px; }}
@@ -1536,6 +1553,262 @@ def forty_post(con=None) -> list:
         return []
     out = [("40min.png", forty_hero_slide(theme(GRADIENTS[0]), f)),
            ("40min_joukkueittain.png", forty_teams_slide(theme(GRADIENTS[6]), f))]
+    return [(name, rasterise(html)) for name, html in out]
+
+
+PRESEASON_RATES = ROOT / "data" / "preseason_player_rates.csv"
+
+
+def _preseason_snapshot(con) -> str | None:
+    """Viimeisin ennuste ennen kauden alkua -- sama määritelmä kuin
+    rank_context():ssä (games_played = 0), ei päivämäärä."""
+    d = query_df(con, """SELECT MAX(snapshot_date) AS s FROM prediction_history
+                         WHERE games_played = 0""")
+    return None if d.empty or d["s"].isna().all() else str(d["s"].iloc[0])[:10]
+
+
+def surprise_teams(con):
+    """Pisteet tähän mennessä vs. mitä esikauden malli antoi JUURI NÄISTÄ
+    otteluista.
+
+    Odotus otetaan prediction_games-taulun esikauden snapshotista ottelu
+    kerrallaan, joten se huomioi vastustajat ja koti/vieras -- KooKoo, joka
+    on pelannut helpon alun, ei saa samaa odotusta kuin vaikean alun pelannut.
+    Ottelu jakaa 3 pistettä myös odotuksessa, joten summat täsmäävät.
+
+    z = ero / keskihajonta, kun keskihajonta lasketaan samoista
+    todennäköisyyksistä (pisteet 3/2/1/0 per ottelu). |z| ≥ 2 on se raja,
+    jonka yli ero ei enää ole tavallista vaihtelua.
+    """
+    snap = _preseason_snapshot(con)
+    if snap is None:
+        return None
+    d = query_df(con, f"""
+        WITH g AS (
+          SELECT s.home_team, s.away_team, s.home_points, s.away_points,
+                 p.p_home_reg AS h3, p.p_away_reg AS a3,
+                 p.p_overtime * p.p_home_ot_win AS h2,
+                 p.p_overtime * (1 - p.p_home_ot_win) AS a2
+          FROM stg_games s
+          JOIN prediction_games p ON p.game_id = s.game_id
+                                 AND p.snapshot_date = '{snap}'
+          WHERE s.season = (SELECT MAX(season) FROM stg_games) AND s.ended),
+        x AS (
+          SELECT home_team AS team, home_points AS pts,
+                 3*h3 + 2*h2 + a2 AS xp, 9*h3 + 4*h2 + a2 AS x2 FROM g
+          UNION ALL
+          SELECT away_team, away_points, 3*a3 + 2*a2 + h2, 9*a3 + 4*a2 + h2 FROM g)
+        SELECT team, COUNT(*) AS o, SUM(pts) AS p, SUM(xp) AS xp,
+               SUM(x2 - xp*xp) AS var
+        FROM x GROUP BY team""")
+    if d.empty:
+        return None
+    # Joukkue joka ei ole vielä pelannut kuuluu taulukkoon nollilla.
+    teams = query_df(con, "SELECT DISTINCT team FROM roster_2026_27")["team"]
+    d = d.set_index("team").reindex(teams).fillna(0).reset_index()
+    d["diff"] = d["p"] - d["xp"]
+    d["z"] = np.where(d["var"] > 0, d["diff"] / np.sqrt(d["var"].clip(lower=1e-9)), 0.0)
+    assert abs(d["p"].sum() - d["xp"].sum()) < 0.5, (d["p"].sum(), d["xp"].sum())
+    d = d.sort_values(["diff", "team"], ascending=[False, True]).reset_index(drop=True)
+    d.attrs["snapshot"] = snap
+    return d
+
+
+def surprise_players(con, min_games: int = 5):
+    """Kenttäpelaajat: tehopisteet vs. esikauden ennuste × pelatut ottelut.
+
+    Ennuste tulee jäädytetystä data/preseason_player_rates.csv:stä, ei
+    player_rates-taulusta: se rakentuu kauden aikana uudelleen, eikä "mitä
+    odotettiin" saa liikkua jälkikäteen. Pelaaja joka ei ollut esikauden
+    rosterissa ei ole mukana -- hänelle ei julkaistu odotusta.
+
+    Ottelut lasketaan kokoonpanoista (pelatut ottelut, ei poistetut), pisteet
+    player_season_scoring:sta MIINUS epäonnistuneet rangaistuslaukaukset
+    (RL0), jotka se laskee maaleiksi (avoin bugi, ks. CLAUDE.md).
+    """
+    import pandas as pd
+    pre = pd.read_csv(PRESEASON_RATES, comment="#")
+    d = query_df(con, """
+        WITH cur AS (SELECT MAX(season) AS s FROM stg_games),
+        gp AS (
+          SELECT l.player_id, MAX(l.first_name) AS first_name,
+                 MAX(l.last_name) AS last_name, MAX(l.team) AS team,
+                 MAX(l.position_group) AS pos, COUNT(DISTINCT l.game_id) AS o
+          FROM game_lineups l
+          JOIN stg_games s ON s.season = l.season AND s.game_id = l.game_id
+          WHERE l.season = (SELECT s FROM cur) AND s.ended
+            AND l.position_group <> 'G' AND NOT COALESCE(l.removed, FALSE)
+          GROUP BY l.player_id),
+        rl0 AS (
+          SELECT player_id, COUNT(*) AS n FROM raw_goal_events
+          WHERE season = (SELECT s FROM cur) AND goal_types LIKE '%RL0%'
+          GROUP BY player_id)
+        SELECT gp.*, COALESCE(sc.goals, 0) - COALESCE(rl0.n, 0) AS g,
+               COALESCE(sc.points, 0) - COALESCE(rl0.n, 0) AS p
+        FROM gp
+        LEFT JOIN player_season_scoring sc
+               ON sc.player_id = gp.player_id AND sc.season = (SELECT s FROM cur)
+        LEFT JOIN rl0 ON rl0.player_id = gp.player_id""")
+    if d.empty:
+        return d
+    by_id = {int(r.player_id): r.ppg for r in pre.dropna(subset=["player_id"]).itertuples()}
+    # Tuontipelaajilla ei ollut esikaudella id:tä, joten nimi + joukkue.
+    by_name = {(_norm(r.name), r.team): r.ppg for r in pre.itertuples()}
+    d["ppg"] = [by_id.get(int(pid), by_name.get((_norm(f"{fn} {ln}"), tm)))
+                for pid, fn, ln, tm in zip(d.player_id, d.first_name,
+                                           d.last_name, d.team)]
+    d = d[d["ppg"].notna() & (d["o"] >= min_games)].copy()
+    d["exp"] = d["ppg"] * d["o"]
+    d["diff"] = d["p"] - d["exp"]
+    d = d.sort_values(["diff", "p"], ascending=False).reset_index(drop=True)
+    d.attrs.update(min_games=min_games)
+    return d
+
+
+def surprise_table_slide(t: dict, d) -> str:
+    head = ('<div class="g17 sp hd"><div></div><div class="l">Joukkue</div>'
+            '<div>O</div><div>Pisteet</div><div>Ennuste</div>'
+            '<div>Yli / ali</div></div>')
+    rows = []
+    for r in d.itertuples():
+        col = XG_UP if r.diff >= 0.05 else (XG_DOWN if r.diff <= -0.05 else MUTED)
+        rows.append(f"""
+      <div class="g17 sp r">
+        <div class="c17"><img src="{logo_uri(r.team)}" alt=""></div>
+        <div class="n17">{r.team}</div>
+        <div class="m17">{int(r.o)}</div>
+        <div class="b17">{int(r.p)}</div>
+        <div class="m17">{_fi(r.xp)}</div>
+        <div class="d17" style="color:{col}">{_fi(r.diff, sign=True)}</div>
+      </div>""")
+    big = d[d["z"].abs() >= 2]["team"].tolist()
+    if not big:
+        verdict = "Yhdenkään joukkueen ero ei vielä ylitä tavallista vaihtelua."
+    else:
+        # Ei genetiiviä: joukkueiden nimet taipuvat epäsäännöllisesti
+        # (KooKoon, Ässien, Jukurien), eikä ":n" ole oikein yhdellekään.
+        who = big[0] if len(big) == 1 else ", ".join(big[:-1]) + f" ja {big[-1]}"
+        verdict = ("Niin suuri ero, ettei sitä selitä tavallinen vaihtelu: "
+                   f"{who}.")
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Ennuste vs. toteuma</div>
+      <div class="title">Alkukauden<br>yllättäjät</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body tbl17">{head}{"".join(rows)}</div>
+    <div class="foot">Ennuste = pisteet, jotka esikauden malli
+      ({_fi_date(d.attrs['snapshot'])}) antoi juuri näistä otteluista ·
+      yli / ali = kuinka paljon enemmän (+) tai vähemmän (−) pisteitä.
+      {verdict}</div>
+  </div>""")
+
+
+def surprise_goalies(con, min_games: int = 3):
+    """Maalivahdit: päästetyt vs. mitä HÄNEN OMA esikauden torjuntaennusteensa
+    olisi päästänyt samoista paikoista.
+
+    Pohja on goalie_saves() (omat päästetyt, vain yksin pelatut ottelut,
+    odotus = vastustajan xG × kauden päästösuhde). Siihen kerrotaan
+    maalivahdin esikauden kerroin (1 − ennuste) / (1 − liigan keskiarvo),
+    jolloin kärkeen nousee se joka ylitti OMAN odotuksensa -- ei se jonka
+    tiedettiin jo valmiiksi olevan hyvä. Ennuste on jäädytetty
+    data/preseason_player_rates.csv:hen (proj_save_pct).
+    """
+    import pandas as pd
+    g = goalie_saves(con, min_games=min_games)
+    if g.empty:
+        return g
+    pre = pd.read_csv(PRESEASON_RATES, comment="#")
+    pre = pre[pre["position_group"] == "G"]
+    avg = load_config()["goaltending"]["league_avg_save_pct"]
+    by_id = {int(r.player_id): r.proj_save_pct
+             for r in pre.dropna(subset=["player_id"]).itertuples()}
+    by_name = {(_norm(r.name), r.team): r.proj_save_pct for r in pre.itertuples()}
+    g["proj"] = [by_id.get(int(pid), by_name.get((_norm(f"{fn} {ln}"), tm)))
+                 for pid, fn, ln, tm in zip(g.player_id, g.first_name,
+                                            g.last_name, g.team)]
+    g = g[g["proj"].notna()].copy()
+    g["exp_own"] = g["exp"] * (1 - g["proj"]) / (1 - avg)
+    g["diff"] = g["exp_own"] - g["ga"]
+    return g.sort_values("diff", ascending=False).reset_index(drop=True)
+
+
+def surprise_players_slide(t: dict, picks: list, min_games: int) -> str:
+    """Yllättäjien kokoonpano kentän muodossa: kolme hyökkääjää ylhäällä,
+    kaksi puolustajaa keskellä, maalivahti alhaalla.
+    picks: [(kategoria, rivi, onko maalivahti)] järjestyksessä 3 H, 2 P, 1 MV."""
+    def card(cat, r, gk) -> str:
+        full = f"{r.first_name} {r.last_name}"
+        if gk:
+            sub = (f"{r.team} · {int(r.o)} ottelua<br>päästi {int(r.ga)}, "
+                   f"ennuste {_fi(r.exp_own)}")
+            unit = "maalia"
+        else:
+            sub = (f"{r.team} · {int(r.o)} ottelua<br>{int(r.p)} p, "
+                   f"ennuste {_fi(r.exp)}")
+            unit = "pistettä"
+        # Pitkä sukunimi ei saa rikkoa kortin leveyttä.
+        size = "" if len(r.last_name) <= 10 else \
+            f' style="font-size:{max(20, int(30 * 10 / len(r.last_name)))}px"'
+        return f"""
+        <div class="ln">
+          {face_or_crest(full, r.team)}
+          <div class="aw-cat">{cat}</div>
+          <div class="ln-name"{size}>{r.last_name}</div>
+          <div class="ln-sub">{sub}</div>
+          <div class="ln-num" style="color:{XG_UP}">{_fi(r.diff, sign=True)}</div>
+          <div class="ln-unit">{unit}</div>
+        </div>"""
+    rows = [[p for p in picks if p[0] == c]
+            for c in ("Hyökkääjä", "Puolustaja", "Maalivahti")]
+    body = "".join('<div class="ln-row">' + "".join(card(*p) for p in row) + "</div>"
+                   for row in rows if row)
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · Ennuste vs. toteuma</div>
+      <div class="title">Yllättäjät<br>kentällä</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="lineup">{body}</div>
+    </div>
+    <div class="foot">Kenttäpelaajat: tehopisteet yli oman esikauden ennusteen
+      (ennuste × pelatut ottelut), vähintään {min_games} ottelua · maalivahti:
+      maaleja vähemmän kuin hänen esikauden torjuntaennusteensa olisi
+      päästänyt samoista paikoista · mukana esikauden rosterin pelaajat</div>
+  </div>""")
+
+
+def surprise_post(con=None) -> list:
+    """Alkukauden yllättäjät: joukkueet ja pelaajat. [(tiedostonimi, png)]."""
+    own = con is None
+    con = con or get_connection()
+    try:
+        teams, players = surprise_teams(con), surprise_players(con)
+        goalies = surprise_goalies(con)
+    finally:
+        if own:
+            con.close()
+    if teams is None:
+        return []
+    out = [("yllattajat_joukkueet.png",
+            surprise_table_slide(theme(GRADIENTS[4]), teams))]
+    # Kokoonpano: kolme hyökkääjää, kaksi puolustajaa ja maalivahti.
+    picks = []
+    if not players.empty:
+        picks += [("Hyökkääjä", r, False)
+                  for r in players[players["pos"] == "F"].head(3).itertuples()]
+        picks += [("Puolustaja", r, False)
+                  for r in players[players["pos"] == "D"].head(2).itertuples()]
+    if not goalies.empty:
+        picks.append(("Maalivahti", next(goalies.head(1).itertuples()), True))
+    if picks:
+        out.append(("yllattajat_kentalla.png",
+                    surprise_players_slide(theme(GRADIENTS[1]), picks,
+                                           players.attrs.get("min_games", 5))))
     return [(name, rasterise(html)) for name, html in out]
 
 

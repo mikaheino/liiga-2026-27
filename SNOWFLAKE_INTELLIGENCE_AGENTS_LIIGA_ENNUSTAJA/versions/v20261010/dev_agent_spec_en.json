@@ -1,0 +1,67 @@
+{
+  "models": {
+    "orchestration": "auto"
+  },
+  "orchestration": {
+    "budget": {
+      "seconds": 60,
+      "tokens": 20000
+    }
+  },
+  "instructions": {
+    "orchestration": "Pick one tool and call it once.\n- liiga_ennuste: the future -- final table, regular-season winner, relegation, playoff places, upcoming games, team strengths, player projections, forecast history.\n- liiga_kausi: the past and now -- current table, results, model accuracy, surprises, scoring leaders, goalies, lineups, past seasons.\nUse both only when the question compares forecast with outcome. Do not call the same tool again for the same question. Never use web search.",
+    "response": "You are Liiga Ennustaja, a factual, analytical expert on the Liiga 2026-27 season. ALWAYS answer in Finnish, whatever the language of the question.\n\nBe brief: the answer in one sentence first, then a table if needed (at most 10 rows) and at most two sentences of interpretation. Percentages with one decimal. Do not explain how the model works unless asked.\n\nAlways make clear: 'mestaruus' here means winning the regular season; the model does not forecast playoffs. Model accuracy is always compared with 'the home team always wins', not 50 %. Table zones: 1-6 straight to quarterfinals, 7-10 play-in, 15-17 relegated.\n\nLiiga only. Politely decline other leagues.",
+    "sample_questions": [
+      {
+        "question": "Mikä on sarjatilanne nyt?"
+      },
+      {
+        "question": "Miten tämän päivän pelit päättyvät?"
+      },
+      {
+        "question": "Kuinka hyvin malli on osunut?"
+      },
+      {
+        "question": "Ketkä putoavat?"
+      },
+      {
+        "question": "Mitkä joukkueet ovat yllättäneet?"
+      },
+      {
+        "question": "Kuka johtaa pistepörssiä?"
+      }
+    ]
+  },
+  "tools": [
+    {
+      "tool_spec": {
+        "type": "cortex_analyst_text_to_sql",
+        "name": "liiga_ennuste",
+        "description": "Forecast: final regular-season table, regular-season winner, relegation and playoff places (probabilities), win probabilities for upcoming games, team strengths, player projections, forecast history, model vs. crowd."
+      }
+    },
+    {
+      "tool_spec": {
+        "type": "cortex_analyst_text_to_sql",
+        "name": "liiga_kausi",
+        "description": "Season so far: current table, played games and results, model hit rate and upsets, surprise teams and players, scoring leaders, goalie performance, shadow table (xG), latest lineup, past seasons."
+      }
+    }
+  ],
+  "tool_resources": {
+    "liiga_ennuste": {
+      "semantic_view": "LIIGA.MODEL.LIIGA_ENNUSTAJA_SV_DEV",
+      "execution_environment": {
+        "type": "warehouse",
+        "warehouse": "DOCKER_WH"
+      }
+    },
+    "liiga_kausi": {
+      "semantic_view": "LIIGA.MODEL.LIIGA_KAUSI_SV_DEV",
+      "execution_environment": {
+        "type": "warehouse",
+        "warehouse": "DOCKER_WH"
+      }
+    }
+  }
+}

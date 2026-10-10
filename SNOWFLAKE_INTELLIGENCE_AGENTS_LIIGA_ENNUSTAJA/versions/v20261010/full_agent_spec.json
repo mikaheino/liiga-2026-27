@@ -1,0 +1,28 @@
+{
+  "models": {"orchestration": "auto"},
+  "orchestration": {"budget": {"seconds": 60, "tokens": 20000}},
+  "instructions": {
+    "orchestration": "Valitse yksi työkalu ja kutsu sitä kerran.\n- liiga_ennuste: tulevaisuus -- lopullinen sarjataulukko, runkosarjan voitto, putoaminen, pudotuspelipaikat, tulevat ottelut, joukkuevahvuudet, pelaajaennusteet, ennusteen kehitys.\n- liiga_kausi: mennyt ja nykyhetki -- sarjatilanne nyt, tulokset, mallin osuvuus, yllättäjät, pistepörssi, maalivahdit, kokoonpanot, aiemmat kaudet.\nKäytä molempia vain jos kysymys vertaa ennustetta ja toteumaa. Älä kutsu samaa työkalua uudelleen samalla kysymyksellä. Älä käytä verkkohakua.",
+    "response": "Olet Liiga Ennustaja: asiallinen, analyyttinen asiantuntija Liigan kaudesta 2026-27. Vastaa kysymyksen kielellä.\n\nVastaa lyhyesti: ensin vastaus yhdellä lauseella, sitten tarvittaessa taulukko (enintään 10 riviä) ja korkeintaan kaksi lausetta tulkintaa. Prosentit yhdellä desimaalilla. Älä selitä mallin toimintaa ellei kysytä.\n\nTäsmennä aina: 'mestaruus' tarkoittaa tässä runkosarjan voittoa -- pudotuspelejä malli ei ennusta. Mallin osuvuutta verrataan aina siihen, että kotijoukkue voittaa, ei 50 %:iin. Sarjavyöhykkeet: 1.-6. suoraan puolivälieriin, 7.-10. säälipudotuspeleihin, 15.-17. putoaa.\n\nVain Liiga. Kieltäydy kohteliaasti muista sarjoista.",
+    "sample_questions": [
+      {"question": "Mikä on sarjatilanne nyt?"},
+      {"question": "Miten tämän päivän pelit päättyvät?"},
+      {"question": "Kuinka hyvin malli on osunut?"},
+      {"question": "Ketkä putoavat?"},
+      {"question": "Mitkä joukkueet ovat yllättäneet?"},
+      {"question": "Kuka johtaa pistepörssiä?"}
+    ]
+  },
+  "tools": [
+    {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_ennuste",
+      "description": "Ennuste: lopullinen runkosarjataulukko, runkosarjan voitto, putoaminen ja pudotuspelipaikat (todennäköisyydet), tulevien otteluiden voittotodennäköisyydet, joukkuevahvuudet, pelaajaennusteet, ennusteen kehitys ja malli vs. yleisö."}},
+    {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_kausi",
+      "description": "Toteuma: sarjatilanne nyt, pelatut ottelut ja tulokset, mallin osumaprosentti ja yllätystulokset, yllättäjäjoukkueet ja -pelaajat, pistepörssi, maalivahtien onnistuminen, varjosarjataulukko (xG), viimeisin kokoonpano ja aiemmat kaudet."}}
+  ],
+  "tool_resources": {
+    "liiga_ennuste": {"semantic_view": "LIIGA.MODEL.LIIGA_ENNUSTAJA_SV_DEV",
+                      "execution_environment": {"type": "warehouse", "warehouse": "DOCKER_WH"}},
+    "liiga_kausi": {"semantic_view": "LIIGA.MODEL.LIIGA_KAUSI_SV_DEV",
+                    "execution_environment": {"type": "warehouse", "warehouse": "DOCKER_WH"}}
+  }
+}

@@ -446,6 +446,33 @@ julkisessa postauksessa, ja historia tukee sanavalintaa — `xg_history()`:n
 `r_gk` = **0,17**, eli alkukauden maalivahtipelin etu tasoittuu suurelta osin.
 Alaviite laskee tämän ja sanoo sen.
 
+### Alkukauden yllättäjät (`surprise_post`, 2026-10-10)
+
+Kaksi diaa. **Joukkueet**: pisteet vs. odotus, joka lasketaan esikauden
+`prediction_games`-snapshotista (`games_played = 0`, sama määritelmä kuin
+`rank_context`) **ottelu kerrallaan juuri pelatuista otteluista**, joten
+vastustajat ja koti/vieras ovat mukana. Summa täsmää oikeisiin (282 = 282,1),
+ja funktio kaatuu jos ei. Alaviite nimeää joukkueet joilla |z| ≥ 2; z:n
+hajonta tulee samoista todennäköisyyksistä (3/2/1/0).
+
+**Pelaajat**: tehopisteet − esikauden p/ottelu × pelatut ottelut
+(kokoonpanoista). Esikauden ennuste on **jäädytetty tiedostoon
+`data/preseason_player_rates.csv`** (commit 8d37c6d), koska `player_rates`
+rakentuu kauden aikana uudelleen. Älä päivitä sitä. Tuontipelaajat
+yhdistetään nimellä + joukkueella (esikaudella heillä ei ollut id:tä).
+`RL0`-haamumaalit vähennetään pisteistä.
+
+**Pelaajadia on kokoonpano kentän muodossa: 3 hyökkääjää ylhäällä, 2 puolustajaa keskellä, maalivahti alhaalla**
+(käyttäjän pyyntö 10.10.), ei kuusi suurinta. Pelipaikka tulee kokoonpanoista.
+Maalivahti verrataan **omaan** esikauden torjuntaennusteeseensa
+(`proj_save_pct` samassa CSV:ssä, `goalies_raw.txt`:n versiosta d454ecc):
+`goalie_saves()`:n odotus × (1 − ennuste) / (1 − liigan keskiarvo). Ilman
+sitä kärkeen nousisi se jonka tiedettiin jo olevan hyvä. Vain yllättäjät, ei pettymyksiä:
+kyse on oikeista ihmisistä julkisessa postauksessa.
+
+Älä vaihda genetiiviin ("KooKoo:n"): joukkueiden nimet taipuvat
+epäsäännöllisesti, joten alaviite luettelee nimet perusmuodossa.
+
 ## ⚠️ `game_id` EI ole yksilöllinen — avain on `(season, game_id)`
 
 Kaudet 2022–26 numeroivat ottelunsa samoilla luvuilla: **1 055 eri `game_id`:tä
@@ -561,6 +588,81 @@ liiga.fi:stä, mutta rosterit, `player_rates` ja ulkomaiset tilastot tulevat
 joka aamu** (`snow` ei ole launchdin PATH:ssa, 9 kertaa lokissa), joten
 roosterimuutos ei kulkeudu Snowflakeen ennen kuin joku ajaa synkan käsin.
 Korjaus olisi absoluuttinen polku `daily_update.sh`:ssä tai `PATH` plistiin.
+
+## Snowflake Intelligence -agentti: kaksi semanttista mallia (2026-10-10)
+
+`SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA` käytti yhtä 13 taulun
+semanttista mallia (`LIIGA_ENNUSTAJA_SV`, ~1 250 riviä YAMLia). Nyt
+kaksi, molemmat generoidaan **`scripts/semantic_views.py`**:stä:
+
+| malli | työkalu | kattaa |
+|---|---|---|
+| `LIIGA_ENNUSTAJA_SV` | `liiga_ennuste` | lopputaulukko, vyöhykkeet, tulevat ottelut, vahvuudet, pelaajaennusteet |
+| `LIIGA_KAUSI_SV` | `liiga_kausi` | sarjatilanne nyt, tulokset, mallin osuvuus, yllättäjät, pistepörssi, maalivahdit, kokoonpanot, aiemmat kaudet |
+
+```bash
+snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/kausi_views.sql
+python scripts/semantic_views.py --deploy --dev   # *_DEV-mallit, DEV-agentti
+python scripts/semantic_views.py --deploy         # tuotanto
+```
+
+Tuotannossa 10.10. alkaen (DEV-versiot `*_DEV` ja `LIIGA_ENNUSTAJA_DEV`
+jäävät testausta varten). Agentin spec: `SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/
+versions/v20261010/`. Vanha `data/apply_sv.sql` + `semantic_view_backup.yaml`
+on poistettu -- ajettuna se olisi korvannut uuden mallin vanhalla. Mittaus
+optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
+
+**Tilanne illalla 10.10. (kaikki mitattu, ks. optimointiloki):**
+
+- Kuvaukset ja ohjeet **englanniksi** (`--lang en`, oletus; käännökset
+  `scripts/semantic_views_en.py`, kaatuu jos vastine puuttuu). Synonyymit,
+  VQR-kysymykset ja vastaukset suomeksi. −2,8 % tokeneita, sama osuvuus.
+- `ENRICH` semantic_views.py:ssä: taulusynonyymit, kohdennetut sarakesynonyymit,
+  20 metriikkaa. **Metriikka rajataan `ENDED`iin** jos sarake on pelaamattomassa
+  ottelussa 0 eikä NULL: maalit/ottelu oli 0,88 oikean 5,12:n sijaan.
+- Sarakekommentit `V_*`-näkymiin generoidaan samoista kuvauksista
+  (`apply_comments()`, deploy ajaa sen). `kausi_views.sql` pyyhkii ne -- aja
+  deploy sen jälkeen.
+- **Agentti: `python scripts/deploy_agent.py [--dev] [--html]`.** Tuotanto on
+  `--html`. Kierroksen esikatselu chatissa = yksi VQR `V_ROUND_PREVIEW_TEXT`:stä
+  (valmiit suomenkieliset rivit; 20 nimetöntä saraketta sai mallin poimimaan
+  väärän sijan). Skill `snowflake/skills/esikatselu-html/` laukeaa vain sanalla
+  **"johtoryhmävisualisointi"** (käyttäjän päätös); väärä laukeaminen ~6 %.
+  Skillin tiedostot näkyvät hiekkalaatikossa polussa
+  `/mnt/skills/stage/liiga_code_agent_skills/<skill>/`, tulos `/workspace`iin ja
+  `present_file`.
+- **Työkalun kuvaus päättää kutsutaanko työkalua lainkaan:** aihe jota ei
+  mainita (ylivoima, yleisö) sai vastauksen "ei dataa" ilman kutsua.
+- Budjetti on katto: 300 s. Tokenraja 20 000 ei katkaise mitään.
+
+**Miksi kaksi ja miksi näkymät: tokenit.** Cortex Analyst lukee koko
+semanttisen mallin joka kutsulla, ja agentti yritti monivaiheisia
+ikkunakyselyjä (viimeisin snapshot, viimeisin kokoonpano) uudelleen. Nyt
+raskas logiikka on valmiiksi `LIIGA.MODEL.V_*`-näkymissä
+(`snowflake/kausi_views.sql`), ja kun kysymys osuu vahvistettuun kyselyyn,
+agentti **ei lataa semanttista mallia lainkaan** -- se näkyy vastauksen
+`thinking`-osassa.
+
+Testaa agenttia SQL:stä, ei selaimesta:
+`SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN('<agentti>', $${"messages": [...], "stream": false}$$)`.
+`metadata.usage.tokens_consumed` kertoo tokenit.
+
+Viisi asiaa joita vanha malli teki väärin (korjattu uusissa):
+
+- **`SCHEDULE` = `STG_GAMES` pääavaimella `GAME_ID`**, vaikka id ei ole
+  yksilöllinen kausien yli (ks. `game_id` EI ole yksilöllinen).
+  `V_GAMES_NOW` on vain kuluva kausi, jossa se on.
+- **"Kokoonpano" haki `MAX(game_id)`:n** -- se on HIFK–TPS 14.10., jolla on
+  jo ennakkokokoonpano (pelaamaton). `V_LATEST_LINEUPS` rajaa pelattuihin.
+- **`P_TITLE` kuvattiin mestaruudeksi** ja `PROJ_RANK 1 = champion`. Se on
+  runkosarjan voitto; pudotuspelejä malli ei ennusta.
+- **Nykyistä sarjatilannetta ei ollut lainkaan**, eikä putoamisvyöhykettä
+  (15.–17.), joka on uusi tällä kaudella.
+- **Pistepörssi laski `RL0`:t maaleiksi.** `V_PLAYER_SEASON_NOW` ei.
+
+Näkymät omistaa ACCOUNTADMIN, koska se omistaa pohjataulut eikä SYSADMIN
+saa luoda näkymiä `LIIGA.MODEL`iin. `PRESEASON_PLAYER_RATES` on `LIIGA.RAW`issa
+(`CURATED_TABLES`), koska yllättäjät tarvitsevat jäädytetyn esikauden odotuksen.
 
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 

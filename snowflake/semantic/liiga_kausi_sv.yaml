@@ -1,0 +1,687 @@
+# Generoitu: python scripts/semantic_views.py --write. Älä muokkaa käsin.
+name: LIIGA_KAUSI_SV
+description: 'Liiga 2026-27 so far: current table, results, model accuracy, surprises, scoring leaders,
+  goalies, lineups and past seasons.'
+tables:
+- name: TABLE_NOW
+  description: Actual table NOW and each team's season so far. TABLE_RANK is the liiga.fi order (points,
+    goal difference, goals for).
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_TEAM_SEASON_NOW
+  primary_key:
+    columns:
+    - TEAM
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: TABLE_RANK
+    description: Rank in the table now
+    expr: TABLE_RANK
+    synonyms:
+    - sija
+    - sarjasija
+  facts:
+  - name: GAMES_PLAYED
+    description: Games played
+    expr: GAMES_PLAYED
+    synonyms:
+    - ottelut
+  - name: POINTS
+    description: Points
+    expr: POINTS
+    synonyms:
+    - pisteet
+  - name: REGULATION_WINS
+    description: Regulation wins
+    expr: REGULATION_WINS
+  - name: OVERTIME_WINS
+    description: Overtime and shootout wins
+    expr: OVERTIME_WINS
+  - name: OVERTIME_LOSSES
+    description: Overtime and shootout losses
+    expr: OVERTIME_LOSSES
+  - name: REGULATION_LOSSES
+    description: Regulation losses
+    expr: REGULATION_LOSSES
+  - name: GOALS_FOR
+    description: Goals for
+    expr: GOALS_FOR
+    synonyms:
+    - tehdyt maalit
+    - TM
+  - name: GOALS_AGAINST
+    description: Goals against
+    expr: GOALS_AGAINST
+    synonyms:
+    - päästetyt maalit
+    - PM
+  - name: GOAL_DIFF
+    description: Goal difference
+    expr: GOAL_DIFF
+    synonyms:
+    - maaliero
+  - name: LAST5_POINTS
+    description: Points from the last five games
+    expr: LAST5_POINTS
+    synonyms:
+    - vire
+    - muoto
+  - name: HOME_POINTS
+    description: Points from home games
+    expr: HOME_POINTS
+  - name: AWAY_POINTS
+    description: Points from away games
+    expr: AWAY_POINTS
+  - name: XG_FOR
+    description: Expected goals for (xG)
+    expr: XG_FOR
+    synonyms:
+    - maaliodottama
+    - xG
+  - name: XG_AGAINST
+    description: Expected goals against (xGA)
+    expr: XG_AGAINST
+  - name: SHADOW_POINTS
+    description: 'Shadow-table points: what the chances (xG) would have earned'
+    expr: SHADOW_POINTS
+    synonyms:
+    - varjosarjataulukko
+  - name: POINTS_OVER_SHADOW
+    description: 'Points minus shadow points: + = lucky'
+    expr: POINTS_OVER_SHADOW
+  - name: PRESEASON_EXPECTED_POINTS
+    description: Points the pre-season forecast expected from exactly these games
+    expr: PRESEASON_EXPECTED_POINTS
+  - name: POINTS_VS_PRESEASON
+    description: 'Points minus pre-season expectation: + = positive surprise'
+    expr: POINTS_VS_PRESEASON
+    synonyms:
+    - yllättäjä
+    - pettymys
+  - name: PP_PCT
+    description: Power-play percentage (0-1)
+    expr: PP_PCT
+    synonyms:
+    - ylivoima
+    - YV
+  - name: PK_PCT
+    description: Penalty-kill success (0-1)
+    expr: PK_PCT
+    synonyms:
+    - alivoima
+    - AV
+  - name: PP_GOALS
+    description: Power-play goals
+    expr: PP_GOALS
+  - name: PP_INSTANCES
+    description: Power-play opportunities
+    expr: PP_INSTANCES
+  - name: PP_GOALS_AGAINST
+    description: Goals allowed while short-handed
+    expr: PP_GOALS_AGAINST
+  - name: SH_INSTANCES
+    description: Short-handed situations
+    expr: SH_INSTANCES
+  synonyms:
+  - sarjataulukko
+  - sarjatilanne
+  - taulukko
+  metrics:
+  - name: LEAGUE_PP_PCT
+    description: Power-play percentage from totals (0-1). Use this, never the average of PP_PCT.
+    expr: SUM(PP_GOALS) / NULLIF(SUM(PP_INSTANCES), 0)
+    synonyms:
+    - liigan ylivoimaprosentti
+  - name: LEAGUE_PK_PCT
+    description: Penalty-kill success from totals (0-1)
+    expr: 1 - SUM(PP_GOALS_AGAINST) / NULLIF(SUM(SH_INSTANCES), 0)
+    synonyms:
+    - liigan alivoima
+  - name: GOALS_PER_TEAM_GAME
+    description: Goals for per team game
+    expr: SUM(GOALS_FOR) / NULLIF(SUM(GAMES_PLAYED), 0)
+    synonyms:
+    - maaleja per ottelu
+  - name: POINTS_PER_TEAM_GAME
+    description: Points per team game
+    expr: SUM(POINTS) / NULLIF(SUM(GAMES_PLAYED), 0)
+- name: GAMES
+  description: 'All games of the current season: results and schedule.'
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_GAMES_NOW
+  primary_key:
+    columns:
+    - GAME_ID
+  dimensions:
+  - name: GAME_ID
+    description: Game id
+    expr: GAME_ID
+  - name: HOME_TEAM
+    description: Home team
+    expr: HOME_TEAM
+  - name: AWAY_TEAM
+    description: Away team
+    expr: AWAY_TEAM
+  - name: ENDED
+    description: TRUE = played
+    expr: ENDED
+  - name: RESULT_CATEGORY
+    description: regulation / overtime / shootout
+    expr: RESULT_CATEGORY
+  - name: WINNER_TEAM
+    description: Winner
+    expr: WINNER_TEAM
+  - name: START_TIME_FI
+    description: Start time, Finnish time
+    expr: START_TIME_FI
+  time_dimensions:
+  - name: GAME_DATE
+    description: Game date, Finnish time
+    expr: GAME_DATE
+    data_type: DATE
+  facts:
+  - name: HOME_GOALS
+    description: Home team goals
+    expr: HOME_GOALS
+  - name: AWAY_GOALS
+    description: Away team goals
+    expr: AWAY_GOALS
+  - name: HOME_XG
+    description: Home team xG
+    expr: HOME_XG
+  - name: AWAY_XG
+    description: Away team xG
+    expr: AWAY_XG
+  - name: SPECTATORS
+    description: Attendance
+    expr: SPECTATORS
+    synonyms:
+    - yleisö
+    - katsojat
+    - yleisömäärä
+  synonyms:
+  - ottelut
+  - tulokset
+  - otteluohjelma
+  metrics:
+  - name: GAMES_PLAYED_COUNT
+    description: Number of games played
+    expr: SUM(IFF(ENDED, 1, 0))
+    synonyms:
+    - montako ottelua pelattu
+  - name: AVG_ATTENDANCE
+    description: Average attendance in played games
+    expr: AVG(IFF(ENDED, SPECTATORS, NULL))
+    synonyms:
+    - keskiyleisö
+  - name: AVG_GOALS_PER_GAME
+    description: Total goals per game (both teams)
+    expr: AVG(IFF(ENDED, HOME_GOALS + AWAY_GOALS, NULL))
+    synonyms:
+    - maalimäärä
+  - name: HOME_WIN_SHARE
+    description: Share of played games won by the home team (0-1)
+    expr: AVG(IFF(ENDED, IFF(WINNER_TEAM = HOME_TEAM, 1, 0), NULL))
+    synonyms:
+    - kotietu
+- name: MODEL_ACCURACY
+  description: Every played game against the model's last forecast before the game. The baseline is 'home
+    team always wins', not 50 %.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_GAME_EVALUATION
+  primary_key:
+    columns:
+    - GAME_ID
+  dimensions:
+  - name: GAME_ID
+    description: Game id
+    expr: GAME_ID
+  - name: HOME_TEAM
+    description: Home team
+    expr: HOME_TEAM
+  - name: AWAY_TEAM
+    description: Away team
+    expr: AWAY_TEAM
+  - name: WINNER_TEAM
+    description: Actual winner
+    expr: WINNER_TEAM
+  - name: PREDICTED_WINNER
+    description: Model favourite
+    expr: PREDICTED_WINNER
+  time_dimensions:
+  - name: GAME_DATE
+    description: Game date
+    expr: GAME_DATE
+    data_type: DATE
+  facts:
+  - name: MODEL_CORRECT
+    description: 1 = model picked the winner
+    expr: MODEL_CORRECT
+    synonyms:
+    - osuma
+    - osui
+  - name: HOME_TEAM_WON
+    description: 1 = home team won (baseline)
+    expr: HOME_TEAM_WON
+  - name: P_HOME_WIN
+    description: Model's home win probability
+    expr: P_HOME_WIN
+  - name: P_GIVEN_TO_WINNER
+    description: 'Probability the model gave the eventual winner: low = upset'
+    expr: P_GIVEN_TO_WINNER
+    synonyms:
+    - yllätys
+  - name: MODEL_CONFIDENCE
+    description: Favourite's probability
+    expr: MODEL_CONFIDENCE
+  - name: LOG_LOSS
+    description: Log-loss, lower is better
+    expr: LOG_LOSS
+  - name: BRIER
+    description: Brier score, lower is better
+    expr: BRIER
+  metrics:
+  - name: HIT_RATE
+    description: Hit rate (0-1)
+    expr: AVG(MODEL_CORRECT)
+  - name: HOME_BASELINE_RATE
+    description: Home team win rate (baseline, 0-1)
+    expr: AVG(HOME_TEAM_WON)
+  - name: AVG_LOG_LOSS
+    description: Mean log-loss, lower is better
+    expr: AVG(LOG_LOSS)
+  - name: AVG_BRIER
+    description: Mean Brier score, lower is better
+    expr: AVG(BRIER)
+  - name: GAMES_EVALUATED
+    description: Number of games evaluated
+    expr: COUNT(GAME_ID)
+  synonyms:
+  - mallin osuvuus
+  - ennusteiden osumat
+  - ennustetarkkuus
+- name: PLAYERS_NOW
+  description: Skaters' season so far (scoring leaders). Goals exclude missed penalty shots. Games from
+    lineups.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_PLAYER_SEASON_NOW
+  dimensions:
+  - name: PLAYER_NAME
+    description: Player
+    expr: PLAYER_NAME
+    synonyms:
+    - pelaaja
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: POSITION
+    description: 'Values: ''Hyökkääjä'' (forward) or ''Puolustaja'' (defender)'
+    expr: POSITION
+    synonyms:
+    - pelipaikka
+  facts:
+  - name: GAMES_PLAYED
+    description: Games played
+    expr: GAMES_PLAYED
+  - name: GOALS
+    description: Goals
+    expr: GOALS
+    synonyms:
+    - maalit
+    - maalipörssi
+  - name: ASSISTS
+    description: Assists
+    expr: ASSISTS
+    synonyms:
+    - syötöt
+  - name: POINTS
+    description: Points
+    expr: POINTS
+    synonyms:
+    - pisteet
+    - pistepörssi
+    - tehot
+    - tehopisteet
+  - name: POINTS_PER_GAME
+    description: Points per game
+    expr: POINTS_PER_GAME
+  - name: PP_GOALS
+    description: Power-play goals
+    expr: PP_GOALS
+  - name: GAME_WINNING_GOALS
+    description: Game-winning goals
+    expr: GAME_WINNING_GOALS
+  - name: PRESEASON_EXPECTED_POINTS
+    description: Pre-season projection × games played
+    expr: PRESEASON_EXPECTED_POINTS
+  - name: POINTS_VS_PRESEASON
+    description: Points above (+) or below (−) the pre-season projection
+    expr: POINTS_VS_PRESEASON
+    synonyms:
+    - yllättäjä
+  synonyms:
+  - pistepörssi
+  - pelaajatilastot
+  - kenttäpelaajat
+  metrics:
+  - name: TOTAL_GOALS
+    description: Total goals
+    expr: SUM(GOALS)
+  - name: TOTAL_POINTS
+    description: Total points
+    expr: SUM(POINTS)
+- name: GOALIES_NOW
+  description: Goalies' season so far. No save percentage (liiga.fi publishes no shots); goals against
+    are compared with what was expected from the same chances. Only games one goalie played alone.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_GOALIE_SEASON_NOW
+  dimensions:
+  - name: GOALIE_NAME
+    description: Goalie
+    expr: GOALIE_NAME
+    synonyms:
+    - maalivahti
+    - veskari
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  facts:
+  - name: GAMES_PLAYED
+    description: Games played
+    expr: GAMES_PLAYED
+  - name: STARTS
+    description: Starts
+    expr: STARTS
+  - name: SOLO_GAMES
+    description: Games played start to finish
+    expr: SOLO_GAMES
+  - name: GOALS_AGAINST
+    description: Goals against (solo games)
+    expr: GOALS_AGAINST
+    synonyms:
+    - päästetyt
+  - name: GOALS_AGAINST_PER_GAME
+    description: Goals against per game
+    expr: GOALS_AGAINST_PER_GAME
+  - name: GOALS_SAVED_VS_AVERAGE
+    description: Goals fewer (+) than an average goalie would have allowed from the same chances
+    expr: GOALS_SAVED_VS_AVERAGE
+    synonyms:
+    - paras maalivahti
+  - name: GOALS_SAVED_VS_PRESEASON
+    description: Goals fewer (+) than the goalie's own pre-season projection
+    expr: GOALS_SAVED_VS_PRESEASON
+    synonyms:
+    - yllättäjä
+  synonyms:
+  - maalivahdit
+  - maalivahtitilastot
+  - veskarit
+  metrics:
+  - name: TOTAL_GOALS_SAVED_VS_AVERAGE
+    description: Total goals fewer than an average goalie
+    expr: SUM(GOALS_SAVED_VS_AVERAGE)
+- name: LATEST_LINEUPS
+  description: Lineup from the team's most recent played game = most likely next lineup.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_LATEST_LINEUPS
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: OPPONENT
+    description: Opponent in that game
+    expr: OPPONENT
+  - name: ROLE_FI
+    description: Position, in Finnish (e.g. 'Keskushyökkääjä', 'Maalivahti')
+    expr: ROLE_FI
+    synonyms:
+    - paikka
+  - name: POSITION_GROUP
+    description: F / D / G
+    expr: POSITION_GROUP
+  - name: PLAYER_NAME
+    description: Player
+    expr: PLAYER_NAME
+  - name: CAPTAIN
+    description: Captain
+    expr: CAPTAIN
+  - name: GOALIE_STARTED
+    description: Goalie started
+    expr: GOALIE_STARTED
+  time_dimensions:
+  - name: GAME_DATE
+    description: Game date
+    expr: GAME_DATE
+    data_type: DATE
+  facts:
+  - name: LINE
+    description: Line or pair (1-4)
+    expr: LINE
+    synonyms:
+    - ketju
+    - kenttä
+  - name: JERSEY
+    description: Jersey number
+    expr: JERSEY
+  synonyms:
+  - kokoonpano
+  - ketjut
+  - todennäköinen kokoonpano
+- name: PAST_SEASONS
+  description: Team seasons 2022-2027 (2026 = season 2025-26).
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: TEAM_SEASON
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: SEASON
+    description: Season, 2026 = 2025-26
+    expr: SEASON
+    synonyms:
+    - kausi
+  facts:
+  - name: GAMES_PLAYED
+    description: Games
+    expr: GAMES_PLAYED
+  - name: POINTS
+    description: Points
+    expr: POINTS
+  - name: WINS
+    description: Wins
+    expr: WINS
+  - name: GOALS_FOR
+    description: Goals for
+    expr: GOALS_FOR
+  - name: GOALS_AGAINST
+    description: Goals against
+    expr: GOALS_AGAINST
+  - name: XG_SHARE
+    description: xG share
+    expr: XG_SHARE
+  synonyms:
+  - aiemmat kaudet
+  - viime kausi
+  - kausihistoria
+relationships:
+- name: PLAYERS_TO_TABLE
+  left_table: PLAYERS_NOW
+  right_table: TABLE_NOW
+  relationship_columns:
+  - left_column: TEAM
+    right_column: TEAM
+  relationship_type: many_to_one
+- name: GOALIES_TO_TABLE
+  left_table: GOALIES_NOW
+  right_table: TABLE_NOW
+  relationship_columns:
+  - left_column: TEAM
+    right_column: TEAM
+  relationship_type: many_to_one
+module_custom_instructions:
+  sql_generation: 'Team names are exact strings: HIFK, HPK, Ilves, JYP, Jokerit, Jukurit, K-Espoo, KalPa,
+    KooKoo, Kärpät, Lukko, Pelicans, SaiPa, Sport, TPS, Tappara, Ässät.
+
+    Probabilities are 0-1 fractions: show as percentages (* 100), 1 decimal.
+
+    "Today" = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP())) (Finnish time, not the
+    session time zone).
+
+    Season 2027 = 2026-27. Points: 3 regulation win, 2 overtime/shootout win,
+
+    1 overtime/shootout loss, 0 regulation loss.
+
+    Table zones 2026-27: 1-6 straight to quarterfinals, 7-10 play-in round,
+
+    11-14 out, 15-17 relegated (new this season).
+
+    Return only the columns the question needs, at most 17 rows.
+
+    Model accuracy: always compare HIT_RATE with the home team win rate, not 50 %.
+
+    Surprise = POINTS_VS_PRESEASON (team, player) or GOALS_SAVED_VS_PRESEASON (goalie).
+
+    Player lists: require GAMES_PLAYED >= 5 unless asked otherwise.'
+  question_categorization: 'Liiga only. Forecasts of the final table or upcoming games belong
+
+    to the other tool.'
+verified_queries:
+- name: TABLE_NOW
+  question: Mikä on sarjatilanne nyt?
+  sql: 'SELECT table_rank, team, games_played, points, goal_diff, last5_points
+
+    FROM __table_now ORDER BY table_rank
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: HIT_RATE
+  question: Kuinka hyvin malli on osunut?
+  sql: "SELECT COUNT(*) AS ottelut, SUM(model_correct) AS osumat,\n       ROUND(AVG(model_correct) * 100,\
+    \ 1) AS osuma_pct,\n       ROUND(AVG(home_team_won) * 100, 1) AS aina_koti_pct,\n       ROUND(AVG(log_loss),\
+    \ 3) AS log_loss\nFROM __model_accuracy\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: HIT_RATE_TEAM
+  question: Miten malli on osunut Tapparan otteluissa?
+  sql: "SELECT game_date, home_team, away_team, winner_team, predicted_winner,\n       ROUND(p_given_to_winner\
+    \ * 100, 1) AS voittajalle_pct, model_correct\nFROM __model_accuracy WHERE home_team = 'Tappara' OR\
+    \ away_team = 'Tappara'\nORDER BY game_date\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: UPSETS
+  question: Mitkä ovat olleet suurimmat yllätystulokset?
+  sql: "SELECT game_date, home_team, away_team, winner_team,\n       ROUND(p_given_to_winner * 100, 1)\
+    \ AS voittajalle_pct\nFROM __model_accuracy ORDER BY p_given_to_winner LIMIT 5\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: SURPRISE_TEAMS
+  question: Mitkä joukkueet ovat yllättäneet?
+  sql: "SELECT team, points, ROUND(preseason_expected_points, 1) AS odotus,\n       ROUND(points_vs_preseason,\
+    \ 1) AS ero\nFROM __table_now ORDER BY points_vs_preseason DESC\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: SURPRISE_PLAYERS
+  question: Ketkä pelaajat ovat yllättäneet?
+  sql: "SELECT player_name, team, position, games_played, points,\n       ROUND(points_vs_preseason, 1)\
+    \ AS yli_ennusteen\nFROM __players_now WHERE games_played >= 5\nORDER BY points_vs_preseason DESC\
+    \ NULLS LAST LIMIT 10\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: SCORING_LEADERS
+  question: Kuka johtaa pistepörssiä?
+  sql: 'SELECT player_name, team, games_played, goals, assists, points
+
+    FROM __players_now ORDER BY points DESC, goals DESC LIMIT 10
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: BEST_GOALIES
+  question: Kuka on ollut paras maalivahti?
+  sql: "SELECT goalie_name, team, solo_games, goals_against,\n       ROUND(goals_saved_vs_average, 1)\
+    \ AS torjuttu_yli_keskiverron\nFROM __goalies_now WHERE solo_games >= 3\nORDER BY goals_saved_vs_average\
+    \ DESC LIMIT 6\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: SHADOW_TABLE
+  question: Mikä on varjosarjataulukko?
+  sql: "SELECT team, points, ROUND(shadow_points, 1) AS varjopisteet,\n       ROUND(points_over_shadow,\
+    \ 1) AS yli_ali\nFROM __table_now ORDER BY shadow_points DESC\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: LINEUP
+  question: Mikä on Tapparan todennäköinen kokoonpano?
+  sql: 'SELECT line, role_fi, player_name, jersey, goalie_started
+
+    FROM __latest_lineups WHERE team = ''Tappara''
+
+    ORDER BY position_group DESC, line, role_fi
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: RESULTS_YESTERDAY
+  question: Miten eilen pelatut ottelut päättyivät?
+  sql: 'SELECT home_team, away_team, home_goals, away_goals, result_category
+
+    FROM __games WHERE ended AND game_date = DATEADD(day, -1, TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'',
+    CURRENT_TIMESTAMP())))
+
+    ORDER BY home_team
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: LAST_SEASON
+  question: Miten joukkueet menestyivät viime kaudella?
+  sql: 'SELECT team, points, games_played, goals_for, goals_against
+
+    FROM __past_seasons WHERE season = 2026 ORDER BY points DESC
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false

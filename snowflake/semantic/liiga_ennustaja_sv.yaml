@@ -1,0 +1,562 @@
+# Generoitu: python scripts/semantic_views.py --write. Älä muokkaa käsin.
+name: LIIGA_ENNUSTAJA_SV
+description: 'Liiga 2026-27 forecast: final regular-season table, table zones, win probabilities for upcoming
+  games, team strengths and player projections.'
+tables:
+- name: STANDINGS
+  description: Forecast FINAL regular-season table (60 games) from 10,000 simulations. Already includes
+    points from games played.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: STANDINGS_2026_27
+  primary_key:
+    columns:
+    - TEAM
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: PROJECTED_RANK
+    description: Forecast final rank, 1 = regular-season winner
+    expr: PROJ_RANK
+    synonyms:
+    - ennustettu sija
+  facts:
+  - name: MEAN_POINTS
+    description: Forecast final points (mean)
+    expr: MEAN_POINTS
+    synonyms:
+    - ennustetut pisteet
+    - lopulliset pisteet
+  - name: P05_POINTS
+    description: Points, lower bound (5th percentile)
+    expr: P05_POINTS
+  - name: P95_POINTS
+    description: Points, upper bound (95th percentile)
+    expr: P95_POINTS
+  - name: P_REGULAR_SEASON_WIN
+    description: 'Probability of winning the REGULAR SEASON (not the championship: the model does not
+      forecast playoffs)'
+    expr: P_TITLE
+    synonyms:
+    - runkosarjan voitto
+  - name: CROWD_POINTS
+    description: Crowd-forecast points
+    expr: CROWD_PTS
+    synonyms:
+    - yleisö
+    - fanien ennuste
+  - name: CROWD_RANK
+    description: Crowd-forecast rank
+    expr: CROWD_RANK
+  synonyms:
+  - ennustettu sarjataulukko
+  - lopputaulukko
+  - loppusijoitus
+  metrics:
+  - name: AVG_PROJECTED_POINTS
+    description: Mean of the forecast final points
+    expr: AVG(MEAN_POINTS)
+- name: ZONES
+  description: Probability of finishing in each table zone.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_ZONE_PROBABILITIES
+  primary_key:
+    columns:
+    - TEAM
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  facts:
+  - name: P_TOP6
+    description: 'Ranks 1-6: straight to the quarterfinals'
+    expr: P_TOP6_QUARTERFINAL
+    synonyms:
+    - kuuden joukkoon
+    - suoraan jatkoon
+  - name: P_7_10
+    description: 'Ranks 7-10: play-in round'
+    expr: P_7_10_PLAYOFF_QUALIFIER
+    synonyms:
+    - säälipleijarit
+    - karsinta
+  - name: P_PLAYOFFS
+    description: 'Ranks 1-10: playoffs by either route'
+    expr: P_PLAYOFFS_ANY
+    synonyms:
+    - pudotuspelit
+    - playoffs
+  - name: P_RELEGATION
+    description: 'Ranks 15-17: relegated'
+    expr: P_RELEGATION_15_17
+    synonyms:
+    - putoaminen
+    - putoaa
+  synonyms:
+  - sarjavyöhykkeet
+  - pudotuspelipaikat
+  metrics:
+  - name: EXPECTED_RELEGATED_TEAMS
+    description: Expected number of relegated teams (always sums to 3)
+    expr: SUM(P_RELEGATION)
+- name: UPCOMING_GAMES
+  description: Unplayed games with win probabilities from the latest forecast. A win includes overtime
+    and shootout.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_UPCOMING_PREDICTIONS
+  primary_key:
+    columns:
+    - GAME_ID
+  dimensions:
+  - name: GAME_ID
+    description: Game id
+    expr: GAME_ID
+  - name: HOME_TEAM
+    description: Home team
+    expr: HOME_TEAM
+    synonyms:
+    - koti
+  - name: AWAY_TEAM
+    description: Away team
+    expr: AWAY_TEAM
+    synonyms:
+    - vieras
+  - name: START_TIME_FI
+    description: Start time, Finnish time (HH:MI)
+    expr: START_TIME_FI
+  - name: PREDICTED_WINNER
+    description: More likely winner
+    expr: PREDICTED_WINNER
+    synonyms:
+    - ennustettu voittaja
+  time_dimensions:
+  - name: GAME_DATE
+    description: Game date, Finnish time
+    expr: GAME_DATE
+    data_type: DATE
+    synonyms:
+    - päivä
+    - milloin
+  facts:
+  - name: P_HOME_WIN
+    description: Home team win probability
+    expr: P_HOME_WIN
+  - name: P_AWAY_WIN
+    description: Away team win probability
+    expr: P_AWAY_WIN
+  - name: P_OVERTIME
+    description: Probability of overtime
+    expr: P_OVERTIME
+    synonyms:
+    - jatkoaika
+  - name: CONFIDENCE
+    description: Favourite's win probability
+    expr: CONFIDENCE
+  synonyms:
+  - tulevat ottelut
+  - otteluohjelma
+  - seuraavat pelit
+  metrics:
+  - name: UPCOMING_GAME_COUNT
+    description: Number of upcoming games
+    expr: COUNT(GAME_ID)
+    synonyms:
+    - montako ottelua
+  - name: AVG_HOME_WIN_PROB
+    description: Mean home win probability
+    expr: AVG(P_HOME_WIN)
+    synonyms:
+    - kotietu
+- name: ROUND_PREVIEW
+  description: 'Round preview as ready Finnish lines: one row per upcoming game. Copy the text columns
+    verbatim.'
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_ROUND_PREVIEW_TEXT
+  primary_key:
+    columns:
+    - GAME_ID
+  dimensions:
+  - name: GAME_ID
+    description: Game id
+    expr: GAME_ID
+  - name: HOME_TEAM
+    description: Home team
+    expr: HOME_TEAM
+  - name: AWAY_TEAM
+    description: Away team
+    expr: AWAY_TEAM
+  - name: START_TIME_FI
+    description: Start time, Finnish time (HH:MI)
+    expr: START_TIME_FI
+  - name: OTTELU
+    description: 'Heading line: time, home – away'
+    expr: OTTELU
+  - name: ENNUSTE
+    description: 'Forecast line: win probabilities and overtime'
+    expr: ENNUSTE
+  - name: TILANNE
+    description: 'Standing line: rank, points and form (points from the last 5 games, out of 15)'
+    expr: TILANNE
+  - name: MAALIVAHDIT
+    description: Likely goalies and their goals fewer (+) than an average goalie
+    expr: MAALIVAHDIT
+  - name: KESKINAISET
+    description: Head-to-head this season, empty if the teams have not met
+    expr: KESKINAISET
+  - name: SUOSIKKI
+    description: Favourite, or 'tasainen' (even) below 55 %
+    expr: SUOSIKKI
+  time_dimensions:
+  - name: GAME_DATE
+    description: Game date, Finnish time
+    expr: GAME_DATE
+    data_type: DATE
+    synonyms:
+    - kierros
+    - päivä
+  facts:
+  - name: SUOSIKIN_PCT
+    description: Favourite's win probability in percent
+    expr: SUOSIKIN_PCT
+  - name: VIRE_ERO
+    description: Home form minus away form
+    expr: VIRE_ERO
+  synonyms:
+  - kierroksen esikatselu
+  - illan pelit
+  - päivän ottelut
+- name: FORECAST_HISTORY
+  description: 'Forecast history: one row per team per daily run.'
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: PREDICTION_HISTORY
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: PROJ_RANK
+    description: Forecast final rank on that day
+    expr: PROJ_RANK
+  time_dimensions:
+  - name: SNAPSHOT_DATE
+    description: Forecast date
+    expr: TO_DATE(SNAPSHOT_DATE)
+    data_type: DATE
+  facts:
+  - name: MEAN_POINTS
+    description: Forecast final points on that day
+    expr: MEAN_POINTS
+  - name: P_REGULAR_SEASON_WIN
+    description: Regular-season win probability
+    expr: P_TITLE
+  - name: GAMES_PLAYED
+    description: Games played league-wide on that day
+    expr: GAMES_PLAYED
+  synonyms:
+  - ennusteen kehitys
+  - ennustehistoria
+- name: TEAM_STRENGTH
+  description: Model team strengths. OFF_RATING higher = better attack; DEF_RATING and GOALIE_MULT lower
+    = better.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: TEAM_STRENGTH
+  primary_key:
+    columns:
+    - TEAM
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  facts:
+  - name: OFF_RATING
+    description: Attack strength
+    expr: OFF_RATING
+    synonyms:
+    - hyökkäys
+  - name: DEF_RATING
+    description: Defence (lower is better)
+    expr: DEF_RATING
+    synonyms:
+    - puolustus
+  - name: GOALIE_MULT
+    description: Goaltending multiplier (lower is better)
+    expr: GOALIE_MULT
+    synonyms:
+    - maalivahtipeli
+  - name: EXP_GF_PLAYER
+    description: Goals per game implied by the player projections
+    expr: EXP_GF_PLAYER
+  synonyms:
+  - joukkuevahvuus
+  - vahvuudet
+- name: PLAYER_PROJECTIONS
+  description: Model projection per game for each player on the current roster.
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: PLAYER_RATES
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: PLAYER_NAME
+    description: Player
+    expr: NAME
+    synonyms:
+    - pelaaja
+  - name: POSITION
+    description: F = forward, D = defender, G = goalie
+    expr: POSITION_GROUP
+    synonyms:
+    - pelipaikka
+  facts:
+  - name: GOALS_PER_GAME
+    description: Projected goals per game
+    expr: PROJECTED_GOALS_PER_GAME
+  - name: POINTS_PER_GAME
+    description: Projected points per game
+    expr: PROJECTED_POINTS_PER_GAME
+    synonyms:
+    - tehot / ottelu
+  synonyms:
+  - pelaajaennusteet
+- name: FORECAST_META
+  description: When the forecast was updated and how many games had been played (1 row).
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: PREDICTION_META
+  dimensions:
+  - name: UPDATED_AT
+    description: Update time (UTC)
+    expr: UPDATED_AT
+    synonyms:
+    - päivitetty
+  facts:
+  - name: GAMES_PLAYED
+    description: Games played
+    expr: GAMES_PLAYED
+  - name: GAMES_TOTAL
+    description: Games in the season
+    expr: GAMES_TOTAL
+  synonyms:
+  - päivitystiedot
+relationships:
+- name: ZONES_TO_STANDINGS
+  left_table: ZONES
+  right_table: STANDINGS
+  relationship_columns:
+  - left_column: TEAM
+    right_column: TEAM
+  relationship_type: one_to_one
+- name: STRENGTH_TO_STANDINGS
+  left_table: TEAM_STRENGTH
+  right_table: STANDINGS
+  relationship_columns:
+  - left_column: TEAM
+    right_column: TEAM
+  relationship_type: one_to_one
+- name: PLAYERS_TO_STANDINGS
+  left_table: PLAYER_PROJECTIONS
+  right_table: STANDINGS
+  relationship_columns:
+  - left_column: TEAM
+    right_column: TEAM
+  relationship_type: many_to_one
+module_custom_instructions:
+  sql_generation: 'Team names are exact strings: HIFK, HPK, Ilves, JYP, Jokerit, Jukurit, K-Espoo, KalPa,
+    KooKoo, Kärpät, Lukko, Pelicans, SaiPa, Sport, TPS, Tappara, Ässät.
+
+    Probabilities are 0-1 fractions: show as percentages (* 100), 1 decimal.
+
+    "Today" = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP())) (Finnish time, not the
+    session time zone).
+
+    Season 2027 = 2026-27. Points: 3 regulation win, 2 overtime/shootout win,
+
+    1 overtime/shootout loss, 0 regulation loss.
+
+    Table zones 2026-27: 1-6 straight to quarterfinals, 7-10 play-in round,
+
+    11-14 out, 15-17 relegated (new this season).
+
+    Return only the columns the question needs, at most 17 rows.
+
+    STANDINGS is the FINAL forecast. The current table is not in this model.
+
+    Upcoming games: always use UPCOMING_GAMES, it already holds the latest forecast.'
+  question_categorization: 'Liiga 2026-27 regular season only. No playoffs, no other leagues.
+
+    Questions about the current table, played games, scoring leaders or model
+
+    accuracy belong to the other tool.'
+verified_queries:
+- name: PREDICTED_TABLE
+  question: Mikä on ennustettu sarjataulukko?
+  sql: "SELECT s.projected_rank, s.team, ROUND(s.mean_points, 1) AS pisteet,\n       ROUND(z.p_top6 *\
+    \ 100, 1) AS top6_pct, ROUND(z.p_relegation * 100, 1) AS putoaa_pct\nFROM __standings s JOIN __zones\
+    \ z ON z.team = s.team\nORDER BY s.projected_rank\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: REGULAR_SEASON_WINNER
+  question: Kuka voittaa runkosarjan?
+  sql: 'SELECT team, ROUND(p_regular_season_win * 100, 1) AS voitto_pct, ROUND(mean_points, 1) AS pisteet
+
+    FROM __standings WHERE p_regular_season_win >= 0.01
+
+    ORDER BY p_regular_season_win DESC
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: RELEGATION
+  question: Ketkä putoavat?
+  sql: 'SELECT team, ROUND(p_relegation * 100, 1) AS putoaa_pct
+
+    FROM __zones WHERE p_relegation >= 0.01 ORDER BY p_relegation DESC
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: TODAYS_GAMES
+  question: Miten tämän päivän pelit päättyvät?
+  sql: "SELECT start_time_fi, home_team, away_team,\n       ROUND(p_home_win * 100, 1) AS koti_pct, ROUND(p_away_win\
+    \ * 100, 1) AS vieras_pct,\n       ROUND(p_overtime * 100, 1) AS jatkoaika_pct, predicted_winner\n\
+    FROM __upcoming_games WHERE game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))\n\
+    ORDER BY start_time_fi, home_team\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: ROUND_PREVIEW_TODAY
+  question: 'Kierroksen esikatselu: tämän illan ottelut'
+  sql: 'SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+
+    FROM __round_preview WHERE game_date = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP()))
+
+    ORDER BY start_time_fi, home_team
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: ROUND_PREVIEW_TONIGHT_2
+  question: Miten illan pelit menevät?
+  sql: 'SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+
+    FROM __round_preview WHERE game_date = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP()))
+
+    ORDER BY start_time_fi, home_team
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: ROUND_PREVIEW_TONIGHT_3
+  question: Mitä tänään pelataan?
+  sql: 'SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+
+    FROM __round_preview WHERE game_date = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP()))
+
+    ORDER BY start_time_fi, home_team
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: ROUND_PREVIEW_TOMORROW
+  question: Esikatsele huomisen kierros
+  sql: 'SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+
+    FROM __round_preview WHERE game_date = DATEADD(day, 1, TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'',
+    CURRENT_TIMESTAMP())))
+
+    ORDER BY start_time_fi, home_team
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: TEAM_NEXT_GAME
+  question: Miten Tapparan seuraava ottelu päättyy?
+  sql: "SELECT game_date, start_time_fi, home_team, away_team,\n       ROUND(p_home_win * 100, 1) AS koti_pct,\
+    \ ROUND(p_away_win * 100, 1) AS vieras_pct,\n       predicted_winner\nFROM __upcoming_games WHERE\
+    \ home_team = 'Tappara' OR away_team = 'Tappara'\nORDER BY game_date LIMIT 1\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: CROWD_VS_MODEL
+  question: Missä malli on eri mieltä yleisön kanssa?
+  sql: "SELECT team, projected_rank, crowd_rank, projected_rank - crowd_rank AS ero_sijoina,\n       ROUND(mean_points\
+    \ - crowd_points, 1) AS ero_pisteina\nFROM __standings ORDER BY ABS(projected_rank - crowd_rank) DESC\
+    \ LIMIT 6\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: COMPARE_STRENGTH
+  question: Vertaa Tapparan ja HIFK:n vahvuuksia
+  sql: "SELECT team, ROUND(off_rating, 3) AS hyokkays, ROUND(def_rating, 3) AS puolustus,\n       ROUND(goalie_mult,\
+    \ 3) AS maalivahti\nFROM __team_strength WHERE team IN ('Tappara', 'HIFK')\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: BEST_PROJECTED_PLAYERS
+  question: Ketkä ovat mallin mukaan parhaat pelaajat?
+  sql: 'SELECT player_name, team, position, ROUND(points_per_game * 60, 1) AS pisteet_60_ottelussa
+
+    FROM __player_projections WHERE position <> ''G''
+
+    ORDER BY points_per_game DESC LIMIT 10
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: FORECAST_TREND
+  question: Miten Tapparan ennuste on muuttunut?
+  sql: 'SELECT snapshot_date, proj_rank, ROUND(mean_points, 1) AS pisteet
+
+    FROM __forecast_history WHERE team = ''Tappara''
+
+    ORDER BY snapshot_date
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: UPDATED
+  question: Milloin ennuste on päivitetty?
+  sql: 'SELECT updated_at, games_played, games_total FROM __forecast_meta
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
