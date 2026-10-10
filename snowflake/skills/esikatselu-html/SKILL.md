@@ -13,8 +13,9 @@ Exactly three steps. Do not write HTML yourself and do not look for files.
 2. Run this once, with every returned row copied verbatim into `rows`:
 
 ```python
-import sys
-sys.path.insert(0, "/mnt/skills/stage/liiga_code_agent_skills/esikatselu-html")
+import glob, os, sys
+# Skillin kansio on versiokohtainen (git-commit polussa), joten haetaan se.
+sys.path.insert(0, os.path.dirname(glob.glob("/mnt/skills/**/esikatselu-html/render.py", recursive=True)[0]))
 from render import render
 rows = [{"ottelu": "...", "ennuste": "...", "tilanne": "...", "maalivahdit": "...",
          "keskinaiset": None, "suosikki": "..."}]   # one dict per row

@@ -1,7 +1,22 @@
 """Snowflake Intelligence -agentti LIIGA_ENNUSTAJA (ja sen DEV-klooni) yhdestä lähteestä.
 
-    python scripts/deploy_agent.py --dev     # LIIGA_ENNUSTAJA_DEV -> *_SV_DEV
-    python scripts/deploy_agent.py           # tuotanto
+    python scripts/deploy_agent.py --dev --html            # DEV: päivittää live-version
+    python scripts/deploy_agent.py --html -m "mitä muuttui" # tuotanto: uusi VERSION$N
+
+VERSIOINTI (2026-10-10). Aiemmin CREATE OR REPLACE AGENT pyyhki versiohistorian
+joka kerta, ja skillin tiedostot ylikirjoitettiin stagella -- render.py:n vaihto
+muutti tuotannon käytöstä ilman uutta versiota. Nyt:
+
+  * tuotanto: spec live-versioon -> COMMIT (kommentissa git-commit) -> alias
+    `production` uuteen versioon -> DEFAULT_VERSION siihen. Live-versiota ei
+    jätetä tuotantoon, joten käytössä on aina lukittu versio.
+  * skillit kiinnitetään: @LIIGA.CODE.AGENT_SKILLS/<git-sha>/<skill>/. Vanhaa
+    kansiota ei ylikirjoiteta, joten vanha versio toimii vanhalla koodilla.
+    Tuotantoon vienti vaatii, että snowflake/skills/ on commitattu.
+  * DEV: vain live-version spec, ei commitia.
+  * agentti luodaan vain jos sitä ei ole (CREATE tekee VERSION$1:n).
+
+Palautus: ALTER AGENT ... SET DEFAULT_VERSION = 'VERSION$N' (ja alias perään).
 
 Kirjoittaa käytetyn specin SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/current_*.json,
 lähettää skillit stagelle (snowflake/skills/ -> @LIIGA.CODE.AGENT_SKILLS) ja
@@ -45,7 +60,18 @@ Round preview in chat: one sentence (number of games, clearest favourite), then 
 Liiga only. Politely decline other leagues."""
 
 
-def spec(dev: bool, html: bool = False) -> dict:
+def git_sha() -> str:
+    return subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def skills_clean() -> bool:
+    r = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", "snowflake/skills"],
+                       capture_output=True, text=True, check=True)
+    return not r.stdout.strip()
+
+
+def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
     sfx = "_DEV" if dev else ""
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
@@ -79,7 +105,7 @@ def spec(dev: bool, html: bool = False) -> dict:
                             "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
             "code_execution": {},
         },
-        "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{k}"}}
+        "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{sha}/{k}"}}
                    for k in skills],
     }
     # HTML-esikatselu (skill + koodinsuoritus) vain --html:llä: mitattu 10.10.
@@ -98,28 +124,58 @@ def _snow(*args: str) -> str:
     return r.stdout
 
 
-def deploy(dev: bool, html: bool = False) -> None:
+def _versions(fqn: str) -> list[dict]:
+    try:
+        return json.loads(_snow("sql", "--format", "json", "-q", f"SHOW VERSIONS IN AGENT {fqn}"))
+    except RuntimeError:
+        return []
+
+
+def deploy(dev: bool, html: bool = False, message: str = "") -> None:
+    name = "LIIGA_ENNUSTAJA_DEV" if dev else "LIIGA_ENNUSTAJA"
+    fqn = f"SNOWFLAKE_INTELLIGENCE.AGENTS.{name}"
+    if not dev and html and not skills_clean():
+        raise SystemExit("snowflake/skills/ ei ole commitattu: tuotantoversio kiinnittää "
+                         "skillit git-committiin. Commitoi ensin.")
+    sha = "dev" if dev else git_sha()
     for p in (SKILLS.glob("*/SKILL.md") if html else []):
         # Koko kansio: skillin skriptit pitää olla samassa kansiossa kuin SKILL.md.
+        dest = f"{STAGE}/{sha}/{p.parent.name}/"
         for f in sorted(p.parent.iterdir()):
             if f.is_file() and not f.name.startswith("."):
-                _snow("stage", "copy", str(f), f"{STAGE}/{p.parent.name}/", "--overwrite")
-        print(f"skill {p.parent.name} -> {STAGE}/{p.parent.name}/")
-    s = spec(dev, html)
+                _snow("stage", "copy", str(f), dest, "--overwrite")
+        print(f"skill {p.parent.name} -> {dest}")
+    s = spec(dev, html, sha)
     (OUT / f"current_{'dev' if dev else 'prod'}_spec.json").write_text(
         json.dumps(s, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    name = "LIIGA_ENNUSTAJA_DEV" if dev else "LIIGA_ENNUSTAJA"
-    comment = ("Liiga 2026-27 ennusteagentti - DEV clone" if dev
-               else "Liiga 2026-27 ennusteagentti - TUOTANTO")
-    profile = ({"display_name": "Liiga Ennustaja (DEV)", "color": "blue"} if dev
-               else {"display_name": "Liiga Ennustaja", "color": "teal"})
     body = json.dumps(s, ensure_ascii=False)
     assert "$$" not in body
-    _snow("sql", "-q",
-          f"CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.{name} "
-          f"COMMENT = '{comment}' PROFILE = '{json.dumps(profile)}' "
-          f"FROM SPECIFICATION $${body}$$")
-    print(f"agentti {name} luotu")
+    versions = _versions(fqn)
+    if not versions:
+        comment = ("Liiga 2026-27 ennusteagentti - DEV clone" if dev
+                   else "Liiga 2026-27 ennusteagentti - TUOTANTO")
+        profile = ({"display_name": "Liiga Ennustaja (DEV)", "color": "blue"} if dev
+                   else {"display_name": "Liiga Ennustaja", "color": "teal"})
+        _snow("sql", "-q", f"CREATE AGENT {fqn} COMMENT = '{comment}' "
+                           f"PROFILE = '{json.dumps(profile)}' FROM SPECIFICATION $${body}$$")
+        print(f"agentti {name} luotu (VERSION$1)")
+        return
+    if not any(v["name"] is None for v in versions):          # ei live-versiota
+        _snow("sql", "-q", f"ALTER AGENT {fqn} ADD LIVE VERSION FROM LAST")
+    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY LIVE VERSION SET SPECIFICATION = $${body}$$")
+    if dev:
+        print(f"agentti {name}: live-versio päivitetty")
+        return
+    note = f"{sha} {message}".strip().replace("'", "")
+    _snow("sql", "-q", f"ALTER AGENT {fqn} COMMIT COMMENT = '{note}'")
+    new = max((v["name"] for v in _versions(fqn) if v["name"]),
+              key=lambda n: int(n.split("$")[1]))
+    for v in _versions(fqn):
+        if v["name"] and v["name"] != new and (v.get("alias") or "").lower() == "production":
+            _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {v['name']} UNSET ALIAS")
+    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {new} SET ALIAS = production")
+    _snow("sql", "-q", f"ALTER AGENT {fqn} SET DEFAULT_VERSION = '{new}'")
+    print(f"agentti {name}: {new} (production, oletus) -- {note}")
 
 
 if __name__ == "__main__":
@@ -127,5 +183,6 @@ if __name__ == "__main__":
     ap.add_argument("--dev", action="store_true")
     ap.add_argument("--html", action="store_true",
                     help="HTML-esikatselu: esikatselu-html-skill + koodinsuoritus")
+    ap.add_argument("-m", "--message", default="", help="tuotantoversion kommentti")
     a = ap.parse_args()
-    deploy(a.dev, a.html)
+    deploy(a.dev, a.html, a.message)

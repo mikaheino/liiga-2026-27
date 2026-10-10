@@ -76,7 +76,7 @@
       "name": "esikatselu-html",
       "source": {
         "type": "STAGE",
-        "path": "@LIIGA.CODE.AGENT_SKILLS/esikatselu-html"
+        "path": "@LIIGA.CODE.AGENT_SKILLS/dev/esikatselu-html"
       }
     }
   ]
