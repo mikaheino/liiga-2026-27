@@ -1,10 +1,3 @@
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
   File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
     retries = retries.increment(
         method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
@@ -1994,6 +1987,13 @@ snowflake sync SKIPPED: the Snowflake CLI ('snow') is not on PATH -- install it,
 === 2026-10-08 08:30:04 daily update ===
 season 2027: 86/544 played, detail fetched for 3 new game(s)
 updated: 86/544 games played, crowd weight 0.17
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync SKIPPED: the Snowflake CLI ('snow') is not on PATH -- install it, or set snowflake_sync.enabled: false in config.yaml to publish manually
+=== done ===
+=== 2026-10-09 08:30:03 daily update ===
+season 2027: 88/544 played, detail fetched for 0 new game(s)
+updated: 88/544 games played, crowd weight 0.17
 wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
 serve with: python -m http.server 8765 --directory site
 snowflake sync SKIPPED: the Snowflake CLI ('snow') is not on PATH -- install it, or set snowflake_sync.enabled: false in config.yaml to publish manually

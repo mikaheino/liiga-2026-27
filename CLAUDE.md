@@ -599,6 +599,15 @@ from liiga.ingest import refresh_schedule
 refresh_schedule()            # tämän jälkeen daily_update.py
 ```
 
+**Peruttu ottelu ilman uutta päivää** (TPS–Sport 2701370, peruttu 9.10.):
+liiga.fi pitää sen vanhalla päivällä tilassa `ACTIVE_OR_NOT_STARTED` kunnes uusi
+ajankohta julkaistaan, joten `refresh_schedule()` ei löydä muutettavaa. Ennuste on
+silti oikein — ottelu on yhä jäljellä olevissa ja simuloidaan. Sivuvaikutukset:
+paikallinen ajo hakee sen joka aamu (yksi kutsu), ja Snowflaken `LIIGA_CHECK`
+laskee sen hakemattomaksi, joten `LIIGA_DAILY_RUN` ajaa joka aamu myös
+otteluttomina päivinä. Molemmat loppuvat kun uusi päivä tulee ja
+`refresh_schedule()` siirtää ottelun. Tarkista se kun uusi päivä on julkaistu.
+
 Ottelu voi saada kokoonpanon ennen kuin se pelataan: HIFK–TPS (2701360, 14.10.)
 on haettu siirron jälkeen, ja `game_lineups`:ssa on sille 63 riviä. Se korjaantuu
 itsestään kun ottelu haetaan pelattuna (korvaus on `game_id`-kohtainen), mutta
