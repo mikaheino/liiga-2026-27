@@ -26,7 +26,7 @@ Object.assign(ROOMS, {
       { id: "pollari", name: "pollari", x: 200, y: 112, w: 22, h: 16, at: 196, aty: 128,
         Katso: () => say("Pollari ja köysikieppi. Köysi ei ole sidottu mihinkään. Vähän kuin sijoitussuunnitelmani."), Vedä: () => say("Köysi ei johda mihinkään. Tarkistin.") },
       { id: "juliste", name: "juliste", x: 70, y: 50, w: 22, h: 26, at: 82,
-        Katso: () => (iq("juliste", 2), say("MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nOsallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
+        Katso: () => (iq("juliste", 2), say("MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nMouho-osallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
       { id: "laatikko", name: "postilaatikko", x: 106, y: 78, w: 16, h: 30, at: 114,
         Avaa: async () => { if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say(st.flags.letterTaken ? "Tyhjä." : "Laatikossa on kirje!"); },
         Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
@@ -36,7 +36,7 @@ Object.assign(ROOMS, {
         Katso: () => say("Vanha fedora. Isoisän. Tai jonkun, joka näytti isoisältä."), Poimi: async () => { st.hat = true; await say("Sopii kuin valettu. Nyt näytän seikkailijalta."); } },
       { id: "possu", name: "säästöpossu", x: 184, y: 96, w: 16, h: 12, at: 176, aty: 114,
         Katso: () => say("Säästöpossu. Sen ilme kertoo kaiken."),
-        Avaa: async () => { if (st.flags.pig) return say("Possu on tyhjä. Kuten minäkin, sisältä."); st.flags.pig = true; give("rahat"); await say("3,50 € ja nappi. Ei riitä edes osallistumismaksun postimerkkiin."); },
+        Avaa: async () => { if (st.flags.pig) return say("Possu on tyhjä. Kuten minäkin, sisältä."); st.flags.pig = true; give("rahat"); await say("3,50 € ja nappi. Ei riitä edes Mouho-osallistumismaksun postimerkkiin."); },
         Poimi: () => spot("koti", "possu").Avaa(), Käytä: () => spot("koti", "possu").Avaa() },
       { id: "taksi", name: "taksi lentokentälle", x: 256, y: 80, w: 56, h: 32, at: 250,
         Katso: () => say("Taksi lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
@@ -94,7 +94,7 @@ Object.assign(ROOMS, {
         Katso: () => say("Rautakoukku katossa kuilun yllä. Joku on ajatellut minua."),
         "Käytä:ruoska": async () => { st.flags.whipHung = true; take("ruoska"); await say("Hop!"); place(156, st.y); for (let i = 0; i < 24; i++) { st.x += 2.2; await sleep(30); } st.flags.crossed = true; st.flags.whipHung = false; give("ruoska"); iq("ruoska", 15); await say("Juuri kuten harjoittelin. En harjoitellut."); await say("...Ja tuolla on kapea reunus. Olisin voinut kävellä."); } },
       { id: "idoli", name: "kultainen idoli", x: 248, y: 70, w: 20, h: 18, at: 240, hidden: () => st.flags.idol && !st.flags.swapped,
-        Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli. Osallistumismaksu muodossa, joka hymyilee."),
+        Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli. Mouho-osallistumismaksu muodossa, joka hymyilee."),
         Poimi: () => st.flags.idol ? say("Se on jo minulla.") : say("Liian helppoa. Jalustassa on varmasti ansa. Tarvitsen jotain samanpainoista vaihtoon."),
         "Käytä:sakki": () => grabIdol() },
       { id: "ovi", name: "käytävä basaariin", x: 0, y: 60, w: 14, h: 48, at: 18, exit: true,
@@ -110,7 +110,7 @@ async function leave() {
     if (!st.hat) return say("Lähteä Indiana Jones -seikkailulle ilman hattua? En ole barbaari.");
     await say("Istanbul, täältä tullaan!");
     await travel(); go("basaari", 40, true);
-    await say("Basaari! Täällä myydään kaikkea. Ehkä jopa osallistumismaksuja.");
+    await say("Basaari! Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
   });
 }
 async function toTemple() {
@@ -169,7 +169,7 @@ async function bargain() {
 async function sellIdol(inScript) {
   const run = async () => {
     await say("Kultainen idoli! Kappadokiasta! Annan siitä... 500 euroa.", "kauppias");
-    await say("Täsmälleen osallistumismaksu. Kauppa! Mouhoon!");
+    await say("Täsmälleen Mouho-osallistumismaksu. Kauppa! Mouhoon!");
     take("idoli"); await sleep(400); await ending();
   };
   return inScript ? run() : script(run);
@@ -190,7 +190,7 @@ async function salesmanTalk() {
       const opts = [];
       if (!st.flags.salesSchedule) opts.push("Otteluohjelma? En ole enää urheilujohtaja.");
       if (!st.flags.salesMoney) opts.push("Sanoit jotain lisärahoituksesta?");
-      opts.push("Lainaisitko 500 euroa osallistumismaksuun?");
+      opts.push("Lainaisitko 500 euroa Mouho-osallistumismaksuun?");
       if (has("kirje") && !st.flags.salesSignor) opts.push("Tunnetko Signor Investimentin?");
       opts.push("Näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
@@ -228,5 +228,5 @@ ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c");
 // ---------------------------------------------------------------- käynnistys
 startEngine({
   titleScreen: drawTitle, startRoom: "koti", startX: 60,
-  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); },
+  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); },
 });

@@ -290,7 +290,7 @@ function drawTitle(t) {
   g.fillStyle = "#1c0c00"; g.fillText("MOUHON SALAISUUS", 162, 30);
   const gr = g.createLinearGradient(0, 10, 0, 30); gr.addColorStop(0, "#fff4b0"); gr.addColorStop(.5, "#fcc81c"); gr.addColorStop(1, "#c8641c");
   g.fillStyle = gr; g.fillText("MOUHON SALAISUUS", 160, 28); g.lineWidth = 1; g.strokeStyle = "#5c2c00"; g.strokeText("MOUHON SALAISUUS", 160, 28);
-  g.font = "11px VT323, monospace"; g.fillStyle = "#1c1c3c"; g.fillText("Jussi Markkanen ja kadonneen osallistumismaksun metsästys", 161, 39); g.fillStyle = "#fcfcfc"; g.fillText("Jussi Markkanen ja kadonneen osallistumismaksun metsästys", 160, 38);
+  g.font = "10px VT323, monospace"; g.fillStyle = "#1c1c3c"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 161, 39); g.fillStyle = "#fcfcfc"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 160, 38);
   if (Math.floor(t / 600) % 2) { g.fillStyle = "#1c1c1c"; g.fillText("Klikkaa aloittaaksesi", 161, 133); g.fillStyle = "#fcfc54"; g.fillText("Klikkaa aloittaaksesi", 160, 132); }
   g.textAlign = "left";
 }
@@ -354,7 +354,7 @@ async function ending() {
   overlay = (t) => { g.drawImage(paintBg("mouho", mouhoBg), 0, 0); rinkTV(t); host(236, 128, t, "#2c7c4c"); host(84, 128, t, "#7c2c6c"); shadow(168, 128, 7); jussi(168, 128, 1, 0, { hat: true, whip: true }); };
   $sent.textContent = "";
   await say("Kaivokatu 10, 4. kerros. Mouho 2026.", "muu");
-  await say("Täältä tullaan! 500 euroa osallistumismaksua, käteisenä, kultaisen idolin kautta hankittuna!");
+  await say("Täältä tullaan! 500 euroa Mouho-osallistumismaksua, käteisenä, kultaisen idolin kautta hankittuna!");
   await say("Järjestäjä: \"Osallistuminen on ilmaista.\"", "muu");
   await say("...Ilmaista?");
   await say("Järjestäjä: \"Ilmoittautuminen on kuitenkin sitova. Parit arvotaan paikan päällä, erät ovat kolme minuuttia, pizza tulee puoli seitsemältä.\"", "muu");
