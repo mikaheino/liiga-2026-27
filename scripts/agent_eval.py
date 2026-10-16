@@ -178,7 +178,8 @@ def build_dataset(run: str) -> str:
         rows.append(f"SELECT '{q.replace(chr(39), chr(39)*2)}' AS input_query, "
                     f"TO_VARIANT(OBJECT_CONSTRUCT('ground_truth_output', {gt}, "
                     f"'ground_truth_invocations', {inv})) AS ground_truth")
-    _sql(f"CREATE SCHEMA IF NOT EXISTS {DB}.{SCHEMA}")
+    # Skeema luodaan snowflake/ci_user.sql:ssä: CREATE SCHEMA IF NOT EXISTS vaatisi
+    # CREATE SCHEMA -oikeuden tietokantaan, vaikka skeema on jo olemassa.
     _sql(f"CREATE OR REPLACE TABLE {TABLE} AS\n" + "\nUNION ALL\n".join(rows))
     bad = _sql(f"SELECT input_query FROM {TABLE} WHERE ground_truth:ground_truth_output IS NULL", json_out=True)
     if bad:
