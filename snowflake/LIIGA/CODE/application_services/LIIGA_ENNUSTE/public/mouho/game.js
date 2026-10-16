@@ -20,7 +20,7 @@ Object.assign(ROOMS, {
     walk: [[[0, 123], [238, 123], [238, 136], [0, 136]], [[72, 124], [248, 124], [178, 72], [142, 72]]],
     actors: [{ id: "salkkumies", x: 216, y: 104, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(216, 104, t, talking) }],
     draw: (t) => { satamaDraw(t); satamaPiano(t); },
-    onStop: (x, y) => pianoStep(keyAt(x, y)),
+    onStop: (x, y) => st.flags.pianoT && pianoStep(keyAt(x, y)),
     props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 114, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
     spots: [
       { id: "salkkumies", name: "salkkumies", actor: true, x: 207, y: 68, w: 18, h: 37, at: 202, aty: 110,
@@ -30,11 +30,11 @@ Object.assign(ROOMS, {
         Katso: () => say("Pollari ja köysikieppi. Köysi ei ole sidottu mihinkään. Vähän kuin sijoitussuunnitelmani."), Vedä: () => say("Köysi ei johda mihinkään. Tarkistin.") },
       { id: "juliste", name: "juliste", x: 16, y: 84, w: 38, h: 30, at: 58, aty: 129,
         Katso: () => (iq("juliste", 2), say("MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nMouho-osallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
-      { id: "piano", name: "lattiapiano", floor: true, x: 8, y: 124, w: 220, h: 12, at: 120, aty: 130,
+      { id: "piano", name: "lattiapiano", floor: true, hidden: () => !st.flags.pianoT, x: 8, y: 124, w: 220, h: 12, at: 120, aty: 130,
         Katso: () => say("Jättimäinen lattiapiano rannassa, numerot 1-9 ja 0. Kuin siinä Tom Hanksin elokuvassa.\nPitää vain seistä oikeilla numeroilla oikeassa järjestyksessä."),
         Työnnä: () => say("Painan jalalla. Pianoja soitetaan tässä kaupungissa jaloin.") },
       { id: "laatikko", name: "postilaatikko", x: 91, y: 80, w: 16, h: 24, at: 104, aty: 108,
-        Avaa: async () => { if (!st.flags.unlocked) return say("Lukossa. Lukon lapussa lukee:\n\"Koodi: Ilveksen viimeisin mestaruus. Tassuttele se.\""); if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say(st.flags.letterTaken ? "Tyhjä." : "Laatikossa on kirje!"); },
+        Avaa: async () => { if (!st.flags.unlocked) return say("Lukossa, ja avain on hukassa. Tuo liituraitamies katselee laatikkoa vähän liian tietäväisesti."); if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say(st.flags.letterTaken ? "Tyhjä." : "Laatikossa on kirje!"); },
         Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
         Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje! Joku muistaa minut."); },
         Katso: () => say("Postilaatikko laiturilla. Yleensä täynnä laskuja, mutta tänään se näyttää toiveikkaalta.") },
@@ -212,9 +212,10 @@ function pianoStep(k) {
   entered.push(k);
   if (entered.join("") === CODE.join("")) { st.flags.unlocked = true; entered = []; iq("piano", 10);
     [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140));
-    script(async () => { await sleep(700); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu."); });
+    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu."); });
   } else if (!entered.every((c, n) => c === CODE[n])) {        // väärä: summeri, ja alusta (ykkönen aloittaa uuden yrityksen)
     setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered = k === CODE[0] ? [k] : [];
+    if (!busy) script(() => say(["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."][Math.floor(Math.random() * 3)], "salkkumies"));
   }
 }
 
@@ -227,13 +228,21 @@ async function salesmanTalk() {
       await say("Psst! Markkanen! Onko otteluohjelma jo valmis? Meidän porukka varasi lauantaille saunan.", "salkkumies"); }
     while (true) {
       const opts = [];
+      if (!st.flags.unlocked) opts.push("Tiedätkö, missä postilaatikkoni avain on?");
       if (!st.flags.salesSchedule) opts.push("Otteluohjelma? En ole enää urheilujohtaja.");
       if (!st.flags.salesMoney) opts.push("Sanoit jotain lisärahoituksesta?");
       opts.push("Lainaisitko 500 euroa Mouho-osallistumismaksuun?");
       if (has("kirje") && !st.flags.salesSignor) opts.push("Tunnetko Signor Investimentin?");
       opts.push("Näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
-      if (pick.startsWith("Otteluohjelma")) { st.flags.salesSchedule = true;
+      if (pick.startsWith("Tiedätkö, missä")) {
+        await say("Ehkä tiedän. Mutta avain ei irtoa ilmaiseksi.", "salkkumies");
+        await say("Entinen urheilujohtaja muka. Tiedätkö edes, milloin Ilves voitti viimeksi Suomen mestaruuden?", "salkkumies");
+        await say("Tassuttele se vuosi lattiaan. Jos osaat, avain on sinun.", "salkkumies");
+        st.flags.pianoT = Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+        await sleep(1100); await say("...Lattiaan ilmestyi numeroita. Tämä kaupunki ei lakkaa yllättämästä.");
+        await say("Kuin siinä Tom Hanksin elokuvassa. Tarvitsee vain seistä oikeilla numeroilla oikeassa järjestyksessä."); return; }
+      else if (pick.startsWith("Otteluohjelma")) { st.flags.salesSchedule = true;
         await say("Ai. No siirtyykö se lauantain peli? Kysyn vain varmuuden vuoksi. Ja sunnuntain. Ja ensi kuun.", "salkkumies");
         await say("Kaikki ottelut pelataan suunnitellusti. Luulisin. Älä lainaa minua."); }
       else if (pick.startsWith("Sanoit")) { st.flags.salesMoney = true;
@@ -268,5 +277,5 @@ ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c");
 // ---------------------------------------------------------------- käynnistys
 startEngine({
   titleScreen: drawTitle, startRoom: "koti", startX: 60,
-  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); await say("Ja postilaatikkoni on taas lukossa. Lapussa on vihje. Ja rannassa on se lattiapiano..."); },
+  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); await say("Ja postilaatikkoni on lukossa, eikä avainta löydy. Tuo liituraitamies tietää jotain."); },
 });

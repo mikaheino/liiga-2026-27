@@ -214,9 +214,13 @@ function temppeliPost(t) {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], KEY_W = 22, KEY_X0 = 8, KEY_Y0 = 125;
 const keyAt = (x, y) => (y >= KEY_Y0 - 2 && x >= KEY_X0 && x < KEY_X0 + KEY_W * 10 ? KEYS[Math.floor((x - KEY_X0) / KEY_W)] : null);
 let lastKey = { k: null, t: 0 };
+// Numerot ilmestyvät lattiaan vasta salkkumiehen haasteessa (st.flags.pianoT = hetki),
+// kosketin kerrallaan vasemmalta oikealle.
 function satamaPiano(t) {
-  for (let i = 0; i < 10; i++) { const x = KEY_X0 + i * KEY_W, lit = lastKey.k === KEYS[i] && t - lastKey.t < 450;
-    r(x, KEY_Y0, KEY_W - 1, 11, lit ? "#fcf07c" : "#e8e4d8"); r(x, KEY_Y0, KEY_W - 1, 1, lit ? "#fffcd0" : "#fcfcfc"); r(x + KEY_W - 1, KEY_Y0, 1, 11, "#2c2a28");
+  if (!st.flags.pianoT) return;
+  const since = Date.now() - st.flags.pianoT;
+  for (let i = 0; i < 10; i++) { if (since < i * 90) continue; const x = KEY_X0 + i * KEY_W, lit = lastKey.k === KEYS[i] && t - lastKey.t < 450, fresh = since < i * 90 + 260;
+    r(x, KEY_Y0, KEY_W - 1, 11, lit || fresh ? "#fcf07c" : "#e8e4d8"); r(x, KEY_Y0, KEY_W - 1, 1, lit ? "#fffcd0" : "#fcfcfc"); r(x + KEY_W - 1, KEY_Y0, 1, 11, "#2c2a28");
     if (i < 9 && i !== 2 && i !== 6) r(x + KEY_W - 4, KEY_Y0, 7, 5, "#1c1c1c");
     g.font = "8px VT323, monospace"; g.fillStyle = lit ? "#c81c1c" : "#5c5c6c"; g.fillText(KEYS[i], x + 8, KEY_Y0 + 10);
     if (lit) glow(x + KEY_W / 2, KEY_Y0 + 5, 14, "255,240,120", .25); }
