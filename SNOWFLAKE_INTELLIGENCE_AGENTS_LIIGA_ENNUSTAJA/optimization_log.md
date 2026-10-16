@@ -107,3 +107,12 @@
 |---|---|---|---|
 | `VERSION$1` | – | (ennen versiointia) | aamupäivän tila; skill luki ylikirjoitettavaa kansiota |
 | `VERSION$2` | production, oletus | 010d045 | kaksi semanttista mallia, 20 metriikkaa, kierroksen esikatselu, johtoryhmävisualisointi raporttina |
+
+### Entry: 2026-10-16 — live-versio vs. oletusversio
+- Kysymys: käyttääkö agentin kutsu oletusversiota (alias/DEFAULT) vai live-versiota?
+- Testi: DEV-agentin oletus `VERSION$1`; live-versioon ohje "aloita sanalla LIVE-TESTI";
+  DEV hetkeksi CoWork-objektiin.
+- Tulos: **molemmat käyttävät live-versiota.** `DATA_AGENT_RUN` ja CoWork-käyttöliittymä
+  vastasivat "LIVE-TESTI". Siksi kehitys tehdään erillisessä DEV-agentissa, ei tuotannon
+  live-versiossa (Snowflaken oppaan elinkaaresta poiketen). Testin jälkeen DEV poistettiin
+  CoWork-objektista ja live-versio palautettiin.

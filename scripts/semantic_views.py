@@ -217,6 +217,10 @@ ORDER BY s.projected_rank""", True),
 SELECT team, ROUND(p_regular_season_win * 100, 1) AS voitto_pct, ROUND(mean_points, 1) AS pisteet
 FROM __standings WHERE p_regular_season_win >= 0.01
 ORDER BY p_regular_season_win DESC""", True),
+        vq("PLAYOFF_CHAMPION", "Kuka voittaa Liigan mestaruuden pudotuspeleissä?", """
+SELECT team, ROUND(p_regular_season_win * 100, 1) AS runkosarjan_voitto_pct, ROUND(mean_points, 1) AS pisteet
+FROM __standings WHERE p_regular_season_win >= 0.01
+ORDER BY p_regular_season_win DESC"""),
         vq("RELEGATION", "Ketkä putoavat?", """
 SELECT team, ROUND(p_relegation * 100, 1) AS putoaa_pct
 FROM __zones WHERE p_relegation >= 0.01 ORDER BY p_relegation DESC""", True),
@@ -438,6 +442,19 @@ SELECT goalie_name, team, solo_games, goals_against,
        ROUND(goals_saved_vs_average, 1) AS torjuttu_yli_keskiverron
 FROM __goalies_now WHERE solo_games >= 3
 ORDER BY goals_saved_vs_average DESC LIMIT 6"""),
+        vq("LEAGUE_PP_PCT", "Mikä on liigan ylivoimaprosentti tällä kaudella?", """
+SELECT ROUND(SUM(pp_goals) / NULLIF(SUM(pp_instances), 0) * 100, 1) AS ylivoima_pct,
+       SUM(pp_goals) AS ylivoimamaalit, SUM(pp_instances) AS ylivoimatilanteet
+FROM __table_now"""),
+        vq("AVG_ATTENDANCE", "Paljonko otteluissa on keskimäärin yleisöä?", """
+SELECT ROUND(AVG(IFF(ended, spectators, NULL))) AS keskiyleiso,
+       SUM(IFF(ended, 1, 0)) AS pelattuja_otteluita
+FROM __games"""),
+        vq("TEAM_LUCK", "Onko KooKoon huono alku ollut huonoa tuuria?", """
+SELECT team, points, ROUND(shadow_points, 1) AS varjopisteet,
+       ROUND(points_over_shadow, 1) AS yli_ali, ROUND(xg_for, 1) AS xg_tehty,
+       ROUND(xg_against, 1) AS xg_paastetty, goals_for, goals_against
+FROM __table_now WHERE team = 'KooKoo'"""),
         vq("SHADOW_TABLE", "Mikä on varjosarjataulukko?", """
 SELECT team, points, ROUND(shadow_points, 1) AS varjopisteet,
        ROUND(points_over_shadow, 1) AS yli_ali

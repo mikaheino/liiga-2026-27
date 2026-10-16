@@ -746,9 +746,12 @@ main ──▶ Deploy agent (.github/workflows/deploy.yml):
   lasketaan SQL:llä tuoreesta datasta joka ajossa, koska "kuka johtaa
   pistepörssiä" vaihtuu päivittäin. Lisää kysymys sinne, ei kiinteänä tekstinä.
 - **Miksi DEV on erillinen agentti eikä tuotannon live-versio** (oppaasta
-  poiketen): agentin kutsu käyttää live-versiota, jos sellainen on, ei
-  oletusversiota -- todennettu 10.10. DEV-agentilla. Kehitys tuotantoagentin
-  live-versiossa näkyisi käyttäjille.
+  poiketen): kun agentilla on live-versio, sitä käytetään **sekä rajapinnassa
+  että CoWorkissa**, ei oletusversiota. Mitattu 16.10.: DEV-agentin oletus oli
+  `VERSION$1`, live-versioon lisättiin tunniste "LIVE-TESTI", ja sekä
+  `DATA_AGENT_RUN` että CoWork vastasivat tunnisteella. Kehitys tuotantoagentin
+  live-versiossa näkyisi siis heti käyttäjille. Tuotannossa live-versio on
+  olemassa vain sekunteja julkaisun aikana (MODIFY LIVE -> COMMIT).
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
   evaluoinnin tulos. `agent-v2` on merkitty jälkikäteen committiin 010d045.
 

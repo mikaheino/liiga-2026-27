@@ -437,6 +437,19 @@ verified_queries:
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: true
+- name: PLAYOFF_CHAMPION
+  question: Kuka voittaa Liigan mestaruuden pudotuspeleissä?
+  sql: 'SELECT team, ROUND(p_regular_season_win * 100, 1) AS runkosarjan_voitto_pct, ROUND(mean_points,
+    1) AS pisteet
+
+    FROM __standings WHERE p_regular_season_win >= 0.01
+
+    ORDER BY p_regular_season_win DESC
+
+    '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
 - name: RELEGATION
   question: Ketkä putoavat?
   sql: 'SELECT team, ROUND(p_relegation * 100, 1) AS putoaa_pct

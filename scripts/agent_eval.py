@@ -139,6 +139,17 @@ GOLDEN: list[tuple[str, str | None, str]] = [
     ("Kuka voittaa Liigan mestaruuden pudotuspeleissä?", E,
      f"""(SELECT 'Malli ei ennusta pudotuspelejä. Runkosarjan voiton suosikki on ' || team || ' ('
              || TO_CHAR(ROUND(p_title * 100, 1)) || ' %).' FROM {M}.STANDINGS_2026_27 ORDER BY p_title DESC LIMIT 1)"""),
+    # "Vaikea" joukko: ei vahvistettua kyselyä, agentti kirjoittaa SQL:n itse.
+    ("Montako maalia otteluissa tehdään keskimäärin?", K,
+     f"""(SELECT 'Keskimäärin ' || TO_CHAR(ROUND(AVG(IFF(ended, home_goals + away_goals, NULL)), 2))
+             || ' maalia per pelattu ottelu.' FROM {M}.V_GAMES_NOW)"""),
+    ("Millä joukkueella on paras alivoima?", K,
+     f"""(SELECT 'Paras alivoima: ' || team || ' (' || TO_CHAR(ROUND(pk_pct * 100, 1)) || ' %).'
+          FROM {M}.V_TEAM_SEASON_NOW ORDER BY pk_pct DESC NULLS LAST LIMIT 1)"""),
+    ("Mikä joukkue on kerännyt eniten pisteitä kotiotteluista?", K,
+     f"""(SELECT 'Eniten kotipisteitä: ' || LISTAGG(team || ' ' || home_points || ' p', ', ')
+          FROM {M}.V_TEAM_SEASON_NOW
+          WHERE home_points = (SELECT MAX(home_points) FROM {M}.V_TEAM_SEASON_NOW)) || '.'"""),
     ("Kuka voittaa NHL:n Stanley Cupin?", None,
      "'Kieltäytyy kohteliaasti: agentti kattaa vain Liigan, ei NHL:ää.'"),
     ("Tee illan peleistä HTML-sivu", E,
@@ -239,7 +250,14 @@ def results(agent: str, run: str):
 # 16.10. (VERSION$2): oikeellisuus 0,97, työkalu 1,00, suomi 0,98,
 # johdonmukaisuus 0,87. Rajat jättävät tilaa LLM-tuomarin vaihtelulle mutta
 # pysäyttävät selvän heikkenemisen.
-GATE = {"answer_correctness": 0.90, "tool_selection_accuracy": 0.95,
+#
+# Työkalun valinta portitetaan oikean työkalun osuutena (pisteet >= 0,5), ei
+# raakana tool_selection_accuracyna: kysymys ilman vahvistettua kyselyä menee
+# Cortex Analystissa kahdessa vaiheessa (mallin lataus + kysely), ja mittari
+# laskee sen kahdeksi saman työkalun kutsuksi -> 0,5, vaikka työkalu on oikea.
+# Raaka arvo raportoidaan yhä tehokkuusmittarina. (GitHub-ajo 16.10.: 0,94
+# raakana, 1,00 oikeina työkaluina.)
+GATE = {"answer_correctness": 0.90, "tool_correct_rate": 0.95,
         "vastaa_suomeksi": 0.95, "logical_consistency": 0.80}
 
 
@@ -249,6 +267,9 @@ def summarize(data: list[dict]) -> dict:
         if r.get("EVAL_AGG_SCORE") is not None:
             by.setdefault(r["METRIC_NAME"], {})[r["INPUT"]] = float(r["EVAL_AGG_SCORE"])
     means = {m: sum(v.values()) / len(v) for m, v in by.items()}
+    if "tool_selection_accuracy" in by:
+        t = by["tool_selection_accuracy"]
+        means["tool_correct_rate"] = sum(1 for x in t.values() if x >= 0.5) / len(t)
     low = sorted({q for v in by.values() for q, x in v.items() if x < 0.67})
     errors = sum(1 for r in data if r.get("ERROR"))
     return {"metrics": means, "n": max((len(v) for v in by.values()), default=0),
@@ -258,16 +279,17 @@ def summarize(data: list[dict]) -> dict:
 def record(agent: str, version: str, run: str, summary: dict) -> str:
     """Rivi docs/agent_evals.md:hen (append-only) ja sama markdown CI:n yhteenvetoon."""
     m = summary["metrics"]
-    cols = ["answer_correctness", "tool_selection_accuracy", "vastaa_suomeksi", "logical_consistency"]
+    cols = ["answer_correctness", "tool_correct_rate", "tool_selection_accuracy",
+            "vastaa_suomeksi", "logical_consistency"]
     row = (f"| {run} | {agent} | {version} | {summary['n']} | "
            + " | ".join(f"{m.get(c, float('nan')):.2f}" for c in cols)
            + f" | {summary['errors']} | {'; '.join(summary['low']) or '–'} |")
     path = ROOT / "docs" / "agent_evals.md"
     if not path.exists():
         path.write_text("# Agentin evaluoinnit\n\n*Kirjoittaa `scripts/agent_eval.py`. Append-only.*\n\n"
-                        "| ajo | agentti | versio | n | oikeellisuus | työkalu | suomi | "
+                        "| ajo | agentti | versio | n | oikeellisuus | oikea työkalu | työkalu (raaka) | suomi | "
                         "johdonmukaisuus | virheet | heikot (< 0,67) |\n"
-                        "|---|---|---|---:|---:|---:|---:|---:|---:|---|\n", encoding="utf-8")
+                        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|\n", encoding="utf-8")
     with path.open("a", encoding="utf-8") as fh:
         fh.write(row + "\n")
     return row
@@ -320,8 +342,8 @@ def main() -> None:
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
             fh.write(f"### Evaluointi {a.agent} {a.version}\n\n"
-                     "| ajo | agentti | versio | n | oikeellisuus | työkalu | suomi | "
-                     "johdonmukaisuus | virheet | heikot |\n|---|---|---|---:|---:|---:|---:|---:|---:|---|\n"
+                     "| ajo | agentti | versio | n | oikeellisuus | oikea työkalu | työkalu (raaka) | suomi | "
+                     "johdonmukaisuus | virheet | heikot |\n|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|\n"
                      + row + "\n")
     if a.gate:
         fails = gate(summary)

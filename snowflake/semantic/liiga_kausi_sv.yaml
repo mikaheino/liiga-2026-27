@@ -643,6 +643,28 @@ verified_queries:
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: false
+- name: LEAGUE_PP_PCT
+  question: Mikä on liigan ylivoimaprosentti tällä kaudella?
+  sql: "SELECT ROUND(SUM(pp_goals) / NULLIF(SUM(pp_instances), 0) * 100, 1) AS ylivoima_pct,\n       SUM(pp_goals)\
+    \ AS ylivoimamaalit, SUM(pp_instances) AS ylivoimatilanteet\nFROM __table_now\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: AVG_ATTENDANCE
+  question: Paljonko otteluissa on keskimäärin yleisöä?
+  sql: "SELECT ROUND(AVG(IFF(ended, spectators, NULL))) AS keskiyleiso,\n       SUM(IFF(ended, 1, 0))\
+    \ AS pelattuja_otteluita\nFROM __games\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: TEAM_LUCK
+  question: Onko KooKoon huono alku ollut huonoa tuuria?
+  sql: "SELECT team, points, ROUND(shadow_points, 1) AS varjopisteet,\n       ROUND(points_over_shadow,\
+    \ 1) AS yli_ali, ROUND(xg_for, 1) AS xg_tehty,\n       ROUND(xg_against, 1) AS xg_paastetty, goals_for,\
+    \ goals_against\nFROM __table_now WHERE team = 'KooKoo'\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
 - name: SHADOW_TABLE
   question: Mikä on varjosarjataulukko?
   sql: "SELECT team, points, ROUND(shadow_points, 1) AS varjopisteet,\n       ROUND(points_over_shadow,\
