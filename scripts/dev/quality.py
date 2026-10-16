@@ -39,10 +39,11 @@ COVER = ["src/liiga", "snowflake/LIIGA/MODEL/procedures", "snowflake/LIIGA/CODE/
 
 
 def _py_files() -> list[Path]:
-    out = []
-    for d in CODE_DIRS:
-        out += [p for p in (ROOT / d).rglob("*.py") if "__pycache__" not in p.parts]
-    return sorted(out)
+    """Vain gitissä olevat tiedostot (kuten ruff): generoitu tai ignoroitu koodi,
+    esim. streamlit_app/output/, ei saa tehdä paikallisesta tuloksesta eri kuin CI:n."""
+    r = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--", *[f"{d}/*.py" for d in CODE_DIRS]],
+                       capture_output=True, text=True, check=True)
+    return sorted(ROOT / f for f in r.stdout.split() if (ROOT / f).exists())
 
 
 def ruff() -> tuple[bool, str]:

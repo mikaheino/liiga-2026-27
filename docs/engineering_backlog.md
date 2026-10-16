@@ -152,6 +152,17 @@ git pre-pushiin ja Claude Code -hookiin: `scripts/dev/quality.py`. Ruff puhdas
 4. **Tyyppitarkistus** (mypy, `--ignore-missing-imports`) ensin `scripts/deploy/`
    ja proseduureille, sitten `src/liiga/`.
 
+**Monimutkaisuustyökalut** (arvioitu 16.10., vertailu blogs.penify.dev): portti
+käyttää radonin syklomaattista kompleksisuutta + omaa lähtötasoa gitissä, mikä
+kattaa wilyn trendiseurannan (lähtötason historia = trendi). Lisättävissä:
+- **radon mi** (maintainability index) raporttiin ilman porttia: 16.10. 45 tiedostoa
+  A, 4 B -- `build_instagram.py` (10,8, ~2 000 riviä), `streamlit_app.py` (12,4),
+  `simulate_scenario.py` (12,4). Nämä ovat luontevimmat pilkottavat.
+- **kognitiivinen kompleksisuus** (lizard tai complexipy) kuvaa luettavuutta
+  syklomaattista paremmin; kokeile rinnalla ennen kuin vaihdetaan porttia.
+- lizardin duplikaattien tunnistus `build_instagram.py`:lle (paljon samankaltaisia
+  diafunktioita).
+
 **Rajoite:** `src/liiga/` on mallin ydin -- **ei kesken kauden** muuttuvia
 refaktorointeja (AGENTS.md §10). Ruff-korjaukset, joissa käytös ei muutu
 (importit, muotoilu), ja uudet testit ovat sallittuja; logiikan pilkkominen
