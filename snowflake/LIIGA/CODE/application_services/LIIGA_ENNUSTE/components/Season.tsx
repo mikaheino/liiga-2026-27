@@ -1,5 +1,7 @@
 // Kauden tilanne isona: kuinka paljon Liigaa on jäljellä. Käyttäjän toive 16.10.:
-// yläpalkin etenemispalkki "voisi olla isompi".
+// yläpalkin etenemispalkki "voisi olla isompi". Luku lasketaan alas kuin
+// ottelukello, ja "nyt"-merkki on kiekko joka liukuu paikalleen (NHL 95 -vivahde).
+import { CountUp } from "@/components/Motion";
 export default function Season({ played, total, nextDate, nextGames }: {
   played: number; total: number; nextDate: string | null; nextGames: number;
 }) {
@@ -15,19 +17,19 @@ export default function Season({ played, total, nextDate, nextGames }: {
       <div className="sh-main">
         <div className="eyebrow">Runkosarja 2026–27</div>
         <div className="sh-big">
-          <span className="sh-num">{left}</span>
+          <span className="sh-num"><CountUp from={total} to={left} /></span>
           <span className="sh-unit">ottelua<br />jäljellä</span>
         </div>
         <div className="sh-sub">{played} / {total} pelattu · {(100 - pct).toFixed(0)} % kaudesta edessä</div>
       </div>
       <div className="sh-track" aria-hidden>
-        <div className="sh-bar"><i style={{ width: `${pct.toFixed(1)}%` }} /><span className="sh-now" style={{ left: `${pct.toFixed(1)}%` }} /></div>
+        <div className="sh-bar"><i style={{ width: `${pct.toFixed(1)}%` }} /><span className="sh-now" style={{ left: `${pct.toFixed(1)}%` }}><b className="puck" /></span></div>
         <div className="sh-ticks">{rounds.map((i) => <span key={i} className={i < done ? "on" : ""} />)}</div>
         <div className="sh-scale"><span>Syyskuu</span><span>Joulukuu</span><span>Maaliskuu</span></div>
       </div>
       {day && (
         <div className="sh-next">
-          <div className="sh-next-k">Seuraava pelipäivä</div>
+          <div className="sh-next-k"><span className="blink">▶</span> Seuraava pelipäivä</div>
           <div className="sh-next-d">{day}</div>
           <div className="sh-next-s">{nextGames} ottelua</div>
         </div>

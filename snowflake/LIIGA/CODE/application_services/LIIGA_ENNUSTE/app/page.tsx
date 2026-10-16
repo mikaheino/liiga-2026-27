@@ -13,6 +13,7 @@ import FormTable from "@/components/FormTable";
 import Heatmap, { type PositionRow } from "@/components/Heatmap";
 import History from "@/components/History";
 import Kpis from "@/components/Kpis";
+import { Reveal } from "@/components/Motion";
 import Season from "@/components/Season";
 import { GoalsTable, SpecialTable, SplitTable } from "@/components/TabTables";
 import { type HistoryPoint, TitleHistory, TitleRace } from "@/components/TitleRace";
@@ -125,9 +126,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
         <main className="main">
           {d.meta && <Season played={d.meta.GAMES_PLAYED} total={d.meta.GAMES_TOTAL} nextDate={d.next?.D ?? null} nextGames={Number(d.next?.N ?? 0)} />}
 
-          <section className="block"><Heatmap rows={d.position} highlight={highlight} /></section>
+          <Reveal className="block"><Heatmap rows={d.position} highlight={highlight} /></Reveal>
 
-          <section className="block">
+          <Reveal className="block">
             <Kpis log={d.games} teams={d.teams} window={window} />
             <nav className="tabs" aria-label="Näkymä">
               {TABS.map(([k, label]) => (
@@ -149,16 +150,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
               <span><i className="zl z-quali" />{PLAYOFF_CUT + 1}.–{QUALI_CUT}. karsinta</span>
               <span><i className="zl z-down" />{RELEGATION_CUT + 1}.–17. putoaa</span>
             </div>
-          </section>
+          </Reveal>
 
-          <section className="block">
+          <Reveal className="block">
             <div className="label">Runkosarjan voittaja</div>
             <TitleRace rows={d.title} highlight={highlight} />
             <div className="legend"><span><i className="sw-got" />Kerätty</span><span><i className="sw-sim" />Simuloitu loppukausi</span></div>
             <TitleHistory history={d.history} top={top6} highlight={highlight} />
-          </section>
+          </Reveal>
 
-          <section className="block">
+          <Reveal className="block">
             <div className="label-row">
               <div className="label">Ottelut</div>
               <Months months={months} chosen={month} href={(m) => href("kk", m)} />
@@ -167,13 +168,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
             <FixtureList fixtures={d.fixtures.filter((f) => f.start_ts.startsWith(month))} highlight={highlight} />
             <div className="label sub">Missä malli menee pieleen</div>
             <Misses fixtures={d.fixtures} highlight={highlight} />
-          </section>
+          </Reveal>
 
-          <section className="block">
+          <Reveal className="block">
             <div className="label">Ennusteen liike</div>
             <History history={d.history} order={[...d.position].sort((a, b) => a.projRank - b.projRank).map((r) => r.team)}
               highlight={highlight} preseason={d.preseason} />
-          </section>
+          </Reveal>
         </main>
       </div>
     </div>

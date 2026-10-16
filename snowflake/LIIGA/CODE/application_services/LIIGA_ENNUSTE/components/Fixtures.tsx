@@ -3,6 +3,7 @@
 // ✓/✗ kantaa osuman itse; väri yksin pettäisi sen, joka ei erota kultaa punaisesta.
 import Link from "next/link";
 import Grid, { Team } from "@/components/Grid";
+import { CountUp } from "@/components/Motion";
 import { type Fixture, MONTHS_FI, misses, modelSaid, resultText, scoreboard } from "@/lib/fixtures";
 import { fi } from "@/lib/table";
 
@@ -27,7 +28,7 @@ export function Score({ fixtures }: { fixtures: Fixture[] }) {
   return (
     <div className="score">
       <div className="score-main">
-        <span className={`score-n ${gap > 0 ? "up" : gap < 0 ? "down" : ""}`}>{Math.round(rate)}<small>%</small></span>
+        <span className={`score-n ${gap > 0 ? "up" : gap < 0 ? "down" : ""}`}><CountUp from={0} to={Math.round(rate)} ms={1100} /><small>%</small></span>
         <span className="score-k">voittajista oikein<br /><b>{s.hits}/{s.n}</b></span>
       </div>
       <div className="score-vs">
