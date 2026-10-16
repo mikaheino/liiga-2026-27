@@ -212,3 +212,8 @@ Olof Glifford|2025|SWE-U20|21|0.897|HV71 J20
 Olof Glifford|2025|SHL|13|0.895|HV71
 Olof Glifford|2026|SHL|5|0.878|HV71
 Olof Glifford|2026|Allsvenskan|29|0.903|IK Oskarshamn
+Severi Auvinen|2022|Mestis|21|0.885|Imatran Ketterä
+Severi Auvinen|2023|Mestis|19|0.912|Imatran Ketterä
+Severi Auvinen|2024|Mestis|9|0.885|Jokerit
+Severi Auvinen|2025|Mestis|23|0.894|Imatran Ketterä
+Severi Auvinen|2026|Mestis|20|0.901|Kiekko-Vantaa

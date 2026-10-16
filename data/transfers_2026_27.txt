@@ -36,7 +36,7 @@ HIFK, Helsinki
 – Jesse Seppälä / lh (Feldkirch ICEHL)
 Sopimuspelaajat
 
-Maalivahdit (5): Hugo Alnefelt (2027), Rastislav Elias (2027), Tim Juel (2027), Vili Varonen, Olof Glifford
+Maalivahdit (6): Hugo Alnefelt (2027), Rastislav Elias (2027), Tim Juel (2027), Vili Varonen, Olof Glifford, Severi Auvinen
 
 Puolustajat (13): Jesper Ahlroth (2028), Verneri Arkko (2027+1), Bruno Jalasti (2028), Aron Kiviharju (2027), Ilari Melart (2027), Lukas Pilö (2027), Kasper Puutio (2028), Viljami Savolainen (2028), Saku Salmela (2027), Eelis Uronen (2028), Ossi Sippola, Linus Nässen, David Nemecek
 
@@ -601,7 +601,7 @@ Sopimuspelaajat
 
 Maalivahdit (4): Eetu Mäkiniemi (2027), Aatu Niittymäki (2028), Markus Ruusu (2027), Noa Vali (2027)
 
-Puolustajat (13): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1), Petteri Lindbohm
+Puolustajat (14): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1), Petteri Lindbohm, Axel Landen
 
 Keskushyökkääjät (7): Lukas Haudum (2027), Aatos Koivu (2027), Hannu Kuru (2028), Vili Munkki (2027), Joel Määttä (2027), Otto Paajanen (2028), Atte Uusikartano (2027+1)
 

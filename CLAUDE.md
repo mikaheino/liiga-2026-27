@@ -399,6 +399,12 @@ tappioasemaksi (tasatilanne on pandasissa `NaN`, ei `None`, eikä `is None`
 tunnista sitä) ja näytti 16 käännöstä kolmen sijaan. Se näkyi vasta kun diaa
 katsoi.
 
+**Järjestys ei ole liiga.fi:n xME-järjestys (2026-10-11).** Liiga.fi:n
+joukkuetilastot järjestää maalipaikkaeron (xTM − xPM) mukaan; data on sama
+(TPS 34,01 / 21,38 kummassakin), mutta tämä muuttaa paikat ottelu kerrallaan
+sarjapisteiksi, joten ylivoimainen paikkavoitto tuo enintään 3 p. Käyttäjä
+valitsi tämän tavan ja alaviitteen, joka sanoo eron ääneen.
+
 **Nimi on "varjosarjataulukko", ja sarakkeet on kirjoitettu lukijalle
 (2026-09-26).** "xP" ja "Ero" eivät kertoneet kenellekään mitään, joten ne
 ovat nyt "Paikkojen mukaan", "Oikeat pisteet" ja "Yli / ali", ja alaviite
@@ -472,6 +478,26 @@ kyse on oikeista ihmisistä julkisessa postauksessa.
 
 Älä vaihda genetiiviin ("KooKoo:n"): joukkueiden nimet taipuvat
 epäsäännöllisesti, joten alaviite luettelee nimet perusmuodossa.
+
+### Välitilinpäätös (`scorecard_post`, 2026-10-11)
+
+Kaksi diaa: osumaprosentti isona ("Miten malli on osunut?") vertailuna
+"aina kotijoukkue" ja otoksen ±-epävarmuus, sekä ennuste nyt vs. esikausi
+(17 riviä: ennustesija, esikauden sija, nuoli, sarjasija, ennustetut pisteet).
+Osuma lasketaan **täsmälleen kuten sovelluksen tulostaulu** (`render_scoreboard`):
+viimeisin snapshot ottelupäivänä tai ennen, suosikki = `p_home_win >= 0,5`.
+Älä laske sitä toisella ehdolla -- dia ja sovellus näyttäisivät eri luvun.
+
+Prosenttiluku on keskitetty (`.hero.center`, vain tällä dialla -- 40 minuutin
+dia käyttää samaa `.hero`a vasemmalle tasattuna). **Yhdistelmä**
+`scorecard_surprise_post` = ennuste nyt vs. esikausi, yllättäjät kentällä,
+varjosarjataulukko, yllättäjäjoukkueet (tässä järjestyksessä), neljä diaa yhtenä PDF:nä, **ilman osumaprosenttidiaa** (käyttäjän päätös 11.10.:
+luku kuuluu postauksen tekstiin, lukijaa kiinnostaa oman joukkueen sijoitus).
+Erilliset postaukset ovat sovelluksessa yhä.
+
+Nuoli vertaa julkaistuun esikauden ennusteeseen (`games_played = 0`), ja
+alaviite sanoo ääneen, että liike sisältää myös syyskuun datakorjaukset
+(ks. "Nuoli mittaa ennusteen liikettä, ei pelkkää kauden opetusta").
 
 ## ⚠️ `game_id` EI ole yksilöllinen — avain on `(season, game_id)`
 
@@ -709,6 +735,14 @@ toinen ajo palauttaa 0 muutosta. `apply=False` näyttää muutokset kirjoittamat
 from liiga.ingest import refresh_schedule
 refresh_schedule()            # tämän jälkeen daily_update.py
 ```
+
+⚠️ **Vie ohjelma myös Snowflakeen:** `python scripts/sync_to_snowflake.py -t raw_games`
+ja `EXECUTE NOTEBOOK LIIGA.CODE.LIIGA_DAILY()`. `raw_games` ei ole
+`CURATED_TABLES`issa, joten `daily_update.py`:n synkka ei vie sitä, eikä
+notebook hae kauden ohjelmaa (se päivittää vain pelatut ottelut
+ottelukohtaisesta päätepisteestä). 9.10. siirrot jäivät Snowflakesta puuttumaan
+16.10. asti: kuusi pelaamatonta ottelua väärällä ajalla, pahimmat Ilves–Jukurit
+(20.10. → 24.10.) ja Sport–Jukurit (7.3. → 20.10.). Pelatut olivat oikein.
 
 **Peruttu ottelu ilman uutta päivää** (TPS–Sport 2701370, peruttu 9.10.):
 liiga.fi pitää sen vanhalla päivällä tilassa `ACTIVE_OR_NOT_STARTED` kunnes uusi
