@@ -273,6 +273,88 @@ tables:
   synonyms:
   - ennusteen kehitys
   - ennustehistoria
+- name: FORECAST_CHANGE
+  description: 'Why the forecast changed: the change in a team''s forecast final points split into three
+    parts that add up to the change. One row per team per comparison.'
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_FORECAST_CHANGE
+  dimensions:
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: COMPARISON
+    description: 'What it is compared with: ESIKAUSI = the published pre-season forecast, VIIKKO = a week
+      ago, EDELLINEN = the previous daily run'
+    expr: COMPARISON
+    synonyms:
+    - vertailu
+    is_enum: true
+  - name: RANK_BEFORE
+    description: Forecast rank at the comparison point
+    expr: RANK_BEFORE
+  - name: RANK_NOW
+    description: Forecast rank now
+    expr: RANK_NOW
+  time_dimensions:
+  - name: COMPARED_TO_DATE
+    description: Date of the forecast compared with
+    expr: COMPARED_TO_DATE
+    data_type: DATE
+  - name: FORECAST_DATE
+    description: Date of the current forecast
+    expr: FORECAST_DATE
+    data_type: DATE
+  facts:
+  - name: POINTS_BEFORE
+    description: Forecast final points at the comparison point
+    expr: POINTS_BEFORE
+  - name: POINTS_NOW
+    description: Forecast final points now
+    expr: POINTS_NOW
+  - name: POINTS_CHANGE
+    description: Change in points = results + roster changes + model revision
+    expr: POINTS_CHANGE
+    synonyms:
+    - muutos
+    - miksi muuttui
+  - name: GAMES_IN_WINDOW
+    description: The team's games played since the comparison point
+    expr: GAMES_IN_WINDOW
+  - name: POINTS_EARNED
+    description: Points earned in those games
+    expr: POINTS_EARNED
+  - name: POINTS_EXPECTED
+    description: Points the forecast at the comparison point expected from those games
+    expr: POINTS_EXPECTED
+  - name: RESULTS_VS_EXPECTED
+    description: 'Results vs. expectation: points earned minus points expected'
+    expr: RESULTS_VS_EXPECTED
+    synonyms:
+    - tulokset
+    - pankitettu
+  - name: ROSTER_CHANGES
+    description: Effect of roster changes on points
+    expr: ROSTER_CHANGES
+    synonyms:
+    - kokoonpanot
+    - siirrot
+  - name: MODEL_REVISION
+    description: Model revision for the remaining games (Elo learns from results; includes data corrections)
+    expr: MODEL_REVISION
+    synonyms:
+    - malli oppi
+    - uusi arvio
+  - name: P_TITLE_BEFORE_PCT
+    description: Regular-season win probability at the comparison point, %
+    expr: P_TITLE_BEFORE_PCT
+  - name: P_TITLE_NOW_PCT
+    description: Regular-season win probability now, %
+    expr: P_TITLE_NOW_PCT
 - name: TEAM_STRENGTH
   description: Model team strengths. OFF_RATING higher = better attack; DEF_RATING and GOALIE_MULT lower
     = better.
@@ -410,7 +492,13 @@ module_custom_instructions:
 
     STANDINGS is the FINAL forecast. The current table is not in this model.
 
-    Upcoming games: always use UPCOMING_GAMES, it already holds the latest forecast.'
+    Upcoming games: always use UPCOMING_GAMES, it already holds the latest forecast.
+
+    "Why did the forecast change" -> FORECAST_CHANGE (default comparison ESIKAUSI, "in a week" VIIKKO,
+
+    "since yesterday" EDELLINEN). Always return all three parts: RESULTS_VS_EXPECTED, ROSTER_CHANGES,
+
+    MODEL_REVISION.'
   question_categorization: 'Liiga 2026-27 regular season only. No playoffs, no other leagues.
 
     Questions about the current table, played games, scoring leaders or model
@@ -565,6 +653,30 @@ verified_queries:
     ORDER BY snapshot_date
 
     '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: WHY_CHANGED_TEAM
+  question: Miksi KooKoon ennuste on muuttunut?
+  sql: "SELECT comparison, compared_to_date, rank_before, rank_now, points_before, points_now,\n     \
+    \  points_change, games_in_window, results_vs_expected, roster_changes, model_revision\nFROM __forecast_change\
+    \ WHERE team = 'KooKoo' AND comparison = 'ESIKAUSI'\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
+- name: WHY_CHANGED_WEEK
+  question: Kenen ennuste on muuttunut eniten viikossa ja miksi?
+  sql: "SELECT team, rank_before, rank_now, points_change, games_in_window,\n       results_vs_expected,\
+    \ roster_changes, model_revision\nFROM __forecast_change WHERE comparison = 'VIIKKO'\nORDER BY ABS(points_change)\
+    \ DESC LIMIT 5\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: WHY_CHANGED_YESTERDAY
+  question: Miksi ennuste muuttui eilisestä?
+  sql: "SELECT team, rank_before, rank_now, points_change, games_in_window,\n       results_vs_expected,\
+    \ roster_changes, model_revision\nFROM __forecast_change WHERE comparison = 'EDELLINEN' AND ABS(points_change)\
+    \ >= 0.5\nORDER BY ABS(points_change) DESC\n"
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: false

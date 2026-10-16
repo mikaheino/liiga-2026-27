@@ -180,6 +180,33 @@ def ennustaja() -> dict:
               facts=[fact("MEAN_POINTS", "Ennustetut loppupisteet sinä päivänä"),
                      fact("P_REGULAR_SEASON_WIN", "Runkosarjan voiton todennäköisyys", "P_TITLE"),
                      fact("GAMES_PLAYED", "Pelattuja otteluita koko sarjassa sinä päivänä")]),
+        table("FORECAST_CHANGE", "MODEL.V_FORECAST_CHANGE",
+              "Miksi ennuste muuttui: joukkueen ennustettujen loppupisteiden muutos jaettuna "
+              "kolmeen osaan, jotka summautuvat muutokseen. Yksi rivi per joukkue per vertailu.",
+              dims=[team(),
+                    dim("COMPARISON", "Mihin verrataan: ESIKAUSI = julkaistu esikauden ennuste, "
+                        "VIIKKO = viikko sitten, EDELLINEN = edellinen päivittäinen ajo",
+                        syn=["vertailu"], enum=True),
+                    dim("RANK_BEFORE", "Ennustettu sija vertailuhetkellä"),
+                    dim("RANK_NOW", "Ennustettu sija nyt")],
+              tdims=[tdim("COMPARED_TO_DATE", "Vertailuennusteen päivä"),
+                     tdim("FORECAST_DATE", "Nykyisen ennusteen päivä")],
+              facts=[fact("POINTS_BEFORE", "Ennustetut loppupisteet vertailuhetkellä"),
+                     fact("POINTS_NOW", "Ennustetut loppupisteet nyt"),
+                     fact("POINTS_CHANGE", "Muutos pisteinä = tulokset + kokoonpanot + mallin uusi arvio",
+                          syn=["muutos", "miksi muuttui"]),
+                     fact("GAMES_IN_WINDOW", "Joukkueen ottelut vertailuhetken jälkeen"),
+                     fact("POINTS_EARNED", "Saadut pisteet niistä otteluista"),
+                     fact("POINTS_EXPECTED", "Vertailuhetken ennusteen odottamat pisteet niistä otteluista"),
+                     fact("RESULTS_VS_EXPECTED", "Tulokset vs. odotus: saadut miinus odotetut pisteet",
+                          syn=["tulokset", "pankitettu"]),
+                     fact("ROSTER_CHANGES", "Kokoonpanomuutosten vaikutus pisteisiin",
+                          syn=["kokoonpanot", "siirrot"]),
+                     fact("MODEL_REVISION", "Mallin uusi arvio jäljellä olevista otteluista "
+                          "(Elo oppii tuloksista; mukana datakorjaukset)",
+                          syn=["malli oppi", "uusi arvio"]),
+                     fact("P_TITLE_BEFORE_PCT", "Runkosarjan voiton todennäköisyys vertailuhetkellä, %"),
+                     fact("P_TITLE_NOW_PCT", "Runkosarjan voiton todennäköisyys nyt, %")]),
         table("TEAM_STRENGTH", "MODEL.TEAM_STRENGTH",
               "Mallin joukkuevahvuudet. OFF_RATING suurempi = parempi hyökkäys; "
               "DEF_RATING ja GOALIE_MULT pienempi = parempi.", pk=["TEAM"],
@@ -269,6 +296,21 @@ ORDER BY points_per_game DESC LIMIT 10"""),
 SELECT snapshot_date, proj_rank, ROUND(mean_points, 1) AS pisteet
 FROM __forecast_history WHERE team = 'Tappara'
 ORDER BY snapshot_date"""),
+        # Miksi ennuste muuttui (2026-10-16): valmis erittely V_FORECAST_CHANGE:ssä.
+        vq("WHY_CHANGED_TEAM", "Miksi KooKoon ennuste on muuttunut?", """
+SELECT comparison, compared_to_date, rank_before, rank_now, points_before, points_now,
+       points_change, games_in_window, results_vs_expected, roster_changes, model_revision
+FROM __forecast_change WHERE team = 'KooKoo' AND comparison = 'ESIKAUSI'""", True),
+        vq("WHY_CHANGED_WEEK", "Kenen ennuste on muuttunut eniten viikossa ja miksi?", """
+SELECT team, rank_before, rank_now, points_change, games_in_window,
+       results_vs_expected, roster_changes, model_revision
+FROM __forecast_change WHERE comparison = 'VIIKKO'
+ORDER BY ABS(points_change) DESC LIMIT 5"""),
+        vq("WHY_CHANGED_YESTERDAY", "Miksi ennuste muuttui eilisestä?", """
+SELECT team, rank_before, rank_now, points_change, games_in_window,
+       results_vs_expected, roster_changes, model_revision
+FROM __forecast_change WHERE comparison = 'EDELLINEN' AND ABS(points_change) >= 0.5
+ORDER BY ABS(points_change) DESC"""),
         vq("UPDATED", "Milloin ennuste on päivitetty?", """
 SELECT updated_at, games_played, games_total FROM __forecast_meta"""),
     ]
@@ -281,7 +323,10 @@ SELECT updated_at, games_played, games_total FROM __forecast_meta"""),
         "module_custom_instructions": {
             "sql_generation": COMMON + """
 STANDINGS on LOPULLINEN ennuste. Nykyinen sarjatilanne ei ole tässä mallissa.
-Tulevat ottelut: käytä aina UPCOMING_GAMES, se on jo uusin ennuste.""",
+Tulevat ottelut: käytä aina UPCOMING_GAMES, se on jo uusin ennuste.
+"Miksi ennuste muuttui" -> FORECAST_CHANGE (oletusvertailu ESIKAUSI, "viikossa" VIIKKO,
+"eilen" EDELLINEN). Palauta aina kaikki kolme osaa: RESULTS_VS_EXPECTED, ROSTER_CHANGES,
+MODEL_REVISION.""",
             "question_categorization": """Vain Liiga 2026-27 runkosarja. Ei pudotuspelejä
 eikä muita sarjoja. Kysymys nykyisestä sarjatilanteesta, pelatuista otteluista,
 pistepörssistä tai mallin osuvuudesta kuuluu toiselle työkalulle.""",

@@ -187,6 +187,23 @@ def main() -> None:
     print(f"{len(vs)} rosteriversiota, lähtötaso {vs[0]['sha']} {vs[0]['date']}")
     write(run(vs))
     print("kirjoitettu docs/roster_impact.md ja data/roster_impact.csv")
+    to_duckdb()
+
+
+def to_duckdb() -> None:
+    """Taulu roster_impact DuckDB:hen, josta synkka vie sen Snowflakeen
+    (snowflake_sync.CURATED_TABLES). Agentin "miksi ennuste muuttui?"
+    -näkymä (V_FORECAST_CHANGE) erottaa sillä kokoonpanomuutosten osuuden."""
+    import duckdb
+    import pandas as pd
+    df = pd.read_csv(ROOT / "data/roster_impact.csv")
+    con = duckdb.connect(str(ROOT / "data/liiga.duckdb"))
+    try:
+        con.register("ri", df)
+        con.execute("CREATE OR REPLACE TABLE roster_impact AS SELECT * FROM ri")
+    finally:
+        con.close()
+    print(f"DuckDB roster_impact: {len(df)} riviä")
 
 
 if __name__ == "__main__":

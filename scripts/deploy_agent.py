@@ -61,11 +61,17 @@ ORCHESTRATION = """Scope: Liiga 2026-27 regular season, as forecast by this proj
 Tool selection -- pick one tool and call it once:
 - liiga_ennuste for the future (final table, zones, upcoming games, round previews, team strengths, player projections, forecast history).
 - liiga_kausi for the past and now (current table, results, model accuracy, surprises, scoring leaders, goalies, lineups, league averages, special teams, past seasons).
+- liiga_skenaario for "what if" questions: a team wins or loses its next game(s), a given game ends a given way ("entä jos", "mitä jos", "jos X voittaa"). It locks those results and replays the rest of the season.
+- liiga_skenaario also for "what is required" questions: what does a team need to stay up, make the top 6 or the playoffs, or win the regular season ("mitä vaaditaan", "mitä tarvitaan", "riittääkö", "pysyy liigassa", "välttää putoamisen").
 - Both only when the question compares forecast with outcome. Never call the same tool twice for one question. Never use web search.
 
 Workflows:
 - A whole game day (tonight's, today's, tomorrow's games) is a round preview: call liiga_ennuste once with exactly "Kierroksen esikatselu: tämän illan ottelut" (tomorrow: "Esikatsele huomisen kierros").
 - Load the esikatselu-html skill only when the user's message contains the word "johtoryhmävisualisointi" (any inflection). Never otherwise. A request for HTML, a page or a file without that word: give the round preview in chat exactly as for a game day (one liiga_ennuste call), then add one sentence that a shareable page is made on request for a "johtoryhmävisualisointi".
+- "Why did the forecast change" (miksi, mistä johtuu, mikä selittää): call liiga_ennuste once; the answer is the split into results vs. expectation, roster changes and model revision.
+- What-if: build the scenario as JSON for liiga_skenaario, e.g. [{"team": "Ilves", "result": "win"}, {"team": "Tappara", "result": "loss", "opponent": "Lukko"}]. result is win, loss, reg_win, ot_win, ot_loss or reg_loss; "games": N for the next N games. Without a named game, use the team's next game. If the tool answers SKENAARIOTA EI VOITU AJAA, tell the user why in one sentence.
+- What is required: add a goal item, e.g. [{"team": "KooKoo", "goal": "avoid_relegation"}]; goal is avoid_relegation (stay in Liiga, rank 14 or better), top6, top10 or win. "Pysyy liigassa ensi kaudella" means avoid_relegation this season. A goal can be combined with locked results ("what is required if KooKoo also wins its next three"). If the user names the teams that must slip ("miten Jokerien ja Sportin pitää pelata"), add "rivals": ["Jokerit", "Sport"] to the goal item; otherwise the tool picks the closest rivals. Only Liiga's 17 teams are in the model: a Mestis team's promotion cannot be simulated -- say so.
+- Morning brief (aamutiedote): the only case where several calls are allowed. 1) liiga_ennuste: today's round preview, 2) liiga_ennuste: why the forecast changed since the previous run, 3) liiga_skenaario: tonight's closest game, the underdog wins. Then write the brief.
 - A question about the playoffs or the champion: call liiga_ennuste for the regular-season winner forecast and answer with it; the response explains that the model does not forecast playoffs. Do not refuse.
 
 Errors and empty results:
@@ -80,6 +86,12 @@ Be brief: the answer in one sentence first, then a table if needed (at most 10 r
 Only when the question is about the title or the champion, say that 'mestaruus' here means winning the regular season, because the model does not forecast playoffs. When reporting model accuracy, compare it with 'the home team always wins', not 50 %. Table zones: 1-6 straight to quarterfinals, 7-10 play-in, 15-17 relegated. Copy every number from the tool results; never estimate or recall one. If the results contain a forecast or update date, end with one short line "Ennuste päivitetty D.M.YYYY." No other closing disclaimers.
 
 Round preview in chat: one sentence (number of games, clearest favourite), then for each row its OTTELU line in bold followed by the ENNUSTE, TILANNE, MAALIVAHDIT and KESKINAISET lines verbatim (skip empty ones), then at most one sentence naming an upset candidate. SUOSIKKI 'tasainen' means do not name a favourite.
+
+What-is-required answer: first sentence = the probability now and the points needed for an even chance, then the needed points per game for 50 / 80 / 95 % compared with the team's pace so far and the model's expectation, the typical points line, then how the rivals must do: their final points in the seasons where the goal is reached versus their expectation, and the team's probability if that rival finishes below its median. Name whether the goal depends mostly on the team itself or on the rivals. Say in plain words what the points per game means (3 = regulation win, 2 = overtime win, 1 = overtime loss).
+
+What-if answer: first sentence = the biggest change (team, rank and regular-season-win % before -> after), then the tool's table of teams that moved, then one sentence that the rest of the season is simulated 10,000 times with the model's own probabilities. Why-changed answer: first sentence = total change in points, then the three parts with their numbers (tulokset vs. odotus, kokoonpanot, mallin uusi arvio), largest first.
+
+Morning brief (aamutiedote): title "Liiga-aamu D.M.", then three short sections with bold headings "Illan ottelut", "Mikä muuttui" and "Mitä jos". Illan ottelut: one sentence, then EVERY game of the round on its own line (time, teams, win %). Mikä muuttui: one sentence naming the two largest moves, and for each the part that is largest in the table (tulokset vs. odotus, kokoonpanot or mallin uusi arvio) with its number; then the table. Mitä jos: at most three lines. Numbers copied from the tools.
 
 Other leagues and betting advice are out of scope: decline politely in one sentence and say what you can answer instead. Liiga playoffs are NOT out of scope: answer with the regular-season forecast as instructed."""
 
@@ -103,6 +115,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
     else:
         from semantic_views import sv_sha
         sfx = "_" + sv_sha()
+    from deploy_tools import suffix as tool_suffix
+    tsfx = tool_suffix("SIMULATE_SCENARIO", dev)
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
     s = {
@@ -121,9 +135,15 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
         },
         "tools": [
             {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_ennuste",
-                           "description": "WHAT: the model's forecast for the Liiga 2026-27 regular season, refreshed every morning. DATA: final-table forecast (points, rank, 5-95 % range), probabilities of winning the regular season, top 6, play-in and relegation, win and overtime probabilities for every unplayed game, round previews with form and likely goalies, team strength ratings, player projections, forecast history, model vs. crowd. USE WHEN: the question is about what will happen. DO NOT USE: for the current table, played results, scoring leaders, model accuracy or anything that has already happened (liiga_kausi), or for playoffs (not forecast)."}},
+                           "description": "WHAT: the model's forecast for the Liiga 2026-27 regular season, refreshed every morning. DATA: final-table forecast (points, rank, 5-95 % range), probabilities of winning the regular season, top 6, play-in and relegation, win and overtime probabilities for every unplayed game, round previews with form and likely goalies, team strength ratings, player projections, forecast history, model vs. crowd, and WHY the forecast changed (split into results vs. expectation, roster changes and model revision, versus pre-season, a week ago or the previous run). USE WHEN: the question is about what will happen, or why a team's forecast rose or fell. DO NOT USE: for the current table, played results, scoring leaders, model accuracy or anything that has already happened (liiga_kausi), or for playoffs (not forecast)."}},
             {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_kausi",
-                           "description": "WHAT: what has happened in Liiga 2026-27 so far, plus past seasons 2022-26. DATA: current table (liiga.fi order), every played game and result, model accuracy per game versus the home-team baseline, upsets, surprise teams and players versus pre-season expectations, scoring leaders, goalie performance versus expectation, shadow table from expected goals (xG), league averages (goals per game, attendance, home-win share), special teams, latest played lineup per team. USE WHEN: the question is about results, standings now, players' or goalies' season, or how well the model has done. DO NOT USE: for forecasts of the final table or upcoming games (liiga_ennuste)."}},
+                           "description": "WHAT: what has happened in Liiga 2026-27 so far, plus past seasons 2022-26. DATA: current table (liiga.fi order), every played game and result, model accuracy per game versus the home-team baseline, upsets, surprise teams and players versus pre-season expectations, scoring leaders, goalie performance versus expectation, shadow table from expected goals (xG), league averages (goals per game, attendance, home-win share), special teams, latest played lineup per team. USE WHEN: the question is about results, standings now, players' or goalies' season, or how well the model has done. DO NOT USE: for forecasts of the final table or upcoming games, or why a forecast changed (liiga_ennuste)."}},
+            {"tool_spec": {"type": "generic", "name": "liiga_skenaario",
+                           "description": "WHAT: what-if and what-is-required simulator. Locks the results the user describes and replays the rest of the Liiga 2026-27 regular season 10,000 times with the model's own game probabilities and the same random numbers as the published forecast, so the difference is the scenario's effect only. RETURNS: locked games, and for every team that moved: rank, points, regular-season-win %, top-6 % and relegation % now -> in the scenario. With a goal (avoid_relegation, top6, top10, win) it reads, from the simulated seasons where the goal was reached, the probability now and the final points and points per game needed for 50/80/95 % certainty, the typical points line, the rivals, and how the rivals must do (their final points when the goal is reached vs. expected; rivals can be named). USE WHEN: 'entä jos', 'mitä jos', 'jos X voittaa/häviää', 'mitä X vaatii/tarvitsee pysyäkseen liigassa / päästäkseen pudotuspeleihin'. DO NOT USE: for the current forecast without a scenario (liiga_ennuste) or for played games (liiga_kausi).",
+                           "input_schema": {"type": "object", "properties": {
+                               "scenario": {"type": "string", "description":
+                                   'JSON list of locked results and/or goals, e.g. [{"team": "Ilves", "result": "win"}, {"team": "Tappara", "result": "loss", "opponent": "Lukko"}, {"team": "KooKoo", "result": "win", "games": 3}] or [{"team": "KooKoo", "goal": "avoid_relegation"}]. goal: avoid_relegation | top6 | top10 | win; optional "rivals": [team names] whose required performance to show. team, opponent and rivals are exact team names. result: win | loss (the model draws regulation vs. overtime) | reg_win | ot_win | ot_loss | reg_loss. games: the next N games of that team (default 1).'}},
+                               "required": ["scenario"]}}},
             # HTML-esikatselu (CoWork document generation) tarvitsee tämän.
             # Oletus permission_policy = always_ask: käyttäjä hyväksyy ajon.
             {"tool_spec": {"type": "code_execution", "name": "code_execution"}},
@@ -133,6 +153,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                               "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
             "liiga_kausi": {"semantic_view": f"LIIGA.MODEL.LIIGA_KAUSI_SV{sfx}",
                             "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
+            "liiga_skenaario": {"type": "procedure", "identifier": f"LIIGA.MODEL.SIMULATE_SCENARIO{tsfx}",
+                                "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
             "code_execution": {},
         },
         "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{sha}/{k}"}}
@@ -206,6 +228,11 @@ def candidate(alias: str, html: bool = False, message: str = "", fqn: str = FQN)
                                        f"SHOW SEMANTIC VIEWS LIKE '{sv.split('.')[-1]}' IN SCHEMA LIIGA.MODEL"))
                 if not got:
                     raise SystemExit(f"{sv} puuttuu: aja ensin python scripts/semantic_views.py --deploy")
+            proc = t.get("identifier")
+            if proc:
+                from deploy_tools import exists
+                if not exists(proc):
+                    raise SystemExit(f"{proc} puuttuu: aja ensin python scripts/deploy_tools.py")
     # Spec omaan kansioonsa: ADD VERSION FROM lukee koko kansion.
     import tempfile
     import yaml

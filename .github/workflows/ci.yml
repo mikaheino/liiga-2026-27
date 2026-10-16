@@ -24,7 +24,7 @@ jobs:
       - name: Testit (malli, simulaatio, maalivahdit)
         run: pytest -q tests
       - name: Skriptit kääntyvät
-        run: python -m py_compile scripts/*.py snowflake/skills/*/render.py
+        run: python -m py_compile scripts/*.py snowflake/skills/*/render.py snowflake/procedures/*.py
       - name: Semanttisten mallien YAML vastaa koodia
         # snowflake/semantic/*.yaml generoidaan scripts/semantic_views.py:stä.
         # Jos joku muokkasi koodia mutta ei generoinut tiedostoja, PR kaatuu.

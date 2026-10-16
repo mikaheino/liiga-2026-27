@@ -47,7 +47,7 @@ STAGE = f"{DB}.{SCHEMA}.EVAL_CONFIG"
 TABLE = f"{DB}.{SCHEMA}.GOLDEN"
 TODAY = "TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))"
 M = "LIIGA.MODEL"
-E, K = "liiga_ennuste", "liiga_kausi"
+E, K, S = "liiga_ennuste", "liiga_kausi", "liiga_skenaario"
 
 # (kysymys, odotettu työkalu tai None, SQL-lauseke joka palauttaa odotetun vastauksen)
 GOLDEN: list[tuple[str, str | None, str]] = [
@@ -153,6 +153,22 @@ GOLDEN: list[tuple[str, str | None, str]] = [
           WHERE home_points = (SELECT MAX(home_points) FROM {M}.V_TEAM_SEASON_NOW)) || '.'"""),
     ("Kuka voittaa NHL:n Stanley Cupin?", None,
      "'Kieltäytyy kohteliaasti: agentti kattaa vain Liigan, ei NHL:ää.'"),
+    # Miksi ennuste muuttui ja mitä jos (2026-10-16).
+    ("Miksi KooKoon ennuste on muuttunut esikaudesta?", E,
+     f"""(SELECT 'KooKoon ennuste on muuttunut ' || TO_CHAR(points_change) || ' pistettä ('
+             || TO_CHAR(points_before) || ' -> ' || TO_CHAR(points_now) || ', sija ' || rank_before || '. -> '
+             || rank_now || '.): tulokset vs. odotus ' || TO_CHAR(results_vs_expected) || ', kokoonpanot '
+             || TO_CHAR(roster_changes) || ', mallin uusi arvio ' || TO_CHAR(model_revision) || '.'
+          FROM {M}.V_FORECAST_CHANGE WHERE team = 'KooKoo' AND comparison = 'ESIKAUSI')"""),
+    ("Entä jos Ilves voittaa seuraavan ottelunsa?", S,
+     f"""(SELECT 'Lukitsee Ilveksen voiton seuraavassa ottelussa (' || home_team || '–' || away_team || ' '
+             || TO_CHAR(game_date) || ') ja kertoo, miten Ilveksen sija, pisteet ja runkosarjan voiton '
+             || 'todennäköisyys muuttuvat (simulaatio, 10 000 kierrosta).'
+          FROM {M}.V_UPCOMING_PREDICTIONS WHERE home_team = 'Ilves' OR away_team = 'Ilves'
+          ORDER BY game_date, start_time_fi LIMIT 1)"""),
+    ("Mitä vaaditaan, että KooKoo pysyy Liigassa ensi kaudella?", S,
+     "'Kertoo KooKoon todennäköisyyden välttää putoaminen (sija 14. tai parempi) ja montako "
+     "loppupistettä ja pistettä per ottelu loppukaudelta se tarvitsee (simulaatio, 10 000 kautta).'"),
     ("Tee illan peleistä HTML-sivu", E,
      f"""(SELECT 'Vastaa chatissa ilman HTML-tiedostoa (sivu vain johtoryhmävisualisointina). '
              || IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.', 'Tänään ' || COUNT(*) || ' ottelua.')

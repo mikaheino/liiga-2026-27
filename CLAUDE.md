@@ -739,6 +739,52 @@ yhteydellä (aseta `SNOWFLAKE_CONNECTION`/config tilapäisesti) -- harvinaista.
 Synkka löytää `snow`in myös launchdissa (`_SNOW_FALLBACKS`), ja testattu
 `env -i` -ympäristössä: aamusynkka toimii nyt ilman PATHia ja selainta.
 
+## Agentin "haluan tällaisen" -ominaisuudet (2026-10-16)
+
+Kolme ominaisuutta, valittu sen mukaan mikä siirtyy demoyleisön omaan
+bisnekseen ("miksi forecast laski?", skenaariosuunnittelu, tieto tulee itse).
+
+**1. Miksi ennuste muuttui** -- näkymä `V_FORECAST_CHANGE` (kausi_views.sql),
+taulu `FORECAST_CHANGE` ennustemallissa, kolme VQR:ää. Muutos = **tulokset vs.
+odotus** (ikkunassa pelattujen otteluiden pisteet miinus vertailuhetken
+ennusteen odotus juuri niistä) + **kokoonpanot** (`ROSTER_IMPACT`, roster_impact.py
+kirjoittaa sen nyt myös DuckDB:hen ja synkka Snowflakeen) + **mallin uusi arvio**
+(loput). Osat summautuvat rakenteen vuoksi. Ikkunat ESIKAUSI / VIIKKO / EDELLINEN.
+Snowflakesta puuttuvat 31.8. ja 1.9. ajot, joten ESIKAUSI on siellä 30.8. --
+sama julkaistu ennuste (KooKoo 107,4, Tappara 115,3), ehto on `games_played = 0`.
+
+**2. Mitä jos -simulaattori** -- proseduuri `SIMULATE_SCENARIO_<sha>`, agentin
+työkalu `liiga_skenaario` (`tool_spec` type `generic`, `tool_resources` type
+`procedure` -- toimii, vaikka dokumentaation esimerkit näyttävät vain
+`function`in). Lähde `snowflake/procedures/simulate_scenario.py`, testi
+`tests/test_simulate_scenario.py`. Sama Monte Carlo kuin `src/liiga/simulate.py`
+uusimmista `PREDICTION_GAMES`-todennäköisyyksistä; perustaso ja skenaario
+**samoilla satunnaisluvuilla**, tulos julkaistun ennusteen päälle (pisteiden ero
+× (1 − yleisöpaino)). Ilman lukituksia toistaa julkaistun runkosarjan voiton
+todennäköisyyden 0,5 pp:n tarkkuudella. Omistajan oikeuksin: käyttäjä tarvitsee
+vain USAGEn proseduuriin.
+
+**2b. Mitä vaaditaan** -- sama työkalu tavoitteella:
+`[{"team": "KooKoo", "goal": "avoid_relegation", "rivals": ["Jokerit", "Sport"]}]`
+(myös `top6`, `top10`, `win`; `rivals` valinnainen). Luetaan niistä 10 000
+kaudesta, joissa tavoite toteutui: todennäköisyys, loppupisteet 50/80/95 %
+varmuudella ja niiden vaatima p/ottelu, sijan pisteraja ja kilpakumppanien
+loppupisteet onnistuneissa kausissa vs. odotus. Raja-arvo per pistemäärä on
+pakotettu monotoniseksi (cummax), ja pistemäärä huomioidaan vain jos sillä on
+≥ 40 simulaatiota. Mitattu 16.10.: kilpakumppanit jäävät onnistuneissa kausissa
+yleensä vain 1-3 p odotuksestaan -- tavoite riippuu lähinnä joukkueesta itsestään.
+Vain Liigan 17 joukkuetta: Mestis-joukkueen nousua ei voi simuloida.
+
+**3. Aamutiedote** -- proseduuri `SEND_MORNING_BRIEF_<sha>('PRODUCTION')`: kysyy
+agentilta "Tee aamutiedote.", agentti tekee kolme kutsua (esikatselu, miksi
+muuttui, mitä jos illan tasaisimmassa) ja proseduuri lähettää vastauksen HTML:nä
+integraatiolla `LIIGA_EMAIL` (vain `mika.heino@recordlydata.com`). Ensimmäinen
+demo lähetettiin 16.10. aliaksella DEV. **Ei vielä ajastettu** (task tekemättä).
+
+Oikeudet: `snowflake/agent_tools.sql` (ACCOUNTADMIN, ajettu 16.10.). Proseduurit:
+`python scripts/deploy_tools.py [--dev]`, kiinnitys kuten semanttisilla
+malleilla. Deploy-putken ehdokasvaihe ajaa sen ennen agenttia.
+
 ## Agentin julkaisuputki: oma kone → GitHub → Snowflake (2026-10-16)
 
 Auditoitu Snowflaken oppaan "Best Practices for Building Cortex Agents" mukaan.

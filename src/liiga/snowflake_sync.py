@@ -72,6 +72,7 @@ CURATED_TABLES = [
     "player_rates_liiga",
     "player_rates_unified",
     "preseason_player_rates",        # frozen 1 Sep 2026 expectations
+    "roster_impact",                 # scripts/roster_impact.py: roster-only deltas
 ]
 
 

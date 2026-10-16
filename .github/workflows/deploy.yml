@@ -28,6 +28,8 @@ on:
       - scripts/snow_conn.py
       - snowflake/kausi_views.sql
       - snowflake/skills/**
+      - snowflake/procedures/**
+      - scripts/deploy_tools.py
       - .github/workflows/deploy.yml
       - .github/actions/**
   workflow_dispatch:
@@ -73,6 +75,8 @@ jobs:
         run: snow sql -c ci -f snowflake/kausi_views.sql
       - name: Semanttiset mallit (kiinnitetty git-committiin)
         run: python scripts/semantic_views.py --deploy
+      - name: Työkaluproseduurit (kiinnitetty git-committiin)
+        run: python scripts/deploy_tools.py
       - name: Agentti (uusi nimetty versio, alias STAGING)
         id: agent
         run: |
