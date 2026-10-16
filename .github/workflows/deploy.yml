@@ -24,6 +24,8 @@ on:
       - scripts/snow_conn.py
       - snowflake/kausi_views.sql
       - snowflake/skills/**
+      - .github/workflows/deploy.yml
+      - .github/actions/**
   workflow_dispatch:
     inputs:
       message:
@@ -48,10 +50,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0          # sv_sha() lukee git-historian
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -66,7 +68,7 @@ jobs:
         run: python scripts/deploy_agent.py --dev --html
       - name: Evaluointi ja laatuportti (DEV LIVE)
         run: python scripts/agent_eval.py --agent LIIGA_ENNUSTAJA_DEV --version LIVE --gate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-dev
@@ -85,10 +87,10 @@ jobs:
     permissions:
       contents: write           # tagi ja Release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -126,7 +128,7 @@ jobs:
               print("\nHeikot (< 0,67): " + "; ".join(s["low"]))
           PY
           gh release create "$TAG" --title "Liiga Ennustaja $TAG" --notes-file notes.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-prod
