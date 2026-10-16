@@ -108,12 +108,21 @@ function beep(freq, ms = 220, type = "square", vol = 0.06) { try { actx ??= new 
 
 // ---------------------------------------------------------------- puhe ja skriptit
 // Puhuja: "jussi", ruudun hahmon id (esim. "kauppias") tai "muu" (kertoja).
+// Puhekuplat (16.10.): hahmojen repliikit sarjakuvakuplina, häntä puhujan päähän;
+// kertoja ("muu") tekstilaatikkona ruudun yläreunassa.
 function say(text, who = "jussi") {
   return new Promise((res) => {
     const npc = room()?.actors?.find((a) => a.id === who);
-    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#fcfcfc" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : { x: 160, y: 20, c: "#fcfc54" };
-    const el = document.createElement("div"); el.className = "line";
-    el.style.left = (100 * Math.min(Math.max(spk.x, 70), 250) / W) + "%"; el.style.bottom = (100 - 100 * spk.y / H) + "%"; el.style.color = spk.c;
+    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#c8a460" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : null;
+    const el = document.createElement("div");
+    if (!spk) el.className = "caption";
+    else {
+      // Kupla mitataan ja pidetään kokonaan ruudussa; häntä osoittaa silti puhujaan.
+      el.className = "bubble"; el.style.left = (100 * spk.x / W) + "%"; el.style.bottom = (100 - 100 * (spk.y - 4) / H) + "%"; el.style.setProperty("--c", spk.c);
+      requestAnimationFrame(() => { const stageW = $say.getBoundingClientRect().width, half = el.offsetWidth / 2 / stageW * W;
+        const cx = Math.min(Math.max(spk.x, half + 2), W - half - 2), maxTail = Math.max(0, el.offsetWidth / 2 - 16);
+        el.style.left = (100 * cx / W) + "%"; el.style.setProperty("--tail", Math.max(-maxTail, Math.min(maxTail, (spk.x - cx) / W * stageW)) + "px"); });
+    }
     el.textContent = text; $say.replaceChildren(el); speaking = who;
     const done = () => { clearTimeout(tm); skip = null; speaking = null; el.remove(); res(); };
     const tm = setTimeout(done, 1300 + text.length * 55); skip = done;
