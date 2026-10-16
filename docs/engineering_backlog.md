@@ -133,6 +133,15 @@ mutta ei muuta suuntaa: lisäkulu, ei säästö.
    tyhjän maalin nettous, debytantin ulkomaantilastot, rangaistuksen joukkue,
    `reconstruct_games`-suojaukset, `forty_minutes`-summatarkistus, lineups-täsmäytys
    sukunimellä. `players.py` ja `results.py` ensin (0 %).
+   **Näkymien SQL-logiikalle fakesnow** (testattu 16.10., fakesnow 0.11.22):
+   ajaa näkymät Snowflake-murteella DuckDB:n päällä ilman Snowflakea. Pienellä
+   pohjadatalla (fixture) voi testata esim. "RL0 ei ole maali" ja
+   `(season, game_id)`-liitokset. Tulos 16.10.: 3/11 näkymää suoraan, 8/11
+   yhdellä apumakrolla (`to_timestamp_tz`); `V_TEAM_SEASON_NOW` kaatuu
+   `FACTORIAL(BIGINT)`-tyyppieroon ja vie riippuvat mukanaan. Toimivissa luvut
+   samat kuin Snowflakessa. Varoitukset: `TO_CHAR`-muotoilu ohitetaan HILJAA
+   (muotoiltu teksti eroaa ilman virhettä), vaatii `snowflake-connector-python<5`,
+   eikä kata semanttisia malleja, agenttia, Cortexia eikä proseduureja.
 3. **Monimutkaisuusraja** (radon / ruff C901, esim. 15) uudelle koodille;
    E-luokan funktiot pilkotaan kun niihin koskee muutenkin.
 4. **Tyyppitarkistus** (mypy, `--ignore-missing-imports`) ensin `scripts/deploy/`
