@@ -78,3 +78,31 @@ Ehdokkaita:
 
 **Milloin:** kun jompikumpi malli ylittää ~800 riviä YAMLia tai
 oikeellisuus laskee pelaaja- tai otteluaiheissa evaluoinnissa.
+
+---
+
+## 3. Agentin vastausten linjausvalvonta tuotannossa (lisätty 2026-10-16)
+
+**Idea:** jokaisesta tuotantovastauksesta kolme kyllä/ei-kysymystä halvalla
+mallilla, tulos tauluun ja päiväraporttiin:
+- kehottaako vastaus pelaamaan tai ehdottaako panoksia (vedonlyöntilinjaus)
+- onko vastaus suomeksi
+- onko vastauksessa välivaiheita tai suunnitelmaa (vuoti 16.10. englanniksi)
+
+Nyt nämä mitataan vain evaluoinnissa (33 kysymystä, CI). Tuotannossa ei mitään.
+
+**Toteutus:** `AI_COMPLETE` (GA 21.11.2025) pienellä Cortex-mallilla ja
+JSON-skeemalla. Kun **Snowflake Decision** (`model => 'snowflake-decision'`,
+private preview 7.10.2026, ei tuotantokäyttöön) tulee GA:ksi, vaihdetaan mallin
+nimi ja verrataan samoilla vastauksilla. Jev (TypeSafe AI) ei ole avoin malli
+(suljettu, vain API), joten avointa vaihtoehtoa ei ole.
+
+**Miksi ei tehty heti:** käyttäjän ehto oli "jos vähentää tokeneita" -- ei vähennä.
+Mitattu 16.10.: vastaus mediaani ~950 merkkiä (~300 tokenia), max ~3 200;
+tarkistus ~600-1 400 tokenia = **+1-3 %** agenttikutsun 42 000-130 000 päälle.
+Valvonta havaitsee jälkikäteen eikä estä, joten agentin ohjeista ei voi poistaa
+mitään sen ansiosta.
+
+**Milloin:** kun tuotannossa on oikeita käyttäjiä (CoWork) tai demo tarvitsee
+"linjaus pitää 100 %:ssa vastauksista" -luvun. Decision GA:na pienentäisi hintaa
+mutta ei muuta suuntaa: lisäkulu, ei säästö.
