@@ -1,10 +1,12 @@
-// Liiga Ennuste, osio "Kuka on kuumana?".
+// Liiga Ennuste: kauden tilanne -> sijaintijakauma -> "Kuka on kuumana?".
 // Valinnat ovat URL-parametreja, jotta agentti voi linkittää suoraan näkymään:
 //   /?joukkue=KooKoo,Jokerit&ikkuna=10&kayra=0&xg=1
 import { Suspense } from "react";
 import Controls from "@/components/Controls";
 import FormTable from "@/components/FormTable";
+import Heatmap, { type PositionRow } from "@/components/Heatmap";
 import Kpis from "@/components/Kpis";
+import Season from "@/components/Season";
 import { query } from "@/lib/snowflake";
 import { type Game, PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT } from "@/lib/table";
 
@@ -13,7 +15,7 @@ export const dynamic = "force-dynamic";   // tuore data joka latauksella
 type Params = { joukkue?: string; ikkuna?: string; kayra?: string; xg?: string };
 
 async function load() {
-  const [log, teams, meta] = await Promise.all([
+  const [log, teams, meta, pos, next] = await Promise.all([
     query<Record<string, unknown>>(`
       SELECT team, start_ts, points, goals_for, goals_against, xg_for, xg_against
       FROM LIIGA.MODEL.TEAM_GAME_LOG
@@ -24,13 +26,27 @@ async function load() {
       WHERE season = (SELECT MAX(season) FROM LIIGA.MODEL.STG_GAMES) ORDER BY 1`),
     query<{ UPDATED_AT: string; GAMES_PLAYED: number; GAMES_TOTAL: number }>(
       `SELECT updated_at, games_played, games_total FROM LIIGA.MODEL.PREDICTION_META`),
+    query<Record<string, unknown>>(`
+      SELECT s.team, s.proj_rank, s.mean_points, s.p05_points, s.p95_points, p.*
+      FROM LIIGA.MODEL.STANDINGS_2026_27 s
+      JOIN LIIGA.MODEL.POSITION_DISTRIBUTION_2026_27 p ON p.team = s.team
+      ORDER BY s.proj_rank`),
+    query<{ D: string; N: number }>(`
+      SELECT TO_CHAR(MIN(game_date), 'YYYY-MM-DD') AS d,
+             COUNT_IF(game_date = (SELECT MIN(game_date) FROM LIIGA.MODEL.V_UPCOMING_PREDICTIONS)) AS n
+      FROM LIIGA.MODEL.V_UPCOMING_PREDICTIONS`),
   ]);
+  const position: PositionRow[] = pos.map((r) => ({
+    team: String(r.TEAM), projRank: Number(r.PROJ_RANK), points: Number(r.MEAN_POINTS),
+    p05: Number(r.P05_POINTS), p95: Number(r.P95_POINTS),
+    p: Array.from({ length: 17 }, (_, i) => Number(r[`RANK_${i + 1}`] ?? 0)),
+  }));
   const games: Game[] = log.map((r) => ({
     team: String(r.TEAM), start_ts: String(r.START_TS), points: Number(r.POINTS),
     goals_for: Number(r.GOALS_FOR), goals_against: Number(r.GOALS_AGAINST),
     xg_for: r.XG_FOR == null ? null : Number(r.XG_FOR), xg_against: r.XG_AGAINST == null ? null : Number(r.XG_AGAINST),
   }));
-  return { games, teams: teams.map((t) => t.TEAM).sort((a, b) => a.localeCompare(b, "fi")), meta: meta[0] };
+  return { games, teams: teams.map((t) => t.TEAM).sort((a, b) => a.localeCompare(b, "fi")), meta: meta[0], position, next: next[0] };
 }
 
 function stamp(iso: string) {
@@ -41,12 +57,11 @@ function stamp(iso: string) {
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const sp = await searchParams;
-  const { games, teams, meta } = await load();
+  const { games, teams, meta, position, next } = await load();
   const window = [5, 10, 20].includes(Number(sp.ikkuna)) ? Number(sp.ikkuna) : 10;
   const highlight = new Set((sp.joukkue ?? "").split(",").map((s) => s.trim()).filter((s) => teams.includes(s)));
   const showSpark = sp.kayra !== "0";
   const showXg = sp.xg === "1";
-  const progress = meta ? (100 * meta.GAMES_PLAYED) / meta.GAMES_TOTAL : 0;
 
   return (
     <div className="shell">
@@ -58,10 +73,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
             <div className="brand-sub">Runkosarja 2026–27</div>
           </div>
         </div>
-        <div className="season" title={`${meta?.GAMES_PLAYED} / ${meta?.GAMES_TOTAL} ottelua pelattu`}>
-          <div className="season-row"><span>Kausi</span><b>{meta?.GAMES_PLAYED} / {meta?.GAMES_TOTAL}</b></div>
-          <div className="season-bar"><i style={{ width: `${progress.toFixed(1)}%` }} /></div>
-        </div>
+        <div />
         <div className="fresh"><span className="dot" />Päivitetty {meta ? stamp(meta.UPDATED_AT) : "–"}</div>
       </header>
 
@@ -72,8 +84,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
         </aside>
 
         <main className="main">
+          {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
+
+          <section className="block">
+            <div className="eyebrow">Mallin ennuste · 10 000 simuloitua kautta</div>
+            <h2>Mihin kukin joukkue päätyy</h2>
+            <p className="lede">Jokaisen joukkueen todennäköisyys päätyä kullekin sijalle, rivit ennustetussa järjestyksessä.</p>
+            <Heatmap rows={position} highlight={highlight} />
+          </section>
+
+          <section className="block">
           <div className="eyebrow">Toteutuneet tulokset</div>
-          <h1>Kuka on kuumana?</h1>
+          <h2>Kuka on kuumana?</h2>
           <p className="lede">Sarjataulukko ja viimeisten otteluiden vire samassa näkymässä. Ennuste loppukaudesta on omassa osiossaan.</p>
 
           <Kpis log={games} teams={teams} window={window} />
@@ -96,6 +118,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
             <span><i className="zl z-quali" />{PLAYOFF_CUT + 1}.–{QUALI_CUT}. karsinta</span>
             <span><i className="zl z-down" />{RELEGATION_CUT + 1}.–17. putoaa</span>
           </div>
+          </section>
         </main>
       </div>
     </div>
