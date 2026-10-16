@@ -896,6 +896,12 @@ palautus:  deploy_agent --promote VERSION$<vanha>
   (`complete_results`): 16.10. tuotantoajo luki ne heti `COMPLETED`-tilan
   jälkeen, kaatui laatuporttiin vajailla pisteillä, ja sama ajo antoi
   myöhemmin 28/28 joka mittarille ja läpäisi portin.
+- **Demon ilme (16.10., käyttäjän valinta: Liiga musta + kulta, analyytikon sävy):**
+  `PROFILE` (nimi, väri `#CCA752`) asetetaan `promote()`ssa, koska profiili on
+  agenttitason eikä versioitu -- ehdokkaassa se muuttuisi käyttäjille putken ohi.
+  Avatar-arvoja ei ole dokumentoitu eikä heksavärin tukea vahvistettu: tarkista
+  CoWorkista. Aloituskortit = yksi per ominaisuus. Johtoryhmäraportti mustalla
+  otsikolla ja kullalla (logon sävyt, kuten sovellus ja aamutiedote).
 - Erillinen `LIIGA_ENNUSTAJA_DEV`-agentti **poistettiin 16.10.**; sen roolin
   hoitaa alias `DEV`. `*_DEV`-semanttiset mallit jäävät DEV-aliaksen käyttöön.
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa

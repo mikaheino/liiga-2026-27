@@ -119,12 +119,13 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
             "orchestration": orch,
             "response": RESPONSE,
             "sample_questions": [{"question": q} for q in (
+                # Demon aloituskortit CoWorkissa: yksi per ominaisuus (16.10.).
                 "Kierroksen esikatselu: tämän illan ottelut",
-                "Mikä on sarjatilanne nyt?",
-                "Kuinka hyvin malli on osunut?",
-                "Ketkä putoavat?",
-                "Mitkä joukkueet ovat yllättäneet?",
-                "Kuka johtaa pistepörssiä?")],
+                "Miksi KooKoon ennuste on romahtanut?",
+                "Mitä vaaditaan, että KooKoo pysyy Liigassa?",
+                "Mitä tapahtuu, jos Patrik Bartosak loukkaantuu kahdeksi kuukaudeksi?",
+                "Mitkä ovat tämän illan 1X2-todennäköisyydet ja kokoonpanot?",
+                "Kuinka hyvin malli on osunut?")],
         },
         "tools": [
             {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_ennuste",
@@ -184,6 +185,10 @@ def _versions(fqn: str) -> list[dict]:
 
 
 FQN = "SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA"
+# CoWorkin profiili. Agenttitason asetus EIKÄ versioitu, joten se asetetaan vasta
+# tuotantojulkaisussa (promote), ei ehdokkaassa -- muuten se muuttuisi käyttäjille
+# putken ohi. Kulta = Liigan logon #CCA752 (sama kuin sovelluksessa ja tiedotteessa).
+PROFILE = {"display_name": "Liiga Ennustaja", "color": "#CCA752"}
 
 
 def _num(v: str) -> int:
@@ -277,6 +282,7 @@ def promote(target: str, fqn: str = FQN) -> str:
     new = hit[0]
     _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {new} SET ALIAS = PRODUCTION")
     _snow("sql", "-q", f"ALTER AGENT {fqn} SET DEFAULT_VERSION = '{new}'")
+    _snow("sql", "-q", f"ALTER AGENT {fqn} SET PROFILE = '{json.dumps(PROFILE, ensure_ascii=False)}'")
     after = {v["name"]: v for v in _versions(fqn)}
     ok = (after[new].get("alias") or "").upper() == "PRODUCTION" and after[new]["is_default"] == "true"
     if not ok or None in after:

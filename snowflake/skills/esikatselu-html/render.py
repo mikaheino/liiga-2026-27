@@ -94,7 +94,7 @@ def _upset(games: list[dict]) -> tuple[dict, str] | None:
 
 CSS = """
 :root{--ink:#17140E;--ink2:#4A4336;--muted:#7A7161;--line:#E4DED1;--soft:#F6F3EC;
---paper:#FFFFFF;--gold:#B08A2E;--gold-soft:#F3EAD2;--navy:#1F2A3A;--home:#1F2A3A;--away:#B08A2E;
+--paper:#FFFFFF;--gold:#CCA752;--gold-soft:#F5EDD8;--navy:#000000;--home:#36270D;--away:#CCA752;
 --good:#2F6B3A;--bad:#A8432F;
 --sans:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
 --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
@@ -103,8 +103,8 @@ html{background:var(--soft)}
 body{margin:0;color:var(--ink);font:15px/1.5 var(--sans);font-variant-numeric:tabular-nums}
 .page{max-width:1000px;margin:0 auto;background:var(--paper);min-height:100vh;
   box-shadow:0 0 0 1px var(--line)}
-header{background:var(--navy);color:#fff;padding:28px 40px 24px;display:grid;gap:6px}
-.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#D9C38A}
+header{background:var(--navy);color:#fff;padding:28px 40px 24px;display:grid;gap:6px;border-bottom:4px solid var(--gold)}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#EBCA68}
 h1{margin:0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-.01em}
 .sub{color:#C9CED6;font-size:14px}
 main{padding:28px 40px 36px;display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
