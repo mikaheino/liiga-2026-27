@@ -183,7 +183,11 @@ function click(e, right) {
   const [x, y] = stagePos(e); let o = spotsAt(x, y);
   if (o?.floor && verb === "Kävele" && !first && !right) o = null;   // lattiakohteelle (piano) kävellään klikattuun kohtaan
   if (o) { act(right && !first ? defVerb(o) : verb, o); verb = "Kävele"; renderVerbs(); }
-  else { first = null; renderInv(); st.path = findPath(st.x, st.y, x, y); onArrive = null; }
+  else { first = null; renderInv(); onArrive = null;
+    // Klikkaus omien jalkojen kohdalle: hyppy paikallaan, jotta samaa lattiakosketinta voi
+    // painaa kahdesti (koodissa 2006 on kaksi nollaa).
+    if (Math.hypot(x - st.x, y - st.y) < 7 && room().onStop) { st.hop = performance.now(); room().onStop(st.x, st.y); }
+    else st.path = findPath(st.x, st.y, x, y); }
 }
 cv.addEventListener("click", (e) => click(e, false));
 cv.addEventListener("contextmenu", (e) => { e.preventDefault(); click(e, true); });
@@ -223,7 +227,7 @@ function frame(t) {
   const away = moving && dy < 0 && Math.abs(dy) * 1.5 > Math.abs(dx);
   // Syvyysjärjestys: esineet, ruudun hahmot ja Jussi jalkojen y:n mukaan.
   const items = [...(s.props ?? []).map((p) => ({ y: p.y, draw: () => p.draw(t) })), ...(s.actors ?? []).filter((a) => !a.hidden?.()).map((a) => ({ y: a.y, draw: () => { const sc = depth(a.y); g.save(); g.translate(a.x, a.y); g.scale(sc, sc); g.translate(-a.x, -a.y); a.draw(t, speaking === a.id); g.restore(); } })),
-    { y: st.y, draw: () => { const sc = depth(st.y); shadow(st.x, st.y, 7 * sc); jussi(st.x, st.y, st.dir, st.frame, st, sc, away); } }];
+    { y: st.y, draw: () => { const sc = depth(st.y); const hop = st.hop && t - st.hop < 260 ? Math.sin((t - st.hop) / 260 * Math.PI) * 4 * sc : 0; shadow(st.x, st.y, 7 * sc); jussi(st.x, st.y - hop, st.dir, st.frame, st, sc, away); } }];
   items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
   if (s.post) s.post(t);
   g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, 0, g.measureText(s.title).width + 8, 11); g.fillStyle = "#a8a8a8"; g.font = "10px VT323, monospace"; g.fillText(s.title, 4, 8);

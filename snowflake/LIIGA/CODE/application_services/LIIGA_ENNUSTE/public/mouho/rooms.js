@@ -212,20 +212,25 @@ function temppeliPost(t) {
 // Tom Hanksin "Big" -elokuvan jättipiano heijastettuna laiturin kanteen 3D-perspektiivissä
 // (16.10.): kymmenen valokosketinta laiturin poikki keskisyvyydellä, saumat seuraavat
 // laiturin pakopistettä ja numerot litistyvät lattian kulmaan. Koodi 1-9-8-5.
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], PIANO_Y0 = 98, PIANO_Y1 = 116;
+// Sama heijastettu numeropiano jokaisessa ruudussa: ruudun oma lattiakaista ja sen reunat.
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+const streetX = (y) => { const k = (y - 72) / 64; return [lerp(142, 20, k) + 4, Math.min(204, lerp(178, 300, k))]; };
+const templeX = (y) => { const k = (y - 100) / 36; return [lerp(24, 2, k) + 8, lerp(296, 318, k) - 8]; };
+const QUIZ_AREA = { koti: { y0: 98, y1: 116, edges: pierX }, basaari: { y0: 100, y1: 116, edges: streetX }, temppeli: { y0: 103, y1: 117, edges: templeX } };
+const quizFlag = (scene = st.scene) => (scene === "koti" ? "pianoT" : `quizT_${scene}`);
 function keyAt(x, y) {
-  if (y < PIANO_Y0 || y > PIANO_Y1) return null;
-  const [a, b] = pierX(y), i = Math.floor((x - a) / (b - a) * 10);
+  const A = QUIZ_AREA[st.scene]; if (!A || y < A.y0 || y > A.y1) return null;
+  const [a, b] = A.edges(y), i = Math.floor((x - a) / (b - a) * 10);
   return i >= 0 && i < 10 ? KEYS[i] : null;
 }
-function keyQuad(i) { const [a0, b0] = pierX(PIANO_Y0), [a1, b1] = pierX(PIANO_Y1);
-  return [[lerp(a0, b0, i / 10), PIANO_Y0], [lerp(a0, b0, (i + 1) / 10), PIANO_Y0], [lerp(a1, b1, (i + 1) / 10), PIANO_Y1], [lerp(a1, b1, i / 10), PIANO_Y1]]; }
+function keyQuad(i) { const A = QUIZ_AREA[st.scene], [a0, b0] = A.edges(A.y0), [a1, b1] = A.edges(A.y1);
+  return [[lerp(a0, b0, i / 10), A.y0], [lerp(a0, b0, (i + 1) / 10), A.y0], [lerp(a1, b1, (i + 1) / 10), A.y1], [lerp(a1, b1, i / 10), A.y1]]; }
 let lastKey = { k: null, t: 0 };
 // Numerot ilmestyvät valona vasta salkkumiehen haasteessa (st.flags.pianoT = hetki),
 // kosketin kerrallaan vasemmalta oikealle.
 function satamaPiano(t) {
-  if (!st.flags.pianoT) return;
-  const since = Date.now() - st.flags.pianoT, flick = .9 + .1 * Math.sin(t / 70);
+  const A = QUIZ_AREA[st.scene]; if (!A || !st.flags[quizFlag()]) return;
+  const since = Date.now() - st.flags[quizFlag()], flick = .9 + .1 * Math.sin(t / 70);
   g.globalCompositeOperation = "lighter";
   for (let i = 0; i < 10; i++) {
     if (since < i * 90) continue;
@@ -233,7 +238,7 @@ function satamaPiano(t) {
     g.fillStyle = `rgba(255,236,140,${a})`; g.beginPath(); q.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
     g.strokeStyle = `rgba(255,244,190,${lit ? .9 : .5})`; g.lineWidth = .6; g.stroke();
     // numero lattian kulmaan: leveys kuin koskettimen keskikohta, korkeus litistetty
-    const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (PIANO_Y0 + PIANO_Y1) / 2 + 1, kw = (q[1][0] - q[0][0] + q[2][0] - q[3][0]) / 2;
+    const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (A.y0 + A.y1) / 2 + 1, kw = (q[1][0] - q[0][0] + q[2][0] - q[3][0]) / 2;
     g.save(); g.translate(cx, cy); g.scale(1, .55); g.font = `${Math.round(kw * 1.05)}px VT323, monospace`; g.textAlign = "center"; g.textBaseline = "middle";
     g.fillStyle = `rgba(255,${lit ? 120 : 250},${lit ? 90 : 210},${lit ? 1 : .75})`; g.fillText(KEYS[i], 0, 0); g.restore();
     if (lit) glow(cx, cy, 16, "255,230,120", .3);
@@ -271,4 +276,37 @@ function ghostLynx(t) {
   g.restore();
   // hologrammin juovat
   g.fillStyle = `rgba(0,0,0,${a * .25})`; for (let y = cy - 52; y < cy + 28; y += 2) g.fillRect(cx - 40, y, 80, 1);
+}
+
+// Hologrammi-apu: sama kesto ja kirjekuori kaikille haamuille (flag = alkuhetki).
+function holo(t, flag, cx, cy, draw, D = 3200) {
+  const t0 = st.flags[flag]; if (!t0) return; const since = Date.now() - t0; if (since > D) return;
+  const a = Math.sin(Math.PI * since / D) * (.8 + .2 * Math.sin(t / 60)), rise = Math.min(1, since / 700), y = cy - rise * 14;
+  glow(cx, y, 50, "170,220,255", a * .25); g.save(); g.globalAlpha = a * .85; g.translate(cx, y); draw(); g.restore();
+  g.fillStyle = `rgba(0,0,0,${a * .25})`; for (let yy = y - 52; yy < y + 28; yy += 2) g.fillRect(cx - 40, yy, 80, 1);
+}
+const PP = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+// Stanley Cup -henkinen pokaali (porrastettu jalusta, malja päällä): basaarin 2006-visa.
+function ghostCup(t) { holo(t, "cupT", 140, 96, () => {
+  const S = "#dce8f4", D = "#8ca4bc", H = "#ffffff";
+  for (const [w, y, h] of [[34, 12, 6], [30, 6, 6], [26, 0, 6], [22, -6, 6], [18, -12, 6]]) { PP([[-w / 2, y], [w / 2, y], [w / 2, y + h], [-w / 2, y + h]], S); PP([[w / 2 - 4, y], [w / 2, y], [w / 2, y + h], [w / 2 - 4, y + h]], D); }
+  PP([[-4, -12], [4, -12], [3, -24], [-3, -24]], S); PP([[-14, -34], [14, -34], [10, -24], [-10, -24]], S); PP([[-14, -34], [14, -34], [14, -36], [-14, -36]], H); PP([[6, -34], [14, -34], [10, -24], [7, -24]], D);
+  for (const y of [9, 3, -3, -9]) PP([[-8, y], [8, y], [8, y + 1], [-8, y + 1]], D); }); }
+// Mestaruusmalja (iso kulho jalalla): temppelin 64-visa.
+function ghostTrophy(t) { holo(t, "trophyT", 160, 86, () => {
+  const S = "#f4ecd0", D = "#a89c74", H = "#ffffff";
+  PP([[-14, 14], [14, 14], [10, 8], [-10, 8]], S); PP([[-3, 8], [3, 8], [2, -6], [-2, -6]], S);
+  PP([[-24, -28], [24, -28], [18, -12], [8, -6], [-8, -6], [-18, -12]], S); PP([[10, -28], [24, -28], [18, -12], [8, -6]], D); PP([[-24, -30], [24, -30], [24, -28], [-24, -28]], H);
+  PP([[-28, -26], [-24, -26], [-24, -16], [-28, -18]], D); PP([[28, -26], [24, -26], [24, -16], [28, -18]], D); }); }
+// Muinaisen erotuomarin haamu temppelissä: raitapaita, pilli, läpikuultava.
+function ghostRef(x, y, t, talking = false) {
+  g.save(); g.globalAlpha = .55 + .15 * Math.sin(t / 300); const fl = Math.sin(t / 400) * 1.5;
+  glow(x, y - 20 + fl, 26, "170,220,255", .2);
+  r(x - 4, y - 12 + fl, 3, 8, "#1c1c1c"); r(x + 1, y - 12 + fl, 3, 8, "#1c1c1c");
+  for (let k = 0; k < 7; k++) r(x - 6 + k * 2, y - 26 + fl, 2, 14, k % 2 ? "#1c1c1c" : "#f4f4f4");
+  r(x - 8, y - 24 + fl, 2, 9, "#f4f4f4"); r(x + 6, y - 24 + fl, 2, 9, "#1c1c1c");
+  r(x - 4, y - 36 + fl, 8, 10, "#e8d8c8"); r(x - 4, y - 38 + fl, 8, 3, "#9c9c9c"); px(x - 2, y - 33 + fl, "#1c1c1c"); px(x + 2, y - 33 + fl, "#1c1c1c");
+  if (talking && Math.floor(t / 110) % 2) r(x - 1, y - 30 + fl, 3, 2, "#5c1c14"); else r(x - 2, y - 30 + fl, 4, 1, "#7c5c4c");
+  r(x + 3, y - 31 + fl, 3, 2, "#c8c8c8"); px(x + 6, y - 31 + fl, "#c8c8c8");
+  g.restore();
 }

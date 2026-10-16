@@ -24,7 +24,7 @@ Object.assign(ROOMS, {
     actors: [{ id: "salkkumies", x: 184, y: 92, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(184, 92, t, talking) },
              RAIMO],
     draw: (t) => { satamaDraw(t); satamaPiano(t); ghostLynx(t); },
-    onStop: (x, y) => st.flags.pianoT && pianoStep(keyAt(x, y)),
+    onStop: (x, y) => quizStep(keyAt(x, y)),
     props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 121, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
     spots: [
       { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
@@ -58,9 +58,12 @@ Object.assign(ROOMS, {
     title: "Suuri basaari, Istanbul", scale: [72, 136, 0.4, 1.06], start: 128,
     walk: [[[142, 72], [178, 72], [206, 96], [206, 121], [300, 136], [20, 136]]],
     actors: [{ id: "kauppias", x: 258, y: 96, h: 46, color: "#fc54fc", draw: (t, talking) => merchant(258, 96, t, talking) }],
-    draw: basaariDraw,
+    draw: (t) => { basaariDraw(t); satamaPiano(t); ghostCup(t); },
+    onStop: (x, y) => quizStep(keyAt(x, y)),
     props: [{ y: 114, draw: basaariCounter }, { y: 101, draw: basaariSpices }, { y: 131, draw: basaariAmphora }],
     spots: [
+      { id: "piano2", name: "heijastetut numerot", floor: true, hidden: () => !st.flags.quizT_basaari, x: 70, y: 100, w: 136, h: 16, at: 150, aty: 108,
+        Katso: () => say("Numerot heijastuvat kadun mukulakiviin. Mehmetillä on yllättävän hyvä tekniikka.") },
       { id: "amfora", name: "amfora", x: 28, y: 108, w: 22, h: 24, at: 56, aty: 130,
         Katso: () => say("Amfora. Kyljessä lukee \"ÄLÄ AVAA\". Kerrankin kunnioitan ohjetta."), Avaa: () => say("Siinä lukee \"älä avaa\". Opin jotain Milanosta.") },
       { id: "mausteet", name: "mausteet", x: 68, y: 84, w: 44, h: 18, at: 104, aty: 104,
@@ -91,15 +94,21 @@ Object.assign(ROOMS, {
     walk: () => st.flags.crossed ? [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
                                  : [[[24, 100], [296, 100], [318, 136], [2, 136]]],
     draw: temppeliDraw,
-    post: temppeliPost,
+    post: (t) => { temppeliPost(t); satamaPiano(t); ghostTrophy(t); },
+    onStop: (x, y) => quizStep(keyAt(x, y)),
+    actors: [{ id: "tuomari", x: 100, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(100, 106, t, talking) }],
     props: [{ y: 76, draw: temppeliPedestal }, { y: 129, draw: temppeliSand }, { y: 131, draw: temppeliPillar }, { get y() { return st.flags.boulder == null ? -1 : boulderY(); }, draw: temppeliBoulder }],
     spots: [
+      { id: "tuomari", name: "erotuomarin haamu", actor: true, hidden: () => !st.flags.refHere, x: 92, y: 64, w: 16, h: 42, at: 112, aty: 110,
+        Katso: () => say("Muinaisen erotuomarin haamu. Raitapaita, pilli ja ilme, joka on nähnyt kaiken."), Puhu: () => refereeChallenge() },
+      { id: "piano3", name: "heijastetut numerot", floor: true, hidden: () => !st.flags.quizT_temppeli, x: 30, y: 103, w: 260, h: 14, at: 160, aty: 110,
+        Katso: () => say("Numerot hehkuvat kivilattiassa. Joku täällä pitää visoista.") },
       { id: "pylvas", name: "kaatunut pylväs", x: 234, y: 118, w: 36, h: 14, at: 228, aty: 133,
         Katso: () => say("Kaatunut pylväs. Siinä on enemmän ryhtiä kuin minulla maanantaisin."), Työnnä: () => say("Se ei liiku. Eikä sen kuulukaan. Se on jo kaatunut kerran.") },
       { id: "hiekka", name: "hiekka", x: 36, y: 114, w: 36, h: 16, at: 76, aty: 127,
         Katso: () => say("Hienoa hiekkaa. Täydellistä säkkeihin. Ei kysytä, miksi luolassa on hiekkaa."),
         Poimi: () => say("Kourallinen ei riitä. Tarvitsisin jonkin astian."),
-        "Käytä:pussi": async () => { take("pussi"); give("sakki"); iq("hiekkasakki", 10); await say("Täytän pussin. Hiekkasäkki valmis! Painaa varmaan saman verran kuin idoli."); } },
+        "Käytä:pussi": async () => { take("pussi"); give("sakki"); iq("hiekkasakki", 5); await say("Täytän pussin. Hiekkasäkki valmis! Painaa varmaan saman verran kuin idoli."); } },
       { id: "reliefi", name: "kivireliefi", x: 76, y: 20, w: 50, h: 30, at: 100, aty: 102,
         Katso: () => (iq("reliefi", 5), say("Muinainen otteluohjelma, hakattu kiveen tuhansiksi vuosiksi.\nJoku on silti siirtänyt kolmea ottelua lyhyellä varoitusajalla.")),
         Työnnä: () => say("Se ei liiku. Kiveen hakattu ohjelma ei siirry. Tai ei ainakaan pitäisi.") },
@@ -110,7 +119,7 @@ Object.assign(ROOMS, {
         Katso: () => say("Rautakoukku katossa kuilun yllä. Joku on ajatellut minua."),
         "Käytä:ruoska": async () => { st.flags.whipHung = true; take("ruoska"); await say("Hop!");
           for (let i = 0; i < 28; i++) { st.y -= 1; await sleep(28); }
-          st.flags.crossed = true; st.flags.whipHung = false; give("ruoska"); iq("ruoska", 15);
+          st.flags.crossed = true; st.flags.whipHung = false; give("ruoska"); iq("ruoska", 10);
           await say("Juuri kuten harjoittelin. En harjoitellut."); await say("...Ja tuolla oikealla on kapea reunus. Olisin voinut kävellä."); } },
       { id: "idoli", name: "kultainen idoli", x: 152, y: 49, w: 16, h: 16, at: 160, aty: 70, hidden: () => st.flags.idol && !st.flags.swapped,
         Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli kuilun takana. Mouho-osallistumismaksu muodossa, joka hymyilee."),
@@ -136,13 +145,13 @@ async function toTemple() {
   await script(async () => {
     if (!st.flags.map) return say("En tiedä mihin tämä kuja vie. Jossain täällä on varmasti kartta.");
     if (!st.whip) return say("Luolatemppeliin ilman ruoskaa? Elokuvissa kaikilla on ruoska.");
-    await walkTo(160, 72); go("temppeli", 160, true, 128);
+    await walkTo(160, 72); go("temppeli", 160, true, 128); if (!st.flags.refMet) await refereeAppears();
     await say("Hämähäkinseittejä, soihtuja ja kuilu. Juuri kuten kirjeessä luvattiin.");
   });
 }
 async function grabIdol() {
   await script(async () => {
-    take("sakki"); iq("idoli", 20); await say("Rauhallisesti... vaihdetaan sulavasti...");
+    take("sakki"); iq("idoli", 10); await say("Rauhallisesti... vaihdetaan sulavasti...");
     st.flags.idol = true; st.flags.swapped = true; give("idoli"); await sleep(600);
     await say("...", "muu"); await say("Jalusta painuu. Tietysti se painuu.");
     // Kivenjärkäle vyöryy oviaukosta katsojaa kohti (0 = oviaukko, 1 = ruudun reuna).
@@ -166,9 +175,14 @@ async function talk() {
   await script(async () => {
     if (!st.flags.merhaba) { st.flags.merhaba = true; await say("Hoş geldiniz! Merhaba, ystäväni! Tervetuloa Mehmetin kojuun, Istanbulin rehellisimpään.", "kauppias"); await say("Teşekkür... ederim? Opettelin sen lentokoneessa."); }
     while (true) {
-      const opts = []; if (!st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!"); if (!st.flags.logo) opts.push("Teettekö logoja?"); if (!st.flags.seura) opts.push("Ostaisitteko jääkiekkoseuran?"); if (!st.flags.kebabQ) opts.push("Missä saa Istanbulin parhaan kebabin?"); if (has("idoli")) opts.push("Kiinnostaisiko kultainen idoli?"); opts.push("Ei mitään, näkemiin.");
+      const opts = []; if (!st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!"); if (!st.flags.logo) opts.push("Teettekö logoja?"); if (!st.flags.seura) opts.push("Ostaisitteko jääkiekkoseuran?"); if (!st.flags.kebabQ) opts.push("Missä saa Istanbulin parhaan kebabin?"); if (!st.flags.cupDone) opts.push("Olen entinen NHL-maalivahti."); if (has("idoli")) opts.push("Kiinnostaisiko kultainen idoli?"); opts.push("Ei mitään, näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
-      if (pick.startsWith("Missä saa")) { st.flags.kebabQ = true; await say("Serkkuni kioskista Galatan sillan alta. Hänellä on myös logofirma. Ja tulkkipalvelu.", "kauppias");
+      if (pick.startsWith("Olen entinen NHL")) {
+        await say("Sinä?! Maalivahti? Todista se, ystäväni. Minä vuonna pelasit Stanley Cupin finaalissa?", "kauppias");
+        await say("Tassuttele se kadulle. Basaarissa kaikki maksetaan jaloin.", "kauppias");
+        st.flags.quizT_basaari = Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+        await sleep(1100); await say("Numerot heijastuivat kadun kiviin. Mehmet on valmistautunut tähän."); return; }
+      else if (pick.startsWith("Missä saa")) { st.flags.kebabQ = true; await say("Serkkuni kioskista Galatan sillan alta. Hänellä on myös logofirma. Ja tulkkipalvelu.", "kauppias");
         await say("Kuulostaa monialaiselta konsernilta."); await say("Çok güzel! Sinä ymmärrät liiketoimintaa.", "kauppias"); }
       else if (pick.startsWith("Paljonko")) await say("Sinulle, ystäväni, vain 500 liiraa. Ja hattusi.", "kauppias");
       else if (pick.startsWith("Teettekö")) { st.flags.logo = true; await say("Teen! Idän Ihme ja kebab samassa kuvassa. Vain 50 tonnia.", "kauppias"); await say("Kiitos, olen nähnyt sen jo."); }
@@ -219,22 +233,57 @@ async function raimoCameo() {
 
 // ---------------------------------------------------------------- lattiapiano (satama)
 // Ilves voitti viimeksi Suomen mestaruuden 1985. Koodi kirjautuu pysähtymisistä.
-const CODE = ["1", "9", "8", "5"], NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9: 587, 0: 659 };
-let entered = [];
-function pianoStep(k) {
-  if (!k || st.scene !== "koti") return;
+const NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9: 587, 0: 659 };
+// Lattiavisat: sama mekaniikka kolmessa ruudussa, koodi ja palkinto ruutukohtaisia.
+const QUIZZES = {
+  koti: { code: "1985", done: () => st.flags.unlocked, taunt: "salkkumies",
+    lines: ["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."],
+    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
+      st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); }); } },
+  basaari: { code: "2006", done: () => st.flags.cupDone, taunt: "kauppias",
+    lines: ["Ei, ei, ystäväni. Maalivahti muistaisi.", "Väärä vuosi! Tuollaisella muistilla et pääse edes Galatan sillalle.", "Hmm. Ehkä sinä olit vain katsomossa."],
+    solve() { st.flags.cupDone = true; iq("stanley", 10); script(async () => {
+      await sleep(700); await say("Çok güzel! 2006! Stanley Cupin finaali! Sinä todella olit maalivahti!", "kauppias");
+      st.flags.cupT = Date.now(); [262, 330, 392, 523].forEach((f, n) => setTimeout(() => beep(f, 500, "sine", .05), n * 200)); await sleep(1600);
+      await say("MARK-KA-NEN! MARK-KA-NEN!", "muu"); await sleep(1500);
+      await say("Kesä 2006. Jotkut asiat eivät unohdu. Edes Istanbulissa.");
+      if (!has("kebab")) { await say("Tästä hyvästä kebab on ilmainen, ystäväni. Maalivahdit tarvitsevat proteiinia.", "kauppias"); give("kebab"); } }); } },
+  temppeli: { code: "64", done: () => st.flags.refDone, taunt: "tuomari",
+    lines: ["Väärin. Kaksi minuuttia jäähyä.", "Ei. Tarkista sääntökirja.", "Väärin. Pilli soi, peli seis."],
+    solve() { st.flags.refDone = true; iq("tuomari", 10); script(async () => {
+      await sleep(700); await say("Oikein. 64 ottelua. Saat kulkea.", "tuomari");
+      st.flags.trophyT = Date.now(); [196, 262, 330, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300);
+      [2200, 2200].forEach((f, n) => setTimeout(() => beep(f, 160, "square", .05), n * 220)); await sleep(500);
+      st.flags.refHere = false; st.flags.crossed = true;
+      await say("Tuomari vihelsi ja katosi. Ja kuilun yli on nyt kivipolku.");
+      await say("Muinaiset tiesivät, mitä tekivät. Ainakin otteluohjelmasta."); }); } },
+};
+const entered = {};
+function quizStep(k) {
+  const Q = QUIZZES[st.scene];
+  if (!k || !Q || !st.flags[quizFlag()]) return;
   lastKey = { k, t: performance.now() }; beep(NOTE[k], 260);
-  if (st.flags.unlocked) return;
-  entered.push(k);
-  if (entered.join("") === CODE.join("")) { st.flags.unlocked = true; entered = []; iq("piano", 10);
-    [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140));
-    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
-      st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); });
-  } else if (!entered.every((c, n) => c === CODE[n])) {        // väärä: summeri, ja alusta (ykkönen aloittaa uuden yrityksen)
-    setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered = k === CODE[0] ? [k] : [];
-    if (!busy) script(() => say(["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."][Math.floor(Math.random() * 3)], "salkkumies"));
+  if (Q.done()) return;
+  const e = (entered[st.scene] ??= []); e.push(k);
+  if (e.join("") === Q.code) { entered[st.scene] = []; [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140)); Q.solve(); }
+  else if (!e.every((c, n) => c === Q.code[n])) {               // väärä: summeri, ja alusta (ensimmäinen numero aloittaa uuden)
+    setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered[st.scene] = k === Q.code[0] ? [k] : [];
+    if (!busy) script(() => say(Q.lines[Math.floor(Math.random() * Q.lines.length)], Q.taunt));
   }
 }
+// Temppelin erotuomari: ilmestyy ensikäynnillä ja haastaa (vaihtoehto ruoskalle).
+async function refereeAppears() {
+  st.flags.refMet = true; st.flags.refHere = true; beep(2200, 200, "square", .05); await sleep(300);
+  await say("Pilli soi kammiossa. Reliefin eteen materialisoituu läpikuultava erotuomari.", "muu");
+  await refereeChallengeLines();
+}
+async function refereeChallengeLines() {
+  await say("Seis! Kukaan ei ylitä kuilua ennen kuin vastaa kysymykseen.", "tuomari");
+  await say("Montako runkosarjaottelua Liigassa pelataan joukkuetta kohden kaudella 2026-27?", "tuomari");
+  await say("Tassuttele vastaus lattiaan. Tai yritä jotain muuta. Kuilu ei välitä.", "tuomari");
+  st.flags.quizT_temppeli ??= Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+}
+function refereeChallenge() { return script(async () => { if (st.flags.refDone) return say("Peli on jo vihelletty.", "tuomari"); await refereeChallengeLines(); }); }
 
 // ---------------------------------------------------------------- salkkumies (satama)
 // Kysyy otteluohjelmasta ja tarjoaa lisärahoitusta. Ei kuulu ratkaisuun: tämä on
