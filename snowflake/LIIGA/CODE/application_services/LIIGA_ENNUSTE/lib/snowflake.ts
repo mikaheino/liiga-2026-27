@@ -50,8 +50,9 @@ function options(): snowflake.ConnectionOptions {
 
 export async function query<T extends Row = Row>(sql: string, binds: snowflake.Binds = []): Promise<T[]> {
   snowflake.configure({ logLevel: "ERROR" });
-  pool ??= snowflake.createPool(options(), { max: 4, min: 0 });
-  return pool.use(
+  pool ??= snowflake.createPool(options(), { max: 8, min: 1 });
+  const t0 = Date.now();
+  const out = await pool.use(
     (conn) =>
       new Promise<T[]>((resolve, reject) =>
         conn.execute({
@@ -61,4 +62,8 @@ export async function query<T extends Row = Row>(sql: string, binds: snowflake.B
         }),
       ),
   );
+  // Hitaat kyselyt lokiin: sivu odottaa hitainta (16.10.: "mitään ei tapahdu").
+  const ms = Date.now() - t0;
+  if (ms > 300) console.log(`[sql] ${ms} ms  ${sql.replace(/\s+/g, " ").trim().slice(0, 90)}`);
+  return out;
 }

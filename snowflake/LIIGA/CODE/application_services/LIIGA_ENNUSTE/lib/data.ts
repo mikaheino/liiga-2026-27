@@ -1,7 +1,12 @@
-// Datan haku sivuille. Jokainen lataaja on React cache():n takana, joten saman
-// pyynnön eri komponentit jakavat yhden kyselyn, ja jokainen sivu hakee vain
-// sen mitä näyttää -- etusivu ei maksa otteluhistorian hakua.
-import { cache } from "react";
+// Datan haku sivuille.
+//
+// Välimuisti ennusteen aikaleiman mukaan (16.10.: "jos painan linkkiä, mitään ei
+// tapahdu"): yksittäinen kysely kesti 0,3-11 s ja sivu odotti hitainta, vaikka
+// data vaihtuu kerran päivässä. Nyt pyyntö tekee vain yhden kevyen
+// PREDICTION_META-tarkistuksen (enintään kerran 30 sekunnissa) ja kaikki muu
+// tulee muistista. Uusi aikaleima tyhjentää muistin -- sama periaate kuin
+// Streamlitin @st.cache_data-avaimessa. Ensimmäinen haku käynnistää taustalla
+// kaikkien sivujen datan, joten seuraava linkki aukeaa heti.
 import type { PositionRow } from "@/components/Heatmap";
 import type { HistoryPoint, TitleRow } from "@/components/TitleRace";
 import type { Fixture } from "@/lib/fixtures";
@@ -9,28 +14,63 @@ import { query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
 
 const M = "LIIGA.MODEL";
-const num = (v: unknown) => (v == null ? null : Number(v));
+const CHECK_MS = 30_000;
 
-export const loadMeta = cache(async () => {
-  const [meta, next] = await Promise.all([
+type Store = { stamp: string; checked: number; meta: Promise<unknown> | null; values: Map<string, Promise<unknown>> };
+const store: Store = ((globalThis as { __liigaData?: Store }).__liigaData ??= { stamp: "", checked: 0, meta: null, values: new Map() });
+const warmers: (() => Promise<unknown>)[] = [];
+
+function metaQuery() {
+  return Promise.all([
     query<{ UPDATED_AT: string; GAMES_PLAYED: number; GAMES_TOTAL: number }>(
       `SELECT updated_at, games_played, games_total FROM ${M}.PREDICTION_META`),
     query<{ D: string; N: number }>(`
       SELECT TO_CHAR(MIN(game_date), 'YYYY-MM-DD') AS d,
              COUNT_IF(game_date = (SELECT MIN(game_date) FROM ${M}.V_UPCOMING_PREDICTIONS)) AS n
       FROM ${M}.V_UPCOMING_PREDICTIONS`),
-  ]);
-  return { meta: meta[0], next: next[0] };
-});
+  ]).then(([meta, next]) => ({ meta: meta[0], next: next[0] }));
+}
 
-export const loadTeams = cache(async () => {
+async function fresh() {
+  if (!store.meta || Date.now() - store.checked > CHECK_MS) {
+    store.checked = Date.now();
+    store.meta = metaQuery().catch((e) => { store.meta = null; throw e; });
+  }
+  const m = (await store.meta) as Awaited<ReturnType<typeof metaQuery>>;
+  const stamp = String(m.meta?.UPDATED_AT ?? "");
+  if (stamp !== store.stamp) {
+    store.stamp = stamp;
+    store.values.clear();
+    for (const w of warmers) w().catch(() => {});     // esilämmitys taustalla
+  }
+  return m;
+}
+
+function memo<T>(key: string, fn: () => Promise<T>): () => Promise<T> {
+  const get = async () => {
+    await fresh();
+    let p = store.values.get(key) as Promise<T> | undefined;
+    if (!p) {
+      p = fn().catch((e) => { store.values.delete(key); throw e; });
+      store.values.set(key, p);
+    }
+    return p;
+  };
+  warmers.push(get);
+  return get;
+}
+const num = (v: unknown) => (v == null ? null : Number(v));
+
+export const loadMeta = fresh;
+
+export const loadTeams = memo("loadTeams", async () => {
   const t = await query<{ TEAM: string }>(`
     SELECT DISTINCT home_team AS team FROM ${M}.STG_GAMES
     WHERE season = (SELECT MAX(season) FROM ${M}.STG_GAMES)`);
   return t.map((r) => r.TEAM).sort((a, b) => a.localeCompare(b, "fi"));
 });
 
-export const loadPosition = cache(async () => {
+export const loadPosition = memo("loadPosition", async () => {
   const pos = await query(`
     SELECT s.team, s.proj_rank, s.mean_points, s.p05_points, s.p95_points, s.p_title, p.*
     FROM ${M}.STANDINGS_2026_27 s
@@ -44,7 +84,7 @@ export const loadPosition = cache(async () => {
   return rows;
 });
 
-export const loadLog = cache(async (): Promise<Game[]> => {
+export const loadLog = memo("loadLog", async (): Promise<Game[]> => {
   const log = await query(`
     SELECT team, start_ts, points, goals_for, goals_against, xg_for, xg_against,
            is_home, pp_goals, pp_instances, sh_instances, pp_goals_against
@@ -66,7 +106,7 @@ export async function loadTitle(): Promise<TitleRow[]> {
   return pos.map((r) => ({ team: r.team, pTitle: r.pTitle, points: r.points, banked: banked.get(r.team) ?? 0 }));
 }
 
-export const loadHistory = cache(async () => {
+export const loadHistory = memo("loadHistory", async () => {
   const hist = await query(`SELECT team, snapshot_date, mean_points, p_title, games_played FROM ${M}.PREDICTION_HISTORY ORDER BY snapshot_date`);
   const history: HistoryPoint[] = hist.map((r) => ({
     team: String(r.TEAM), date: String(r.SNAPSHOT_DATE).slice(0, 10), points: Number(r.MEAN_POINTS),
@@ -82,7 +122,7 @@ export const loadHistory = cache(async () => {
 
 // Sama liitos kuin streamlit_app.py:n fixtures_sql: uusin snapshot
 // ottelupäivänä tai ennen -- se mitä malli sanoi ennen kiekon pudotusta.
-export const loadFixtures = cache(async (): Promise<Fixture[]> => {
+export const loadFixtures = memo("loadFixtures", async (): Promise<Fixture[]> => {
   const fx = await query(`
     SELECT g.start_ts, g.home_team, g.away_team, g.ended, g.home_goals, g.away_goals,
            g.result_category, p.p_home_win, p.p_overtime

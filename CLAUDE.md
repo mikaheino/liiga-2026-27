@@ -988,6 +988,13 @@ suunnitteilla, siksi TypeScript.
   `/joukkue/<nimi>` (jakauma, ennuste, viimeiset/seuraavat, liike, ◀ ▶ selaus), ovet ->
   `/sarjataulukko`, `/voittaja`, `/ottelut`, `/liike`, `/linkedin`. Data `lib/data.ts`
   (React `cache()`, jokainen sivu hakee vain omansa). Osiot eivät näy oletuksena.
+- **Välimuisti (16.10., "jos painan linkkiä, mitään ei tapahdu"):** Snowflake-kysely kesti
+  0,3-11 s ja sivu odotti hitainta, 2-11 s per klikkaus. `lib/data.ts` pitää kaiken muistissa
+  ennusteen aikaleiman (`PREDICTION_META.updated_at`) mukaan ja tarkistaa aikaleiman enintään
+  30 s välein; uusi aikaleima tyhjentää muistin ja esilämmittää kaikki sivut taustalla.
+  Mitattu: 0,05-0,7 s. 30 s on aikaleiman tarkistusväli, ei datan TTL (Streamlitin "älä lisää
+  TTL:ää" koskee dataa). `app/loading.tsx` näyttää latausruudun heti klikkauksesta.
+  Hitaat kyselyt (> 300 ms) lokittuvat `[sql]`-riveinä.
 - ⚠️ **Kehityspalvelin voi jäädä tarjoamaan vanhaa käännöstä** tiedoston muokkauksen
   jälkeen (16.10.: luokka puuttui SSR-HTML:stä, vaikka koodi oli oikein). Tarkista
   `curl`illa; korjaus: pysäytä `next dev`, `rm -rf .next/dev`, käynnistä uudelleen.

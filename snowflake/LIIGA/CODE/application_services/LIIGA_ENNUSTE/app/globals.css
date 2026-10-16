@@ -517,3 +517,11 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 @media (max-width: 1100px) { .doors { grid-template-columns: repeat(2, minmax(0, 1fr)); } .team-grid { grid-template-columns: 1fr; }
   .team-hero { grid-template-columns: auto minmax(0, 1fr) auto; } .team-hero .flip { display: none; } .team-odds { grid-column: 1 / -1; justify-content: start; } }
 .label.pick::before { content: none; }
+
+/* --- Latausruutu: kiekko liukuu edestakaisin, LOADING-teksti vilkkuu ------ */
+@keyframes shuttle { 0%, 100% { left: 0; } 50% { left: calc(100% - 20px); } }
+.loading { min-height: 60vh; display: grid; place-content: center; gap: 18px; justify-items: center; }
+.loading-rink { position: relative; width: 260px; height: 26px; border-radius: 99px; background: var(--bg-2); border: 1px solid var(--line); }
+.loading-rink .puck { top: 1px; left: 0; animation: shuttle 1.2s ease-in-out infinite, glow 1.2s ease-in-out infinite; }
+.loading-t { font: 400 13px var(--pixel); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+@media (prefers-reduced-motion: reduce) { .loading-rink .puck { animation: glow 1.2s ease-in-out infinite; left: calc(50% - 10px); } }
