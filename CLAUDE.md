@@ -670,6 +670,21 @@ optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
   versiointia, `VERSION$2` (010d045) ensimmäinen versioitu.
   Palautus: `ALTER AGENT … SET DEFAULT_VERSION = 'VERSION$N'`.
 
+**Roolit ja CoWork (2026-10-16, `snowflake/agent_roles.sql`).** Agentit omistaa
+`LIIGA_AGENT_OWNER` eikä ACCOUNTADMIN: koodinsuoritus (johtoryhmävisualisointi)
+perii omistajaroolin oikeudet, ja ACCOUNTADMINina hiekkalaatikko olisi toiminut
+tilin laajimmilla oikeuksilla. Omistajalla on vain skill-stagen luku ja Cortex.
+Demon käyttäjärooli on `LIIGA_AGENT_USER` (myönnetty MHEINO:lle): agentti,
+`LIIGA.MODEL`in taulut/näkymät/semanttiset mallit ja varastot -- **FUTURE-oikeuksin**,
+koska notebook ja deploy luovat ne uudelleen. Testattu `USE SECONDARY ROLES NONE`
+-istunnossa: agentti vastaa, `LIIGA.RAW` ei aukea.
+
+CoWork-objekti `SNOWFLAKE_INTELLIGENCE_OBJECT_DEFAULT` on nyt olemassa, joten
+CoWorkissa näkyvät **vain siihen lisätyt agentit**: `LIIGA_ENNUSTAJA` ja
+tilin toinen agentti `VW_AGENT` (lisätty, ettei se katoa käyttäjiltään). Uusi
+agentti pitää lisätä: `ALTER SNOWFLAKE INTELLIGENCE SNOWFLAKE_INTELLIGENCE_OBJECT_DEFAULT
+ADD AGENT <fqn>`. DEV-agentti ei ole listalla tarkoituksella.
+
 **Miksi kaksi ja miksi näkymät: tokenit.** Cortex Analyst lukee koko
 semanttisen mallin joka kutsulla, ja agentti yritti monivaiheisia
 ikkunakyselyjä (viimeisin snapshot, viimeisin kokoonpano) uudelleen. Nyt
