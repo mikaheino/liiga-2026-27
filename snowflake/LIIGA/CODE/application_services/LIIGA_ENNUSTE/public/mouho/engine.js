@@ -101,12 +101,17 @@ function walkTo(x, y = st.y) { return new Promise((res) => { st.path = findPath(
 function depth(y) { const sc = room()?.scale; if (!sc) return 1; const [y0, y1, s0 = 0.7, s1 = 1.02] = sc; return s0 + (s1 - s0) * Math.max(0, Math.min(1, (y - y0) / (y1 - y0))); }
 function place(x, y) { st.x = x; st.y = y; st.path = []; onArrive = null; }
 
+// ---------------------------------------------------------------- ääni
+let actx = null;
+function beep(freq, ms = 220, type = "square", vol = 0.06) { try { actx ??= new AudioContext(); const o = actx.createOscillator(), v = actx.createGain();
+  o.type = type; o.frequency.value = freq; v.gain.value = vol; v.gain.setTargetAtTime(0, actx.currentTime + ms / 1000 * .6, .05); o.connect(v).connect(actx.destination); o.start(); o.stop(actx.currentTime + ms / 1000); } catch { /* ei ääntä */ } }
+
 // ---------------------------------------------------------------- puhe ja skriptit
 // Puhuja: "jussi", ruudun hahmon id (esim. "kauppias") tai "muu" (kertoja).
 function say(text, who = "jussi") {
   return new Promise((res) => {
     const npc = room()?.actors?.find((a) => a.id === who);
-    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#fcfcfc" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44), c: npc.color } : { x: 160, y: 20, c: "#fcfc54" };
+    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#fcfcfc" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : { x: 160, y: 20, c: "#fcfc54" };
     const el = document.createElement("div"); el.className = "line";
     el.style.left = (100 * Math.min(Math.max(spk.x, 70), 250) / W) + "%"; el.style.bottom = (100 - 100 * spk.y / H) + "%"; el.style.color = spk.c;
     el.textContent = text; $say.replaceChildren(el); speaking = who;
@@ -166,7 +171,8 @@ function stagePos(e) { const b = cv.getBoundingClientRect(); return [((e.clientX
 cv.addEventListener("mousemove", (e) => { if (busy || !room()) return; const [x, y] = stagePos(e); setSentence(spotsAt(x, y)); });
 function click(e, right) {
   if (skip) { skip(); return; } if (busy || !room() || overlay) return;
-  const [x, y] = stagePos(e); const o = spotsAt(x, y);
+  const [x, y] = stagePos(e); let o = spotsAt(x, y);
+  if (o?.floor && verb === "Kävele" && !first && !right) o = null;   // lattiakohteelle (piano) kävellään klikattuun kohtaan
   if (o) { act(right && !first ? defVerb(o) : verb, o); verb = "Kävele"; renderVerbs(); }
   else { first = null; renderInv(); st.path = findPath(st.x, st.y, x, y); onArrive = null; }
 }
@@ -203,10 +209,11 @@ function frame(t) {
   if (st.path.length) { const [tx, ty] = st.path[0]; dx = tx - st.x; dy = ty - st.y; const d = Math.hypot(dx, dy * 1.5), sp = (st.flags.boulder != null ? 110 : 62) * depth(st.y) * dt;
     if (d <= sp) { st.x = tx; st.y = ty; st.path.shift(); } else { st.x += dx * sp / d; st.y += dy * sp / d; }
     moving = true; if (Math.abs(dx) > 0.5) st.dir = Math.sign(dx); st.frame = Math.floor(t / 120); }
-  else { st.frame = 0; if (onArrive) { const f = onArrive; onArrive = null; f(); } }
+  else { if (st.frame !== 0 && !busy) s.onStop?.(st.x, st.y);     // pysähtyi juuri (lattiapiano)
+    st.frame = 0; if (onArrive) { const f = onArrive; onArrive = null; f(); } }
   const away = moving && dy < 0 && Math.abs(dy) * 1.5 > Math.abs(dx);
   // Syvyysjärjestys: esineet, ruudun hahmot ja Jussi jalkojen y:n mukaan.
-  const items = [...(s.props ?? []).map((p) => ({ y: p.y, draw: () => p.draw(t) })), ...(s.actors ?? []).filter((a) => !a.hidden?.()).map((a) => ({ y: a.y, draw: () => a.draw(t, speaking === a.id) })),
+  const items = [...(s.props ?? []).map((p) => ({ y: p.y, draw: () => p.draw(t) })), ...(s.actors ?? []).filter((a) => !a.hidden?.()).map((a) => ({ y: a.y, draw: () => { const sc = depth(a.y); g.save(); g.translate(a.x, a.y); g.scale(sc, sc); g.translate(-a.x, -a.y); a.draw(t, speaking === a.id); g.restore(); } })),
     { y: st.y, draw: () => { const sc = depth(st.y); shadow(st.x, st.y, 7 * sc); jussi(st.x, st.y, st.dir, st.frame, st, sc, away); } }];
   items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
   if (s.post) s.post(t);
