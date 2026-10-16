@@ -882,6 +882,11 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 - **Näkymät eivät ole versioituja.** `kausi_views.sql` ajetaan ehdokasvaiheessa
   ja muuttaa tuotannon käyttämiä `V_*`-näkymiä jo ennen hyväksyntää. Pidä
   muutokset yhteensopivina (lisää sarakkeita, älä poista tai nimeä uudelleen).
+- **Älä liitä `${{ }}`-lauseketta `run:`-skriptin sisään** -- välitä se `env:`illä.
+  Lauseke korvataan tekstinä ennen bashia: d486dd8:n commit-viestin lainausmerkit
+  rikkoivat agenttivaiheen kahdesti (ei yhtään Snowflake-kyselyä, näkyi
+  `QUERY_HISTORY_BY_USER`ista), ja sama reikä olisi ajanut viestiin kirjoitetut
+  komennot (skripti-injektio). `secrets`, `needs` ja `steps` -arvot `env:`issä ovat ok.
 - **Evaluointiajon nimi on UTC + sekunnit** (`20261016_125433`). Minuuttitarkka
   paikallinen aika törmäsi 16.10. CI:n UTC-nimeen (`20261016_1238`), ja CI kaatui
   ACCOUNTADMINin aiemmin luomaan datasettiin. Tunnistettu `liiga_ci`:n omasta

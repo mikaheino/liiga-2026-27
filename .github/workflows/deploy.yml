@@ -79,8 +79,14 @@ jobs:
         run: python scripts/deploy_tools.py
       - name: Agentti (uusi nimetty versio, alias STAGING)
         id: agent
+        # Commit-viesti ympäristömuuttujana, EI ${{ }}-lausekkeena komennon sisällä:
+        # lauseke liitetään skriptiin tekstinä ennen bashia, joten viestin lainausmerkit
+        # rikkoivat komennon 16.10. (d486dd8) -- ja mikä tahansa viesti olisi voinut
+        # ajaa komentoja (GitHub Actions -skripti-injektio).
+        shell: bash
+        env:
+          MSG: ${{ github.event.inputs.message || github.event.head_commit.message }}
         run: |
-          MSG="${{ github.event.inputs.message || github.event.head_commit.message }}"
           python scripts/deploy_agent.py --alias STAGING --html -m "$(echo "$MSG" | head -1 | cut -c1-120)" | tee deploy.log
           V=$(grep -o 'VERSION\$[0-9]* (alias STAGING)' deploy.log | grep -o '[0-9]*' | head -1)
           test -n "$V" || { echo "::error::agenttiversiota ei löytynyt"; exit 1; }
