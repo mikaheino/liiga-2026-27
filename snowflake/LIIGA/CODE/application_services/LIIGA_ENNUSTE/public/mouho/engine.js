@@ -233,7 +233,7 @@ function frame(t) {
   g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, 0, g.measureText(s.title).width + 8, 11); g.fillStyle = "#a8a8a8"; g.font = "10px VT323, monospace"; g.fillText(s.title, 4, 8);
   requestAnimationFrame(frame);
 }
-function startEngine({ titleScreen, intro, startRoom, startX }) {
+function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
   drawTitleFn = titleScreen;
   cv.addEventListener("click", async function start(e) {
     if (!title) return; title = false; cv.removeEventListener("click", start, { capture: true });
@@ -242,6 +242,11 @@ function startEngine({ titleScreen, intro, startRoom, startX }) {
     await script(intro);
   }, { capture: true });
   document.getElementById("save")?.addEventListener("click", saveGame);
+  document.getElementById("hint")?.addEventListener("click", (e) => { e.stopPropagation(); idleAt = performance.now(); hint?.(); });   // ei kupli: muuten sama klikkaus ohittaisi vihjeen
+  // Toimettomuus: minuutin hiljaisuuden jälkeen Jussi miettii ääneen seuraavaa askelta.
+  let idleAt = performance.now();
+  for (const ev of ["click", "contextmenu", "keydown"]) document.addEventListener(ev, () => { idleAt = performance.now(); }, true);
+  setInterval(() => { if (!title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
   document.getElementById("load")?.addEventListener("click", loadGame);
   requestAnimationFrame(frame);
 }

@@ -329,6 +329,45 @@ async function salesmanTalk() {
   });
 }
 
+
+// ---------------------------------------------------------------- vihjeet
+// "Vihje"-nappi ja minuutin toimettomuus: seuraava askel tilan mukaan, ensin vihjaten,
+// toisella kerralla suoraan. Kukaan ei jää jumiin (käyttäjä 16.10.).
+const HINTS = () => {
+  const f = st.flags, here = st.scene;
+  if (here === "koti") {
+    if (!f.unlocked && !f.pianoT) return ["Postilaatikko on lukossa. Tuo liituraitamies laiturilla näyttää tietävän jotain.", "Puhu salkkumiehelle ja kysy postilaatikon avaimesta."];
+    if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat laiturissa.", "Kävele laiturin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
+    if (!f.letterTaken) return ["Lukko on auki. Posti odottaa.", "Avaa postilaatikko ja poimi kirje."];
+    if (!has("lippu")) return ["Kirjeessä voi olla muutakin kuin sanoja.", "Katso kirjettä: oikea painike kirjeen kuvaan tavaroissa."];
+    if (!f.pig) return ["Matkat maksavat. Laiturilla on joku, joka säästää puolestani.", "Avaa säästöpossu laiturilla."];
+    if (!st.hat) return ["Seikkailija ilman hattua on pelkkä turisti.", "Poimi fedora naulakosta laiturilta."];
+    return ["Kaikki on valmista. Lentokenttä kutsuu.", "Käytä taksia oikealla."];
+  }
+  if (here === "basaari") {
+    if (has("idoli")) return ["Mehmet ostaa kaiken. Ehkä kultaakin.", "Anna kultainen idoli Mehmetille."];
+    if (!f.map) return ["Seinällä on matto, jossa on outoja kuvioita.", "Katso mattoa vasemmalla seinällä."];
+    if (!f.bag) return ["Jotain ilmaista roikkuu naulassa. Ilmainen on aina epäilyttävää, mutta hyödyllistä.", "Poimi kangaspussi vasemmalta seinältä."];
+    if (!st.whip) return ["Jokainen arkeologi tarvitsee ruoskan. Mehmet myy sellaisen, jos osaan tinkiä.", "Puhu Mehmetille ja valitse \"Tingitään ruoskasta!\". Vastaa piikkiin samalla mitalla."];
+    return ["Kartan mukaan temppeli on idässä.", "Kävele kadun päähän moskeijan alle."];
+  }
+  if (here === "temppeli") {
+    if (st.flags.idol) return ["Ulos ja äkkiä.", "Mene ovesta vasemmalle."];
+    if (!has("sakki") && !f.swapped) return ["Idoli on ansoitettu. Tarvitsen jotain samanpainoista.", "Käytä kangaspussia hiekkaan."];
+    if (!f.crossed) return ["Kuilun yli pääsee kahdella tavalla: ylhäältä tai tietämällä.", "Käytä ruoskaa katon koukkuun, tai vastaa tuomarille: 64 (kävele numeroille 6 ja 4)."];
+    return ["Idoli kuilun takana. Vaihto sulavasti.", "Käytä hiekkasäkkiä idoliin."];
+  }
+  return null;
+};
+let hintLevel = {}, lastHint = "";
+function hint() {
+  if (busy || overlay || !room()) return;
+  const h = HINTS(); if (!h) return;
+  const key = h[1], lvl = lastHint === key ? Math.min(1, (hintLevel[key] ?? 0) + 1) : 0;
+  hintLevel[key] = lvl; lastHint = key;
+  script(() => say(h[lvl]));
+}
+
 // ---------------------------------------------------------------- tavarakuvakkeet (24 x 16)
 ITEMS.kirje.icon = () => { r(3, 3, 18, 11, "#ececec"); r(3, 3, 18, 1, "#fcfcfc"); for (let k = 0; k < 9; k++) { px(3 + k, 4 + k / 2, "#a8a8a8"); px(20 - k, 4 + k / 2, "#a8a8a8"); } disc(12, 9, 2, "#c81c1c"); };
 ITEMS.lippu.icon = () => { r(2, 4, 20, 9, "#3c7cdc"); r(2, 4, 20, 1, "#7cacfc"); r(15, 4, 1, 9, "#fcfcfc"); r(4, 7, 9, 1, "#fcfcfc"); r(4, 9, 6, 1, "#c8dcfc"); r(17, 6, 3, 2, "#fcd41c"); };
@@ -342,6 +381,6 @@ ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c");
 
 // ---------------------------------------------------------------- käynnistys
 startEngine({
-  titleScreen: drawTitle, startRoom: "koti", startX: 60,
+  titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
   intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); await say("Ja postilaatikkoni on lukossa, eikä avainta löydy. Tuo liituraitamies tietää jotain."); },
 });
