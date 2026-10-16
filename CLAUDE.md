@@ -983,8 +983,18 @@ suunnitteilla, siksi TypeScript.
 - **Kolme ansaa:** `HOSTNAME` on alustan varaama (094516) -- älä aseta; Next.js
   standalone ei kopioi `.next/static`ia eikä `public`ia (build-skripti tekee sen);
   Next.js 16 kirjoittaa projektiin oman `AGENTS.md`:n (`agentRules: false`).
-- **Tila:** osio "Kuka on kuumana?" (sarjataulukko, nostokortit, korostus) valmis;
-  muut Streamlitin osiot siirtämättä. Streamlit pysyy, kunnes kaikki osiot on siirretty.
+- **Tila (16.10. ilta):** kaikki Streamlitin osiot siirretty: kauden tilanne, sijaintijakauma,
+  sarjataulukko + välilehdet (`?nakyma=koti|maalit|erikois`), runkosarjan voittaja,
+  ottelut kuukausittain (`?kk=2026-10`) + "missä malli menee pieleen", ennusteen liike.
+  **Minimalismi on käyttäjän linja:** ei ingressejä eikä alaviitteitä, osion nimi korkeintaan
+  yhtenä `.label`-rivinä. Taustaliike (valojuova, hengittävä hehku, piirtyvät viivat) on
+  pyydetty; hehku jää päälle myös vähennetyllä liikkeellä, koska se ei liikuta mitään.
+- **LinkedIn-osasto `/linkedin`:** `scripts/local/export_linkedin.py` renderöi kaikki diat ja
+  postaukset (samat build_instagram-funktiot, EI `build()`ia) hakemistoon
+  `$TMPDIR/liiga-linkedin/<aikaleima>/`; sovellus käynnistää sen napista ja tarjoaa PDF:t.
+  Lukee **paikallista DuckDB:tä** (sivu näyttää sen aikaleiman), toimii vain läppärillä
+  ja sanoo sen Snowflakessa ääneen. DuckDB:n lukko: tilakysely ei saa avata kantaa
+  renderöinnin aikana (`currentStamp()` käyttää silloin talletettua aikaleimaa).
 
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 

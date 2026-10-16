@@ -9,6 +9,7 @@ export const RELEGATION_CUT = TEAMS - 3; // 15.-17. putoaa
 export type Game = {
   team: string; start_ts: string; points: number;
   goals_for: number; goals_against: number; xg_for: number | null; xg_against: number | null;
+  is_home?: boolean; pp_goals?: number; pp_instances?: number; sh_instances?: number; pp_goals_against?: number;
 };
 
 export type TableRow = {
@@ -87,3 +88,37 @@ export function highlights(log: Game[], teams: string[], window: number) {
     firstDown: t[RELEGATION_CUT],
   };
 }
+
+// Koti / vieras -- streamlit_app.py:n render_split_table.
+export type Side = { gp: number; pts: number; gf: number; ga: number };
+export function splitTable(log: Game[], teams: string[]) {
+  const empty = (): Side => ({ gp: 0, pts: 0, gf: 0, ga: 0 });
+  const by = new Map(teams.map((t) => [t, { home: empty(), away: empty() }]));
+  for (const g of log) {
+    const r = by.get(g.team);
+    if (!r) continue;
+    const s = g.is_home ? r.home : r.away;
+    s.gp += 1; s.pts += g.points; s.gf += g.goals_for; s.ga += g.goals_against;
+  }
+  return seasonTable(log, teams).map((r) => ({ team: r.team, ...by.get(r.team)! }));
+}
+
+// Maalinteko ja erikoistilanteet -- season_table:n gf_pg / pp_pct / pk_pct.
+// Nollanimittäjä on "–" eikä 0 %: joukkue jolla ei ole ollut ylivoimaa, ei ole
+// epäonnistunut siinä.
+export function statTable(log: Game[], teams: string[]) {
+  const sum = (team: string, f: (g: Game) => number) => log.filter((g) => g.team === team).reduce((s, g) => s + (f(g) || 0), 0);
+  return seasonTable(log, teams).map((r) => {
+    const gp = Math.max(r.gp, 1);
+    const xgf = sum(r.team, (g) => g.xg_for ?? 0), xga = sum(r.team, (g) => g.xg_against ?? 0);
+    const ppg = sum(r.team, (g) => g.pp_goals ?? 0), ppi = sum(r.team, (g) => g.pp_instances ?? 0);
+    const shi = sum(r.team, (g) => g.sh_instances ?? 0), ppa = sum(r.team, (g) => g.pp_goals_against ?? 0);
+    return {
+      ...r, gfPg: r.gf / gp, gaPg: r.ga / gp, xgf, xga,
+      ppGoals: ppg, ppInst: ppi, ppPct: ppi ? (100 * ppg) / ppi : null,
+      shInst: shi, ppAgainst: ppa, pkPct: shi ? 100 * (1 - ppa / shi) : null,
+    };
+  });
+}
+
+export const fi = (x: number | null, d = 1) => (x == null || !Number.isFinite(x) ? "–" : x.toFixed(d).replace(".", ",").replace("-", "\u2212"));

@@ -199,7 +199,7 @@ h1 { margin: 10px 0 6px; font: 800 40px/1.05 var(--sans); letter-spacing: -.03em
 .sh-scale { display: flex; justify-content: space-between; margin-top: 8px; font: 600 10.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
 .sh-next { text-align: right; padding-bottom: 4px; }
 .sh-next-k { font: 700 10.5px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.sh-next-d { margin-top: 8px; font: 800 22px/1.1 var(--sans); color: var(--ink); text-transform: capitalize; }
+.sh-next-d { margin-top: 8px; font: 800 22px/1.1 var(--sans); color: var(--ink); }
 .sh-next-s { margin-top: 4px; font: 13px var(--sans); color: var(--gold-hi); }
 
 /* --- Osiot -------------------------------------------------------------- */
@@ -235,4 +235,137 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .season-hero { grid-template-columns: 1fr; gap: 20px; padding: 22px 18px; }
   .sh-num { font-size: 68px; } .sh-next { text-align: left; }
   .heat { overflow-x: auto; } .hr { min-width: 820px; }
+}
+
+/* =========================================================================
+   Minimalismi (16.10.): osion nimi on yksi hiljainen rivi, ei ingressejä.
+   ========================================================================= */
+.label { font: 700 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+.label.sub { margin-top: 36px; }
+.label-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+.label-row .label { margin: 0; }
+.topnav { display: flex; gap: 4px; justify-self: center; }
+.topnav a { padding: 7px 14px; border-radius: 8px; font: 600 13px var(--sans); color: var(--muted); text-decoration: none; transition: color .15s, background .15s; }
+.topnav a:hover { color: var(--ink); }
+.topnav a.on { color: var(--ink); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); }
+.tabs a { cursor: pointer; transition: color .15s; } .tabs a:hover { color: var(--ink); }
+
+/* --- Yhteinen taulukko (Grid) ------------------------------------------- */
+.g .tr { gap: 0 10px; padding-right: 16px; min-height: 42px; }
+.g .tr > div { min-width: 0; }
+.g .tr > div:has(> .rank-n) { align-self: stretch; display: grid; place-items: center; border-left: 3px solid transparent; }
+.g .z-top > div:has(> .rank-n) { border-left-color: var(--gold); }
+.g .z-quali > div:has(> .rank-n) { border-left-color: var(--gold-mid); }
+.g .z-down > div:has(> .rank-n) { border-left-color: var(--danger); }
+.g .tr > div:first-child:not(:has(> .rank-n)) { padding-left: 16px; }
+.g .th > div:first-child { text-align: left; }
+.g .th > div.c { text-align: center; }
+.rank-n { font: 600 13px var(--mono); color: var(--muted); }
+.z-top .rank-n { color: var(--ink); }
+.g .num b, .g b { color: var(--ink); font-weight: 700; }
+.up { color: var(--gold-hi); } .down { color: var(--danger); } .strong { font-weight: 700; }
+.g .team img { border-radius: 3px; }
+
+/* --- Runkosarjan voittaja ------------------------------------------------ */
+.race-r { grid-template-columns: 46px minmax(140px, 1.1fr) 70px minmax(220px, 3fr) 96px; }
+.split { position: relative; display: flex; height: 22px; border-radius: 6px; background: var(--bg-2); overflow: hidden; }
+.split i { display: block; height: 100%; transform-origin: left; animation: grow .9s cubic-bezier(.2,.8,.2,1) both; }
+.split .got { background: var(--gold); }
+.split .sim { background: rgba(204,167,82,.24); animation-delay: .25s; }
+.split span { position: absolute; right: 8px; top: 0; bottom: 0; display: flex; align-items: center; font: 700 12px var(--mono); color: var(--ink); }
+.tag { display: inline-block; padding: 3px 8px; border-radius: 6px; background: rgba(204,167,82,.14); color: var(--gold-hi); font: 700 12.5px var(--mono); }
+/* Kärjen palkin yli kulkee sama hidas valojuova kuin heatmapissa. */
+.race .lead .split::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 25%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,240,200,.22), transparent); animation: sweep 7s ease-in-out 2s infinite; }
+.sw-got, .sw-sim { display: inline-block; width: 14px; height: 9px; border-radius: 2px; }
+.sw-got { background: var(--gold); } .sw-sim { background: rgba(204,167,82,.24); }
+
+/* --- Kaaviot ------------------------------------------------------------- */
+.chart { margin-top: 28px; padding: 18px 18px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.chart svg { width: 100%; height: auto; display: block; }
+.gridl { stroke: var(--line); stroke-width: 1; }
+.axis { font: 10.5px var(--mono); fill: var(--faint); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font: 12px var(--sans); color: var(--muted); }
+.keys span { display: inline-flex; align-items: center; gap: 6px; } .keys i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+/* Viivat piirtyvät kerran, päätepisteet hengittävät taustalla (pelkkää valoa). */
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 1.6s cubic-bezier(.3,.7,.2,1) both; stroke-linejoin: round; stroke-linecap: round; }
+.pulse { animation: glow 3.6s ease-in-out infinite; filter: drop-shadow(0 0 4px rgba(235,202,104,.7)); }
+
+/* --- Ennusteen liike (pienet paneelit) ----------------------------------- */
+.multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.panel { margin: 0; padding: 10px 12px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: opacity .2s; }
+.panel figcaption { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.panel figcaption .name { font-size: 13px; flex: 1; }
+.panel figcaption b { font: 700 13px var(--mono); color: var(--ink); }
+.panel svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ctx { stroke: #2b251b; stroke-width: 1; }
+.focus { stroke: var(--gold-hi); stroke-width: 1.8; }
+.dotc { fill: var(--gold-hi); }
+.has-hl .panel:not(.hl) { opacity: .3; }
+.panel.hl { border-color: rgba(204,167,82,.5); }
+
+/* --- Ottelut -------------------------------------------------------------- */
+.months { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.months a { padding: 5px 10px; border-radius: 7px; font: 600 12px var(--sans); color: var(--muted); text-decoration: none; }
+.months a:hover { color: var(--ink); }
+.months a.on { background: var(--surface-2); color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--line-2); }
+.score { display: flex; align-items: flex-end; gap: 40px; margin: 6px 0 22px; }
+.score-main { display: flex; align-items: center; gap: 14px; }
+.score-n { font: 800 64px/0.9 var(--sans); letter-spacing: -.04em; color: var(--ink); }
+.score-n small { font-size: .45em; margin-left: 2px; color: var(--muted); }
+.score-n.up { background: linear-gradient(180deg, #fff6dc, var(--gold-hi) 60%, var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.score-k { font: 600 11px/1.35 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.score-k b { font: 700 14px var(--mono); color: var(--body); letter-spacing: 0; }
+.score-vs { display: flex; flex-direction: column; gap: 4px; padding-left: 24px; border-left: 1px solid var(--line-2); }
+.score-b { font: 800 26px/1 var(--mono); color: var(--body); }
+.match { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.match .team { gap: 7px; min-width: 0; } .dash { color: var(--faint); }
+.pair { font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.pbar { position: relative; height: 20px; border-radius: 5px; background: var(--bg-2); overflow: hidden; }
+.pbar i { position: absolute; inset: 0 auto 0 0; background: rgba(204,167,82,.32); transform-origin: left; animation: grow .7s cubic-bezier(.2,.8,.2,1) both; }
+.pbar span { position: absolute; left: 7px; top: 0; bottom: 0; display: flex; align-items: center; font: 600 11.5px var(--mono); color: var(--ink); }
+.verdict { display: inline-block; padding: 2px 7px; border-radius: 6px; font: 700 12px var(--mono); }
+.verdict.hit { color: var(--gold-hi); background: rgba(235,202,104,.12); }
+.verdict.miss { color: var(--danger); background: rgba(224,87,75,.12); }
+.tr:not(.played):not(.th) .pbar i { background: rgba(204,167,82,.2); }
+.misses { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.misses-side { display: grid; gap: 16px; }
+
+/* --- LinkedIn-osasto ----------------------------------------------------- */
+.main.narrow { max-width: 1180px; margin: 0 auto; }
+.li-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 22px; }
+.li-head .label { margin-bottom: 8px; }
+.li-stamp { font: 800 26px/1.1 var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.li-empty { padding: 28px; border: 1px dashed var(--line-2); border-radius: var(--r); color: var(--muted); }
+.li-progress { height: 3px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-bottom: 22px; }
+.li-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi)); transition: width .6s; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 9px; border: 1px solid var(--gold-mid);
+  background: rgba(204,167,82,.12); color: var(--gold-hi); font: 700 13px var(--sans); text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: background .15s, box-shadow .15s; }
+.btn:hover { background: rgba(204,167,82,.22); box-shadow: 0 0 18px rgba(204,167,82,.25); }
+.btn:disabled { opacity: .6; cursor: progress; }
+.assets { display: grid; gap: 18px; }
+.asset { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, var(--surface-2), var(--surface)); animation: rise .4s ease both; }
+.asset-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 16px; }
+.asset h3 { margin: 0 0 4px; font: 800 19px/1.2 var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.asset p { margin: 0; max-width: 72ch; font-size: 13px; color: var(--muted); }
+.strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.strip img { flex: none; width: 216px; height: auto; border-radius: 6px; border: 1px solid var(--line); transition: transform .2s; }
+.strip img:hover { transform: translateY(-3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .split i, .pbar i, .draw, .asset { animation: none; }
+  .race .lead .split::after { display: none; }
+}
+@media (max-width: 860px) {
+  .topnav { display: none; }
+  .misses { grid-template-columns: 1fr; }
+  .race-r { grid-template-columns: 38px minmax(0, 1fr) 0 minmax(110px, 1.4fr) 70px; }
+  .race-r > div:nth-child(3) { display: none; }
+  .score { gap: 20px; } .score-n { font-size: 48px; }
+  .label-row { flex-direction: column; align-items: flex-start; }
+  .months { overflow-x: auto; max-width: 100%; }
+  .g .tr { overflow: hidden; }
 }
