@@ -135,6 +135,11 @@ def build_team_goaltending(con=None) -> pd.DataFrame:
                         "goalie_mult": float(mult)})
         ts = pd.DataFrame(out)
         register_df(con, "team_goaltending", ts)
+        # Maalivahtikohtaiset luvut, joista team_goaltending laskettiin: agentin
+        # loukkaantumisskenaario (snowflake/procedures/simulate_scenario.py)
+        # laskee niistä joukkueen kertoimen ilman poissa olevaa maalivahtia.
+        register_df(con, "team_goalie_weights",
+                    r[["team", "name", "proj_save_pct", "wt"]].reset_index(drop=True))
     finally:
         if own:
             con.close()

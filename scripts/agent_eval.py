@@ -33,7 +33,7 @@ import json
 import subprocess
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -361,7 +361,10 @@ def main() -> None:
         sm = summarize(data)
         print(record(a.agent, a.version, run, sm)); print(gate(sm) or "laatuportti läpi")
         return
-    run = datetime.now().strftime("%Y%m%d_%H%M")
+    # Aina UTC ja sekunnit: CI (UTC) ja paikallinen ajo (Suomen aika) antoivat
+    # 16.10. saman nimen 20261016_1238 eri hetkistä, ja CI kaatui, koska
+    # ACCOUNTADMINin aiemmin luomaan datasettiin ei ollut oikeuksia.
+    run = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dataset = build_dataset(run)
     print(f"testijoukko {TABLE}: {len(GOLDEN)} kysymystä -> {dataset}")
     if a.build_only:

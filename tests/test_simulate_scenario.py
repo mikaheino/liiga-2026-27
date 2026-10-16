@@ -15,6 +15,21 @@ spec.loader.exec_module(sim)
 DB = ROOT / "data/liiga.duckdb"
 
 
+def test_constants_match_config():
+    import yaml
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text())
+    ts, mm = cfg["team_strength"], cfg["match_model"]
+    assert sim.TEAM_WEIGHT == ts["team_weight"]
+    assert sim.GOALIE_WEIGHT == ts["goalie_weight"]
+    assert sim.LEAGUE_AVG == ts["league_avg_goals_per_game"]
+    assert sim.TOP_SKATERS == ts["top_skaters"]
+    assert sim.HOME_ICE == mm["home_ice"]
+    assert sim.OT_LEAN == mm["ot_favourite_lean"]
+    assert sim.LEAGUE_SV == cfg["goaltending"]["league_avg_save_pct"]
+    from liiga.pipeline import POISSON_WEIGHT
+    assert sim.POISSON_WEIGHT == POISSON_WEIGHT
+
+
 def _load():
     c = duckdb.connect(str(DB), read_only=True)
     snap = c.execute("SELECT MAX(snapshot_date) FROM prediction_games").fetchone()[0]
@@ -64,3 +79,22 @@ def test_locked_win_moves_team_up_and_empty_change_is_zero():
     assert 0.0 <= req["p"] <= 1.0
     with pytest.raises(sim.ScenarioError):
         sim.compute([{"team": "Kiekko-Vantaa", "result": "win"}], games, banked, pub, w)
+
+
+@pytest.mark.skipif(not DB.exists(), reason="ei paikallista kantaa")
+def test_injury_weakens_team():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import skenaario
+    con = duckdb.connect(str(DB), read_only=True)
+    games, banked, pub, w, snap, played = skenaario.load(con)
+    model = skenaario.load_model(con)
+    con.close()
+    # kokoonpanon paras maalintekijä
+    top = max((p for p in model["players"] if p["position_group"] != "G"),
+              key=lambda p: p["projected_goals_per_game"])
+    res = sim.compute([{"injury": top["name"]}], games, banked, pub, w, played, model)
+    inj = res["injuries"][0]
+    assert inj["d_goals_for"] < 0 and inj["win_after"] < inj["win_before"]
+    row = next(r for r in res["teams"] if r["team"] == top["team"])
+    assert row["points_scenario"] < row["points_now"]

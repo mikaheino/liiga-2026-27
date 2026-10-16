@@ -775,6 +775,23 @@ pakotettu monotoniseksi (cummax), ja pistemäärä huomioidaan vain jos sillä o
 yleensä vain 1-3 p odotuksestaan -- tavoite riippuu lähinnä joukkueesta itsestään.
 Vain Liigan 17 joukkuetta: Mestis-joukkueen nousua ei voi simuloida.
 
+**2c. Loukkaantuminen** -- sama työkalu:
+`[{"injury": "Patrik Bartosak", "days": 61, "ramp_games": 3, "ramp_effect": 0.5}]`
+(kesto `days` / `until` / `games`, puuttuu = koko loppukausi; agentti muuntaa
+minkä tahansa ilmauksen päiviksi). Pelaaja poistetaan mallin omilla kaavoilla:
+kenttäpelaaja 18 parhaan maalitahdin summasta (19. nousee tilalle, skaala
+pysyy), maalivahti joukkueen painotetusta torjunnasta (`TEAM_GOALIE_WEIGHTS`,
+goalies.py kirjoittaa sen nyt, synkattu). Muutos menee vain ensemblen
+Poisson-osaan (0,4) -- Elo (0,6) ei tiedä kuka pelaa, joten arvio on varovainen ja
+agentti sanoo sen. Tasapelikalibrointia ei lasketa uudelleen. Vastaus listaa
+joukkueen ottelut jaksolla (voitto-% ja odotetut pisteet ennen/nyt). Tarkistettu:
+pelaajadatasta laskettu `exp_gf_player` = `TEAM_STRENGTH` (ero 4e-16), ja
+vakioiden yhtäsuuruus config.yaml:n kanssa on testissä. Mitattu 16.10.: Maxime
+Fortier koko kausi -> Jokerit −0,36 maalia/ottelu, putoaminen 41 -> 56 %.
+
+**Paikallisesti sama vastaus:** `.venv/bin/python scripts/skenaario.py '<JSON>'`
+ajaa saman `simulate_scenario.py`:n DuckDB:tä vasten.
+
 **3. Aamutiedote** -- proseduuri `SEND_MORNING_BRIEF_<sha>('PRODUCTION')`: kysyy
 agentilta "Tee aamutiedote.", agentti tekee kolme kutsua (esikatselu, miksi
 muuttui, mitä jos illan tasaisimmassa) ja proseduuri lähettää vastauksen HTML:nä
@@ -843,6 +860,11 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 - **Näkymät eivät ole versioituja.** `kausi_views.sql` ajetaan ehdokasvaiheessa
   ja muuttaa tuotannon käyttämiä `V_*`-näkymiä jo ennen hyväksyntää. Pidä
   muutokset yhteensopivina (lisää sarakkeita, älä poista tai nimeä uudelleen).
+- **Evaluointiajon nimi on UTC + sekunnit** (`20261016_125433`). Minuuttitarkka
+  paikallinen aika törmäsi 16.10. CI:n UTC-nimeen (`20261016_1238`), ja CI kaatui
+  ACCOUNTADMINin aiemmin luomaan datasettiin. Tunnistettu `liiga_ci`:n omasta
+  kyselyhistoriasta (`INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER`) -- GitHubin lokit
+  vaativat kirjautumisen, Snowflaken eivät.
 - **Evaluoinnin tulokset luetaan vasta kun ne ovat valmiit**
   (`complete_results`): 16.10. tuotantoajo luki ne heti `COMPLETED`-tilan
   jälkeen, kaatui laatuporttiin vajailla pisteillä, ja sama ajo antoi
