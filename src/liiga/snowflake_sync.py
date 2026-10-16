@@ -98,14 +98,25 @@ def _schema_for(table: str, c: dict) -> str:
     return c["raw_schema"] if table in RAW_TABLES else c["model_schema"]
 
 
+# launchd ei näe käyttäjän PATHia, joten aamuajo ohitti synkan ("snow ei
+# PATHissa", 9 kertaa lokissa). Etsitään myös sovelluksen asennuspolusta.
+_SNOW_FALLBACKS = ["/Applications/SnowflakeCLI.app/Contents/MacOS/snow",
+                   "/opt/homebrew/bin/snow", "/usr/local/bin/snow"]
+
+
+def _snow_bin() -> str | None:
+    return shutil.which("snow") or next(
+        (p for p in _SNOW_FALLBACKS if Path(p).exists()), None)
+
+
 def _snow(args: list[str], c: dict) -> subprocess.CompletedProcess:
-    if not shutil.which("snow"):
+    if not _snow_bin():
         raise SyncError(
             "the Snowflake CLI ('snow') is not on PATH -- install it, or set "
             "snowflake_sync.enabled: false in config.yaml to publish manually"
         )
     return subprocess.run(
-        ["snow", *args, "-c", c["connection"], "--role", c["role"]],
+        [_snow_bin(), *args, "-c", c["connection"], "--role", c["role"]],
         capture_output=True, text=True,
     )
 
@@ -191,15 +202,22 @@ def local_tables() -> list[str]:
 def ensure_objects(c: dict | None = None) -> None:
     """Create the file format and stage the loader needs. Idempotent."""
     c = c or _cfg()
+    # Vain jos puuttuu: CREATE ... IF NOT EXISTS vaatii luontioikeuden, vaikka
+    # objekti on jo olemassa, eikä rajatulla LIIGA_LOADERilla ole sitä
+    # (sama ansa kuin agent_eval.py:ssä 16.10.). Kylmä tili luodaan
+    # ylläpitäjänä, jolloin oikeudet riittävät.
+    db, code = c["database"], c["code_schema"]
+    if _sql(f"SHOW STAGES LIKE 'LOAD_STAGE' IN SCHEMA {db}.{code}", c):
+        return
     _sql(f"""
-        CREATE SCHEMA IF NOT EXISTS {c['database']}.{c['raw_schema']};
-        CREATE SCHEMA IF NOT EXISTS {c['database']}.{c['model_schema']};
-        CREATE SCHEMA IF NOT EXISTS {c['database']}.{c['code_schema']};
+        CREATE SCHEMA IF NOT EXISTS {db}.{c['raw_schema']};
+        CREATE SCHEMA IF NOT EXISTS {db}.{c['model_schema']};
+        CREATE SCHEMA IF NOT EXISTS {db}.{code};
         CREATE FILE FORMAT IF NOT EXISTS
-          {c['database']}.{c['code_schema']}.PARQUET_FMT TYPE = PARQUET;
+          {db}.{code}.PARQUET_FMT TYPE = PARQUET;
         CREATE STAGE IF NOT EXISTS
-          {c['database']}.{c['code_schema']}.LOAD_STAGE
-          FILE_FORMAT = {c['database']}.{c['code_schema']}.PARQUET_FMT
+          {db}.{code}.LOAD_STAGE
+          FILE_FORMAT = {db}.{code}.PARQUET_FMT
           COMMENT = 'Landing zone for local DuckDB -> Snowflake publishes';
     """, c)
 

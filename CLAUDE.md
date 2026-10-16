@@ -608,12 +608,11 @@ Neljä asiaa jotka maksoivat oikeaa selvittelyä — älä johda näitä uudelle
   lapsi on luotava uudelleen sen jälkeen. Käynnistys: **lapsi ensin, juuri
   viimeisenä.**
 
-⚠️ **Kuratoidut taulut eivät päivity tästä.** Notebook laskee tulokset itse
-liiga.fi:stä, mutta rosterit, `player_rates` ja ulkomaiset tilastot tulevat
-`sync_to_snowflake.py`:llä paikallisesta ajosta. launchd-ajo **ohittaa sen
-joka aamu** (`snow` ei ole launchdin PATH:ssa, 9 kertaa lokissa), joten
-roosterimuutos ei kulkeudu Snowflakeen ennen kuin joku ajaa synkan käsin.
-Korjaus olisi absoluuttinen polku `daily_update.sh`:ssä tai `PATH` plistiin.
+**Kuratoidut taulut tulevat paikallisesta ajosta.** Notebook laskee tulokset
+itse liiga.fi:stä, mutta rosterit, `player_rates` ja ulkomaiset tilastot tulevat
+`daily_update.py`:n synkalla. launchd-ajo ohitti synkan ennen 16.10. (`snow` ei
+launchdin PATHissa) -- korjattu `_SNOW_FALLBACKS`illa ja palvelukäyttäjällä,
+ks. "Snowflake-yhteydet".
 
 ## Snowflake Intelligence -agentti: kaksi semanttista mallia (2026-10-10)
 
@@ -713,6 +712,32 @@ Viisi asiaa joita vanha malli teki väärin (korjattu uusissa):
 Näkymät omistaa ACCOUNTADMIN, koska se omistaa pohjataulut eikä SYSADMIN
 saa luoda näkymiä `LIIGA.MODEL`iin. `PRESEASON_PLAYER_RATES` on `LIIGA.RAW`issa
 (`CURATED_TABLES`), koska yllättäjät tarvitsevat jäädytetyn esikauden odotuksen.
+
+## Snowflake-yhteydet: palvelukäyttäjät, ei selainkirjautumista (2026-10-16)
+
+Käyttäjä halusi eroon jatkuvista selainkirjautumisista. Jokaisella työkuormalla
+on oma palvelukäyttäjä (TYPE = SERVICE, avainpari) ja oma rajattu rooli.
+Yksityiset avaimet ovat `~/.snowflake/keys/` -- **älä koskaan tulosta niitä**.
+
+| yhteys (`~/.snowflake/connections.toml`) | käyttäjä | rooli | käyttö |
+|---|---|---|---|
+| `liiga_ci` (GitHubissa `ci`) | `LIIGA_CI` | `LIIGA_DEPLOYER` | näkymät, semanttiset mallit, agentti, evaluoinnit; agenttitestit (`DATA_AGENT_RUN`) |
+| `liiga_sync` | `LIIGA_SYNC` | `LIIGA_LOADER` | `daily_update.py`:n synkka ja `sync_to_snowflake.py` (config.yaml) |
+| `CONTAINER_SERVICES` | `MHEINO` (selain) | `ACCOUNTADMIN` | vain ylläpito: roolit, oikeudet, otteluohjelman `raw_games` |
+
+**Käytä itse `liiga_ci`:tä kaikkiin projektin kyselyihin**, ei
+`CONTAINER_SERVICES`ia: jokainen MHEINO-kutsu vanhentuneella tokenilla avaa
+käyttäjälle selainikkunan. Rooli-SQL: `snowflake/agent_roles.sql`,
+`ci_user.sql`, `loader_user.sql`.
+
+`LIIGA_LOADER` omistaa synkattavat 9 taulua (CREATE OR REPLACE vaatii
+omistajuuden). **Ei `raw_games`ia**: LIIGA_DAILY-notebook (ACCOUNTADMIN) luo sen
+uudelleen, joten otteluohjelman siirto viedään ylläpitäjänä:
+`snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN` + sync `-t raw_games` sillä
+yhteydellä (aseta `SNOWFLAKE_CONNECTION`/config tilapäisesti) -- harvinaista.
+
+Synkka löytää `snow`in myös launchdissa (`_SNOW_FALLBACKS`), ja testattu
+`env -i` -ympäristössä: aamusynkka toimii nyt ilman PATHia ja selainta.
 
 ## Agentin julkaisuputki: oma kone → GitHub → Snowflake (2026-10-16)
 

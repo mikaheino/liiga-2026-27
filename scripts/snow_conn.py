@@ -1,6 +1,7 @@
 """Yhteinen Snowflake-yhteys julkaisuskripteille (semantic_views, deploy_agent, agent_eval).
 
-Paikallisesti: CLI-yhteys CONTAINER_SERVICES ja rooli LIIGA_DEPLOYER -- SAMA rooli
+Paikallisesti: yhteys liiga_ci (~/.snowflake/connections.toml, sama palvelukäyttäjä
+LIIGA_CI avainparilla kuin CI:ssä -- ei selainkirjautumista) ja rooli LIIGA_DEPLOYER -- SAMA rooli
 kuin CI:ssä, koska ACCOUNTADMINin CREATE OR REPLACE siirtäisi näkymien ja
 DEV-mallien omistajuuden takaisin ja seuraava CI-ajo kaatuisi. GitHub Actionsissa
 työnkulku asettaa
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 import os
 
-CONNECTION = os.environ.get("LIIGA_SNOW_CONNECTION", "CONTAINER_SERVICES")
+CONNECTION = os.environ.get("LIIGA_SNOW_CONNECTION", "liiga_ci")
 ROLE = os.environ.get("LIIGA_SNOW_ROLE", "LIIGA_DEPLOYER")
 WAREHOUSE = os.environ.get("LIIGA_SNOW_WAREHOUSE", "LIIGA_WH")
 
