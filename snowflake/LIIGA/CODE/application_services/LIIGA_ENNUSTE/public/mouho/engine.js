@@ -115,11 +115,22 @@ function say(text, who = "jussi") {
   });
 }
 async function script(fn) { busy = true; $game.classList.add("cut"); try { await fn(); } finally { busy = false; $game.classList.remove("cut"); setSentence(); } }
+// Keskustelu Fate of Atlantiksen tapaan: vaihtoehdot verbien paikalla, jo kysytyt
+// himmeinä, valittu repliikki Jussin suuhun.
+const asked = new Set();
 function choose(options) {
   return new Promise((res) => {
-    $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; b.onclick = () => { $game.classList.remove("talking"); res(i); }; return b; }));
+    $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
+      // stopPropagation: muuten sama klikkaus kuplii dokumenttiin ja ohittaa heti Jussin repliikin.
+      b.onclick = (e) => { e.stopPropagation(); asked.add(o); $game.classList.remove("talking"); res(i); }; return b; }));
   });
 }
+
+// Mouho-IQ (Fate of Atlantiksen "Indy Quotient"): pisteet oivalluksista, kukin kerran.
+const IQ_MAX = 100;
+function iq(key, n) { st.iq ??= {}; if (st.iq[key]) return; st.iq[key] = n; renderIq(); }
+const iqTotal = () => Object.values(st.iq ?? {}).reduce((a, b) => a + b, 0);
+function renderIq() { const el = document.getElementById("iq"); if (el) el.textContent = `Mouho-IQ ${iqTotal()} / ${IQ_MAX}`; }
 function go(scene, x, keep, y) { st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }
 
 // ---------------------------------------------------------------- verbit ja kohteet
@@ -178,7 +189,7 @@ function renderInv() { $inv.replaceChildren(...st.inv.map((k) => { const b = doc
 const SAVE = "mouho-2026-save";
 function saveGame() { if (busy || overlay || !room()) return say("Ei nyt, kesken kaiken.", "muu"); try { localStorage.setItem(SAVE, JSON.stringify({ ...st, path: [] })); } catch { /* yksityinen ikkuna */ } return script(() => say("Peli tallennettu.", "muu")); }
 function loadGame() { let d = null; try { d = JSON.parse(localStorage.getItem(SAVE) ?? "null"); } catch { /* ei tallennusta */ } if (!d) return say("Tallennusta ei löydy.", "muu");
-  Object.assign(st, d, { path: [] }); title = false; overlay = null; renderVerbs(); renderInv(); setSentence(); }
+  Object.assign(st, d, { path: [] }); title = false; overlay = null; renderVerbs(); renderInv(); renderIq(); setSentence(); }
 
 // ---------------------------------------------------------------- silmukka
 let last = performance.now(), title = true, drawTitleFn = null;
@@ -207,7 +218,7 @@ function startEngine({ titleScreen, intro, startRoom, startX }) {
   cv.addEventListener("click", async function start(e) {
     if (!title) return; title = false; cv.removeEventListener("click", start, { capture: true });
     e.stopImmediatePropagation();          // muuten sama klikkaus ohittaa ensimmäisen repliikin
-    go(startRoom, startX, true); renderVerbs(); renderInv(); setSentence();
+    go(startRoom, startX, true); renderVerbs(); renderInv(); renderIq(); setSentence();
     await script(intro);
   }, { capture: true });
   document.getElementById("save")?.addEventListener("click", saveGame);

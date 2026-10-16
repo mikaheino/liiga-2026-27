@@ -360,8 +360,27 @@ async function ending() {
   await say("Järjestäjä: \"Ilmoittautuminen on kuitenkin sitova. Parit arvotaan paikan päällä, erät ovat kolme minuuttia, pizza tulee puoli seitsemältä.\"", "muu");
   await say("Sitten tällä kertaa raha menee oikeaan osoitteeseen. Pizzaan.");
   await say("Mouhoness: ei apuja, ei armoa. Vain taito, refleksit ja trash talk.\nHyvässä hengessä tietysti.", "muu");
+  await say(`Mouho-IQ: ${iqTotal()} / ${IQ_MAX}. ${iqTotal() >= IQ_MAX ? "Täydet pisteet. Mouhoness saavutettu." : "Löytyikö kaikki? Kokeile uudestaan."}`, "muu");
   $say.innerHTML = '<div class="line" style="left:50%;bottom:76%;color:#fcfc54">MOUHO 2026 · 22.5. klo 17<br>Kaivokatu 10, 4. krs, Helsinki</div>';
   $game.classList.remove("cut");
   $dlg.replaceChildren(Object.assign(document.createElement("button"), { textContent: "Pelaa uudestaan", onclick: () => location.reload() }));
   $game.classList.add("talking");
+}
+
+// Salkkumies (satama): liituraitapuku, aurinkolasit yölläkin, kultaketju, salkku.
+// Pikseleinä samalla mittakaavalla kuin Jussi ja Mehmet.
+function salesman(x, y, t, talking = false) {
+  const sw = Math.sin(t / 700) > 0 ? 0 : 1, arm = talking ? Math.round(Math.sin(t / 140) * 2) : 0, mo = talking && Math.floor(t / 110) % 2;
+  shadow(x, y, 7);
+  r(x - 4, y - 12, 3, 11, "#1c1e2a"); r(x + 1, y - 12, 3, 11, "#24263a"); r(x - 5, y - 2, 4, 2, "#0c0c0c"); r(x + 1, y - 2, 5, 2, "#0c0c0c"); px(x + 4, y - 2, "#8c8c9c");
+  r(x - 6, y - 26 + sw, 12, 15, "#2a2c3c"); for (let xx = x - 5; xx < x + 6; xx += 2) r(xx, y - 25 + sw, 1, 13, "#3a3c52");
+  r(x - 2, y - 26 + sw, 4, 6, "#f0f0f0"); r(x - 1, y - 25 + sw, 2, 7, "#c81c1c"); r(x - 2, y - 26 + sw, 1, 1, "#e8c430"); r(x + 1, y - 26 + sw, 1, 1, "#e8c430"); px(x, y - 23 + sw, "#e8c430");
+  r(x + 6, y - 24 + sw, 2, 10, "#2a2c3c"); r(x + 6, y - 14 + sw, 2, 2, "#e8b48c");
+  r(x - 8, y - 24 + sw - arm, 2, 9, "#2a2c3c"); r(x - 8, y - 15 + sw - arm, 2, 2, "#e8b48c");
+  r(x + 7, y - 12, 7, 6, "#6c4420"); r(x + 7, y - 12, 7, 1, "#8c5c2c"); r(x + 9, y - 13, 3, 1, "#c8a030");
+  r(x - 2, y - 28 + sw, 4, 2, "#d89c74");
+  r(x - 5, y - 37 + sw, 10, 10, "#e8b48c"); r(x + 3, y - 36 + sw, 2, 8, "#d09c74");
+  r(x - 5, y - 39 + sw, 10, 3, "#1c140c"); r(x - 6, y - 38 + sw, 2, 4, "#1c140c"); px(x - 2, y - 39 + sw, "#5c4c3c");
+  r(x - 5, y - 34 + sw, 10, 2, "#0c0c14"); px(x - 4, y - 34 + sw, "#7ca0fc"); px(x + 1, y - 34 + sw, "#7ca0fc"); r(x - 1, y - 34 + sw, 2, 1, "#0c0c14");
+  if (mo) r(x - 2, y - 30 + sw, 4, 2, "#4a1410"); else { r(x - 3, y - 30 + sw, 6, 1, "#fcfcfc"); px(x + 1, y - 30 + sw, "#e8c430"); r(x - 3, y - 29 + sw, 6, 1, "#a86048"); }
 }
