@@ -96,7 +96,8 @@ Other leagues: decline in one sentence. Liiga playoffs are in scope: answer with
 # Sovellus Liiga Ennuste (App Runtime). Osoite ei ole ennustettavissa
 # (<satunnainen>-<org>-<tili>.snowflakecomputing.app), joten se luetaan
 # palvelusta julkaisuhetkellä. Ilman palvelua ohjeeseen ei tule linkkiä --
-# agentti ei saa keksiä osoitetta.
+# agentti ei saa keksiä osoitetta. Tuotanto 16.10.2026 alkaen:
+# https://mwduovc-zueemdq-container-services.snowflakecomputing.app (VERSION$1).
 APP_SERVICE = {True: "LIIGA_ENNUSTE_DEV", False: "LIIGA_ENNUSTE"}
 
 

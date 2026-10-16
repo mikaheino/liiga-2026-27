@@ -966,6 +966,8 @@ koska se ei ole ennustettavissa; ilman palvelua linkkiä ei tule. Seuraus: **ens
 tuotantoajo julkaisee sovelluksen, mutta agentti saa linkin vasta seuraavassa ajossa**
 (sen versio rakennetaan ehdokasvaiheessa ennen kuin tuotantopalvelu on olemassa).
 Todennettu DEV-aliaksella: "Miten Kärppien ennuste näyttää?" -> linkki `/joukkue/Kärpät`.
+**Tuotannossa 16.10.2026:** https://mwduovc-zueemdq-container-services.snowflakecomputing.app
+(ajo 38950653914, `--promote-only` toimi ensimmäisellä kerralla; STAGING iwduovc-…, DEV ewduovc-…).
 
 `snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
 `app.yml`). Käyttäjän päätös: Streamlit warehouse runtime on vanhentuva ja container
