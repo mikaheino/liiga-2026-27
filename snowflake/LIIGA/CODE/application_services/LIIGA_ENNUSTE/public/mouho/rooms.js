@@ -62,8 +62,8 @@ function satamaPostbox() { const open = st.flags.boxOpen; r(98, 92, 2, 12, "#4c4
   if (open) { r(93, 82, 12, 2, "#3c5cdc"); r(94, 86, 10, 4, "#08081c"); if (!st.flags.letterTaken) { r(96, 87, 6, 2, "#f4f4f4"); px(98, 87, "#c81c1c"); } } else r(97, 88, 3, 1, "#08081c"); }
 function satamaRack() { r(206, 70, 1, 26, "#4a2e16"); r(203, 95, 7, 1, "#3a2410"); r(203, 70, 7, 1, "#4a2e16"); shadow(206, 96, 4);
   if (!st.hat) { r(201, 68, 11, 1, "#5c3c1c"); r(203, 64, 7, 4, "#7c5c34"); r(203, 66, 7, 1, "#2c1808"); } }
-function satamaPig() { shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
-  px(148, 114, "#d87c94"); px(154, 114, "#d87c94"); r(149, 108, 3, 1, "#3c1c24"); px(154, 109, "#000"); }
+function satamaPig() { g.save(); g.translate(0, 7); shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
+  px(148, 114, "#d87c94"); px(154, 114, "#d87c94"); r(149, 108, 3, 1, "#3c1c24"); px(154, 109, "#000"); g.restore(); }
 function satamaBollard() { shadow(238, 120, 6); r(234, 110, 7, 10, "#24242c"); r(233, 108, 9, 3, "#3c3c48"); r(235, 111, 2, 8, "#3c3c48");
   g.fillStyle = "#c8b48c"; g.beginPath(); g.ellipse(246, 119, 6, 2, 0, 0, 7); g.fill(); g.fillStyle = "#a8946c"; g.beginPath(); g.ellipse(246, 119, 3, 1, 0, 0, 7); g.fill(); }
 function satamaTaxi() { shadow(282, 134, 40);
@@ -209,19 +209,34 @@ function temppeliPost(t) {
 }
 
 // =============================================================== LATTIAPIANO (satama)
-// Tom Hanksin "Big" -elokuvan jättipiano rannassa: numerot 1-9 ja 0. Postilaatikon
-// koodi on Ilveksen viimeisin mestaruus: 1-9-8-5. Kosketin soi, kun Jussi pysähtyy sille.
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], KEY_W = 22, KEY_X0 = 8, KEY_Y0 = 125;
-const keyAt = (x, y) => (y >= KEY_Y0 - 2 && x >= KEY_X0 && x < KEY_X0 + KEY_W * 10 ? KEYS[Math.floor((x - KEY_X0) / KEY_W)] : null);
+// Tom Hanksin "Big" -elokuvan jättipiano heijastettuna laiturin kanteen 3D-perspektiivissä
+// (16.10.): kymmenen valokosketinta laiturin poikki keskisyvyydellä, saumat seuraavat
+// laiturin pakopistettä ja numerot litistyvät lattian kulmaan. Koodi 1-9-8-5.
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], PIANO_Y0 = 98, PIANO_Y1 = 116;
+function keyAt(x, y) {
+  if (y < PIANO_Y0 || y > PIANO_Y1) return null;
+  const [a, b] = pierX(y), i = Math.floor((x - a) / (b - a) * 10);
+  return i >= 0 && i < 10 ? KEYS[i] : null;
+}
+function keyQuad(i) { const [a0, b0] = pierX(PIANO_Y0), [a1, b1] = pierX(PIANO_Y1);
+  return [[lerp(a0, b0, i / 10), PIANO_Y0], [lerp(a0, b0, (i + 1) / 10), PIANO_Y0], [lerp(a1, b1, (i + 1) / 10), PIANO_Y1], [lerp(a1, b1, i / 10), PIANO_Y1]]; }
 let lastKey = { k: null, t: 0 };
-// Numerot ilmestyvät lattiaan vasta salkkumiehen haasteessa (st.flags.pianoT = hetki),
+// Numerot ilmestyvät valona vasta salkkumiehen haasteessa (st.flags.pianoT = hetki),
 // kosketin kerrallaan vasemmalta oikealle.
 function satamaPiano(t) {
   if (!st.flags.pianoT) return;
-  const since = Date.now() - st.flags.pianoT;
-  for (let i = 0; i < 10; i++) { if (since < i * 90) continue; const x = KEY_X0 + i * KEY_W, lit = lastKey.k === KEYS[i] && t - lastKey.t < 450, fresh = since < i * 90 + 260;
-    r(x, KEY_Y0, KEY_W - 1, 11, lit || fresh ? "#fcf07c" : "#e8e4d8"); r(x, KEY_Y0, KEY_W - 1, 1, lit ? "#fffcd0" : "#fcfcfc"); r(x + KEY_W - 1, KEY_Y0, 1, 11, "#2c2a28");
-    if (i < 9 && i !== 2 && i !== 6) r(x + KEY_W - 4, KEY_Y0, 7, 5, "#1c1c1c");
-    g.font = "8px VT323, monospace"; g.fillStyle = lit ? "#c81c1c" : "#5c5c6c"; g.fillText(KEYS[i], x + 8, KEY_Y0 + 10);
-    if (lit) glow(x + KEY_W / 2, KEY_Y0 + 5, 14, "255,240,120", .25); }
+  const since = Date.now() - st.flags.pianoT, flick = .9 + .1 * Math.sin(t / 70);
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 10; i++) {
+    if (since < i * 90) continue;
+    const q = keyQuad(i), lit = lastKey.k === KEYS[i] && t - lastKey.t < 450, fresh = since < i * 90 + 260, a = (lit ? .55 : fresh ? .45 : .16) * flick;
+    g.fillStyle = `rgba(255,236,140,${a})`; g.beginPath(); q.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
+    g.strokeStyle = `rgba(255,244,190,${lit ? .9 : .5})`; g.lineWidth = .6; g.stroke();
+    // numero lattian kulmaan: leveys kuin koskettimen keskikohta, korkeus litistetty
+    const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (PIANO_Y0 + PIANO_Y1) / 2 + 1, kw = (q[1][0] - q[0][0] + q[2][0] - q[3][0]) / 2;
+    g.save(); g.translate(cx, cy); g.scale(1, .55); g.font = `${Math.round(kw * 1.05)}px VT323, monospace`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = `rgba(255,${lit ? 120 : 250},${lit ? 90 : 210},${lit ? 1 : .75})`; g.fillText(KEYS[i], 0, 0); g.restore();
+    if (lit) glow(cx, cy, 16, "255,230,120", .3);
+  }
+  g.globalCompositeOperation = "source-over"; g.textAlign = "left"; g.textBaseline = "alphabetic";
 }
