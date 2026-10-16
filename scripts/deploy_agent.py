@@ -187,8 +187,9 @@ def _versions(fqn: str) -> list[dict]:
 FQN = "SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA"
 # CoWorkin profiili. Agenttitason asetus EIKÄ versioitu, joten se asetetaan vasta
 # tuotantojulkaisussa (promote), ei ehdokkaassa -- muuten se muuttuisi käyttäjille
-# putken ohi. Kulta = Liigan logon #CCA752 (sama kuin sovelluksessa ja tiedotteessa).
-PROFILE = {"display_name": "Liiga Ennustaja", "color": "#CCA752"}
+# putken ohi. Väri EI näy CoWorkissa (16.10.: #CCA752, yellow, orange ja alkuperäinen
+# teal -- käyttäjä ei nähnyt yhtään), joten pidetään alkuperäinen teal.
+PROFILE = {"display_name": "Liiga Ennustaja", "color": "teal"}
 
 
 def _num(v: str) -> int:

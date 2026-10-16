@@ -899,8 +899,10 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 - **Demon ilme (16.10., käyttäjän valinta: Liiga musta + kulta, analyytikon sävy):**
   `PROFILE` (nimi, väri `#CCA752`) asetetaan `promote()`ssa, koska profiili on
   agenttitason eikä versioitu -- ehdokkaassa se muuttuisi käyttäjille putken ohi.
-  Avatar-arvoja ei ole dokumentoitu eikä heksavärin tukea vahvistettu: tarkista
-  CoWorkista. Aloituskortit = yksi per ominaisuus. Johtoryhmäraportti mustalla
+  **Väri ei näy CoWorkissa lainkaan** (testattu 16.10.: `#CCA752`, `yellow`,
+  `orange` -- eikä alkuperäinen `teal` ollut koskaan näkynyt); Snowflake tallentaa
+  minkä tahansa merkkijonon virheittä. Pidetään `teal`. Avatar-arvoja ei ole
+  dokumentoitu. Demon ilme tulee aloituskorteista, raportista ja tiedotteesta. Aloituskortit = yksi per ominaisuus. Johtoryhmäraportti mustalla
   otsikolla ja kullalla (logon sävyt, kuten sovellus ja aamutiedote).
 - Erillinen `LIIGA_ENNUSTAJA_DEV`-agentti **poistettiin 16.10.**; sen roolin
   hoitaa alias `DEV`. `*_DEV`-semanttiset mallit jäävät DEV-aliaksen käyttöön.
