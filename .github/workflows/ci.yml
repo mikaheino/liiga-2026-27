@@ -1,0 +1,50 @@
+# Testit jokaiselle pull requestille ja main-haaran pushille.
+# Ei Snowflake-yhteyttä: nämä ajetaan myös ilman salaisuuksia.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Riippuvuudet
+        run: pip install -e ".[dev]"
+      - name: Testit (malli, simulaatio, maalivahdit)
+        run: pytest -q tests
+      - name: Skriptit kääntyvät
+        run: python -m py_compile scripts/*.py snowflake/skills/*/render.py
+      - name: Semanttisten mallien YAML vastaa koodia
+        # snowflake/semantic/*.yaml generoidaan scripts/semantic_views.py:stä.
+        # Jos joku muokkasi koodia mutta ei generoinut tiedostoja, PR kaatuu.
+        run: |
+          python scripts/semantic_views.py --write
+          git diff --exit-code snowflake/semantic/
+      - name: Skillin renderöinti toimii esimerkkidatalla
+        run: |
+          python - <<'PY'
+          import sys, tempfile
+          sys.path.insert(0, "snowflake/skills/esikatselu-html")
+          from render import render, _parse
+          row = {"ottelu": "18:30 HPK – Ilves",
+                 "ennuste": "Ennuste: HPK 43,2 % · Ilves 56,8 % (jatkoaika 23,9 %)",
+                 "tilanne": "Tilanne: HPK 10. (18 p, vire 9/15) · Ilves 1. (26 p, vire 9/15)",
+                 "maalivahdit": "Todennäköiset maalivahdit: Kim Saarinen (+9,3) – Mantas Armalis (+7,1)",
+                 "keskinaiset": None, "suosikki": "Ilves"}
+          g = _parse(row)
+          assert g["ph"] == 43.2 and g["hr"] == 10 and g["ags"] == 7.1, g
+          path = render([row], title="CI", out_dir=tempfile.mkdtemp())
+          assert "HPK – Ilves" in open(path, encoding="utf-8").read()
+          print("ok", path)
+          PY

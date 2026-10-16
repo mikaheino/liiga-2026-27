@@ -449,10 +449,13 @@ verified_queries:
   use_as_onboarding_question: true
 - name: TODAYS_GAMES
   question: Miten tämän päivän pelit päättyvät?
-  sql: "SELECT start_time_fi, home_team, away_team,\n       ROUND(p_home_win * 100, 1) AS koti_pct, ROUND(p_away_win\
-    \ * 100, 1) AS vieras_pct,\n       ROUND(p_overtime * 100, 1) AS jatkoaika_pct, predicted_winner\n\
-    FROM __upcoming_games WHERE game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))\n\
-    ORDER BY start_time_fi, home_team\n"
+  sql: 'SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+
+    FROM __round_preview WHERE game_date = TO_DATE(CONVERT_TIMEZONE(''Europe/Helsinki'', CURRENT_TIMESTAMP()))
+
+    ORDER BY start_time_fi, home_team
+
+    '
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: true

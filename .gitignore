@@ -30,3 +30,6 @@ streamlit_app/output/
 
 # macOS Finder metadata
 .DS_Store
+
+# Evaluointien raakatulokset (CI tallentaa ne artefakteiksi; yhteenveto docs/agent_evals.md)
+snowflake/evals/

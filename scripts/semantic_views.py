@@ -36,7 +36,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "snowflake" / "semantic"
-CONN = ["-c", "CONTAINER_SERVICES", "--role", "ACCOUNTADMIN"]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from snow_conn import conn as _conn  # noqa: E402
+CONN = _conn()
 VERIFIED_AT = 1791590400          # 2026-10-10
 TEAMS = ["HIFK", "HPK", "Ilves", "JYP", "Jokerit", "Jukurit", "K-Espoo", "KalPa",
          "KooKoo", "Kärpät", "Lukko", "Pelicans", "SaiPa", "Sport", "TPS",
@@ -217,11 +220,12 @@ ORDER BY p_regular_season_win DESC""", True),
         vq("RELEGATION", "Ketkä putoavat?", """
 SELECT team, ROUND(p_relegation * 100, 1) AS putoaa_pct
 FROM __zones WHERE p_relegation >= 0.01 ORDER BY p_relegation DESC""", True),
+        # Sama kierroksen esikatselu kuin ROUND_PREVIEW_TODAY: tämä yleisin muotoilu
+        # osui ennen pelkkiin todennäköisyyksiin, ristiriidassa orkestrointiohjeen
+        # kanssa (evaluointi 16.10., logical_consistency 0,33).
         vq("TODAYS_GAMES", "Miten tämän päivän pelit päättyvät?", f"""
-SELECT start_time_fi, home_team, away_team,
-       ROUND(p_home_win * 100, 1) AS koti_pct, ROUND(p_away_win * 100, 1) AS vieras_pct,
-       ROUND(p_overtime * 100, 1) AS jatkoaika_pct, predicted_winner
-FROM __upcoming_games WHERE game_date = {TODAY}
+SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
+FROM __round_preview WHERE game_date = {TODAY}
 ORDER BY start_time_fi, home_team""", True),
         vq("ROUND_PREVIEW_TODAY", "Kierroksen esikatselu: tämän illan ottelut", f"""
 SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
@@ -630,11 +634,43 @@ def _sql(q: str) -> str:
     return r.stdout
 
 
+def sv_suffix(dev: bool) -> str:
+    """DEV: muokattava `_DEV`. Tuotanto: git-commit, esim. `_3a9f1c2`.
+
+    Tuotannon mallit ovat versiokohtaisia samasta syystä kuin skillit
+    (deploy_agent.py): agentin versio viittaa mallin NIMEEN, joten paikallaan
+    korvattu malli muuttaisi lukitun version käytöksen, eikä vanhaan versioon
+    palaaminen palauttaisi vanhaa mallia. Uutta nimeä ei korvata koskaan.
+    Vaatii että scripts/semantic_views*.py on commitattu.
+    """
+    if dev:
+        return "_DEV"
+    dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--",
+                            *SV_SOURCES],
+                           capture_output=True, text=True, check=True).stdout.strip()
+    if dirty:
+        raise SystemExit("semantic_views*.py ei ole commitattu: tuotannon malli nimetään "
+                         "git-commitin mukaan. Commitoi ensin.")
+    return "_" + sv_sha()
+
+
+SV_SOURCES = ["scripts/semantic_views.py", "scripts/semantic_views_en.py"]
+
+
+def sv_sha() -> str:
+    """Viimeisin commit, joka muutti semanttisten mallien lähdettä. Ei HEAD:
+    muuten pelkkä dokumentaatiocommit mallin ja agentin julkaisun välissä
+    rikkoisi agentin viittauksen."""
+    return subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%h", "--abbrev=7",
+                           "--", *SV_SOURCES],
+                          capture_output=True, text=True, check=True).stdout.strip().upper()
+
+
 def deploy(dev: bool, lang: str = "en") -> None:
+    sfx = sv_suffix(dev)
     for name, build in MODELS.items():
         m = translate(build(), lang)
-        if dev:
-            m["name"] = name + "_DEV"
+        m["name"] = name + sfx
         body = _yaml(m)
         assert "$$" not in body
         for verify in (True, False):

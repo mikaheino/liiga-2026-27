@@ -1,0 +1,30 @@
+name: Snowflake CLI ja yhteys
+description: Asentaa Snowflake CLI:n ja luo yhteyden "ci" palvelukäyttäjälle avainparilla.
+inputs:
+  private-key:
+    description: LIIGA_CI:n yksityinen avain (secrets.SNOWFLAKE_PRIVATE_KEY)
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SNOWFLAKE_PRIVATE_KEY: ${{ inputs.private-key }}
+      run: |
+        if [ -z "$SNOWFLAKE_PRIVATE_KEY" ]; then
+          echo "::error::Salaisuus SNOWFLAKE_PRIVATE_KEY puuttuu (ks. deploy.yml:n alun ohje)"; exit 1
+        fi
+        pip install -e . snowflake-cli
+        mkdir -p ~/.snowflake && chmod 700 ~/.snowflake
+        printf '%s\n' "$SNOWFLAKE_PRIVATE_KEY" > ~/.snowflake/liiga_ci.p8 && chmod 600 ~/.snowflake/liiga_ci.p8
+        cat > ~/.snowflake/config.toml <<TOML
+        [connections.ci]
+        account = "$SNOWFLAKE_ACCOUNT"
+        user = "$SNOWFLAKE_USER"
+        authenticator = "SNOWFLAKE_JWT"
+        private_key_file = "$HOME/.snowflake/liiga_ci.p8"
+        role = "$LIIGA_SNOW_ROLE"
+        warehouse = "$LIIGA_SNOW_WAREHOUSE"
+        TOML
+        chmod 600 ~/.snowflake/config.toml
+        snow sql -c ci -q "SELECT CURRENT_USER(), CURRENT_ROLE()"

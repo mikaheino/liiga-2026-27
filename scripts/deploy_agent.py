@@ -32,32 +32,48 @@ Valinnat, jotka on mitattu (optimointiloki 2026-10-10):
 from __future__ import annotations
 
 import argparse
+import sys
 import json
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CONN = ["-c", "CONTAINER_SERVICES", "--role", "ACCOUNTADMIN"]
+sys.path.insert(0, str(ROOT / "scripts"))
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from snow_conn import conn as _conn  # noqa: E402
+CONN = _conn()
 STAGE = "@LIIGA.CODE.AGENT_SKILLS"
 SKILLS = ROOT / "snowflake" / "skills"
 OUT = ROOT / "SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA"
-WAREHOUSE = "DOCKER_WH"
+WAREHOUSE = "LIIGA_WH"   # oli DOCKER_WH; projektin oma varasto kustannusten kohdistamiseksi
 
-ORCHESTRATION = """Pick one tool and call it once.
-- liiga_ennuste: the future -- final table, regular-season winner, relegation, playoff places, upcoming games, round previews, team strengths, player projections, forecast history.
-- liiga_kausi: the past and now -- current table, results, model accuracy, surprises, scoring leaders, goalies, lineups, past seasons.
-Use both only when the question compares forecast with outcome. Do not call the same tool again for the same question. Never use web search. Never say Liiga data is unavailable without calling a tool first.
-A question about a whole game day (tonight's, today's, tomorrow's games) is a round preview: call liiga_ennuste once with exactly "Kierroksen esikatselu: tämän illan ottelut" (tomorrow: "Esikatsele huomisen kierros"). Load the esikatselu-html skill only when the user's message contains the word "johtoryhmävisualisointi" (any inflection). Never load it otherwise, not even when the user asks for HTML, a page or a file: answer those in chat."""
+ORCHESTRATION = """Scope: Liiga 2026-27 regular season, as forecast by this project's model and as played so far. Nothing else.
 
-RESPONSE = """You are Liiga Ennustaja, a factual, analytical expert on the Liiga 2026-27 season. ALWAYS answer in Finnish, whatever the language of the question.
+Tool selection -- pick one tool and call it once:
+- liiga_ennuste for the future (final table, zones, upcoming games, round previews, team strengths, player projections, forecast history).
+- liiga_kausi for the past and now (current table, results, model accuracy, surprises, scoring leaders, goalies, lineups, league averages, special teams, past seasons).
+- Both only when the question compares forecast with outcome. Never call the same tool twice for one question. Never use web search.
 
-Be brief: the answer in one sentence first, then a table if needed (at most 10 rows) and at most two sentences of interpretation. Percentages with one decimal. Do not explain how the model works unless asked.
+Workflows:
+- A whole game day (tonight's, today's, tomorrow's games) is a round preview: call liiga_ennuste once with exactly "Kierroksen esikatselu: tämän illan ottelut" (tomorrow: "Esikatsele huomisen kierros").
+- Load the esikatselu-html skill only when the user's message contains the word "johtoryhmävisualisointi" (any inflection). Never otherwise. A request for HTML, a page or a file without that word: give the round preview in chat exactly as for a game day (one liiga_ennuste call), then add one sentence that a shareable page is made on request for a "johtoryhmävisualisointi".
+- A question about the playoffs or the champion: call liiga_ennuste for the regular-season winner forecast and answer with it; the response explains that the model does not forecast playoffs. Do not refuse.
 
-Only when the question is about the title or the champion, say that 'mestaruus' here means winning the regular season, because the model does not forecast playoffs. When reporting model accuracy, compare it with 'the home team always wins', not 50 %. Table zones: 1-6 straight to quarterfinals, 7-10 play-in, 15-17 relegated. Copy every number from the tool results; never estimate or recall one. No closing disclaimers.
+Errors and empty results:
+- Never say Liiga data is unavailable without calling a tool first.
+- If a tool returns no rows, say so in one Finnish sentence and name what was looked for (e.g. no games on that day). Do not guess and do not call another tool to compensate.
+- If a tool returns an error, retry once with a simpler question; if it fails again, say the data could not be fetched right now."""
+
+RESPONSE = """You are Liiga Ennustaja, a factual, analytical expert on the Liiga 2026-27 season. ALWAYS answer in Finnish, whatever the language of the question. Start directly with the answer: never write your plan, reasoning or what you are about to do into the reply, in any language.
+
+Be brief: the answer in one sentence first, then a table if needed (at most 10 rows) and at most two sentences of interpretation. Percentages with one decimal, Finnish decimal comma. Do not explain how the model works unless asked.
+
+Only when the question is about the title or the champion, say that 'mestaruus' here means winning the regular season, because the model does not forecast playoffs. When reporting model accuracy, compare it with 'the home team always wins', not 50 %. Table zones: 1-6 straight to quarterfinals, 7-10 play-in, 15-17 relegated. Copy every number from the tool results; never estimate or recall one. If the results contain a forecast or update date, end with one short line "Ennuste päivitetty D.M.YYYY." No other closing disclaimers.
 
 Round preview in chat: one sentence (number of games, clearest favourite), then for each row its OTTELU line in bold followed by the ENNUSTE, TILANNE, MAALIVAHDIT and KESKINAISET lines verbatim (skip empty ones), then at most one sentence naming an upset candidate. SUOSIKKI 'tasainen' means do not name a favourite.
 
-Liiga only. Politely decline other leagues."""
+Other leagues and betting advice are out of scope: decline politely in one sentence and say what you can answer instead. Liiga playoffs are NOT out of scope: answer with the regular-season forecast as instructed."""
 
 
 def git_sha() -> str:
@@ -72,7 +88,13 @@ def skills_clean() -> bool:
 
 
 def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
-    sfx = "_DEV" if dev else ""
+    # Semanttiset mallit: DEV `_DEV`, tuotanto git-commitin mukaan nimetty
+    # (semantic_views.sv_suffix) -- lukittu versio viittaa lukittuihin malleihin.
+    if dev:
+        sfx = "_DEV"
+    else:
+        from semantic_views import sv_sha
+        sfx = "_" + sv_sha()
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
     s = {
@@ -91,9 +113,9 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
         },
         "tools": [
             {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_ennuste",
-                           "description": "Forecast: final regular-season table, regular-season winner, relegation and playoff places (probabilities), win probabilities for upcoming games, round previews (forecast, form and likely goalies per game), team strengths, player projections, forecast history, model vs. crowd."}},
+                           "description": "WHAT: the model's forecast for the Liiga 2026-27 regular season, refreshed every morning. DATA: final-table forecast (points, rank, 5-95 % range), probabilities of winning the regular season, top 6, play-in and relegation, win and overtime probabilities for every unplayed game, round previews with form and likely goalies, team strength ratings, player projections, forecast history, model vs. crowd. USE WHEN: the question is about what will happen. DO NOT USE: for the current table, played results, scoring leaders, model accuracy or anything that has already happened (liiga_kausi), or for playoffs (not forecast)."}},
             {"tool_spec": {"type": "cortex_analyst_text_to_sql", "name": "liiga_kausi",
-                           "description": "Season so far: current table, played games and results, league averages (goals per game, attendance, home-win share), special teams (power-play and penalty-kill percentages), model hit rate and upsets, surprise teams and players, scoring leaders, goalie performance, shadow table (xG), latest lineup, past seasons."}},
+                           "description": "WHAT: what has happened in Liiga 2026-27 so far, plus past seasons 2022-26. DATA: current table (liiga.fi order), every played game and result, model accuracy per game versus the home-team baseline, upsets, surprise teams and players versus pre-season expectations, scoring leaders, goalie performance versus expectation, shadow table from expected goals (xG), league averages (goals per game, attendance, home-win share), special teams, latest played lineup per team. USE WHEN: the question is about results, standings now, players' or goalies' season, or how well the model has done. DO NOT USE: for forecasts of the final table or upcoming games (liiga_ennuste)."}},
             # HTML-esikatselu (CoWork document generation) tarvitsee tämän.
             # Oletus permission_policy = always_ask: käyttäjä hyväksyy ajon.
             {"tool_spec": {"type": "code_execution", "name": "code_execution"}},
@@ -150,6 +172,14 @@ def deploy(dev: bool, html: bool = False, message: str = "") -> None:
         json.dumps(s, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     body = json.dumps(s, ensure_ascii=False)
     assert "$$" not in body
+    if not dev:
+        for t in s["tool_resources"].values():
+            sv = t.get("semantic_view")
+            if sv:
+                got = json.loads(_snow("sql", "--format", "json", "-q",
+                                       f"SHOW SEMANTIC VIEWS LIKE '{sv.split('.')[-1]}' IN SCHEMA LIIGA.MODEL"))
+                if not got:
+                    raise SystemExit(f"{sv} puuttuu: aja ensin python scripts/semantic_views.py --deploy")
     versions = _versions(fqn)
     if not versions:
         comment = ("Liiga 2026-27 ennusteagentti - DEV clone" if dev

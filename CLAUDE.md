@@ -714,6 +714,44 @@ Näkymät omistaa ACCOUNTADMIN, koska se omistaa pohjataulut eikä SYSADMIN
 saa luoda näkymiä `LIIGA.MODEL`iin. `PRESEASON_PLAYER_RATES` on `LIIGA.RAW`issa
 (`CURATED_TABLES`), koska yllättäjät tarvitsevat jäädytetyn esikauden odotuksen.
 
+## Agentin julkaisuputki: oma kone → GitHub → Snowflake (2026-10-16)
+
+Auditoitu Snowflaken oppaan "Best Practices for Building Cortex Agents" mukaan.
+Agentti, semanttiset mallit, näkymät ja skill julkaistaan **GitHub Actionsista**,
+ei omalta koneelta:
+
+```
+oma kone: muutos + DEV-kokeilu ──PR──▶ CI (.github/workflows/ci.yml):
+    pytest, skriptien käännös, generoitu YAML = koodi, skillin renderöinti
+main ──▶ Deploy agent (.github/workflows/deploy.yml):
+    dev:  kausi_views.sql → semantic_views --dev → deploy_agent --dev --html
+          → agent_eval LIIGA_ENNUSTAJA_DEV LIVE --gate
+    prod (environment "production", vaatii hyväksynnän):
+          semantic_views --deploy (git-committiin kiinnitetyt mallit)
+          → deploy_agent --html (uusi VERSION$N, alias production)
+          → agent_eval PRODUCTION --gate → tagi agent-vN + GitHub Release
+```
+
+- **Kirjautuminen:** palvelukäyttäjä `LIIGA_CI` (TYPE = SERVICE, avainpari),
+  rooli `LIIGA_DEPLOYER` (`snowflake/ci_user.sql`). Yksityinen avain on
+  `~/.snowflake/keys/liiga_ci_rsa_key.p8` ja GitHubin salaisuutena
+  `SNOWFLAKE_PRIVATE_KEY` -- **älä koskaan tulosta tai kopioi sitä**.
+- **Sama rooli paikallisesti:** `scripts/snow_conn.py`:n oletus on
+  `LIIGA_DEPLOYER`. ACCOUNTADMINin `CREATE OR REPLACE` siirtäisi näkymien ja
+  DEV-mallien omistajuuden takaisin, ja seuraava CI-ajo kaatuisi.
+- **Laatuportti** (`agent_eval.GATE`): oikeellisuus ≥ 0,90, työkalun valinta
+  ≥ 0,95, suomi ≥ 0,95, johdonmukaisuus ≥ 0,80, ei virheitä. Kaatunut portti
+  pysäyttää julkaisun ennen tuotantoa. Historia: `docs/agent_evals.md`.
+- **Testijoukko** (`agent_eval.GOLDEN`, 25 kysymystä): odotetut vastaukset
+  lasketaan SQL:llä tuoreesta datasta joka ajossa, koska "kuka johtaa
+  pistepörssiä" vaihtuu päivittäin. Lisää kysymys sinne, ei kiinteänä tekstinä.
+- **Miksi DEV on erillinen agentti eikä tuotannon live-versio** (oppaasta
+  poiketen): agentin kutsu käyttää live-versiota, jos sellainen on, ei
+  oletusversiota -- todennettu 10.10. DEV-agentilla. Kehitys tuotantoagentin
+  live-versiossa näkyisi käyttäjille.
+- **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
+  evaluoinnin tulos. `agent-v2` on merkitty jälkikäteen committiin 010d045.
+
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 
 The app is being developed locally and the Snowflake copy is deliberately
