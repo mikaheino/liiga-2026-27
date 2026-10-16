@@ -155,3 +155,34 @@
 | versio | alias | git | sisältö |
 |---|---|---|---|
 | `VERSION$3` | PRODUCTION, oletus | 0a7ce21 | portti oikean työkalun osuutena, 4 uutta VQR:ää, vaikea kysymyssarja |
+
+### Entry: 2026-10-16 (ilta) — token-katselmus ja säästöt
+Samat kysymykset `DATA_AGENT_RUN`illa, input-tokenit per kysymys:
+
+| kysymys | v6 (ennen) | v14 (tuotanto) | v15 | v16 (säästöt) |
+|---|---:|---:|---:|---:|
+| Kuka johtaa pistepörssiä? (VQR) | 39 172 | 44 706 | 46 273 | **42 360** |
+| Mikä on sarjatilanne nyt? (VQR) | 39 308 | 44 825 | 46 448 | **42 493** |
+| Kuka voittaa runkosarjan? | 44–60 000 | 44–125 000 | 46–128 000 | **42 100** (3/3) |
+| HIFK:n ennustettu sija (malli ladataan) | 112 716 | 128 098 | 133 776 | 126 147 |
+| Montako maalia keskimäärin? (malli ladataan) | 118 119 | 129 216 | 132 254 | 124 500 |
+
+- **Kiinteä kustannus** kasvoi päivän aikana +18 % (spec 6,1 kt -> 16,4 kt: kaksi uutta
+  työkalua ja niiden ohjeet). Ennustemalli +35 % (16,5 -> 22,3 kt; FORECAST_CHANGE, 1X2).
+- **Suurin yksittäinen kuluttaja oli Snowflaken oma kaavio** (`server_skill`
+  `chart_instructions` + `data_to_chart`): +80 000 tokenia, agentin oma päätös,
+  satunnainen (v14 1/3, v15 4/4). Ei meidän skillimme.
+- Säästöt: kaavio vain pyydettäessä (-67 % tällä kysymyksellä), ohjeet 9 328 -> 4 328
+  merkkiä (päällekkäiset JSON-esimerkit pois -- ne ovat työkalun skeemassa -- ja
+  vastausmuodot tiivistetty), aamutiedotteen ohje proseduurin kysymykseen (tarvitaan
+  vain siinä). VQR-kysymykset nyt alle tuotannon v14:n.
+- Aamutiedote: agentti kirjoittaa välivaiheita englanniksi työkalukutsujen väliin;
+  sähköpostiin otetaan vain viimeisen kutsun jälkeinen osa.
+- **Tiivistys aiheutti regression, jonka evaluointi löysi** (v16: oikeellisuus 0,97 ->
+  0,91, raja 0,90): (1) "One decimal" koski kaikkia lukuja eikä vain prosentteja ->
+  vahvuuskertoimet 1,075 -> 1,1 ja tulkinta väärinpäin, keskiarvo 5,12 -> 5,1;
+  (2) "selkein suosikki" määrittelemättä -> sarjakärki 56,8 % eikä korkein 64,6 %;
+  (3) mestaruushuomautuksen sanamuoto. Korjattu v17:ssä: oikeellisuus 0,96,
+  johdonmukaisuus 0,94, työkalu 1,00, suomi 1,00; tokenit ennallaan (42 300-42 500).
+  Opetus: jokainen ohjeen sana voi olla jonkin vastauksen ainoa syy -- tiivistä
+  evaluointi rinnalla, ei ilman.

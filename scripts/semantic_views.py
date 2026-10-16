@@ -155,7 +155,16 @@ def ennustaja() -> dict:
               tdims=[tdim("GAME_DATE", "Ottelupäivä Suomen aikaa", syn=["päivä", "milloin"])],
               facts=[fact("P_HOME_WIN", "Kotijoukkueen voittotodennäköisyys"),
                      fact("P_AWAY_WIN", "Vierasjoukkueen voittotodennäköisyys"),
-                     fact("P_OVERTIME", "Todennäköisyys jatkoajalle", syn=["jatkoaika"]),
+                     fact("P_OVERTIME", "Todennäköisyys jatkoajalle = tasan 60 minuutin jälkeen (1X2:n X)",
+                          syn=["jatkoaika", "tasapeli", "X"]),
+                     fact("P_HOME_REGULATION_WIN", "Kotivoitto varsinaisella peliajalla (1X2:n 1)",
+                          syn=["kotivoitto 60 min", "ykkönen"]),
+                     fact("P_AWAY_REGULATION_WIN", "Vierasvoitto varsinaisella peliajalla (1X2:n 2)",
+                          syn=["vierasvoitto 60 min", "kakkonen"]),
+                     fact("EXPECTED_GOALS_HOME", "Kotijoukkueen odotetut maalit tässä ottelussa (mallin Poisson-osa)",
+                          syn=["maaliodottama koti"]),
+                     fact("EXPECTED_GOALS_AWAY", "Vierasjoukkueen odotetut maalit tässä ottelussa (mallin Poisson-osa)",
+                          syn=["maaliodottama vieras"]),
                      fact("CONFIDENCE", "Suosikin voittotodennäköisyys")]),
         table("ROUND_PREVIEW", "MODEL.V_ROUND_PREVIEW_TEXT",
               "Kierroksen esikatselu valmiina suomenkielisinä riveinä: yksi rivi per "
@@ -274,6 +283,17 @@ ORDER BY start_time_fi, home_team"""),
 SELECT ottelu, ennuste, tilanne, maalivahdit, keskinaiset, suosikki
 FROM __round_preview WHERE game_date = DATEADD(day, 1, {TODAY})
 ORDER BY start_time_fi, home_team"""),
+        # 1X2 (Pitkäveto ratkeaa 60 minuutissa) + reilut kertoimet, 16.10.: agentti
+        # johti 1/2:n itse voittosuhteista ja sai Pelicansille 49,4 % mallin 52,3 %:n sijaan.
+        vq("TODAY_1X2", "Mitkä ovat tämän illan otteluiden 1X2-todennäköisyydet ja maaliodottamat?", f"""
+SELECT start_time_fi, home_team, away_team,
+       ROUND(p_home_regulation_win * 100, 1) AS koti_1_pct, ROUND(p_overtime * 100, 1) AS tasan_x_pct,
+       ROUND(p_away_regulation_win * 100, 1) AS vieras_2_pct,
+       ROUND(1 / p_home_regulation_win, 2) AS reilu_kerroin_1, ROUND(1 / p_overtime, 2) AS reilu_kerroin_x,
+       ROUND(1 / p_away_regulation_win, 2) AS reilu_kerroin_2,
+       ROUND(expected_goals_home, 2) AS maaliodottama_koti, ROUND(expected_goals_away, 2) AS maaliodottama_vieras
+FROM __upcoming_games WHERE game_date = {TODAY}
+ORDER BY start_time_fi, home_team""", True),
         vq("TEAM_NEXT_GAME", "Miten Tapparan seuraava ottelu päättyy?", """
 SELECT game_date, start_time_fi, home_team, away_team,
        ROUND(p_home_win * 100, 1) AS koti_pct, ROUND(p_away_win * 100, 1) AS vieras_pct,

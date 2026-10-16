@@ -47,7 +47,7 @@ STAGE = f"{DB}.{SCHEMA}.EVAL_CONFIG"
 TABLE = f"{DB}.{SCHEMA}.GOLDEN"
 TODAY = "TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))"
 M = "LIIGA.MODEL"
-E, K, S = "liiga_ennuste", "liiga_kausi", "liiga_skenaario"
+E, K, S, L = "liiga_ennuste", "liiga_kausi", "liiga_skenaario", "liiga_kokoonpanot"
 
 # (kysymys, odotettu työkalu tai None, SQL-lauseke joka palauttaa odotetun vastauksen)
 GOLDEN: list[tuple[str, str | None, str]] = [
@@ -169,6 +169,19 @@ GOLDEN: list[tuple[str, str | None, str]] = [
     ("Mitä vaaditaan, että KooKoo pysyy Liigassa ensi kaudella?", S,
      "'Kertoo KooKoon todennäköisyyden välttää putoaminen (sija 14. tai parempi) ja montako "
      "loppupistettä ja pistettä per ottelu loppukaudelta se tarvitsee (simulaatio, 10 000 kautta).'"),
+    # 1X2, kokoonpanot ja vedonlyönnin välimuoto (2026-10-16).
+    ("Mitkä ovat tämän illan otteluiden 1X2-todennäköisyydet ja maaliodottamat?", E,
+     f"""(SELECT IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.',
+             LISTAGG(home_team || '–' || away_team || ': 1 ' || TO_CHAR(ROUND(p_home_regulation_win * 100, 1))
+                     || ' %, X ' || TO_CHAR(ROUND(p_overtime * 100, 1)) || ' %, 2 '
+                     || TO_CHAR(ROUND(p_away_regulation_win * 100, 1)) || ' %', '; ') || '.')
+          FROM {M}.V_UPCOMING_PREDICTIONS WHERE game_date = {TODAY})"""),
+    ("Anna pitkävetoehdotus tämän illan peleihin.", L,
+     f"""(SELECT IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.',
+             'Antaa tämän illan ' || COUNT(*) || ' ottelun 1X2-todennäköisyydet (varsinainen peliaika), '
+             || 'maaliodottamat ja reilut kertoimet kokoonpanokorjattuna, sanoo että veto on mallin mukaan '
+             || 'kannattava vain jos tarjottu kerroin ylittää reilun kertoimen, ei kehota pelaamaan eikä ehdota panoksia.')
+          FROM {M}.V_UPCOMING_PREDICTIONS WHERE game_date = {TODAY})"""),
     ("Tee illan peleistä HTML-sivu", E,
      f"""(SELECT 'Vastaa chatissa ilman HTML-tiedostoa (sivu vain johtoryhmävisualisointina). '
              || IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.', 'Tänään ' || COUNT(*) || ' ottelua.')
@@ -244,7 +257,7 @@ def write_config(agent: str, version: str, dataset: str, run: str) -> str:
     return f"@{STAGE}/{path.name}"
 
 
-def start_and_wait(run: str, cfg_path: str, timeout_s: int = 1800) -> dict:
+def start_and_wait(run: str, cfg_path: str, timeout_s: int = 3600) -> dict:
     _sql(f"CALL EXECUTE_AI_EVALUATION('START', OBJECT_CONSTRUCT('run_name', '{run}'), '{cfg_path}')")
     t0 = time.time()
     while time.time() - t0 < timeout_s:

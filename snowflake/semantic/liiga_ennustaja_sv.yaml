@@ -157,10 +157,34 @@ tables:
     description: Away team win probability
     expr: P_AWAY_WIN
   - name: P_OVERTIME
-    description: Probability of overtime
+    description: Probability of overtime = level after 60 minutes (the X in 1X2)
     expr: P_OVERTIME
     synonyms:
     - jatkoaika
+    - tasapeli
+    - X
+  - name: P_HOME_REGULATION_WIN
+    description: Home win in regulation (the 1 in 1X2)
+    expr: P_HOME_REGULATION_WIN
+    synonyms:
+    - kotivoitto 60 min
+    - ykkönen
+  - name: P_AWAY_REGULATION_WIN
+    description: Away win in regulation (the 2 in 1X2)
+    expr: P_AWAY_REGULATION_WIN
+    synonyms:
+    - vierasvoitto 60 min
+    - kakkonen
+  - name: EXPECTED_GOALS_HOME
+    description: Home team's expected goals in this game (the model's Poisson part)
+    expr: EXPECTED_GOALS_HOME
+    synonyms:
+    - maaliodottama koti
+  - name: EXPECTED_GOALS_AWAY
+    description: Away team's expected goals in this game (the model's Poisson part)
+    expr: EXPECTED_GOALS_AWAY
+    synonyms:
+    - maaliodottama vieras
   - name: CONFIDENCE
     description: Favourite's win probability
     expr: CONFIDENCE
@@ -609,6 +633,18 @@ verified_queries:
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: false
+- name: TODAY_1X2
+  question: Mitkä ovat tämän illan otteluiden 1X2-todennäköisyydet ja maaliodottamat?
+  sql: "SELECT start_time_fi, home_team, away_team,\n       ROUND(p_home_regulation_win * 100, 1) AS koti_1_pct,\
+    \ ROUND(p_overtime * 100, 1) AS tasan_x_pct,\n       ROUND(p_away_regulation_win * 100, 1) AS vieras_2_pct,\n\
+    \       ROUND(1 / p_home_regulation_win, 2) AS reilu_kerroin_1, ROUND(1 / p_overtime, 2) AS reilu_kerroin_x,\n\
+    \       ROUND(1 / p_away_regulation_win, 2) AS reilu_kerroin_2,\n       ROUND(expected_goals_home,\
+    \ 2) AS maaliodottama_koti, ROUND(expected_goals_away, 2) AS maaliodottama_vieras\nFROM __upcoming_games\
+    \ WHERE game_date = TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))\nORDER BY start_time_fi,\
+    \ home_team\n"
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: true
 - name: TEAM_NEXT_GAME
   question: Miten Tapparan seuraava ottelu päättyy?
   sql: "SELECT game_date, start_time_fi, home_team, away_team,\n       ROUND(p_home_win * 100, 1) AS koti_pct,\

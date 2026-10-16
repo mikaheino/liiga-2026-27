@@ -29,3 +29,7 @@ GRANT USAGE ON INTEGRATION LIIGA_EMAIL TO ROLE LIIGA_DEPLOYER;
 
 -- SYSTEM$SEND_EMAIL lähettää vain tilin käyttäjien VAHVISTETTUIHIN osoitteisiin.
 DESC USER MHEINO;
+
+-- Pelipäivän kokoonpanot (LINEUP_FORECAST_<sha>) hakevat liiga.fi:stä samalla
+-- integraatiolla kuin LIIGA_DAILY-notebook (lisätty 16.10. illalla).
+GRANT USAGE ON INTEGRATION LIIGA_FI_ACCESS TO ROLE LIIGA_DEPLOYER;

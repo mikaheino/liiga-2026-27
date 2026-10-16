@@ -197,4 +197,9 @@ EN = {
  "Mallin uusi arvio jäljellä olevista otteluista (Elo oppii tuloksista; mukana datakorjaukset)": "Model revision for the remaining games (Elo learns from results; includes data corrections)",
  "Runkosarjan voiton todennäköisyys vertailuhetkellä, %": "Regular-season win probability at the comparison point, %",
  "Runkosarjan voiton todennäköisyys nyt, %": "Regular-season win probability now, %",
+ "Todennäköisyys jatkoajalle = tasan 60 minuutin jälkeen (1X2:n X)": "Probability of overtime = level after 60 minutes (the X in 1X2)",
+ "Kotivoitto varsinaisella peliajalla (1X2:n 1)": "Home win in regulation (the 1 in 1X2)",
+ "Vierasvoitto varsinaisella peliajalla (1X2:n 2)": "Away win in regulation (the 2 in 1X2)",
+ "Kotijoukkueen odotetut maalit tässä ottelussa (mallin Poisson-osa)": "Home team's expected goals in this game (the model's Poisson part)",
+ "Vierasjoukkueen odotetut maalit tässä ottelussa (mallin Poisson-osa)": "Away team's expected goals in this game (the model's Poisson part)",
 }

@@ -27,6 +27,17 @@ HEAD = {"team": "Joukkue", "rank_before": "Sija ennen", "rank_now": "Sija nyt",
         "points_now": "Pisteet nyt"}
 GOLD, INK, MUTED = "#CCA752", "#1A1A1A", "#6B6B6B"
 
+# Tiedotteen ohje kulkee kysymyksessä eikä agentin yleisessä ohjeessa: sitä
+# tarvitaan vain tässä, ja yleinen ohje maksetaan jokaisessa kutsussa (16.10.).
+BRIEF = """Tee aamutiedote. Tämä pyyntö sallii kolme työkalukutsua tässä järjestyksessä:
+1) liiga_ennuste: "Kierroksen esikatselu: tämän illan ottelut"
+2) liiga_ennuste: miksi ennuste muuttui edellisestä ajosta (vertailu EDELLINEN)
+3) liiga_skenaario: illan tasaisin ottelu, altavastaaja voittaa.
+Muoto: otsikko "Liiga-aamu D.M.", sitten kolme lyhyttä osiota lihavoiduin otsikoin
+"Illan ottelut" (yksi lause, sitten JOKAINEN ottelu omalla rivillään: aika, joukkueet, voitto-%),
+"Mikä muuttui" (yksi lause kahdesta suurimmasta liikkeestä ja kummankin suurin osa numeroineen,
+sitten taulukko) ja "Mitä jos" (enintään kolme riviä). Kaikki luvut työkaluista. Ei kaavioita."""
+
 
 def _num(v):
     if re.fullmatch(r"-?\d+", str(v)):
@@ -81,14 +92,17 @@ def table_to_html(t: dict) -> str:
 
 def to_email(o: dict, version: str) -> tuple[str, str]:
     parts, tools = [], []
-    for c in o.get("content", []):
+    content = o.get("content", [])
+    # Vain viimeisen työkalukutsun jälkeinen osa on vastaus; sitä ennen agentti voi
+    # kirjoittaa välivaiheita ("I'll gather the data..."), jotka eivät kuulu viestiin.
+    last = max((i for i, c in enumerate(content) if c.get("type") in ("tool_use", "tool_result")), default=-1)
+    tools = [c["tool_use"]["name"] for c in content if c.get("type") == "tool_use"]
+    for c in content[last + 1:]:
         if c.get("type") == "text":
             parts.append(md_to_html(c["text"]))
         elif c.get("type") == "table":
             parts.append(table_to_html(c["table"]))
-        elif c.get("type") == "tool_use":
-            tools.append(c["tool_use"]["name"])
-    text = "".join(c.get("text", "") for c in o.get("content", []) if c.get("type") == "text")
+    text = "".join(c.get("text", "") for c in content[last + 1:] if c.get("type") == "text")
     m = re.search(r"Liiga-aamu\s+([\d.]+)", text)
     subject = f"Liiga-aamu {m.group(1)}" if m else "Liiga-aamu"
     used = ", ".join(sorted({t for t in tools if not t.startswith("system_")}))
@@ -107,7 +121,7 @@ def to_email(o: dict, version: str) -> tuple[str, str]:
 def run(session, version: str) -> str:
     v = (version or "PRODUCTION").upper()
     req = json.dumps({"messages": [{"role": "user", "content": [
-        {"type": "text", "text": "Tee aamutiedote."}]}], "stream": False}, ensure_ascii=False)
+        {"type": "text", "text": BRIEF}]}], "stream": False}, ensure_ascii=False)
     raw = session.sql("SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(?, ?)",
                       params=[f"{AGENT}!{v}", req]).collect()[0][0]
     o = json.loads(raw)

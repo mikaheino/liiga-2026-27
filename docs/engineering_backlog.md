@@ -45,3 +45,36 @@ oma sivu testeineen. Ei välttämätön: tuotanto on jo suojattu. Vaatii `gh`:n
 asennuksen koneelle.
 
 **Milloin:** kun CI/CD:n ensimmäinen täysi ajo on mennyt läpi tuotantoon asti.
+
+---
+
+## 2. Tarvitaanko lisää semanttisia malleja? (lisätty 2026-10-16)
+
+**Nyt:** kaksi mallia, `LIIGA_ENNUSTAJA_SV` (tulevaisuus) ja `LIIGA_KAUSI_SV`
+(mennyt ja nyt), sekä proseduurityökalut `liiga_skenaario` ja
+`liiga_kokoonpanot`. Jako tehtiin 10.10. tokenien takia: Cortex Analyst lukee
+koko mallin joka kutsulla (input −68 %).
+
+**Kysymys:** kasvaako jompikumpi malli niin, että jako kolmeen kannattaa?
+Ehdokkaita:
+
+- **Pelaajamalli** (pistepörssi, maalivahdit, kokoonpanot, pelaajaennusteet,
+  yllättäjät): nyt jaettu kahden mallin kesken; pelaajakysymykset voisivat
+  osua yhteen pienempään malliin.
+- **Ottelu-/kierrosmalli** (tulevat ottelut, 1X2, maaliodottamat,
+  esikatselu, keskinäiset): yleisin kysymystyyppi, ja ennustemalli on kasvanut
+  (FORECAST_CHANGE, 1X2).
+- **Historiamalli** (kaudet 2022-26): harvoin kysytty, mutta lisää kokoa
+  kausimalliin.
+
+**Mitä mitataan ennen päätöstä** (päätös mittauksesta, ei arviosta):
+
+1. Mallien koko riveinä ja tokeneina (`metadata.usage.tokens_consumed`
+   kysymyksillä, jotka EIVÄT osu VQR:ään -- VQR-osuma ei lataa mallia).
+2. Työkalun valinnan osuvuus (`tool_correct_rate`): kolmas työkalu tekee
+   valinnasta vaikeamman. Nyt 1,00 -- jos se laskee, jako maksaa.
+3. Kysymykset, jotka tarvitsevat kahta mallia (ennuste vs. toteuma): niitä
+   on jo nyt, ja jokainen lisäjako lisää kaksoiskutsuja.
+
+**Milloin:** kun jompikumpi malli ylittää ~800 riviä YAMLia tai
+oikeellisuus laskee pelaaja- tai otteluaiheissa evaluoinnissa.

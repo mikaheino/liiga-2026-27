@@ -21,3 +21,6 @@ portti hylkäsi raa'an työkalumittarin 0,94 takia).
 | 20261016_1323 | LIIGA_ENNUSTAJA_DEV | LIVE | 25 | 0.95 | 1.00 | 0.98 | 1.00 | 0.87 | 0 | Kuka voittaa Liigan mestaruuden pudotuspeleissä?; Onko KooKoon huono alku ollut huonoa tuuria? |
 | 20261016_1031 (GitHub) | LIIGA_ENNUSTAJA_DEV | LIVE | 25 | 0.95 | 1.00 | 0.94 | 1.00 | 0.87 | 0 | Kuka voittaa Liigan mestaruuden pudotuspeleissä?; Mikä on liigan ylivoimaprosentti tällä kaudella?; Onko KooKoon huono alku ollut huonoa tuuria? |
 | 20261016_1523 | LIIGA_ENNUSTAJA | DEV | 30 | 0.97 | 1.00 | 1.00 | 0.97 | 0.89 | 0 | Mikä joukkue on kerännyt eniten pisteitä kotiotteluista? |
+| 20261016_132044 | LIIGA_ENNUSTAJA | DEV | 33 | 0.97 | 1.00 | 1.00 | 1.00 | 0.88 | 0 | – |
+| 20261016_133424 | LIIGA_ENNUSTAJA | DEV | 33 | 0.91 | 1.00 | 0.98 | 1.00 | 0.93 | 0 | Millä todennäköisyydellä JYP pääsee kuuden joukkoon?; Miten tämän päivän pelit päättyvät? |
+| 20261016_140131 | LIIGA_ENNUSTAJA | DEV | 33 | 0.96 | 1.00 | 1.00 | 1.00 | 0.94 | 0 | – |

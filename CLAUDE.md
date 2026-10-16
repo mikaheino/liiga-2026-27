@@ -792,6 +792,28 @@ Fortier koko kausi -> Jokerit −0,36 maalia/ottelu, putoaminen 41 -> 56 %.
 **Paikallisesti sama vastaus:** `.venv/bin/python scripts/skenaario.py '<JSON>'`
 ajaa saman `simulate_scenario.py`:n DuckDB:tä vasten.
 
+**2d. Pelipäivän kokoonpanot** -- proseduuri `LINEUP_FORECAST_<sha>('TODAY')`,
+agentin työkalu `liiga_kokoonpanot`, lähde `snowflake/procedures/lineups.py`
+(importtaa simulaattorin kaavat). Hakee annetun päivän ottelut liiga.fi:n
+ottelukohtaisesta rajapinnasta (external access `LIIGA_FI_ACCESS`, sama kuin
+notebookilla) -- yleisen selaimen sijaan, koska rakenteinen data täsmäytyy
+tarkasti. Pukeutunut = `line` asetettu, aloittava maalivahti = rivi 1;
+täsmäytys player_id:llä ja SUKUNIMELLÄ (etunimimuodot vaihtelevat). Tulos:
+1X2 (varsinainen peliaika) ennen -> kokoonpanokorjattu, maaliodottamat,
+reilut kertoimet, maalivahdit, merkittävät poissaolot. Paikallisesti:
+`.venv/bin/python scripts/kokoonpanot.py [YYYY-MM-DD]`. 16.10.: Tapparan 1
+47,2 -> 43,9 (Blichfeld poissa), sama luku paikallisesti ja Snowflakessa.
+
+**1X2 ja maaliodottamat näkymässä:** `V_UPCOMING_PREDICTIONS` + VQR `TODAY_1X2`.
+Ennen agentti johti 1/2:n itse voittosuhteista (Pelicans 49,4 % mallin 52,3 %:n
+sijaan, 172 000 tokenia); nyt VQR-osuma, 49 000 tokenia.
+
+**Vedonlyönti: välimuoto (käyttäjän päätös 16.10.).** Agentti antaa 1X2:n,
+reilut kertoimet ja annetuille kertoimille odotusarvon (kerroin x p - 1),
+nimeää mallin varmimmat kohteet ja sanoo, että yhdistelmä kertoo vedonvälittäjän
+katteen -- mutta ei kehota pelaamaan, ei ehdota panoksia ja kertoo, ettei
+mallilla ole näytettyä etua markkinaan.
+
 **3. Aamutiedote** -- proseduuri `SEND_MORNING_BRIEF_<sha>('PRODUCTION')`: kysyy
 agentilta "Tee aamutiedote.", agentti tekee kolme kutsua (esikatselu, miksi
 muuttui, mitä jos illan tasaisimmassa) ja proseduuri lähettää vastauksen HTML:nä
