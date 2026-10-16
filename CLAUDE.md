@@ -951,6 +951,17 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 
 ## Sovellus: Next.js Snowflake App Runtimessa (16.10.2026, korvaa Streamlitin)
 
+⚠️ **EI SNOWFLAKEEN ENNEN KUIN KÄYTTÄJÄ SANOO OLEVANSA TYYTYVÄINEN** (käyttäjän
+päätös 16.10.: "voitasko viedä Snowflakeen vasta kun meillä on applikaatio mihin
+olen tyytyväinen"). Kehitys tapahtuu paikallisesti (`npm run dev`, :3010, oikea
+data `liiga_ci`:llä). Älä aja `snow app deploy`ta mihinkään targetiin, älä palauta
+sovellusvaiheita `deploy.yml`:iin. DEV-palvelu `LIIGA_ENNUSTE_DEV` on luotu
+kokeiluna ja **pysäytetty** (SUSPEND). Kun lupa tulee: sovellusvaiheet
+(`app-candidate` + tuotannon `--promote-only` ja `GRANT USAGE`) ovat commitissa
+75afe01 (`git show 75afe01:.github/workflows/deploy.yml`). CI:n paikalliset
+tarkistukset (`app`-job: audit, tyypit, käännös) ovat käytössä, koska ne eivät koske
+Snowflakeen.
+
 `snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
 `app.yml`). Käyttäjän päätös: Streamlit warehouse runtime on vanhentuva ja container
 runtime jää päälle (ei sleep timeria) -- App Runtime sammuu itse
@@ -961,7 +972,7 @@ suunnitteilla, siksi TypeScript.
   sessiotokenia (`/snowflake/session/token`) tai paikallisesti `liiga_ci`-avainparia
   (`connections.toml`). Ei DuckDB-polkua, ei selainta. `npm run dev` -> :3010.
 - **Agentin linkki:** valinnat ovat URL-parametreja: `?joukkue=KooKoo,Jokerit&ikkuna=10&xg=1&kayra=0`.
-- **Putki:** dev (oma kone, oma artifact-repo) -> CI `app-candidate` (`npm ci`,
+- **Putki (odottaa lupaa, ks. yllä):** dev (oma kone, oma artifact-repo) -> CI `app-candidate` (`npm ci`,
   `typecheck`, `snow app deploy --target staging`, palvelu käynnissä) -> tuotanto
   hyväksynnällä `--target prod --promote-only` (sama käännös) + `GRANT USAGE` käyttäjäroolille.
   `ci.yml`: `npm audit --audit-level=high`, `typecheck`, `next build`. Paikallinen
