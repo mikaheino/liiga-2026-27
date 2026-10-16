@@ -369,3 +369,32 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .months { overflow-x: auto; max-width: 100%; }
   .g .tr { overflow: hidden; }
 }
+
+/* =========================================================================
+   NHL 95 -vivahde (16.10., "älä liiottele"). Kolme asiaa eikä enempää:
+   pikselifontti pieniin versaalilappuihin, haalea CRT-juovitus isoihin
+   paneeleihin ja kova pikselivarjo aktiivisille valinnoille. Paletti, otsikot,
+   joukkueiden nimet ja luvut pysyvät ennallaan -- ne ovat sivun luettava osa.
+   ========================================================================= */
+:root { --pixel: var(--font-pixel), "Silkscreen", var(--mono); }
+.label, .th, .th > div, .hh, .hh > div, .kpi-k, .ctl-label, .sh-next-k, .score-k, .eyebrow, .sh-scale, .sh-unit, .keys, .axis {
+  font-family: var(--pixel) !important; font-weight: 400 !important; letter-spacing: .06em; }
+.label { font-size: 11px; color: var(--gold); }
+.th, .hh { font-size: 10px; }
+.score-k b { font-family: var(--mono); }
+.axis { font-size: 9px; letter-spacing: 0; }
+
+/* CRT: 3 px välein tummempi juova, niin heikko että sen huomaa vasta katsomalla. */
+.season-hero, .heat, .chart, .asset { position: relative; }
+.season-hero::before, .chart::before, .asset::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+.heat { background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px); }
+
+/* Kova pikselivarjo: ei sumennusta, siirtymä 2 px -- 16-bittisen valikon nappi. */
+.seg button.on, .tabs a.on, .topnav a.on, .months a.on { box-shadow: inset 0 0 0 1px var(--line-2), 2px 2px 0 var(--gold-dim); }
+.chip.on { box-shadow: 2px 2px 0 var(--gold-dim); }
+.btn { box-shadow: 3px 3px 0 var(--gold-dim); }
+.btn:hover { box-shadow: 3px 3px 0 var(--gold-mid); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--gold-dim); }
+.mark { box-shadow: 3px 3px 0 var(--gold-dim), 0 0 24px rgba(204,167,82,.25); }
