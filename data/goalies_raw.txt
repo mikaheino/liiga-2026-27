@@ -206,3 +206,9 @@ Tomi Karhunen|2026|Liiga|6|0.859|HPK
 Tomi Karhunen|2026|Liiga|12|0.893|SaiPa
 Vili Varonen|2026|Liiga|1|0.889|HIFK
 Emils Vitols|2026|Liiga|2|0.865|Jukurit
+Olof Glifford|2023|SWE-U20|3|0.949|HV71 J20
+Olof Glifford|2024|SWE-U20|24|0.905|HV71 J20
+Olof Glifford|2025|SWE-U20|21|0.897|HV71 J20
+Olof Glifford|2025|SHL|13|0.895|HV71
+Olof Glifford|2026|SHL|5|0.878|HV71
+Olof Glifford|2026|Allsvenskan|29|0.903|IK Oskarshamn
