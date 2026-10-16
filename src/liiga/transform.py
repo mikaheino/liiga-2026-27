@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .config import load_config
 from .db import execute, get_connection, query_df
 
 # Dependency order matters: later models read earlier ones.

@@ -20,6 +20,23 @@ paikallisen tiedoston Snowflake-vastine: **`docs/RAKENNE.md`**. `data/` ja
 tiedosto oikeaan kansioon objektin nimellä; roolille annetut oikeudet sen
 roolin tiedostoon.
 
+## Koodin laatu: yksi portti, kolme paikkaa (16.10.2026)
+
+`python scripts/dev/quality.py` = ruff (asetukset `pyproject.toml`) + monimutkaisuus
+(radon, raja 15) + testit ja kattavuus. **Ratchet:** nykyiset 16 rajan ylittävää
+funktiota ja 21,4 %:n kattavuus ovat lähtötasossa (`scripts/dev/quality_baseline.json`):
+ne saavat jäädä mutta eivät heiketä; uusi funktio ei saa ylittää rajaa.
+Parannus lukitaan: `--update-baseline`. Sama portti ajetaan:
+- **CI** (`ci.yml`, tulos GitHubin yhteenvetoon)
+- **git pre-push** (`.githooks/pre-push`; `git config core.hooksPath .githooks` kerran per klooni)
+- **Claude Code** (`.claude/settings.json`): ruff jokaiselle muokatulle .py-tiedostolle,
+  löydökset palautuvat heti (exit 2) -- korjaa ne samalla kierroksella.
+
+Käyttöönotossa ruff korjasi 68 löydöstä (importit, `datetime.UTC`) ja loput käsin;
+B023-tapaukset olivat vääriä hälytyksiä (sulkeuma kutsutaan samalla kierroksella),
+sidottu oletusargumentiksi. Mallin ennuste tarkistettu muuttumattomaksi (ero 0,0).
+E501 (879 pitkää riviä) ja `ruff format` odottavat: backlog kohta 4.
+
 ## ⚠️ NEVER update the claude.ai artifact
 
 The infographic is LOCAL-ONLY (`site/index.html`). Do NOT publish or redeploy

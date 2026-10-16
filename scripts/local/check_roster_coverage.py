@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from liiga.config import load_config
 from liiga.db import get_connection, query_df
-from liiga.players import assemble_player_seasons, _player_key
+from liiga.players import _player_key, assemble_player_seasons
 
 
 def main() -> None:

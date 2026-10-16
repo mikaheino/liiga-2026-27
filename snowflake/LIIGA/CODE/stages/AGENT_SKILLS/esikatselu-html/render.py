@@ -233,9 +233,9 @@ def render(rows: list[dict], title: str | None = None, out_dir: str | None = Non
             f, t = max(form)
             kpis.append(("Kovin vire", e(t), f"{f}/15 pistettä viidestä viime ottelusta"))
     kpi_html = "".join(
-        f'<div class="kpi{" gold" if i == 1 else ""}"><div class="l">{l}</div>'
+        f'<div class="kpi{" gold" if i == 1 else ""}"><div class="l">{lbl}</div>'
         f'<div class="v">{v}</div><div class="s">{s}</div></div>'
-        for i, (l, v, s) in enumerate(kpis))
+        for i, (lbl, v, s) in enumerate(kpis))
 
     # Yhteenvetotaulukko
     trs = []

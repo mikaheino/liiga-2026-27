@@ -24,8 +24,8 @@ VIEWS = ROOT / "snowflake" / "LIIGA" / "MODEL" / "views"
 
 
 def files() -> list[Path]:
-    names = [l.strip() for l in (VIEWS / "_order.txt").read_text(encoding="utf-8").splitlines()
-             if l.strip() and not l.startswith("#")]
+    names = [ln.strip() for ln in (VIEWS / "_order.txt").read_text(encoding="utf-8").splitlines()
+             if ln.strip() and not ln.startswith("#")]
     missing = sorted({p.name for p in VIEWS.glob("V_*.sql")} - set(names))
     if missing:
         raise SystemExit(f"_order.txt:stä puuttuu: {', '.join(missing)}")

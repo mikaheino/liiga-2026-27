@@ -18,7 +18,6 @@ kolmannella. Ei kirjoita mihinkään eikä muuta mallia.
 from __future__ import annotations
 
 import copy
-import itertools
 import sys
 from pathlib import Path
 
@@ -26,11 +25,11 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-from liiga.config import load_config                                    # noqa: E402
-from liiga.db import get_connection, query_df                           # noqa: E402
-from liiga.model import _ratings_as_of, predict_games, calibrate_ties, _log_loss, _brier  # noqa: E402
-from liiga.elo import elo_ratings_as_of, elo_game_probs, _ot_rate_before  # noqa: E402
-from liiga.ensemble import ensemble_game_probs                          # noqa: E402
+from liiga.config import load_config  # noqa: E402
+from liiga.db import get_connection, query_df  # noqa: E402
+from liiga.elo import _ot_rate_before, elo_game_probs, elo_ratings_as_of  # noqa: E402
+from liiga.ensemble import ensemble_game_probs  # noqa: E402
+from liiga.model import _brier, _log_loss, _ratings_as_of, calibrate_ties, predict_games  # noqa: E402
 
 SEASONS = [2024, 2025, 2026]
 POISSON_WEIGHT = 0.4
@@ -52,7 +51,8 @@ def run() -> pd.DataFrame:
             ot_rate = _ot_rate_before(con, s)
             ppred = {}
             for hi in HOME_ICE:
-                c = copy.deepcopy(cfg); c["match_model"]["home_ice"] = hi
+                c = copy.deepcopy(cfg)
+                c["match_model"]["home_ice"] = hi
                 p = predict_games(games, pratings, c)
                 if c["match_model"].get("tie_calibration", True):
                     p = calibrate_ties(p, ot_rate)

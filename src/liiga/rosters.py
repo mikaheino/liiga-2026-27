@@ -87,7 +87,7 @@ def _apply_overrides(official: pd.DataFrame) -> pd.DataFrame:
         name = str(r.get("name", "")).strip()
         team = str(r.get("team", "")).strip()
 
-        def matches(df):
+        def matches(df, pid=pid, name=name):  # sidottu: B023
             if pid not in ("", None) and not pd.isna(pid):
                 return df["player_id"] == int(pid)
             full = (df["first_name"].fillna("") + " " + df["last_name"].fillna("")).str.strip()

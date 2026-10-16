@@ -122,6 +122,11 @@ mutta ei muuta suuntaa: lisäkulu, ei säästö.
 | yksikkötestit | **12 testiä** (`tests/test_pipeline.py`, `tests/test_simulate_scenario.py`). Kattavuus testien koskemista moduuleista 22 %: `simulate.py` 96 %, simulaattori 68 %, `model.py` 36 %, `pipeline.py` 20 %, `players.py` ja `results.py` **0 %** |
 | muu laatu | agentin evaluointi (33-35 kysymystä, laatuportti) on jo olemassa; se testaa agenttia, ei koodia |
 
+**Tehty 16.10.:** ruff ja monimutkaisuus- ja kattavuusportti (ratchet) CI:hin,
+git pre-pushiin ja Claude Code -hookiin: `scripts/dev/quality.py`. Ruff puhdas
+(E501 ja B905 ohitettu toistaiseksi). Jäljellä alla kohdat 1 (E501, format),
+2, 3 (raja on portissa, pilkkominen kauden jälkeen) ja 4.
+
 **Tavoite, järjestyksessä (halvin ensin):**
 
 1. **Ruff CI:hin** (`ruff check` + `ruff format --check`), säännöt E,F,W,I,B,UP,

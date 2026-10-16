@@ -40,16 +40,18 @@ Valinnat, jotka on mitattu (optimointiloki 2026-10-10):
 from __future__ import annotations
 
 import argparse
-import sys
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "deploy"))
 import sys as _sys
+
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
 from snow_conn import conn as _conn  # noqa: E402
+
 CONN = _conn()
 STAGE = "@LIIGA.CODE.AGENT_SKILLS"
 SKILLS = ROOT / "snowflake/LIIGA/CODE/stages/AGENT_SKILLS"
@@ -255,6 +257,7 @@ def candidate(alias: str, html: bool = False, message: str = "", fqn: str = FQN)
                     raise SystemExit(f"{proc} puuttuu: aja ensin python scripts/deploy/deploy_tools.py")
     # Spec omaan kansioonsa: ADD VERSION FROM lukee koko kansion.
     import tempfile
+
     import yaml
     tmp = Path(tempfile.mkdtemp()) / "agent_spec.yaml"
     tmp.write_text(yaml.safe_dump(s, allow_unicode=True, sort_keys=False), encoding="utf-8")

@@ -156,7 +156,7 @@ def _contributors(con, cfg) -> dict[str, list[dict]]:
     1-2-3 on every team — goalie save% is regressed into a .904-.911 band, so
     even an elite goalie prevents only ~0.08 goals per start.
     """
-    from liiga.goalies import parse_goalie_seasons, compute_goalie_ratings
+    from liiga.goalies import compute_goalie_ratings, parse_goalie_seasons
 
     league_goals = cfg["team_strength"]["league_avg_goals_per_game"]
     league_sv = cfg["goaltending"]["league_avg_save_pct"]

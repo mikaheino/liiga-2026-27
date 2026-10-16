@@ -13,7 +13,7 @@ import pandas as pd
 
 from .config import load_config
 from .db import get_connection, query_df
-from .model import predict_games, calibrate_ties, historical_ot_rate
+from .model import calibrate_ties, historical_ot_rate, predict_games
 
 
 def _schedule_and_ratings(con):

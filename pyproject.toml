@@ -23,7 +23,7 @@ snowflake = [
     "snowflake-connector-python[pandas,secure-local-storage]>=3.7",
     "pyarrow>=14",
 ]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "pytest-cov>=5", "ruff==0.17.1", "radon==6.0.1"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -34,3 +34,24 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+# --- Koodin laatu (2026-10-16): sama tarkistus CI:ssä ja paikallisesti -------
+# Aja: python scripts/dev/quality.py   (ruff + monimutkaisuus + testit/kattavuus)
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["notebooks", "*.ipynb", "site", "site_instagram", "data", "logs", "fantasy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# E501: 879 pitkää riviä -- siivotaan erikseen, ei estä putkea vielä (backlog 4).
+# B905: zip() ilman strict= -- tyyliasia, ei bugi.
+# E731: lambda-sijoitus -- tyyliasia.
+ignore = ["E501", "B905", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+# Skriptit lisäävät sys.pathin ennen omia importtejaan (ajetaan suoraan, ei pakettina).
+"scripts/**" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["liiga"]

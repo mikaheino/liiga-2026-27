@@ -82,7 +82,7 @@ def snapshot_standings(con=None, season: int | None = None) -> int:
     """
     cfg = load_config()["ingestion"]
     season = season or cfg["target_season"]
-    taken = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    taken = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
 
     rows = []
     for t in fetch_standings(season, cfg):
@@ -190,7 +190,7 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
             if d["games"] == 1 and missing >= 1:
                 played_once.add(team)
 
-        now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+        now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
         pending = query_df(
             con,
             f"""SELECT game_id, home_team, away_team FROM raw_games
@@ -224,7 +224,7 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
             mask = raw["game_id"].isin(by_id)
             for col in ("home_goals", "away_goals", "result_category", "winner"):
                 raw.loc[mask, col] = raw.loc[mask, "game_id"].map(
-                    lambda g: by_id[g][col])
+                    lambda g, col=col: by_id[g][col])
             raw.loc[mask, "ended"] = True
             raw.loc[mask, "started"] = True
             if "result_source" in raw.columns:

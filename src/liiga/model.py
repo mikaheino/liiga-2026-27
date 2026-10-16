@@ -21,7 +21,6 @@ from scipy import stats
 from .config import load_config
 from .db import get_connection, query_df
 
-
 # ---- core probability math -------------------------------------------------
 
 def matchup_probs(off_home, def_home, off_away, def_away, cfg, max_goals=12):
@@ -132,10 +131,14 @@ def _ratings_as_of(con, season, cfg, use_goaltending=True, continuity_shrinkage=
     players actually scored for that year; their rates come from prior seasons
     (leakage-free). Defense uses the goaltending model (also leakage-free) unless
     `use_goaltending` is False, which falls back to pure team-history defense."""
-    from .players import _replacement_rates
-    from .team_strength import (team_offense_from_players, team_history_ratings,
-                                combine_ratings, team_continuity_as_of)
     from .goalies import team_goaltending_as_of
+    from .players import _replacement_rates
+    from .team_strength import (
+        combine_ratings,
+        team_continuity_as_of,
+        team_history_ratings,
+        team_offense_from_players,
+    )
     tcfg = cfg["team_strength"]
 
     # player rates as-of: history strictly before `season` (leakage-free)
@@ -177,6 +180,7 @@ def _ratings_as_of(con, season, cfg, use_goaltending=True, continuity_shrinkage=
 def _compute_liiga_rates_for(con, target_season, cfg):
     """compute_liiga_rates but for an arbitrary target season (backtest helper)."""
     import copy
+
     from . import players as _players
     saved = _players.load_config
     cfg2 = copy.deepcopy(cfg)

@@ -19,7 +19,7 @@ import pandas as pd
 from .config import load_config
 from .crowd import blend_with_model
 from .db import get_connection, query_df, register_df, replace_rows
-from .elo import elo_game_probs, elo_ratings_current, _ot_rate_before
+from .elo import _ot_rate_before, elo_game_probs, elo_ratings_current
 from .ensemble import ensemble_game_probs
 from .model import calibrate_ties, predict_games
 from .simulate import banked_points, simulate
@@ -167,13 +167,13 @@ def forecast(con=None, cfg=None) -> dict:
     pos.columns = ["team"] + [f"rank_{c}" for c in pos.columns[1:]]
 
     meta_df = pd.DataFrame([{
-        "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "updated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         "games_played": meta["n_played"],
         "games_total": meta["n_total"],
         "crowd_weight_eff": round(crowd_weight, 4),
     }])
 
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    today = dt.datetime.now(dt.UTC).date().isoformat()
     hist = standings[["proj_rank", "team", "mean_points",
                       "p_title", "p_top_playoff"]].copy()
     hist.insert(0, "snapshot_date", today)

@@ -28,8 +28,6 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
-import sys
-import time
 from pathlib import Path
 
 import yaml
@@ -37,8 +35,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "snowflake" / "LIIGA" / "MODEL" / "semantic_views"
 import sys as _sys
+
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
 from snow_conn import conn as _conn  # noqa: E402
+
 CONN = _conn()
 VERIFIED_AT = 1791590400          # 2026-10-10
 TEAMS = ["HIFK", "HPK", "Ilves", "JYP", "Jokerit", "Jukurit", "K-Espoo", "KalPa",
@@ -777,7 +777,7 @@ def comment_sql(lang: str = "en") -> str:
     sen jälkeen (deploy tekee sen).
     """
     seen, out = set(), []
-    for name, build in MODELS.items():
+    for _name, build in MODELS.items():
         for t in translate(build(), lang)["tables"]:
             view = t["base_table"]["table"]
             if not view.startswith("V_"):

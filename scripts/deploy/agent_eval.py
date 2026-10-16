@@ -33,13 +33,15 @@ import json
 import subprocess
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 import sys as _sys
+
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
 from snow_conn import conn as _conn  # noqa: E402
+
 # ajo luo taustatehtävän nykyiseen skeemaan, joten LIIGA.EVALS istunnon oletukseksi
 CONN = _conn(database="LIIGA", schema="EVALS")   # ajo luo taustatehtävän nykyiseen skeemaan
 DB, SCHEMA = "LIIGA", "EVALS"
@@ -381,12 +383,13 @@ def main() -> None:
         data = json.loads(Path(a.summarize).read_text())
         run = Path(a.summarize).stem.replace("results_", "")
         sm = summarize(data)
-        print(record(a.agent, a.version, run, sm)); print(gate(sm) or "laatuportti läpi")
+        print(record(a.agent, a.version, run, sm))
+        print(gate(sm) or "laatuportti läpi")
         return
     # Aina UTC ja sekunnit: CI (UTC) ja paikallinen ajo (Suomen aika) antoivat
     # 16.10. saman nimen 20261016_1238 eri hetkistä, ja CI kaatui, koska
     # ACCOUNTADMINin aiemmin luomaan datasettiin ei ollut oikeuksia.
-    run = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     dataset = build_dataset(run)
     print(f"testijoukko {TABLE}: {len(GOLDEN)} kysymystä -> {dataset}")
     if a.build_only:

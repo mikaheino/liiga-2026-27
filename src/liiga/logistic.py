@@ -23,7 +23,7 @@ from sklearn.linear_model import LogisticRegression
 
 from .config import load_config
 from .db import get_connection, query_df
-from .model import _ratings_as_of, _log_loss, _brier, _expected_points
+from .model import _brier, _expected_points, _log_loss, _ratings_as_of
 
 FEATURES = ["log_off_home", "log_def_home", "log_off_away", "log_def_away"]
 _DEFAULT_OT_RATE = 0.231   # historical Liiga OT+shootout fraction

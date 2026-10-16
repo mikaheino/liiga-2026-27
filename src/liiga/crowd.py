@@ -11,7 +11,7 @@ for the live 2026-27 prediction.
 from __future__ import annotations
 
 import os
-import numpy as np
+
 import pandas as pd
 
 _DATA_PATH = os.path.join(
@@ -153,9 +153,9 @@ if __name__ == "__main__":
     try:
         from .config import load_config
         from .db import get_connection, query_df
-        from .model import _ratings_as_of, predict_games, _expected_points
-        from .elo import elo_ratings_as_of, elo_game_probs, _ot_rate_before
+        from .elo import _ot_rate_before, elo_game_probs, elo_ratings_as_of
         from .ensemble import ensemble_game_probs
+        from .model import _expected_points, _ratings_as_of, predict_games
 
         cfg = load_config()
         con_db = get_connection()

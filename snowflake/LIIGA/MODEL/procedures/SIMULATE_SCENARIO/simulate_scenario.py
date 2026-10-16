@@ -258,7 +258,7 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
             g0, g1 = games[i], changed[i]
             home = g0["home_team"] == t
 
-            def win(g):
+            def win(g, home=home):
                 ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
                 return ph if home else 1 - ph
             rows.append({"date": g0["date"], "opponent": g0["away_team"] if home else g0["home_team"],

@@ -21,7 +21,7 @@ import pandas as pd
 
 from .config import load_config
 from .db import get_connection, query_df
-from .model import _log_loss, _brier, _expected_points
+from .model import _brier, _expected_points, _log_loss
 
 BASE = 1500.0
 # calibrated to historical 55.2% home win rate: -400*log10(1/0.552 - 1) ≈ 36

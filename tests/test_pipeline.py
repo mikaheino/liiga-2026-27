@@ -38,9 +38,8 @@ def test_target_schedule_consistent(con):
 
 def test_banked_points_plus_simulated_conserved(con):
     """Mid-season invariant: banked points + 3 pts per remaining game."""
-    import numpy as np
     from liiga.model import predict_games
-    from liiga.simulate import simulate, banked_points
+    from liiga.simulate import banked_points, simulate
 
     cfg = load_config()
     target = cfg["ingestion"]["target_season"]

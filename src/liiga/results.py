@@ -278,7 +278,7 @@ def games_needing_update(con, season: int, *, grace_hours: int = 8,
     start time is missing, the fallback is the calendar: a game dated 4.9. has
     certainly finished once it is 5.9.
     """
-    now = now or dt.datetime.now(dt.timezone.utc)
+    now = now or dt.datetime.now(dt.UTC)
     sched = query_df(
         con,
         f"""SELECT game_id, start_time, ended FROM raw_games
@@ -319,8 +319,13 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
     game_ids  -- explicit list; skips the schedule lookup entirely.
     refetch   -- re-read games already stored, instead of only missing ones.
     """
-    from .ingest import (_flatten_assists, _flatten_games, _flatten_goal_events,
-                         _flatten_on_ice, _flatten_periods)
+    from .ingest import (
+        _flatten_assists,
+        _flatten_games,
+        _flatten_goal_events,
+        _flatten_on_ice,
+        _flatten_periods,
+    )
 
     cfg = load_config()["ingestion"]
     season = season or cfg["target_season"]
@@ -393,11 +398,11 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
 
     return {"season": season, "games_fetched": len(game_ids) - len(failed),
             "rows": counts, "failed": failed,
-            "fetched_at": dt.datetime.now(dt.timezone.utc)
+            "fetched_at": dt.datetime.now(dt.UTC)
                             .isoformat(timespec="seconds")}
 
 
 def yesterday() -> str:
     """Yesterday in UTC, as the API dates games."""
-    return (dt.datetime.now(dt.timezone.utc).date()
+    return (dt.datetime.now(dt.UTC).date()
             - dt.timedelta(days=1)).isoformat()

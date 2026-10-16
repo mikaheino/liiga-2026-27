@@ -19,12 +19,12 @@ import pandas as pd
 from liiga.config import load_config
 from liiga.crowd import blend_with_model, crowd_consensus
 from liiga.db import get_connection, query_df, register_df
-from liiga.elo import elo_ratings_as_of, elo_game_probs, _ot_rate_before
+from liiga.elo import _ot_rate_before, elo_game_probs, elo_ratings_as_of
 from liiga.ensemble import ensemble_game_probs
-from liiga.model import predict_games, _ratings_as_of, calibrate_ties
+from liiga.model import calibrate_ties, predict_games
 from liiga.simulate import simulate
-from liiga.team_strength import build_team_strength
 from liiga.snowflake_sync import sync_all
+from liiga.team_strength import build_team_strength
 
 # 0.4 Poisson + 0.6 MOV-Elo: best game logloss (0.672) and points MAE (12.7)
 # on the 2023-2026 backtest after tie calibration + k=16 margin-of-victory Elo.

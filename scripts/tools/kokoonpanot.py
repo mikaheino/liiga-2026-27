@@ -10,7 +10,6 @@ liiga.fi:stä (yksi kutsu per ottelu), ei historiaa.
 from __future__ import annotations
 
 import datetime as dt
-import importlib.util
 import sys
 import time
 from pathlib import Path

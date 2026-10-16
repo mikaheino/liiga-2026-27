@@ -22,7 +22,7 @@ import pandas as pd
 
 from .config import load_config
 from .db import get_connection, query_df
-from .model import predict_games, _log_loss, _brier, _expected_points
+from .model import _brier, _expected_points, _log_loss, predict_games
 
 _DEFAULT_K = 0.005
 _DEFAULT_SEASON_REG = 0.5

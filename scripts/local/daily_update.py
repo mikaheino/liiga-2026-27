@@ -22,25 +22,16 @@ Run manually or from the scheduled launchd job (see scripts/local/daily_update.s
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-
-import numpy as np
-import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # for build_site import
 
+from build_site import main as build_site_main
+
 from liiga.config import load_config
-from liiga.crowd import blend_with_model
-from liiga.db import get_connection, query_df, register_df
-from liiga.elo import elo_ratings_current, elo_game_probs, _ot_rate_before
-from liiga.ensemble import ensemble_game_probs
-from liiga.model import predict_games, calibrate_ties
 from liiga.pipeline import forecast, persist, refresh_results
 from liiga.snowflake_sync import sync_all
 from liiga.team_strength import build_team_strength
-
-from build_site import main as build_site_main
 
 _POISSON_WEIGHT = 0.4   # keep in sync with scripts/local/refresh_standings.py
 

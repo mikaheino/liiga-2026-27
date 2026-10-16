@@ -14,10 +14,9 @@ import pandas as pd
 
 from .config import load_config
 from .db import get_connection, query_df
-from .model import (_ratings_as_of, predict_games, _log_loss, _brier,
-                    _expected_points, calibrate_ties)
-from .elo import elo_ratings_as_of, elo_game_probs, _ot_rate_before
+from .elo import _ot_rate_before, elo_game_probs, elo_ratings_as_of
 from .elo_od import od_ratings_as_of, od_ratings_to_df
+from .model import _brier, _expected_points, _log_loss, _ratings_as_of, calibrate_ties, predict_games
 
 _PROB_COLS = ["p_home_reg", "p_away_reg", "p_overtime", "p_home_ot_win"]
 
@@ -209,7 +208,6 @@ def _sweep_3way(seasons):
     con = get_connection()
     try:
         ot_lean = cfg["match_model"]["ot_favourite_lean"]
-        cutoff = cfg["simulation"]["playoff_cutoff_rank"]
         # precompute all per-season prediction frames
         season_data = {}
         for s in seasons:
@@ -244,7 +242,7 @@ def _sweep_3way(seasons):
             if ow < 0 or ow > 1:
                 continue
             rhos = []
-            for s, d in season_data.items():
+            for _s, d in season_data.items():
                 pred = d["poisson"].copy()
                 for col in _PROB_COLS:
                     pred[col] = pw * d["poisson"][col] + ew * d["elo"][col] + ow * d["od"][col]

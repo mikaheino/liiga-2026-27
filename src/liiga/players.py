@@ -15,14 +15,10 @@ Two parts:
 """
 from __future__ import annotations
 
-import datetime as _dt
-
-import numpy as np
 import pandas as pd
 
 from .config import load_config, resolve_path
 from .db import get_connection, query_df, register_df
-from .external import compute_external_rates
 
 
 def _age_factor(birth_year, cfg) -> float:

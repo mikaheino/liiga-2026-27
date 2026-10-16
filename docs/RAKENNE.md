@@ -34,6 +34,7 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 | `scripts/deploy/` | Snowflake-julkaisu: `deploy_views.py`, `semantic_views.py` (+ `_en`), `deploy_tools.py`, `deploy_knowledge.py`, `deploy_agent.py`, `agent_eval.py`, `sync_to_snowflake.py`, `snow_conn.py` | GitHub Actions (`deploy.yml`) ja kehittäjä DEV-aliakselle |
 | `scripts/local/` | paikallinen putki ja tuotokset: `daily_update.py/.sh` (launchd 08:30), `build_site.py`, `build_instagram.py`, `refresh_standings.py` (vain esikausi), rosterityökalut, `hockeydb.py`, launchd-plist | launchd ja kehittäjä |
 | `scripts/tools/` | Snowflake-työkalujen paikalliset vastineet: `skenaario.py` = `SIMULATE_SCENARIO`, `kokoonpanot.py` = `LINEUP_FORECAST` (sama lähdekoodi) | kehittäjä |
+| `scripts/dev/` | koodin laatu: `quality.py` (ruff + monimutkaisuus + testit/kattavuus, lähtötaso `quality_baseline.json`), `claude_ruff_hook.py` | CI (`ci.yml`), git pre-push, Claude Code -hook |
 | `scripts/experiments/` | kertaluonteiset kokeet | kehittäjä |
 
 ## Muut paikalliset
@@ -48,7 +49,10 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 | `config.yaml` | mallin asetukset; simulaattorin vakiot testataan niitä vasten |
 | `streamlit_app/` | Streamlit (paikallinen; Snowflake-kopiota ei päivitetä) |
 | `site/`, `site_instagram/`, `logs/` | paikalliset tuotokset |
-| `tests/` | pytest (CI) |
+| `tests/` | pytest (CI ja pre-push, `scripts/dev/quality.py`) |
+| `.githooks/pre-push` | sama laatuportti ennen pushia (`git config core.hooksPath .githooks`) |
+| `.claude/settings.json` | Claude Code -hook: ruff jokaiselle muokatulle .py-tiedostolle |
+| `pyproject.toml` | riippuvuudet ja ruffin asetukset (sama CI:ssä ja paikallisesti) |
 | `docs/` | kehittäjän dokumentaatio; agentin tietopankki on `snowflake/LIIGA/MODEL/cortex_search/` |
 
 ## Repon ulkopuolella (tällä koneella)

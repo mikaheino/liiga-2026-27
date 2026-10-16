@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import argparse
 
-from liiga.snowflake_sync import (CURATED_TABLES, _cfg, _schema_for,
-                                  fetch_git_repo, local_tables, sync_all)
+from liiga.snowflake_sync import CURATED_TABLES, _cfg, _schema_for, fetch_git_repo, local_tables, sync_all
 
 
 def main() -> int:

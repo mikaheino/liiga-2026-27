@@ -21,8 +21,10 @@ jobs:
           cache: pip
       - name: Riippuvuudet
         run: pip install -e ".[dev]"
-      - name: Testit (malli, simulaatio, maalivahdit)
-        run: pytest -q tests
+      - name: Koodin laatu (ruff, monimutkaisuus, testit + kattavuus)
+        # Sama komento kuin paikallisesti ja git pre-push -hookissa; asetukset
+        # pyproject.toml:ssa, lähtötaso scripts/dev/quality_baseline.json.
+        run: python scripts/dev/quality.py
       - name: Skriptit kääntyvät
         run: python -m py_compile scripts/*/*.py snowflake/LIIGA/CODE/stages/AGENT_SKILLS/*/render.py snowflake/LIIGA/MODEL/procedures/*/*.py
       - name: Semanttisten mallien YAML vastaa koodia

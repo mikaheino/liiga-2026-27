@@ -39,11 +39,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from PIL import Image                                    # noqa: E402
-import numpy as np                                       # noqa: E402
+import numpy as np  # noqa: E402
+from PIL import Image  # noqa: E402
 
-from liiga.config import load_config                     # noqa: E402
-from liiga.db import get_connection, query_df           # noqa: E402
+from liiga.config import load_config  # noqa: E402
+from liiga.db import get_connection, query_df  # noqa: E402
 
 OUT = ROOT / "site_instagram"
 LOGOS = ROOT / "site" / "assets" / "logos"
@@ -751,8 +751,7 @@ def _newcomer_picks() -> list:
         con.close()
 
     ext = pd.read_csv(ROOT / "data/external_players.csv", comment="#")
-    abroad = {_norm(n) for n in ext[ext.season == 2026]["name"]}
-    src = {_norm(n): l for n, l in zip(ext[ext.season == 2026]["name"],
+    src = {_norm(n): lg for n, lg in zip(ext[ext.season == 2026]["name"],
                                        ext[ext.season == 2026]["league"])}
     pr["k"] = pr["name"].map(_norm)
     # STRICT: never played a Liiga game. rate_source 'external' means the
@@ -764,7 +763,7 @@ def _newcomer_picks() -> list:
              & (~pr["name"].map(_norm).isin(_nhl_bound() | PRE_WINDOW_LIIGA))]
 
     picks = []
-    from liiga.goalies import parse_goalie_seasons, compute_goalie_ratings
+    from liiga.goalies import compute_goalie_ratings, parse_goalie_seasons
     gs = parse_goalie_seasons()
     last = gs.sort_values("season").groupby("name").tail(1)
     g = compute_goalie_ratings().merge(
@@ -1035,7 +1034,7 @@ def award_status_slide(t: dict, picks: list, stats: dict) -> str:
 def newcomers_status_slide(t: dict, picks: list, stats: dict) -> str:
     """The same six newcomers, with what they have produced so far."""
     rows = []
-    for pos, full, name, team, frm, _num, _unit in picks:
+    for pos, full, name, team, _frm, _num, _unit in picks:
         s = stats.get(_norm(full), {})
         if pos == "MV":
             line = (f"{s['starts']} aloitusta &middot; {s['ga']} päästettyä"
@@ -2043,7 +2042,7 @@ def build() -> None:
 <code>python scripts/local/build_instagram.py</code>.</p>
 <div class="grid">{figs}</div>
 <h2 style="font-size:18px">PDF bundles</h2>
-<p class="lead">{"".join(f'<a style="color:{GOLD}" href="{f}">{f}</a> — {l} ({len(o)} pages)<br>' for f, l, o in PDF_BUNDLES)}
+<p class="lead">{"".join(f'<a style="color:{GOLD}" href="{f}">{f}</a> — {lbl} ({len(o)} pages)<br>' for f, lbl, o in PDF_BUNDLES)}
 Each bundle ends with <em>How it is built</em>, so either can be sent on its own.</p>
 <h2 style="font-size:18px">Caption</h2>
 <textarea readonly>{CAPTION}</textarea>

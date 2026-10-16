@@ -121,8 +121,10 @@ def seasons(pid: str) -> tuple[bool, list[dict]]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    s = sub.add_parser("search"); s.add_argument("surnames", nargs="+")
-    w = sub.add_parser("show"); w.add_argument("pids", nargs="+")
+    s = sub.add_parser("search")
+    s.add_argument("surnames", nargs="+")
+    w = sub.add_parser("show")
+    w.add_argument("pids", nargs="+")
     w.add_argument("--from", dest="lo", type=int, default=2022)
     a = ap.parse_args()
     if a.cmd == "search":
