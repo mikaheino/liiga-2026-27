@@ -8,25 +8,25 @@ Lähtötaso on **26.8.2026** (d454ecc), roster jolla kauden ensimmäinen ennuste
 
 ## Pisteet versioittain
 
-| joukkue | 26.8.2026 | 15.9.2026 | 9.10.2026 | 16.10.2026 | muutos yhteensä |
-|---|---:|---:|---:|---:|---:|
-| Jukurit | 70,9 | 72,5 | 73,3 | 73,2 | **+2,3** |
-| HIFK | 99,1 | 99,3 | 99,4 | 101,1 | **+2,0** |
-| Sport | 69,1 | 69,0 | 71,1 | 71,0 | **+1,9** |
-| HPK | 86,1 | 86,5 | 86,8 | 86,7 | **+0,6** |
-| Ässät | 89,4 | 89,3 | 89,1 | 89,1 | **−0,3** |
-| KalPa | 93,1 | 93,0 | 92,8 | 92,7 | **−0,4** |
-| Ilves | 104,1 | 104,0 | 103,8 | 103,7 | **−0,4** |
-| SaiPa | 98,2 | 98,1 | 97,9 | 97,8 | **−0,4** |
-| K-Espoo | 93,7 | 93,6 | 93,4 | 93,3 | **−0,4** |
-| Kärpät | 91,2 | 91,1 | 90,9 | 90,8 | **−0,4** |
-| Lukko | 105,1 | 105,0 | 104,8 | 104,7 | **−0,4** |
-| TPS | 78,9 | 78,8 | 78,6 | 78,5 | **−0,4** |
-| JYP | 96,7 | 96,6 | 96,3 | 96,3 | **−0,4** |
-| Tappara | 115,3 | 115,2 | 114,7 | 114,6 | **−0,7** |
-| KooKoo | 107,4 | 107,0 | 106,8 | 106,7 | **−0,8** |
-| Pelicans | 89,2 | 88,6 | 88,4 | 88,3 | **−0,9** |
-| Jokerit | 98,6 | 98,5 | 97,8 | 97,4 | **−1,2** |
+| joukkue | 26.8.2026 | 15.9.2026 | 9.10.2026 | 16.10.2026 | 16.10.2026 | muutos yhteensä |
+|---|---:|---:|---:|---:|---:|---:|
+| Jukurit | 70,9 | 72,5 | 73,3 | 73,2 | 73,2 | **+2,3** |
+| Sport | 69,1 | 69,0 | 71,3 | 71,2 | 71,2 | **+2,0** |
+| HIFK | 99,1 | 99,3 | 99,3 | 101,1 | 100,9 | **+1,9** |
+| HPK | 86,1 | 86,5 | 86,8 | 86,7 | 86,8 | **+0,6** |
+| Ässät | 89,4 | 89,3 | 89,1 | 89,1 | 89,1 | **−0,3** |
+| KalPa | 93,1 | 93,0 | 92,8 | 92,7 | 92,7 | **−0,3** |
+| Ilves | 104,1 | 104,0 | 103,8 | 103,7 | 103,7 | **−0,4** |
+| SaiPa | 98,2 | 98,1 | 97,9 | 97,8 | 97,9 | **−0,4** |
+| K-Espoo | 93,7 | 93,6 | 93,4 | 93,3 | 93,3 | **−0,4** |
+| Kärpät | 91,2 | 91,1 | 90,9 | 90,8 | 90,8 | **−0,4** |
+| TPS | 78,9 | 78,8 | 78,6 | 78,5 | 78,5 | **−0,4** |
+| Lukko | 105,1 | 105,0 | 104,8 | 104,7 | 104,7 | **−0,4** |
+| JYP | 96,7 | 96,6 | 96,3 | 96,2 | 96,3 | **−0,4** |
+| Tappara | 115,3 | 115,2 | 114,7 | 114,6 | 114,6 | **−0,7** |
+| KooKoo | 107,4 | 107,0 | 106,8 | 106,7 | 106,7 | **−0,7** |
+| Pelicans | 89,2 | 88,6 | 88,4 | 88,3 | 88,3 | **−0,9** |
+| Jokerit | 98,6 | 98,5 | 97,8 | 97,4 | 97,4 | **−1,2** |
 
 ## Vaiheittain
 
@@ -53,7 +53,7 @@ Commit `e340020`, roster 526 → 538.
 
 | joukkue | muutos | lisätty | poistettu |
 |---|---:|---|---|
-| Sport | +2,1 | Brett Harrison, Oula Palve | – |
+| Sport | +2,2 | Brett Harrison, Oula Palve | – |
 | Jukurit | +0,8 | Emils Vitols, Pekka Jormakka | Bogdans Hodass |
 | HPK | +0,3 | Olli Palola, Onnikalle Lehtonen, Samuli Piipponen | – |
 | HIFK | 0,0 | David Nemecek, Vili Varonen | Jori Lehterä |
@@ -77,6 +77,17 @@ Commit `ac63c18`, roster 538 → 540.
 | JYP | −0,1 | Atte Ohtamaa | – |
 | K-Espoo | −0,1 | – | Tuomas Suoniemi |
 | Jokerit | −0,4 | – | Oliver Suni |
+
+*Rivit näytetään joukkueille joiden rosteri muuttui tai joiden pisteet liikkuivat vähintään 0,5.*
+
+### 16.10.2026 — Add Axel Landen and Severi Auvinen, and note that the schedule must reach Snowflake
+
+Commit `ccf0e19`, roster 540 → 542.
+
+| joukkue | muutos | lisätty | poistettu |
+|---|---:|---|---|
+| TPS | 0,0 | Axel Landen | – |
+| HIFK | −0,2 | Severi Auvinen | – |
 
 *Rivit näytetään joukkueille joiden rosteri muuttui tai joiden pisteet liikkuivat vähintään 0,5.*
 
