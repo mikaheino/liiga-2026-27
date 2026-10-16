@@ -147,7 +147,24 @@ h1 { margin: 10px 0 6px; font: 800 40px/1.05 var(--sans); letter-spacing: -.03em
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes cellin { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .tr, .bar i, .hr:not(.hh) .hc { animation: none; } }
+/* Taustaliike ilman käyttäjän toimia: valojuova pyyhkäisee heatmapin yli ja
+   jokaisen rivin todennäköisin sija hengittää. Hidas ja himmeä tarkoituksella. */
+@keyframes sweep { 0%, 62% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(320%) skewX(-18deg); } }
+@keyframes breathe { 0%, 100% { box-shadow: inset 0 0 0 1px rgba(235,202,104,.0), 0 0 0 rgba(235,202,104,0); }
+                     50% { box-shadow: inset 0 0 0 1px rgba(235,202,104,.55), 0 0 14px rgba(235,202,104,.28); } }
+.heat { position: relative; }
+.heat::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 30%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(235,202,104,.07) 45%, rgba(255,240,200,.11) 50%, rgba(235,202,104,.07) 55%, transparent);
+  animation: sweep 9s ease-in-out 1.2s infinite; }
+.hr:not(.hh) .hc.peak { animation: cellin .5s cubic-bezier(.2,.7,.2,1) both, breathe 4.5s ease-in-out infinite;
+  animation-delay: var(--d, 0ms), calc(var(--d, 0ms) + 1s); }
+/* Vähennetty liike: liikkuvat animaatiot pois, mutta hehku jää -- se on pelkkää
+   valoa eikä liikuta mitään. Ilman tätä juova jäisi paikalleen vasempaan reunaan. */
+@media (prefers-reduced-motion: reduce) {
+  .tr, .bar i, .hr:not(.hh) .hc { animation: none; }
+  .heat::after { display: none; }
+  .hr:not(.hh) .hc.peak { animation: breathe 4.5s ease-in-out infinite; animation-delay: var(--d, 0ms); }
+}
 
 /* --- Kapeat näytöt ------------------------------------------------------ */
 @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

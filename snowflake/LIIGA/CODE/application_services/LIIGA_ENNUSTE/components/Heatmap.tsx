@@ -20,6 +20,9 @@ const label = (p: number) => (!(p >= 0.0005) ? "" : p < 0.005 ? "<1" : String(Ma
 
 const edge = (rank: number) => (rank === PLAYOFF_CUT + 1 ? "e-top" : rank === QUALI_CUT + 1 ? "e-quali" : rank === RELEGATION_CUT + 1 ? "e-down" : "");
 
+// Todennäköisin sija hehkuu taustalla (globals.css: .peak).
+const peakOf = (p: number[]) => p.indexOf(Math.max(...p)) + 1;
+
 export default function Heatmap({ rows, highlight }: { rows: PositionRow[]; highlight: Set<string> }) {
   const ranks = Array.from({ length: TEAMS }, (_, i) => i + 1);
   return (
@@ -38,7 +41,7 @@ export default function Heatmap({ rows, highlight }: { rows: PositionRow[]; high
             <span className="name">{r.team}</span>
           </div>
           {ranks.map((k) => (
-            <div key={k} className={`hc ${edge(k)}`} style={{ ...cell(r.p[k - 1]), "--d": `${(i + k) * 14}ms` } as React.CSSProperties}
+            <div key={k} className={`hc ${edge(k)} ${k === peakOf(r.p) ? "peak" : ""}`} style={{ ...cell(r.p[k - 1]), "--d": `${(i + k) * 14}ms` } as React.CSSProperties}
               title={`${r.team}: sija ${k} -- ${(r.p[k - 1] * 100).toFixed(1).replace(".", ",")} %`}>{label(r.p[k - 1])}</div>
           ))}
           <div className="hp"><b>{Math.round(r.points)}</b><span>{Math.round(r.p05)}–{Math.round(r.p95)}</span></div>
