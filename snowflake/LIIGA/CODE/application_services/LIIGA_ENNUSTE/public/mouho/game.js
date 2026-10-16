@@ -136,6 +136,8 @@ async function leave() {
   await script(async () => {
     if (!has("lippu")) return say("Ilman lippua en pääse edes turvatarkastukseen. Postia pitäisi ehkä katsoa.");
     if (!st.hat) return say("Lähteä Indiana Jones -seikkailulle ilman hattua? En ole barbaari.");
+    // Basaarista ei ole paluuta satamaan: ilman possun rahoja ruoskaa ei saisi, ja peli jumittuisi.
+    if (!st.flags.pig) return say("Lähteä Istanbuliin ilman käteistä? Säästöpossu laiturilla on vielä tyhjentämättä.");
     await say("Istanbul, täältä tullaan!");
     await travel(); go("basaari", 40, true);
     await say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
@@ -202,8 +204,11 @@ async function bargain() {
     if (opts[i] !== b.ok) { await say(opts[i].includes("kameli") ? "Mehmet ei käänny. Hän on nähnyt kolmipäisen kamelin. Kahdesti." : "Ha! Palaa kun opit tinkimään.", opts[i].includes("kameli") ? "muu" : "kauppias"); return false; }
   }
   await say("...Sinä tingit kuin oma veljeni. Hyvä on! Ruoska sinulle 3,50 eurolla ja napilla.", "kauppias");
-  if (!has("rahat")) { await say("Mutta rahaa sinulla ei ole. Tule takaisin kun possu on rikki.", "kauppias"); return false; }
-  take("rahat"); st.whip = true; give("ruoska"); iq("tinkiminen", 10); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari.");
+  // Varmistus vanhoille tallennuksille (ennen taksin rahavaatimusta): ruoska annetaan
+  // velaksi, ettei peli jää jumiin basaariin ilman paluuta.
+  if (!has("rahat")) { await say("Ei rahaa? No, tingit kuin veljeni. Maksat kun olet rikas. Mehmet luottaa.", "kauppias"); }
+  else take("rahat");
+  st.whip = true; give("ruoska"); iq("tinkiminen", 10); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari.");
   await say("Ja kaupan päälle kebab, ystäväni. Kukaan ei lähde Mehmetin kojulta nälkäisenä.", "kauppias"); give("kebab"); return true;
 }
 async function sellIdol(inScript) {
