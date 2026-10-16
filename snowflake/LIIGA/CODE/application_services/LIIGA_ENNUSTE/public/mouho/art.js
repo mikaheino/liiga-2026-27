@@ -113,6 +113,7 @@ function kotiDraw(t) {
 }
 
 // ---- basaari ------------------------------------------------------------------
+function turkFlag(x, y) { r(x, y, 9, 6, "#e30a17"); disc(x + 3, y + 3, 2, "#fcfcfc"); disc(x + 4, y + 3, 1, "#e30a17"); px(x + 6, y + 3, "#fcfcfc"); px(x + 6, y + 2, "#fcfcfc"); px(x + 7, y + 3, "#fcfcfc"); }
 function basaariBack() {
   vgrad(0, 0, W, 66, ["#24123c", "#4a1848", "#7c2448", "#b43c40", "#e0603a", "#f48c3c", "#fcb85c"]);
   disc(70, 44, 11, "#fce890", "#fcd070"); for (let j = -20; j <= 20; j++) for (let i = -20; i <= 20; i++) { const d = Math.hypot(i, j); if (d > 11 && d < 20 && bay(70 + i, 44 + j) < (20 - d) / 22) px(70 + i, 44 + j, "#fcc460"); }
@@ -131,6 +132,9 @@ function basaariBack() {
   // alaseinä ja kojujen takainen varjokäytävä (muuten edellinen ruutu näkyi läpi)
   noise(0, 71, W, 37, "#6a3c22", ["#5a3018", "#7a4a2c"], .3); for (let x = 0; x < W; x += 18) r(x, 71, 1, 37, "#4a2814");
   g.fillStyle = "rgba(20,0,0,.28)"; g.fillRect(0, 66, W, 8);
+  // viirinauha Turkin lipuin moskeijan edessä
+  for (let x = 0; x < W; x++) px(x, 44 + Math.round(Math.sin(x / 26) * 3 + 3), "#3c1c1c");
+  for (let x = 8; x < W; x += 26) turkFlag(x, 45 + Math.round(Math.sin(x / 26) * 3 + 3));
 }
 function basaariFront() {
   // mukulakivet
@@ -178,6 +182,11 @@ function basaariDraw(t) {
   g.drawImage(paintBg("basaariFront", basaariFront), 0, 0);
   if (!st.flags.bag) { r(92, 74, 1, 4, "#3c3c3c"); r(88, 78, 10, 12, "#c8b48c"); r(88, 78, 10, 1, "#e0d0a8"); r(90, 79, 6, 2, "#a8946c"); r(96, 80, 2, 10, "#a8946c"); }
   if (!st.whip) { r(222, 72, 16, 2, "#6c4420"); r(236, 63, 2, 11, "#6c4420"); r(233, 62, 6, 2, "#6c4420"); r(222, 72, 2, 2, "#3c2410"); px(239, 62, "#3c2410"); }
+  // döner: pyörivä varras, juovat liikkuvat, grillivastus hehkuu
+  { const ph = Math.floor(t / 140) % 3; r(182, 74, 1, 24, "#8c8c8c"); r(186, 72, 7, 28, "#2c2c2c"); r(187, 74, 5, 24, "#e8401c"); glow(189, 86, 12, "255,90,30", .22);
+    for (let j = 0; j < 22; j++) { const w = 6 - Math.abs(j - 9) / 4; r(182 - w / 2 + 0.5, 76 + j, w, 1, (j + ph) % 3 === 0 ? "#6c3414" : (j + ph) % 3 === 1 ? "#a8642c" : "#c8843c"); }
+    r(178, 98, 9, 2, "#c8c8c8"); r(180, 72, 5, 2, "#8c8c8c"); }
+  for (const x of [214, 219, 236]) { r(x, 75, 3, 4, "#c84c1c"); r(x, 75, 3, 1, "#fce0b0"); px(x + 1, 79, "#e8c81c"); }
   for (const x of [44, 118, 160, 290]) { const f = .5 + .5 * Math.sin(t / 110 + x); r(x, 66, 1, 3, "#3c2c1c"); r(x - 2, 69, 5, 7, "#a8741c"); r(x - 1, 70, 3, 5, f > .5 ? "#fce070" : "#fcc040"); r(x - 2, 76, 5, 1, "#7c541c"); glow(x, 72, 13, "255,160,60", .16 + .05 * f); }
 }
 
@@ -301,7 +310,10 @@ function mapBg() {
   land([[40, 60], [120, 56], [170, 64], [200, 70], [150, 84], [110, 92], [60, 86]], "#b4c894");
   land([[180, 86], [300, 80], [316, 104], [280, 120], [200, 116], [176, 100]], "#bccc8c");
   g.fillStyle = "#8cb0c8"; g.fillRect(150, 82, 40, 8); g.fillRect(110, 96, 90, 40);
-  g.fillStyle = "#4c3c24"; g.font = "10px VT323, monospace"; g.fillText("SUOMI", 118, 26); g.fillText("Helsinki", 112, 46); r(126, 39, 2, 2, "#4c3c24"); g.fillText("TURKKI", 232, 100); g.fillText("Mustameri", 196, 78);
+  g.fillStyle = "#4c3c24"; g.font = "10px VT323, monospace"; g.fillText("SUOMI", 118, 26); g.fillText("Helsinki", 112, 46); r(126, 39, 2, 2, "#4c3c24"); g.fillText("TURKKI", 232, 100); g.fillText("Mustameri", 196, 78); g.fillText("Istanbul", 206, 92);
+  r(198, 88, 1, 8, "#4c3c24"); turkFlag(199, 88);
+  for (const [bx, by, c] of [[262, 108, "#c83c3c"], [272, 104, "#e8b41c"], [282, 110, "#3c7cc8"]]) { disc(bx, by, 3, c); r(bx - 1, by + 4, 3, 2, "#6c4c24"); px(bx - 2, by + 3, "#4c3c24"); px(bx + 2, by + 3, "#4c3c24"); }
+  g.fillText("Kappadokia", 254, 122);
   r(286, 10, 1, 18, "#5c4c34"); r(278, 18, 17, 1, "#5c4c34"); g.fillText("P", 284, 8);
   g.strokeStyle = "#8c6c44"; g.strokeRect(2.5, 2.5, W - 5, H - 5);
 }
@@ -359,6 +371,7 @@ async function ending() {
   await say("...Ilmaista?");
   await say("Järjestäjä: \"Ilmoittautuminen on kuitenkin sitova. Parit arvotaan paikan päällä, erät ovat kolme minuuttia, pizza tulee puoli seitsemältä.\"", "muu");
   await say("Sitten tällä kertaa raha menee oikeaan osoitteeseen. Pizzaan.");
+  if (has("kebab")) { await say("Ja toin kebabin Istanbulista. Pizza on yliarvostettu. Mouhoness vaatii proteiinia."); await say("Järjestäjä: \"Kebab Mouhossa. Tämä on uutta. Teşekkürler!\"", "muu"); }
   await say("Mouhoness: ei apuja, ei armoa. Vain taito, refleksit ja trash talk.\nHyvässä hengessä tietysti.", "muu");
   await say(`Mouho-IQ: ${iqTotal()} / ${IQ_MAX}. ${iqTotal() >= IQ_MAX ? "Täydet pisteet. Mouhoness saavutettu." : "Löytyikö kaikki? Kokeile uudestaan."}`, "muu");
   $say.innerHTML = '<div class="line" style="left:50%;bottom:76%;color:#fcfc54">MOUHO 2026 · 22.5. klo 17<br>Kaivokatu 10, 4. krs, Helsinki</div>';

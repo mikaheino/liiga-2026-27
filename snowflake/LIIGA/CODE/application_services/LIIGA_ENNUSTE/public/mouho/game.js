@@ -1,6 +1,7 @@
 // Mouhon salaisuus -- sisältö: esineet, ruudut ja tarina Mouho-moottorille.
 "use strict";
 Object.assign(ITEMS, {
+  kebab: { name: "kebab", look: () => say("Aito Istanbulin döner kebab. Säästän sen Mouhoon. Pizza on yliarvostettu.") },
   kortti: { name: "käyntikortti", look: () => say("\"Signor Investimenti, Milano. Lisärahoitusta joustavasti.\"\nSama mies. Eri aurinkolasit.") },
   kirje: { name: "kirje", look: async () => { await say("\"Arvoisa herra Markkanen! Muistatte minut Milanosta.\nTällä kertaa kaikki on totta: Kappadokian luolatemppelissä lepää kultainen idoli.\"\n-- Signor Investimenti"); await say("Milano. Ensin tulkin kanssa, sitten ilman.\nTällä kertaa en siirrä kenellekään mitään etukäteen."); if (!has("lippu")) { await say("Kirjeen välissä on lentolippu Istanbuliin. Ilmainen! Se on aina hyvä merkki. Eikö olekin?"); give("lippu"); } } },
   lippu: { name: "lentolippu", look: () => say("Yksisuuntainen lippu Istanbuliin. Paluu järjestyy jotenkin. Aina järjestyy.") },
@@ -52,6 +53,10 @@ Object.assign(ROOMS, {
     spots: [
       { id: "amfora", name: "amfora", x: 54, y: 108, w: 16, h: 22, at: 76, aty: 129,
         Katso: () => say("Amfora. Kyljessä lukee \"ÄLÄ AVAA\". Kerrankin kunnioitan ohjetta."), Avaa: () => say("Siinä lukee \"älä avaa\". Opin jotain Milanosta.") },
+      { id: "doner", name: "döner-varras", x: 176, y: 74, w: 14, h: 24, at: 182, aty: 112,
+        Katso: () => say("Döner kebab pyörii hitaasti. Kuin Liigan otteluohjelma: aina sama liha, mutta joka kerta eri kohdassa."),
+        Poimi: () => say("Mehmet: \"Kebab maksaa, ystäväni. Mutta tuoksu on ilmainen.\"", "kauppias"),
+        Käytä: () => say("Pyöritän sitä toiseen suuntaan. Mehmet katsoo minua kuin olisin siirtänyt ottelun.") },
       { id: "matto", name: "matto", x: 30, y: 70, w: 34, h: 38, at: 48,
         Katso: async () => { st.flags.map = true; iq("kartta", 8); await say("Mattoon on kudottu kartta! Kappadokia... luolatemppeli... ja punainen rasti.\nPainan sen mieleeni. Itäinen kuja vie sinne."); },
         Poimi: () => say("Kauppias: \"Matto maksaa enemmän kuin sinä.\"", "kauppias"), Työnnä: () => say("Matto ei lennä. Tarkistin.") },
@@ -110,7 +115,7 @@ async function leave() {
     if (!st.hat) return say("Lähteä Indiana Jones -seikkailulle ilman hattua? En ole barbaari.");
     await say("Istanbul, täältä tullaan!");
     await travel(); go("basaari", 40, true);
-    await say("Basaari! Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
+    await say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
   });
 }
 async function toTemple() {
@@ -138,14 +143,18 @@ const BARGAIN = [
   { a: "Tuollaisella hatulla et pääse edes Mikkelin torille!", ok: "Ja tuollaisilla hinnoilla et myisi edes Mikkelin torilla.", no: ["Ai.", "Hattu on isoisän!"] },
   { a: "Äitini tinkii paremmin kuin sinä!", ok: "Ilmeisesti, koska hän ei ole koskaan ostanut sinulta mitään.", no: ["Terveisiä äidillesi.", "Minulla on kumikana väkipyörällä."] },
   { a: "Sinä maksaisit ennakkoon kenelle tahansa, joka puhuu italiaa!", ok: "Siksi tingin nyt turkiksi, enkä maksa mitään ennakkoon.", no: ["Grazie.", "Tarvitsen tulkin."] },
+  { a: "Sinä et erottaisi döneriä iskenderistä!", ok: "Mutta erotan hyvän kaupan huonosta. Tällä kertaa.", no: ["Molemmat ovat kebabia.", "Saako valkosipulikastikkeella?"] },
   { a: "Tämä ruoska kuului itse sulttaanille!", ok: "Sitten sulttaani ostaa sen takaisin kalliimmalla.", no: ["Wau.", "Katso takanasi, kolmipäinen kameli!"] },
 ];
 async function talk() {
   await script(async () => {
+    if (!st.flags.merhaba) { st.flags.merhaba = true; await say("Hoş geldiniz! Merhaba, ystäväni! Tervetuloa Mehmetin kojuun, Istanbulin rehellisimpään.", "kauppias"); await say("Teşekkür... ederim? Opettelin sen lentokoneessa."); }
     while (true) {
-      const opts = []; if (!st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!"); if (!st.flags.logo) opts.push("Teettekö logoja?"); if (!st.flags.seura) opts.push("Ostaisitteko jääkiekkoseuran?"); if (has("idoli")) opts.push("Kiinnostaisiko kultainen idoli?"); opts.push("Ei mitään, näkemiin.");
+      const opts = []; if (!st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!"); if (!st.flags.logo) opts.push("Teettekö logoja?"); if (!st.flags.seura) opts.push("Ostaisitteko jääkiekkoseuran?"); if (!st.flags.kebabQ) opts.push("Missä saa Istanbulin parhaan kebabin?"); if (has("idoli")) opts.push("Kiinnostaisiko kultainen idoli?"); opts.push("Ei mitään, näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
-      if (pick.startsWith("Paljonko")) await say("Sinulle, ystäväni, vain 500 liiraa. Ja hattusi.", "kauppias");
+      if (pick.startsWith("Missä saa")) { st.flags.kebabQ = true; await say("Serkkuni kioskista Galatan sillan alta. Hänellä on myös logofirma. Ja tulkkipalvelu.", "kauppias");
+        await say("Kuulostaa monialaiselta konsernilta."); await say("Çok güzel! Sinä ymmärrät liiketoimintaa.", "kauppias"); }
+      else if (pick.startsWith("Paljonko")) await say("Sinulle, ystäväni, vain 500 liiraa. Ja hattusi.", "kauppias");
       else if (pick.startsWith("Teettekö")) { st.flags.logo = true; await say("Teen! Idän Ihme ja kebab samassa kuvassa. Vain 50 tonnia.", "kauppias"); await say("Kiitos, olen nähnyt sen jo."); }
       else if (pick.startsWith("Ostaisitteko")) { st.flags.seura = true; await say("Etsitkö turkkilaisia sijoittajia, ystäväni?\nMinä olen turkkilainen sijoittaja. Vastaus on ei.", "kauppias"); await say("Kannatti kysyä. Viimeksi kysyin Milanossa."); }
       else if (pick.startsWith("Tingitään")) { if (await bargain()) return; }
@@ -164,7 +173,8 @@ async function bargain() {
   }
   await say("...Sinä tingit kuin oma veljeni. Hyvä on! Ruoska sinulle 3,50 eurolla ja napilla.", "kauppias");
   if (!has("rahat")) { await say("Mutta rahaa sinulla ei ole. Tule takaisin kun possu on rikki.", "kauppias"); return false; }
-  take("rahat"); st.whip = true; give("ruoska"); iq("tinkiminen", 20); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari."); return true;
+  take("rahat"); st.whip = true; give("ruoska"); iq("tinkiminen", 20); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari.");
+  await say("Ja kaupan päälle kebab, ystäväni. Kukaan ei lähde Mehmetin kojulta nälkäisenä.", "kauppias"); give("kebab"); return true;
 }
 async function sellIdol(inScript) {
   const run = async () => {
@@ -223,6 +233,7 @@ ITEMS.pussi.icon = () => { r(7, 5, 10, 9, "#c8b48c"); r(6, 4, 12, 2, "#e0d0a8");
 ITEMS.sakki.icon = () => { disc(12, 10, 5, "#c8b48c", "#a8946c"); r(10, 2, 4, 4, "#a8946c"); px(9, 9, "#e0d0a8"); r(6, 13, 12, 1, "#8c7850"); };
 ITEMS.ruoska.icon = () => { r(3, 10, 5, 3, "#3c2410"); for (let k = 0; k < 14; k++) px(8 + k, 10 - Math.sin(k / 2.2) * 5, "#8c5c2c"); px(21, 6, "#6c4420"); };
 ITEMS.kortti.icon = () => { r(3, 4, 18, 9, "#f4f0e4"); r(3, 4, 18, 1, "#fff"); r(5, 6, 6, 1, "#2c2c3c"); r(5, 8, 10, 1, "#8c8c8c"); r(5, 10, 8, 1, "#8c8c8c"); r(16, 6, 3, 3, "#c8a030"); };
+ITEMS.kebab.icon = () => { r(4, 5, 16, 8, "#e8c88c"); r(4, 5, 16, 1, "#f8e0a8"); r(6, 6, 12, 4, "#8c4c24"); r(7, 6, 3, 1, "#5c9c3c"); r(13, 7, 3, 1, "#c83c2c"); r(10, 8, 4, 1, "#f4f4ec"); r(4, 12, 16, 1, "#c8a46c"); };
 ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c"); r(9, 4, 2, 10, "#fcf06c"); r(13, 4, 2, 10, "#b8941c"); px(10, 7, "#3c2c0c"); px(13, 7, "#3c2c0c"); r(8, 14, 8, 1, "#8c6c1c"); px(15, 2, "#fff"); };
 
 // ---------------------------------------------------------------- käynnistys
