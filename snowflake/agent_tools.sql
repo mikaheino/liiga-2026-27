@@ -33,3 +33,13 @@ DESC USER MHEINO;
 -- Pelipäivän kokoonpanot (LINEUP_FORECAST_<sha>) hakevat liiga.fi:stä samalla
 -- integraatiolla kuin LIIGA_DAILY-notebook (lisätty 16.10. illalla).
 GRANT USAGE ON INTEGRATION LIIGA_FI_ACCESS TO ROLE LIIGA_DEPLOYER;
+
+-- Agentin tietopankki (Cortex Search, työkalu liiga_tieto; lisätty 16.10. illalla).
+-- Palvelu luodaan docs/agentti/*.md:stä nimellä LIIGA_TIETO_<sha> (scripts/deploy_knowledge.py).
+GRANT CREATE CORTEX SEARCH SERVICE ON SCHEMA LIIGA.MODEL TO ROLE LIIGA_DEPLOYER;
+GRANT USAGE ON FUTURE CORTEX SEARCH SERVICES IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_USER;
+GRANT USAGE ON FUTURE CORTEX SEARCH SERVICES IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_OWNER;
+-- Cortex Search vaatii lähteeksi taulun (vakiokysely: "Dynamic Tables must have at
+-- least one base table"). Tietopankin taulu AGENT_KNOWLEDGE_<sha> on kiinnitetty
+-- kuten palvelu; julkaisurooli luo sen.
+GRANT CREATE TABLE ON SCHEMA LIIGA.MODEL TO ROLE LIIGA_DEPLOYER;

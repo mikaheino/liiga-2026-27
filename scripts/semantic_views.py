@@ -116,7 +116,7 @@ Palauta vain kysymykseen tarvittavat sarakkeet ja enintään 17 riviä."""
 def ennustaja() -> dict:
     tables = [
         table("STANDINGS", "MODEL.STANDINGS_2026_27",
-              "Ennustettu LOPULLINEN runkosarjataulukko (60 ottelua) 10 000 "
+              "Ennustettu LOPULLINEN runkosarjataulukko (64 ottelua per joukkue) 10 000 "
               "simulaatiosta. Sisältää jo pelattujen otteluiden pisteet.",
               pk=["TEAM"],
               dims=[team(),

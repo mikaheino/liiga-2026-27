@@ -63,7 +63,8 @@ Tool selection -- one tool, one call (the only exception: a morning brief reques
 - liiga_kausi: the past and now (table, results, model accuracy, surprises, scoring, goalies, special teams, past seasons).
 - liiga_skenaario: what if (locked results), injuries or absences of named players for any period, and what a team needs (stay up, top 6, top 10, win).
 - liiga_kokoonpanot: today's or tomorrow's published lineups, starting goalies, absences, lineup-corrected 1X2, fair odds and betting questions.
-- Two tools only when comparing forecast with outcome. Never use web search.
+- liiga_tieto: how the model works, measured findings (backtests, home advantage, xG, 40 minutes, goalies), limitations (what the model cannot know) and data sources. Never answer these from table columns or memory.
+- Two tools only when comparing forecast with outcome, or when a current number needs its meaning from liiga_tieto (e.g. "is the home advantage bigger than the model assumes": liiga_kausi + liiga_tieto). Never use web search.
 
 Workflows:
 - A whole game day is a round preview: liiga_ennuste once with exactly "Kierroksen esikatselu: tämän illan ottelut" (tomorrow: "Esikatsele huomisen kierros").
@@ -80,6 +81,8 @@ Be brief: the answer in one sentence, then a table if needed (at most 10 rows, o
 Facts: when the question is about the title, the champion or who wins the regular season, say that 'mestaruus' here means winning the regular season, because the model does not forecast playoffs. Compare model accuracy with 'the home team always wins', not 50 %. Zones: 1-6 quarterfinals, 7-10 play-in, 15-17 relegated.
 
 Round preview: one sentence (number of games; the clearest favourite = the highest win % among the rows), then each OTTELU line in bold followed by the ENNUSTE, TILANNE, MAALIVAHDIT and KESKINAISET lines verbatim (skip empty ones), then at most one upset sentence; SUOSIKKI 'tasainen' = no favourite.
+
+Knowledge answers (liiga_tieto): plain Finnish, at most six lines or a short list, numbers as the knowledge base gives them; say when something is a limitation of the model.
 
 Tool answers lead with the headline number, then the tool's table. Why changed: the total, then the three parts (tulokset vs. odotus, kokoonpanot, mallin uusi arvio), largest first. What if: the biggest change. What is required: the probability now and the points for an even chance, then the pace needed at 50/80/95 % vs. the pace so far, the points line, and whether it depends on the team or its rivals (3 = regulation win, 2 = overtime win, 1 = overtime loss). Injuries and lineups: the effect on the forecast, the game table, and one sentence that player changes move only the player-based 40 % of the model (the Elo 60 % does not know who plays).
 
@@ -110,6 +113,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
     from deploy_tools import suffix as tool_suffix
     tsfx = tool_suffix("SIMULATE_SCENARIO", dev)
     lsfx = tool_suffix("LINEUP_FORECAST", dev)
+    from deploy_knowledge import suffix as knowledge_suffix
+    ksfx = knowledge_suffix(dev)
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
     s = {
@@ -143,6 +148,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                            "input_schema": {"type": "object", "properties": {
                                "day": {"type": "string", "description": "TODAY, TOMORROW or a date YYYY-MM-DD (Finnish time)."}},
                                "required": ["day"]}}},
+            {"tool_spec": {"type": "cortex_search", "name": "liiga_tieto",
+                           "description": "WHAT: the project's own knowledge base, in Finnish: how the forecast model works (player rates, age curve, league factors, goaltending, Poisson match model, overtime calibration, Elo, 40/60 blend, crowd signal, simulation), measured findings (backtest accuracy, home advantage test, xG and luck, 40-minute leaders, goalies), limitations and data sources. USE WHEN: 'miten malli toimii', 'miksi malli', 'onko X tilastollisesti merkitsevä', 'mitä malli ei tiedä', 'mistä data tulee'. DO NOT USE: for current numbers (other tools)."}},
             # HTML-esikatselu (CoWork document generation) tarvitsee tämän.
             # Oletus permission_policy = always_ask: käyttäjä hyväksyy ajon.
             {"tool_spec": {"type": "code_execution", "name": "code_execution"}},
@@ -156,6 +163,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                                 "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
             "liiga_kokoonpanot": {"type": "procedure", "identifier": f"LIIGA.MODEL.LINEUP_FORECAST{lsfx}",
                                   "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
+            "liiga_tieto": {"search_service": f"LIIGA.MODEL.LIIGA_TIETO{ksfx}", "max_results": 6,
+                            "title_column": "SECTION", "id_column": "ID"},
             "code_execution": {},
         },
         "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{sha}/{k}"}}
@@ -234,6 +243,11 @@ def candidate(alias: str, html: bool = False, message: str = "", fqn: str = FQN)
                                        f"SHOW SEMANTIC VIEWS LIKE '{sv.split('.')[-1]}' IN SCHEMA LIIGA.MODEL"))
                 if not got:
                     raise SystemExit(f"{sv} puuttuu: aja ensin python scripts/semantic_views.py --deploy")
+            svc = t.get("search_service")
+            if svc:
+                from deploy_knowledge import exists as svc_exists
+                if not svc_exists(svc):
+                    raise SystemExit(f"{svc} puuttuu: aja ensin python scripts/deploy_knowledge.py")
             proc = t.get("identifier")
             if proc:
                 from deploy_tools import exists

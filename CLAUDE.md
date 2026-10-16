@@ -804,6 +804,18 @@ reilut kertoimet, maalivahdit, merkittävät poissaolot. Paikallisesti:
 `.venv/bin/python scripts/kokoonpanot.py [YYYY-MM-DD]`. 16.10.: Tapparan 1
 47,2 -> 43,9 (Blichfeld poissa), sama luku paikallisesti ja Snowflakessa.
 
+**2e. Tietopankki `liiga_tieto` (Cortex Search, 16.10.)** -- `docs/agentti/*.md`
+(malli, havainnot, rajoitukset, data), KIRJOITETTU agentille. CLAUDE.md:tä ei
+anneta agentille: se on kehitysmuistio. Ennen tätä agentti päätteli menetelmän
+sarakkeista ("miten malli toimii" sekoitti Elon ja Poisson-osan, "60 ottelua"
+vaikka 64) ja arvasi merkitsevyyksiä. `scripts/deploy_knowledge.py` pilkkoo
+tiedostot ##-osioiksi (33) tauluun `AGENT_KNOWLEDGE_<sha>` ja palveluun
+`LIIGA_TIETO_<sha>`, upotusmalli monikielinen `snowflake-arctic-embed-l-v2.0`.
+Cortex Search ei hyväksy vakiokyselyä lähteeksi ("Dynamic Tables must have at
+least one base table"), siksi taulu. `max_results` 6: neljällä agentti haki
+kolmesti (132 000 -> 75 600 tokenia). **Kun mallia tai havaintoja muuttuu, päivitä
+`docs/agentti/` samassa commitissa** -- muuten agentti kertoo vanhaa.
+
 **1X2 ja maaliodottamat näkymässä:** `V_UPCOMING_PREDICTIONS` + VQR `TODAY_1X2`.
 Ennen agentti johti 1/2:n itse voittosuhteista (Pelicans 49,4 % mallin 52,3 %:n
 sijaan, 172 000 tokenia); nyt VQR-osuma, 49 000 tokenia.

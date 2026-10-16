@@ -7,7 +7,7 @@ Keyed by the Finnish text; semantic_views.py fails if a string has no entry.
 
 EN = {
  "Liiga 2026-27 ennuste: lopullinen runkosarjataulukko, sarjavyöhykkeet, tulevien otteluiden voittotodennäköisyydet, joukkuevahvuudet ja pelaajaennusteet.": "Liiga 2026-27 forecast: final regular-season table, table zones, win probabilities for upcoming games, team strengths and player projections.",
- "Ennustettu LOPULLINEN runkosarjataulukko (60 ottelua) 10 000 simulaatiosta. Sisältää jo pelattujen otteluiden pisteet.": "Forecast FINAL regular-season table (60 games) from 10,000 simulations. Already includes points from games played.",
+ "Ennustettu LOPULLINEN runkosarjataulukko (64 ottelua per joukkue) 10 000 simulaatiosta. Sisältää jo pelattujen otteluiden pisteet.": "Forecast FINAL regular-season table (64 games per team) from 10,000 simulations. Already includes points from games played.",
  "Joukkue": "Team",
  "Ennustettu loppusija, 1 = runkosarjan voittaja": "Forecast final rank, 1 = regular-season winner",
  "Ennustetut loppupisteet (keskiarvo)": "Forecast final points (mean)",

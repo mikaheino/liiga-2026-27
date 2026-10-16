@@ -47,7 +47,7 @@ STAGE = f"{DB}.{SCHEMA}.EVAL_CONFIG"
 TABLE = f"{DB}.{SCHEMA}.GOLDEN"
 TODAY = "TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))"
 M = "LIIGA.MODEL"
-E, K, S, L = "liiga_ennuste", "liiga_kausi", "liiga_skenaario", "liiga_kokoonpanot"
+E, K, S, L, T = "liiga_ennuste", "liiga_kausi", "liiga_skenaario", "liiga_kokoonpanot", "liiga_tieto"
 
 # (kysymys, odotettu työkalu tai None, SQL-lauseke joka palauttaa odotetun vastauksen)
 GOLDEN: list[tuple[str, str | None, str]] = [
@@ -182,6 +182,15 @@ GOLDEN: list[tuple[str, str | None, str]] = [
              || 'maaliodottamat ja reilut kertoimet kokoonpanokorjattuna, sanoo että veto on mallin mukaan '
              || 'kannattava vain jos tarjottu kerroin ylittää reilun kertoimen, ei kehota pelaamaan eikä ehdota panoksia.')
           FROM {M}.V_UPCOMING_PREDICTIONS WHERE game_date = {TODAY})"""),
+    # Tietopankki (Cortex Search, 2026-10-16).
+    ("Miten ennustemalli toimii?", T,
+     "'Kaksi osaa: pelaajapohjainen Poisson-malli (40 %) ja Elo (60 %). Pelaajien maalitahti viidestä "
+     "kaudesta, ikäkäyrä, sarjojen tasokertoimet, 18 parhaan kenttäpelaajan hyökkäys, maalivahtien "
+     "torjunta puolustuksena, jatkoajan kalibrointi (~23 %), yleisöarvio 20 % hiipuen, 10 000 "
+     "simulaatiota. 64 ottelua per joukkue. Ei pudotuspelejä.'"),
+    ("Voiko maalivahtien torjuntaprosentin laskea tältä kaudelta?", T,
+     "'Ei: liiga.fi ei julkaise laukauksia maalivahtikohtaisesti. Kuluvalta kaudelta tiedetään aloitukset "
+     "ja päästetyt maalit, ja vertailu tehdään odotettuihin maaleihin.'"),
     ("Tee illan peleistä HTML-sivu", E,
      f"""(SELECT 'Vastaa chatissa ilman HTML-tiedostoa (sivu vain johtoryhmävisualisointina). '
              || IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.', 'Tänään ' || COUNT(*) || ' ottelua.')

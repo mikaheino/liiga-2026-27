@@ -4,8 +4,8 @@ description: 'Liiga 2026-27 forecast: final regular-season table, table zones, w
   games, team strengths and player projections.'
 tables:
 - name: STANDINGS
-  description: Forecast FINAL regular-season table (60 games) from 10,000 simulations. Already includes
-    points from games played.
+  description: Forecast FINAL regular-season table (64 games per team) from 10,000 simulations. Already
+    includes points from games played.
   base_table:
     database: LIIGA
     schema: MODEL
