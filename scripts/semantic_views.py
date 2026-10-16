@@ -688,6 +688,10 @@ def deploy(dev: bool, lang: str = "en") -> None:
     for name, build in MODELS.items():
         m = translate(build(), lang)
         m["name"] = name + sfx
+        if not dev and json.loads(_sql(f"SHOW SEMANTIC VIEWS LIKE '{m['name']}' IN SCHEMA LIIGA.MODEL")):
+            # Kiinnitetty malli on muuttumaton: julkaistu agenttiversio viittaa siihen.
+            print(f"LIIGA.MODEL.{m['name']}: olemassa, ei korvata")
+            continue
         body = _yaml(m)
         assert "$$" not in body
         for verify in (True, False):

@@ -1,4 +1,8 @@
-# Agentin julkaisu: DEV -> evaluointi -> (hyväksyntä) -> tuotanto -> evaluointi -> tagi.
+# Agentin julkaisu Snowflaken versiointimallilla:
+#   ehdokas: uusi nimetty versio (alias STAGING) -> evaluointi + laatuportti
+#   tuotanto (hyväksyntä): PRODUCTION-alias + oletus TÄSMÄLLEEN evaluoituun
+#            versioon -> tagi agent-vN + Release evaluoinnin tuloksella
+# Palautus: python scripts/deploy_agent.py --promote VERSION$N.
 #
 # Ajetaan kun agentin, semanttisten mallien, näkymien tai skillin lähde muuttuu
 # mainissa, tai käsin (workflow_dispatch). Snowflakeen kirjaudutaan
@@ -44,11 +48,13 @@ env:
   SNOWFLAKE_USER: LIIGA_CI
 
 jobs:
-  dev:
-    name: DEV-julkaisu ja evaluointi
+  candidate:
+    name: Ehdokasversio (STAGING) ja evaluointi
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.agent.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -60,23 +66,32 @@ jobs:
       - uses: ./.github/actions/snowflake-setup
         with:
           private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      # Huom: näkymät eivät ole versioituja -- ne päivittyvät tuotannon
+      # käyttöön jo tässä, ennen hyväksyntää. Muutokset kausi_views.sql:ään
+      # pidetään yhteensopivina (sarakkeita lisätään, ei poisteta).
       - name: Näkymät
         run: snow sql -c ci -f snowflake/kausi_views.sql
-      - name: Semanttiset mallit (DEV)
-        run: python scripts/semantic_views.py --deploy --dev
-      - name: Agentti (DEV, live-versio)
-        run: python scripts/deploy_agent.py --dev --html
-      - name: Evaluointi ja laatuportti (DEV LIVE)
-        run: python scripts/agent_eval.py --agent LIIGA_ENNUSTAJA_DEV --version LIVE --gate
+      - name: Semanttiset mallit (kiinnitetty git-committiin)
+        run: python scripts/semantic_views.py --deploy
+      - name: Agentti (uusi nimetty versio, alias STAGING)
+        id: agent
+        run: |
+          MSG="${{ github.event.inputs.message || github.event.head_commit.message }}"
+          python scripts/deploy_agent.py --alias STAGING --html -m "$(echo "$MSG" | head -1 | cut -c1-120)" | tee deploy.log
+          V=$(grep -o 'VERSION\$[0-9]* (alias STAGING)' deploy.log | grep -o '[0-9]*' | head -1)
+          test -n "$V" || { echo "::error::agenttiversiota ei löytynyt"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+      - name: Evaluointi ja laatuportti (STAGING)
+        run: python scripts/agent_eval.py --version STAGING --gate
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: eval-dev
+          name: eval-candidate
           path: snowflake/evals/
 
   prod:
     name: Tuotanto (vaatii hyväksynnän)
-    needs: dev
+    needs: candidate
     # Turvalukko: GitHub luo puuttuvan ympäristön automaattisesti ILMAN
     # hyväksyjää. Tuotanto ajetaan vain, kun repo-muuttuja
     # PRODUCTION_PROTECTED = true on asetettu -- tee se vasta kun
@@ -86,10 +101,10 @@ jobs:
     environment: production
     permissions:
       contents: write           # tagi ja Release
+    env:
+      V: ${{ needs.candidate.outputs.version }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -97,30 +112,25 @@ jobs:
       - uses: ./.github/actions/snowflake-setup
         with:
           private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
-      - name: Semanttiset mallit (tuotanto, kiinnitetty git-committiin)
-        run: python scripts/semantic_views.py --deploy
-      - name: Agentti (uusi lukittu versio, alias production)
-        id: agent
-        run: |
-          MSG="${{ github.event.inputs.message || github.event.head_commit.message }}"
-          python scripts/deploy_agent.py --html -m "$(echo "$MSG" | head -1 | cut -c1-120)" | tee deploy.log
-          V=$(grep -o 'VERSION\$[0-9]*' deploy.log | head -1 | cut -d'$' -f2)
-          test -n "$V" || { echo "::error::agenttiversiota ei löytynyt"; exit 1; }
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-      - name: Evaluointi ja laatuportti (PRODUCTION)
-        run: python scripts/agent_eval.py --version PRODUCTION --gate
+      # Versio nimetään numerolla, ei aliaksella STAGING: tuotantoon menee
+      # täsmälleen se, joka evaluoitiin, vaikka STAGING olisi välissä siirtynyt.
+      - name: Promootio (PRODUCTION + oletusversio)
+        run: python scripts/deploy_agent.py --promote "VERSION\$$V"
+      - uses: actions/download-artifact@v7
+        with:
+          name: eval-candidate
+          path: snowflake/evals/
       - name: Tagi ja Release
         env:
           GH_TOKEN: ${{ github.token }}
-          V: ${{ steps.agent.outputs.version }}
         run: |
           TAG="agent-v$V"
           git tag -a "$TAG" -m "Liiga Ennustaja VERSION\$$V" && git push origin "$TAG"
           python - > notes.md <<'PY'
-          import json
+          import json, os
           s = json.load(open("snowflake/evals/last_summary.json"))
-          print(f"Snowflake-agentti `LIIGA_ENNUSTAJA` **VERSION${__import__('os').environ['V']}**, alias `production`.\n")
-          print(f"Evaluointi {s['run']} ({s['n']} kysymystä):\n")
+          print(f"Snowflake-agentti `LIIGA_ENNUSTAJA` **VERSION${os.environ['V']}**, alias `PRODUCTION`.\n")
+          print(f"Evaluoitu ennen julkaisua aliaksella STAGING, ajo {s['run']} ({s['n']} kysymystä):\n")
           print("| mittari | keskiarvo |\n|---|---:|")
           for k, v in s["metrics"].items():
               print(f"| {k} | {v:.2f} |")
@@ -128,8 +138,3 @@ jobs:
               print("\nHeikot (< 0,67): " + "; ".join(s["low"]))
           PY
           gh release create "$TAG" --title "Liiga Ennustaja $TAG" --notes-file notes.md
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: eval-prod
-          path: snowflake/evals/

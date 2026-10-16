@@ -1,8 +1,8 @@
 """Liiga Ennustaja -agentin evaluointi Snowflaken Cortex Agent Evaluationsilla.
 
-    .venv/bin/python scripts/agent_eval.py                    # production-alias
-    .venv/bin/python scripts/agent_eval.py --version LIVE     # kehitysversio
-    .venv/bin/python scripts/agent_eval.py --agent LIIGA_ENNUSTAJA_DEV --version LIVE
+    .venv/bin/python scripts/agent_eval.py                     # PRODUCTION-alias
+    .venv/bin/python scripts/agent_eval.py --version DEV       # oma kokeiluversio
+    .venv/bin/python scripts/agent_eval.py --version STAGING --gate   # CI:n ehdokas
 
 Mitä tekee, joka ajolla:
   1. rakentaa kultaisen testijoukon LIIGA.EVALS.GOLDEN tuoreesta datasta --
@@ -20,7 +20,8 @@ Mittarit: answer_correctness ja logical_consistency (v3), tool_selection_accurac
 ohje on vastata aina suomeksi.
 
 Kohdistetaan versioon tai aliakseen, ei agenttiin yleensä: oppaan mukaan
-vertailut yli ajan tehdään lukittua versiota vasten, koska LIVE muuttuu.
+vertailut yli ajan tehdään lukittua versiota vasten. Agentilla ei ole
+live-versiota (deploy_agent.py), joten kohde on aina nimetty versio.
 Ajetaan ACCOUNTADMINina (tarvitsee MONITOR/USAGE agenttiin, CREATE TABLE /
 DATASET / STAGE / TASK -oikeudet); ACCOUNTADMIN perii agentin omistajaroolin
 SYSADMINin kautta.
@@ -246,6 +247,30 @@ def results(agent: str, run: str):
                 f"'SNOWFLAKE_INTELLIGENCE', 'AGENTS', '{agent}', 'CORTEX AGENT', '{run}'))", json_out=True)
 
 
+METRICS = 4   # answer_correctness, logical_consistency, tool_selection_accuracy, vastaa_suomeksi
+
+
+def complete_results(agent: str, run: str, timeout_s: int = 900) -> list[dict]:
+    """STATUS = COMPLETED ei tarkoita, että pisteet ovat luettavissa: 16.10.
+    tuotantoajo (20261016_1101) luki tulokset heti ja kaatui laatuporttiin,
+    vaikka sama ajo antoi myöhemmin 28/28 pistettä joka mittarille ja läpäisi
+    portin. Odotetaan, kunnes jokaisella mittarilla on pisteet joka kysymykselle."""
+    t0 = time.time()
+    while True:
+        data = results(agent, run)
+        got: dict[str, int] = {}
+        for r in data:
+            if r.get("EVAL_AGG_SCORE") is not None:
+                got[r["METRIC_NAME"]] = got.get(r["METRIC_NAME"], 0) + 1
+        if len(got) >= METRICS and min(got.values()) >= len(GOLDEN):
+            return data
+        if time.time() - t0 > timeout_s:
+            print(f"  pisteitä yhä kesken {timeout_s} s jälkeen: {got}")
+            return data
+        print(f"  pisteitä {got} / {len(GOLDEN)}, odotetaan")
+        time.sleep(30)
+
+
 # Laatuportti: mittarin keskiarvon alaraja 25 kysymyksen ajossa. Perustaso
 # 16.10. (VERSION$2): oikeellisuus 0,97, työkalu 1,00, suomi 0,98,
 # johdonmukaisuus 0,87. Rajat jättävät tilaa LLM-tuomarin vaihtelulle mutta
@@ -328,7 +353,7 @@ def main() -> None:
     cfg_path = write_config(a.agent, a.version, dataset, run)
     print(f"konfiguraatio {cfg_path}; ajo {run} ({a.agent} {a.version})")
     start_and_wait(run, cfg_path)
-    data = results(a.agent, run)
+    data = complete_results(a.agent, run)
     out = ROOT / "snowflake" / "evals" / f"results_{run}.json"
     out.write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     print(f"tulokset {out} ({len(data)} riviä)")

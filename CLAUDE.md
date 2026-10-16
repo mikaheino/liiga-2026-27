@@ -745,16 +745,27 @@ Auditoitu Snowflaken oppaan "Best Practices for Building Cortex Agents" mukaan.
 Agentti, semanttiset mallit, näkymät ja skill julkaistaan **GitHub Actionsista**,
 ei omalta koneelta:
 
+**Yksi agentti, iterointi aliaksilla (2026-10-16)** -- Snowflaken
+versiointimalli: jokainen kierros on nimetty versio, alias kertoo mihin se
+kuuluu, ja tuotantoon siirretään alias, ei koodia.
+
+| alias | kuka tekee | versio viittaa | käyttö |
+|---|---|---|---|
+| `DEV` | oma kone | `*_DEV`-mallit, skillit `dev/` (muuttuvia) | `'…LIIGA_ENNUSTAJA!DEV'`, `agent_eval --version DEV` |
+| `STAGING` | CI joka mainin muutoksella | `<NIMI>_<sha>`-mallit, skillit `<sha>/` | evaluointi + laatuportti |
+| `PRODUCTION` + oletus | CI hyväksynnän jälkeen | sama versio joka evaluoitiin | CoWork, päätteettömät kutsut |
+
 ```
-oma kone: muutos + DEV-kokeilu ──PR──▶ CI (.github/workflows/ci.yml):
-    pytest, skriptien käännös, generoitu YAML = koodi, skillin renderöinti
+oma kone:  semantic_views --deploy --dev → deploy_agent --alias DEV --html
+           → agent_eval --version DEV
 main ──▶ Deploy agent (.github/workflows/deploy.yml):
-    dev:  kausi_views.sql → semantic_views --dev → deploy_agent --dev --html
-          → agent_eval LIIGA_ENNUSTAJA_DEV LIVE --gate
+    candidate: kausi_views.sql → semantic_views --deploy (kiinnitetyt)
+               → deploy_agent --alias STAGING --html (ADD VERSION FROM @stage)
+               → agent_eval --version STAGING --gate
     prod (environment "production", vaatii hyväksynnän):
-          semantic_views --deploy (git-committiin kiinnitetyt mallit)
-          → deploy_agent --html (uusi VERSION$N, alias production)
-          → agent_eval PRODUCTION --gate → tagi agent-vN + GitHub Release
+               deploy_agent --promote VERSION$N (PRODUCTION + DEFAULT_VERSION)
+               → tagi agent-vN + Release STAGING-evaluoinnin luvuilla
+palautus:  deploy_agent --promote VERSION$<vanha>
 ```
 
 - **Kirjautuminen:** palvelukäyttäjä `LIIGA_CI` (TYPE = SERVICE, avainpari),
@@ -770,15 +781,29 @@ main ──▶ Deploy agent (.github/workflows/deploy.yml):
 - **Testijoukko** (`agent_eval.GOLDEN`, 25 kysymystä): odotetut vastaukset
   lasketaan SQL:llä tuoreesta datasta joka ajossa, koska "kuka johtaa
   pistepörssiä" vaihtuu päivittäin. Lisää kysymys sinne, ei kiinteänä tekstinä.
-- **Miksi DEV on erillinen agentti eikä tuotannon live-versio** (oppaasta
-  poiketen): kun agentilla on live-versio, sitä käytetään **sekä rajapinnassa
-  että CoWorkissa**, ei oletusversiota. Mitattu 16.10.: DEV-agentin oletus oli
-  `VERSION$1`, live-versioon lisättiin tunniste "LIVE-TESTI", ja sekä
-  `DATA_AGENT_RUN` että CoWork vastasivat tunnisteella. Kehitys tuotantoagentin
-  live-versiossa näkyisi siis heti käyttäjille. Tuotannossa live-versio on
-  olemassa vain sekunteja julkaisun aikana (MODIFY LIVE -> COMMIT).
+- **Agentilla ei ole live-versiota -- koskaan.** Mitattu 16.10. (optimointiloki):
+  kun live-versio on olemassa, päätteetön `DATA_AGENT_RUN` **ja CoWork**
+  käyttävät sitä eivätkä oletusversiota, vastoin dokumentaatiota ja myös
+  eksplisiittisellä `DEFAULT_VERSION`illa. Ilman live-versiota päätteetön
+  kutsu seuraa `DEFAULT_VERSION`ia. Siksi versiot luodaan stagelta
+  (`ADD VERSION FROM`, joka lisäksi kieltäytyy jos live-versio on olemassa),
+  ja `_retire_live()` commitoi mahdollisen Snowsight-luonnoksen pois ennen
+  jokaista julkaisua. **Älä muokkaa tuotantoagenttia Snowsightin editorissa**:
+  tallennus luo live-version, joka näkyy käyttäjille heti.
+- **Alias on kirjainkokotarkka ja tallentuu isoilla:** `!DEV`, ei `!dev`.
+- **Korvattu ehdokas poistetaan:** kun alias siirtyy, edellinen saman aliaksen
+  versio pudotetaan (ellei se ole oletus). Versiohistoria = julkaisut +
+  nykyiset ehdokkaat; numeroihin jää aukkoja, ja `agent-vN` = `VERSION$N`.
+- **Näkymät eivät ole versioituja.** `kausi_views.sql` ajetaan ehdokasvaiheessa
+  ja muuttaa tuotannon käyttämiä `V_*`-näkymiä jo ennen hyväksyntää. Pidä
+  muutokset yhteensopivina (lisää sarakkeita, älä poista tai nimeä uudelleen).
+- **Evaluoinnin tulokset luetaan vasta kun ne ovat valmiit**
+  (`complete_results`): 16.10. tuotantoajo luki ne heti `COMPLETED`-tilan
+  jälkeen, kaatui laatuporttiin vajailla pisteillä, ja sama ajo antoi
+  myöhemmin 28/28 joka mittarille ja läpäisi portin.
+- `LIIGA_ENNUSTAJA_DEV`-agentti on vanhan mallin jäänne; putki ei käytä sitä.
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
-  evaluoinnin tulos. `agent-v2` on merkitty jälkikäteen committiin 010d045.
+  evaluoinnin tulos. `agent-v2` (010d045) ja `agent-v3` (0a7ce21) on merkitty jälkikäteen.
 
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 

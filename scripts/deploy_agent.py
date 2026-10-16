@@ -1,22 +1,30 @@
-"""Snowflake Intelligence -agentti LIIGA_ENNUSTAJA (ja sen DEV-klooni) yhdestä lähteestä.
+"""Snowflake Intelligence -agentti LIIGA_ENNUSTAJA: versiot ja aliakset yhdestä lähteestä.
 
-    python scripts/deploy_agent.py --dev --html            # DEV: päivittää live-version
-    python scripts/deploy_agent.py --html -m "mitä muuttui" # tuotanto: uusi VERSION$N
+    python scripts/deploy_agent.py --alias DEV --html          # oma kokeilu (_DEV-mallit)
+    python scripts/deploy_agent.py --alias STAGING --html -m "mitä muuttui"   # ehdokas (CI)
+    python scripts/deploy_agent.py --promote VERSION$7         # tuotantoon (CI, hyväksytty)
+    python scripts/deploy_agent.py --promote VERSION$3         # palautus = sama komento
 
-VERSIOINTI (2026-10-10). Aiemmin CREATE OR REPLACE AGENT pyyhki versiohistorian
-joka kerta, ja skillin tiedostot ylikirjoitettiin stagella -- render.py:n vaihto
-muutti tuotannon käytöstä ilman uutta versiota. Nyt:
+ITEROINTI ALIAKSILLA (2026-10-16, Snowflaken "Cortex Agent versioning" -oppaan
+mukaan: commit -> evaluoi nimetty versio -> siirrä production-alias):
 
-  * tuotanto: spec live-versioon -> COMMIT (kommentissa git-commit) -> alias
-    `production` uuteen versioon -> DEFAULT_VERSION siihen. Live-versiota ei
-    jätetä tuotantoon, joten käytössä on aina lukittu versio.
-  * skillit kiinnitetään: @LIIGA.CODE.AGENT_SKILLS/<git-sha>/<skill>/. Vanhaa
+  * Jokainen kierros on oma nimetty versio, joka luodaan suoraan stagelta
+    (ALTER AGENT ... ADD VERSION FROM @stage) -- EI live-version kautta.
+    Alias (DEV, STAGING) siirtyy uuteen versioon; edellinen saman aliaksen
+    versio poistetaan, ellei se ole oletus. Historia = julkaisut + ehdokkaat.
+  * Kutsu nimeää version: '<agentti>!DEV', '!STAGING', agent_eval --version.
+    Alias tallentuu ISOILLA kirjaimilla ja on kirjainkokotarkka ('!dev' ei löydy).
+  * Promootio siirtää aliaksen PRODUCTION ja DEFAULT_VERSIONin TÄSMÄLLEEN siihen
+    versioon, joka evaluoitiin. Ei uutta committia, ei uutta evaluoitavaa.
+  * Agentilla EI ole live-versiota. Mitattu 16.10.: kun live-versio on
+    olemassa, päätteetön kutsu ja CoWork käyttävät SITÄ eivätkä oletusversiota
+    (vastoin dokumentaatiota, myös eksplisiittisellä DEFAULT_VERSIONilla). Ilman
+    live-versiota päätteetön kutsu seuraa DEFAULT_VERSIONia. Lisäksi ADD VERSION
+    FROM @stage kieltäytyy, jos live-versio on olemassa. Siksi live-versio
+    (esim. Snowsightin luonnos) commitoidaan pois ennen jokaista julkaisua.
+  * Skillit ja spec kiinnitetään: @LIIGA.CODE.AGENT_SKILLS/<git-sha>/. Vanhaa
     kansiota ei ylikirjoiteta, joten vanha versio toimii vanhalla koodilla.
-    Tuotantoon vienti vaatii, että snowflake/skills/ on commitattu.
-  * DEV: vain live-version spec, ei commitia.
-  * agentti luodaan vain jos sitä ei ole (CREATE tekee VERSION$1:n).
-
-Palautus: ALTER AGENT ... SET DEFAULT_VERSION = 'VERSION$N' (ja alias perään).
+    DEV käyttää kansiota dev/ ja _DEV-malleja, eli se on tarkoituksella muuttuva.
 
 Kirjoittaa käytetyn specin SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/current_*.json,
 lähettää skillit stagelle (snowflake/skills/ -> @LIIGA.CODE.AGENT_SKILLS) ja
@@ -153,11 +161,31 @@ def _versions(fqn: str) -> list[dict]:
         return []
 
 
-def deploy(dev: bool, html: bool = False, message: str = "") -> None:
-    name = "LIIGA_ENNUSTAJA_DEV" if dev else "LIIGA_ENNUSTAJA"
-    fqn = f"SNOWFLAKE_INTELLIGENCE.AGENTS.{name}"
+FQN = "SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA"
+
+
+def _num(v: str) -> int:
+    return int(v.split("$")[1])
+
+
+def _retire_live(fqn: str) -> None:
+    """Live-versio kaappaa päätteettömät kutsut ja CoWorkin (ks. moduulin ohje),
+    ja ADD VERSION FROM @stage vaatii ettei sitä ole. Sitä ei voi pudottaa,
+    joten se commitoidaan omaksi versiokseen ilman aliasta -- luonnos säilyy."""
+    if any(v["name"] is None for v in _versions(fqn)):
+        _snow("sql", "-q", f"ALTER AGENT {fqn} COMMIT COMMENT = "
+                           "'Live-luonnos siirretty pois julkaisun tieltä (ei aliasta)'")
+        print("VAROITUS: agentilla oli live-versio (Snowsight-luonnos?); commitoitu pois.")
+
+
+def candidate(alias: str, html: bool = False, message: str = "", fqn: str = FQN) -> str:
+    """Uusi nimetty versio stagelta + alias. Palauttaa VERSION$N."""
+    alias = alias.upper()
+    if alias == "PRODUCTION":
+        raise SystemExit("PRODUCTION siirretään --promote:lla evaluoituun versioon.")
+    dev = alias == "DEV"
     if not dev and html and not skills_clean():
-        raise SystemExit("snowflake/skills/ ei ole commitattu: tuotantoversio kiinnittää "
+        raise SystemExit("snowflake/skills/ ei ole commitattu: versio kiinnittää "
                          "skillit git-committiin. Commitoi ensin.")
     sha = "dev" if dev else git_sha()
     for p in (SKILLS.glob("*/SKILL.md") if html else []):
@@ -168,10 +196,8 @@ def deploy(dev: bool, html: bool = False, message: str = "") -> None:
                 _snow("stage", "copy", str(f), dest, "--overwrite")
         print(f"skill {p.parent.name} -> {dest}")
     s = spec(dev, html, sha)
-    (OUT / f"current_{'dev' if dev else 'prod'}_spec.json").write_text(
+    (OUT / f"current_{alias.lower()}_spec.json").write_text(
         json.dumps(s, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    body = json.dumps(s, ensure_ascii=False)
-    assert "$$" not in body
     if not dev:
         for t in s["tool_resources"].values():
             sv = t.get("semantic_view")
@@ -180,39 +206,68 @@ def deploy(dev: bool, html: bool = False, message: str = "") -> None:
                                        f"SHOW SEMANTIC VIEWS LIKE '{sv.split('.')[-1]}' IN SCHEMA LIIGA.MODEL"))
                 if not got:
                     raise SystemExit(f"{sv} puuttuu: aja ensin python scripts/semantic_views.py --deploy")
-    versions = _versions(fqn)
-    if not versions:
-        comment = ("Liiga 2026-27 ennusteagentti - DEV clone" if dev
-                   else "Liiga 2026-27 ennusteagentti - TUOTANTO")
-        profile = ({"display_name": "Liiga Ennustaja (DEV)", "color": "blue"} if dev
-                   else {"display_name": "Liiga Ennustaja", "color": "teal"})
-        _snow("sql", "-q", f"CREATE AGENT {fqn} COMMENT = '{comment}' "
+    # Spec omaan kansioonsa: ADD VERSION FROM lukee koko kansion.
+    import tempfile
+    import yaml
+    tmp = Path(tempfile.mkdtemp()) / "agent_spec.yaml"
+    tmp.write_text(yaml.safe_dump(s, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    src = f"{STAGE}/{sha}/_agent/"
+    _snow("stage", "copy", str(tmp), src, "--overwrite")
+
+    before = _versions(fqn)
+    if not before:
+        profile = {"display_name": "Liiga Ennustaja", "color": "teal"}
+        body = json.dumps(s, ensure_ascii=False)
+        assert "$$" not in body
+        _snow("sql", "-q", f"CREATE AGENT {fqn} COMMENT = 'Liiga 2026-27 ennusteagentti' "
                            f"PROFILE = '{json.dumps(profile)}' FROM SPECIFICATION $${body}$$")
-        print(f"agentti {name} luotu (VERSION$1)")
-        return
-    if not any(v["name"] is None for v in versions):          # ei live-versiota
-        _snow("sql", "-q", f"ALTER AGENT {fqn} ADD LIVE VERSION FROM LAST")
-    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY LIVE VERSION SET SPECIFICATION = $${body}$$")
-    if dev:
-        print(f"agentti {name}: live-versio päivitetty")
-        return
-    note = f"{sha} {message}".strip().replace("'", "")
-    _snow("sql", "-q", f"ALTER AGENT {fqn} COMMIT COMMENT = '{note}'")
-    new = max((v["name"] for v in _versions(fqn) if v["name"]),
-              key=lambda n: int(n.split("$")[1]))
-    for v in _versions(fqn):
-        if v["name"] and v["name"] != new and (v.get("alias") or "").lower() == "production":
-            _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {v['name']} UNSET ALIAS")
-    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {new} SET ALIAS = production")
+        print("agentti luotu (VERSION$1 + live)")
+    _retire_live(fqn)
+    before = _versions(fqn)
+    prev = [v for v in before if (v.get("alias") or "").upper() == alias]
+    note = f"{sha} {alias} {message}".strip().replace("'", "")[:250]
+    _snow("sql", "-q", f"ALTER AGENT {fqn} ADD VERSION FROM {src} COMMENT = '{note}'")
+    new = max((v["name"] for v in _versions(fqn) if v["name"]), key=_num)
+    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {new} SET ALIAS = {alias}")
+    for v in prev:   # edellinen saman aliaksen ehdokas, jota ei julkaistu
+        if v["name"] != new and v.get("is_default") != "true":
+            _snow("sql", "-q", f"ALTER AGENT {fqn} DROP VERSION {v['name']}")
+            print(f"poistettu {v['name']} (korvattu, ei julkaistu)")
+    print(f"agentti LIIGA_ENNUSTAJA: {new} (alias {alias}) -- {note}")
+    return new
+
+
+def promote(target: str, fqn: str = FQN) -> str:
+    """PRODUCTION-alias ja oletusversio annettuun versioon tai aliaksen versioon.
+    Sama komento palauttaa vanhaan versioon."""
+    _retire_live(fqn)
+    vs = _versions(fqn)
+    t = target.upper()
+    hit = [v["name"] for v in vs if v["name"] and (v["name"].upper() == t
+                                                    or (v.get("alias") or "").upper() == t)]
+    if len(hit) != 1:
+        raise SystemExit(f"versiota {target} ei löydy: {[(v['name'], v.get('alias')) for v in vs]}")
+    new = hit[0]
+    _snow("sql", "-q", f"ALTER AGENT {fqn} MODIFY VERSION {new} SET ALIAS = PRODUCTION")
     _snow("sql", "-q", f"ALTER AGENT {fqn} SET DEFAULT_VERSION = '{new}'")
-    print(f"agentti {name}: {new} (production, oletus) -- {note}")
+    after = {v["name"]: v for v in _versions(fqn)}
+    ok = (after[new].get("alias") or "").upper() == "PRODUCTION" and after[new]["is_default"] == "true"
+    if not ok or None in after:
+        raise SystemExit(f"promootio ei näy versiolistassa: {after}")
+    print(f"agentti LIIGA_ENNUSTAJA: {new} (PRODUCTION, oletus)")
+    return new
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dev", action="store_true")
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--alias", help="uusi versio tällä aliaksella: DEV (oma kokeilu) tai STAGING (CI)")
+    g.add_argument("--promote", metavar="VERSIO", help="VERSION$N tai alias -> PRODUCTION + oletus")
     ap.add_argument("--html", action="store_true",
                     help="HTML-esikatselu: esikatselu-html-skill + koodinsuoritus")
-    ap.add_argument("-m", "--message", default="", help="tuotantoversion kommentti")
+    ap.add_argument("-m", "--message", default="", help="version kommentti")
     a = ap.parse_args()
-    deploy(a.dev, a.html, a.message)
+    if a.promote:
+        promote(a.promote)
+    else:
+        candidate(a.alias, a.html, a.message)

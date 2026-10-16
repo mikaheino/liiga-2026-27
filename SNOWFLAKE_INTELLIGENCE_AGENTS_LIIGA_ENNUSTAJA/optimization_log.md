@@ -116,3 +116,42 @@
   vastasivat "LIVE-TESTI". Siksi kehitys tehdään erillisessä DEV-agentissa, ei tuotannon
   live-versiossa (Snowflaken oppaan elinkaaresta poiketen). Testin jälkeen DEV poistettiin
   CoWork-objektista ja live-versio palautettiin.
+
+### Entry: 2026-10-16 (ilta) — toisto: dokumentaatio vs. mittaus
+- Snowflaken versiointidokumentaatio: "If you omit the suffix, the agent's DEFAULT
+  version is used." Toistettiin `liiga_ci`:llä DEV-agentille (oletus `VERSION$1`,
+  merkki live-versiossa), versio nimettynä `DATA_AGENT_RUN('<agentti>!<versio>')`:
+  | kutsu | vastasi |
+  |---|---|
+  | ei päätettä | **LIVE** |
+  | `!DEFAULT` | VERSION$1 |
+  | `!LIVE` | LIVE |
+  | `!VERSION$1` | VERSION$1 |
+  | ei päätettä, `SET DEFAULT_VERSION = 'VERSION$1'` eksplisiittisesti | **LIVE** |
+- Johtopäätös: **päätteetön kutsu poikkeaa dokumentaatiosta** ja menee live-versioon
+  myös eksplisiittisellä oletuksella. `!DEFAULT` ja aliakset toimivat dokumentoidusti,
+  mutta vain kun kutsuja nimeää ne -- CoWork ei nimeä (aamun testi). CoWork-dokumentaatio
+  ei mainitse versioita eikä "default agent" -käsitettä. DEV-agentti pidetään.
+- DEV-agentin `DEFAULT_VERSION` jäi eksplisiittisesti `VERSION$1`:ksi (sama kuin ennen).
+
+### Entry: 2026-10-16 (ilta) — iterointi aliaksilla, ei live-versiota
+- Kokeiltu DEV-agentilla (`liiga_ci`), sitten tuotantoagentilla aliaksella DEV:
+  - `ADD VERSION FROM @LIIGA.CODE.AGENT_SKILLS/<kansio>/` (kansiossa `agent_spec.yaml`)
+    luo nimetyn version suoraan, **mutta kieltäytyy jos live-versio on olemassa**
+    ("There is already a live version. Please commit it first.").
+  - `MODIFY VERSION X SET ALIAS = DEV` siirtää aliaksen edelliseltä versiolta.
+    Alias tallentuu isoilla ja on kirjainkokotarkka: `!dev` -> "Version not found".
+  - **Ilman live-versiota** päätteetön kutsu seuraa `DEFAULT_VERSION`ia (merkki
+    näkyi vain kun oletus osoitti merkittyyn versioon). Live-version kanssa ei.
+  - `DROP VERSION` toimii; live-versiota ei voi pudottaa, vain commitoida pois.
+- Päätös: yksi agentti, ei live-versiota, aliakset DEV / STAGING / PRODUCTION.
+  PRODUCTION siirretään täsmälleen siihen versioon, joka evaluoitiin STAGINGina.
+- Löydös samalla: 0a7ce21:n tuotantoajo kaatui portissa, vaikka `VERSION$3` oli
+  jo promotoitu -- vanha putki evaluoi vasta promootion jälkeen, ja tulokset
+  luettiin ennen kuin pisteet olivat valmiit. Sama ajo (20261016_1101) on nyt
+  28/28 joka mittarille: oikeellisuus 0,98, johdonmukaisuus 0,88, työkalu 1,00,
+  suomi 0,98 -> portti läpi. Molemmat korjattu (järjestys, `complete_results`).
+
+| versio | alias | git | sisältö |
+|---|---|---|---|
+| `VERSION$3` | PRODUCTION, oletus | 0a7ce21 | portti oikean työkalun osuutena, 4 uutta VQR:ää, vaikea kysymyssarja |
