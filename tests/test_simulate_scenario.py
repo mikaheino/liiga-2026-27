@@ -1,4 +1,4 @@
-"""Mitä jos? -simulaattori (snowflake/procedures/simulate_scenario.py) paikallista
+"""Mitä jos? -simulaattori (snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py) paikallista
 DuckDB:tä vasten: ilman lukittuja otteluita sen pitää toistaa julkaistu ennuste,
 ja lukitun voiton pitää näkyä oikeaan suuntaan."""
 import importlib.util
@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location(
-    "simulate_scenario", ROOT / "snowflake/procedures/simulate_scenario.py")
+    "simulate_scenario", ROOT / "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py")
 sim = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sim)
 DB = ROOT / "data/liiga.duckdb"
@@ -84,7 +84,7 @@ def test_locked_win_moves_team_up_and_empty_change_is_zero():
 @pytest.mark.skipif(not DB.exists(), reason="ei paikallista kantaa")
 def test_injury_weakens_team():
     import sys
-    sys.path.insert(0, str(ROOT / "scripts"))
+    sys.path.insert(0, str(ROOT / "scripts" / "tools"))
     import skenaario
     con = duckdb.connect(str(DB), read_only=True)
     games, banked, pub, w, snap, played = skenaario.load(con)

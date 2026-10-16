@@ -9,6 +9,17 @@ paste the private key contents. Commit after roster-update batches — see
 AGENTS.md §13 for why (a prompt-injection incident this repo recovered from
 manually before git existed here).
 
+## Repon rakenne peilaa Snowflakea (16.10.2026)
+
+`snowflake/` = tili -> tietokanta -> skeema -> objektityyppi -> objekti
+(`_account/`, `LIIGA/CODE|MODEL|EVALS/`, `SNOWFLAKE_INTELLIGENCE/AGENTS/`).
+`scripts/` = `deploy/` (julkaisu), `local/` (paikallinen putki, launchd),
+`tools/` (Snowflake-työkalujen paikalliset vastineet). Kartta, jossa jokaisen
+paikallisen tiedoston Snowflake-vastine: **`docs/RAKENNE.md`**. `data/` ja
+`src/` ennallaan kauden loppuun (mallin polut). Uusi Snowflake-objekti = uusi
+tiedosto oikeaan kansioon objektin nimellä; roolille annetut oikeudet sen
+roolin tiedostoon.
+
 ## ⚠️ NEVER update the claude.ai artifact
 
 The infographic is LOCAL-ONLY (`site/index.html`). Do NOT publish or redeploy
@@ -19,16 +30,16 @@ frozen snapshot; leave it alone.
 
 ## Standings infographic — local site (2026-07-06)
 
-The infographic is generated from the DuckDB tables by `scripts/build_site.py`
+The infographic is generated from the DuckDB tables by `scripts/local/build_site.py`
 and lives in `site/` (self-contained HTML, no external requests):
 
 ```bash
-python scripts/daily_update.py        # refetch results → re-predict remaining games → rebuild site
+python scripts/local/daily_update.py        # refetch results → re-predict remaining games → rebuild site
 python -m http.server 8765 --directory site   # serve locally (or just open site/index.html)
 ```
 
 A launchd job (`com.liiga.daily-update`, 08:30 daily, installed in
-`~/Library/LaunchAgents/`) runs `scripts/daily_update.sh` automatically — once
+`~/Library/LaunchAgents/`) runs `scripts/local/daily_update.sh` automatically — once
 the season starts the site banks real points, retrains Elo on current results,
 simulates only the remaining games, and decays the crowd weight by season
 progress. Logs: `logs/daily_update.log`. Pre-season the job is a harmless no-op
@@ -49,7 +60,7 @@ What's in it (all the "more informative" ideas from June are done):
 - ELI5 (10 steps) — includes league-strength conversion, the age curve, MOV-Elo, 40/60 blend, and OT-calibration steps
 
 Keep the header strip + ELI5 numbers in sync with the model: weights and MAE
-are constants at the top of `scripts/build_site.py`.
+are constants at the top of `scripts/local/build_site.py`.
 
 **Verify visual changes by screenshot, not by reading HTML** — the ELI5 section
 is server-rendered static HTML while the standings/cards/heatmap/contributors
@@ -84,11 +95,11 @@ before; the publish happens on the way out. `daily_update.py` and
 ordinary roster batch (step 7 below) lands in prod with no extra command.
 
 ```bash
-python scripts/refresh_standings.py            # local run, then publishes
-python scripts/refresh_standings.py --no-sync  # local only
-python scripts/sync_to_snowflake.py --dry-run  # show routing plan
-python scripts/sync_to_snowflake.py -t player_rates   # publish one table
-python scripts/sync_to_snowflake.py --code     # + FETCH the git repo
+python scripts/local/refresh_standings.py            # local run, then publishes
+python scripts/local/refresh_standings.py --no-sync  # local only
+python scripts/deploy/sync_to_snowflake.py --dry-run  # show routing plan
+python scripts/deploy/sync_to_snowflake.py -t player_rates   # publish one table
+python scripts/deploy/sync_to_snowflake.py --code     # + FETCH the git repo
 ```
 
 The publish is **best-effort inside the pipeline** (`strict=False`): an
@@ -148,7 +159,7 @@ Rajat lasketaan joukkuemäärästä eikä kirjoiteta lukuina — putoajien mää
 se sääntö, ei sija 14:
 - `streamlit_app/streamlit_app.py`: `PLAYOFF_CUT` / `QUALI_CUT` /
   `RELEGATION` → `RELEGATION_CUT`
-- `scripts/build_site.py`: samat, ja JS saa ne `__PLAYOFF_CUT__`-tyylisinä
+- `scripts/local/build_site.py`: samat, ja JS saa ne `__PLAYOFF_CUT__`-tyylisinä
   paikanpitäjinä `render()`:ssä — älä kovakoodaa niitä takaisin skriptiin
 
 Näkyy joka taulukossa: vyöhykepalkki sijan vieressä (`_qbar`) ja
@@ -336,7 +347,7 @@ kertoo jos tiedosto puuttuu.
 `BODY_F`-elementille; jokainen lihavoitu vaihtaa `HEAD_F`:ään. Käyttämättömät
 leikkaukset kolminkertaistaisivat jokaisen dian koon tyhjästä.
 
-**Diat rakentaa `scripts/build_instagram.py`, ei `streamlit_app.py`.** Sama
+**Diat rakentaa `scripts/local/build_instagram.py`, ei `streamlit_app.py`.** Sama
 koodi tuottaa levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
 voi karata erilleen. Streamlit lataa moduulin ajonaikaisesti
 (`_slide_builder()`), ei importilla tiedoston alussa — yhden tiedoston
@@ -361,7 +372,7 @@ julkaistut diat**. Aja se vain kun karuselli on tarkoitus julkaista uudelleen.
 ## Erilliset postaukset: varjosarjataulukko ja 40 minuuttia (2026-09-26)
 
 Streamlitin diaosion alla on **"Erilliset postaukset"**, kaksi postausta omina
-PDF:inään. Rakentajat ovat `scripts/build_instagram.py`:ssä (`xg_post()`,
+PDF:inään. Rakentajat ovat `scripts/local/build_instagram.py`:ssä (`xg_post()`,
 `forty_post()`), eivät sovelluksessa, ja ne **eivät kirjoita mihinkään** —
 `site_instagram/` pysyy koskemattomana, `build()` on edelleen ainoa joka
 kirjoittaa sinne. Luvut lasketaan renderöintihetkellä, ei kovakoodattuina.
@@ -550,7 +561,7 @@ käyttäjän päätöstä.
 
 ## Snowflake ajastaa itse itsensä (2026-09-09)
 
-Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/tasks.sql`**.
+Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/LIIGA/CODE/tasks/`**.
 
 | taski | ajastus | compute | tekee |
 |---|---|---|---|
@@ -568,7 +579,7 @@ Myöhäisimmät ottelut alkavat **17:30 UTC eli 20:30 Suomen aikaa** (16 kpl
 kaudessa), ja 8 tunnin grace tekee niistä haettavia vasta **04:30**. 05:00
 jättää 30 min pelivaraa. Aiempi kellonaika **ei** ole pelkkä cron-muutos:
 `grace_hours` pitää laskea sekä `src/liiga/results.py`:ssä että
-`snowflake/tasks.sql`:n `DATEADD(hour, -8, ...)`:ssa, ja liiga.fi on palvellut
+`snowflake/LIIGA/CODE/tasks/`:n `DATEADD(hour, -8, ...)`:ssa, ja liiga.fi on palvellut
 vajaita vastauksia, joten lyhyempi grace kasvattaa sitä riskiä.
 
 **Ajan muuttaminen: `ALTER`, ei `CREATE OR REPLACE`.** Juuri on keskeytettävä
@@ -618,7 +629,7 @@ ks. "Snowflake-yhteydet".
 
 `SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA` käytti yhtä 13 taulun
 semanttista mallia (`LIIGA_ENNUSTAJA_SV`, ~1 250 riviä YAMLia). Nyt
-kaksi, molemmat generoidaan **`scripts/semantic_views.py`**:stä:
+kaksi, molemmat generoidaan **`scripts/deploy/semantic_views.py`**:stä:
 
 | malli | työkalu | kattaa |
 |---|---|---|
@@ -626,13 +637,13 @@ kaksi, molemmat generoidaan **`scripts/semantic_views.py`**:stä:
 | `LIIGA_KAUSI_SV` | `liiga_kausi` | sarjatilanne nyt, tulokset, mallin osuvuus, yllättäjät, pistepörssi, maalivahdit, kokoonpanot, aiemmat kaudet |
 
 ```bash
-snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/kausi_views.sql
-python scripts/semantic_views.py --deploy --dev   # *_DEV-mallit, DEV-agentti
-python scripts/semantic_views.py --deploy         # tuotanto
+python scripts/deploy/deploy_views.py   # näkymät järjestyksessä (_order.txt)
+python scripts/deploy/semantic_views.py --deploy --dev   # *_DEV-mallit, DEV-agentti
+python scripts/deploy/semantic_views.py --deploy         # tuotanto
 ```
 
 Tuotannossa 10.10. alkaen (DEV-mallit `*_DEV` jäävät aliaksen `DEV` käyttöön;
-erillinen DEV-agentti poistettu 16.10.). Agentin spec: `SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/
+erillinen DEV-agentti poistettu 16.10.). Agentin spec: `snowflake/SNOWFLAKE_INTELLIGENCE/AGENTS/LIIGA_ENNUSTAJA/
 versions/v20261010/`. Vanha `data/apply_sv.sql` + `semantic_view_backup.yaml`
 on poistettu -- ajettuna se olisi korvannut uuden mallin vanhalla. Mittaus
 optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
@@ -640,7 +651,7 @@ optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
 **Tilanne illalla 10.10. (kaikki mitattu, ks. optimointiloki):**
 
 - Kuvaukset ja ohjeet **englanniksi** (`--lang en`, oletus; käännökset
-  `scripts/semantic_views_en.py`, kaatuu jos vastine puuttuu). Synonyymit,
+  `scripts/deploy/semantic_views_en.py`, kaatuu jos vastine puuttuu). Synonyymit,
   VQR-kysymykset ja vastaukset suomeksi. −2,8 % tokeneita, sama osuvuus.
 - `ENRICH` semantic_views.py:ssä: taulusynonyymit, kohdennetut sarakesynonyymit,
   20 metriikkaa. **Metriikka rajataan `ENDED`iin** jos sarake on pelaamattomassa
@@ -648,10 +659,10 @@ optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
 - Sarakekommentit `V_*`-näkymiin generoidaan samoista kuvauksista
   (`apply_comments()`, deploy ajaa sen). `kausi_views.sql` pyyhkii ne -- aja
   deploy sen jälkeen.
-- **Agentti: `python scripts/deploy_agent.py [--dev] [--html]`.** Tuotanto on
+- **Agentti: `python scripts/deploy/deploy_agent.py [--dev] [--html]`.** Tuotanto on
   `--html`. Kierroksen esikatselu chatissa = yksi VQR `V_ROUND_PREVIEW_TEXT`:stä
   (valmiit suomenkieliset rivit; 20 nimetöntä saraketta sai mallin poimimaan
-  väärän sijan). Skill `snowflake/skills/esikatselu-html/` laukeaa vain sanalla
+  väärän sijan). Skill `snowflake/LIIGA/CODE/stages/AGENT_SKILLS/esikatselu-html/` laukeaa vain sanalla
   **"johtoryhmävisualisointi"** (käyttäjän päätös); väärä laukeaminen ~6 %.
   Skillin tiedostot näkyvät hiekkalaatikossa polussa
   `/mnt/skills/stage/liiga_code_agent_skills/<skill>/`, tulos `/workspace`iin ja
@@ -669,7 +680,7 @@ optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
   versiointia, `VERSION$2` (010d045) ensimmäinen versioitu.
   Palautus: `ALTER AGENT … SET DEFAULT_VERSION = 'VERSION$N'`.
 
-**Roolit ja CoWork (2026-10-16, `snowflake/agent_roles.sql`).** Agentit omistaa
+**Roolit ja CoWork (2026-10-16, `snowflake/_account/roles/`).** Agentit omistaa
 `LIIGA_AGENT_OWNER` eikä ACCOUNTADMIN: koodinsuoritus (johtoryhmävisualisointi)
 perii omistajaroolin oikeudet, ja ACCOUNTADMINina hiekkalaatikko olisi toiminut
 tilin laajimmilla oikeuksilla. Omistajalla on vain skill-stagen luku ja Cortex.
@@ -688,7 +699,7 @@ ADD AGENT <fqn>`. DEV-agentti ei ole listalla tarkoituksella.
 semanttisen mallin joka kutsulla, ja agentti yritti monivaiheisia
 ikkunakyselyjä (viimeisin snapshot, viimeisin kokoonpano) uudelleen. Nyt
 raskas logiikka on valmiiksi `LIIGA.MODEL.V_*`-näkymissä
-(`snowflake/kausi_views.sql`), ja kun kysymys osuu vahvistettuun kyselyyn,
+(`snowflake/LIIGA/MODEL/views/`), ja kun kysymys osuu vahvistettuun kyselyyn,
 agentti **ei lataa semanttista mallia lainkaan** -- se näkyy vastauksen
 `thinking`-osassa.
 
@@ -727,7 +738,7 @@ Yksityiset avaimet ovat `~/.snowflake/keys/` -- **älä koskaan tulosta niitä**
 
 **Käytä itse `liiga_ci`:tä kaikkiin projektin kyselyihin**, ei
 `CONTAINER_SERVICES`ia: jokainen MHEINO-kutsu vanhentuneella tokenilla avaa
-käyttäjälle selainikkunan. Rooli-SQL: `snowflake/agent_roles.sql`,
+käyttäjälle selainikkunan. Rooli-SQL: `snowflake/_account/roles/`,
 `ci_user.sql`, `loader_user.sql`.
 
 `LIIGA_LOADER` omistaa synkattavat 9 taulua (CREATE OR REPLACE vaatii
@@ -756,7 +767,7 @@ sama julkaistu ennuste (KooKoo 107,4, Tappara 115,3), ehto on `games_played = 0`
 **2. Mitä jos -simulaattori** -- proseduuri `SIMULATE_SCENARIO_<sha>`, agentin
 työkalu `liiga_skenaario` (`tool_spec` type `generic`, `tool_resources` type
 `procedure` -- toimii, vaikka dokumentaation esimerkit näyttävät vain
-`function`in). Lähde `snowflake/procedures/simulate_scenario.py`, testi
+`function`in). Lähde `snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py`, testi
 `tests/test_simulate_scenario.py`. Sama Monte Carlo kuin `src/liiga/simulate.py`
 uusimmista `PREDICTION_GAMES`-todennäköisyyksistä; perustaso ja skenaario
 **samoilla satunnaisluvuilla**, tulos julkaistun ennusteen päälle (pisteiden ero
@@ -789,11 +800,11 @@ pelaajadatasta laskettu `exp_gf_player` = `TEAM_STRENGTH` (ero 4e-16), ja
 vakioiden yhtäsuuruus config.yaml:n kanssa on testissä. Mitattu 16.10.: Maxime
 Fortier koko kausi -> Jokerit −0,36 maalia/ottelu, putoaminen 41 -> 56 %.
 
-**Paikallisesti sama vastaus:** `.venv/bin/python scripts/skenaario.py '<JSON>'`
+**Paikallisesti sama vastaus:** `.venv/bin/python scripts/tools/skenaario.py '<JSON>'`
 ajaa saman `simulate_scenario.py`:n DuckDB:tä vasten.
 
 **2d. Pelipäivän kokoonpanot** -- proseduuri `LINEUP_FORECAST_<sha>('TODAY')`,
-agentin työkalu `liiga_kokoonpanot`, lähde `snowflake/procedures/lineups.py`
+agentin työkalu `liiga_kokoonpanot`, lähde `snowflake/LIIGA/MODEL/procedures/LINEUP_FORECAST/lineups.py`
 (importtaa simulaattorin kaavat). Hakee annetun päivän ottelut liiga.fi:n
 ottelukohtaisesta rajapinnasta (external access `LIIGA_FI_ACCESS`, sama kuin
 notebookilla) -- yleisen selaimen sijaan, koska rakenteinen data täsmäytyy
@@ -801,20 +812,20 @@ tarkasti. Pukeutunut = `line` asetettu, aloittava maalivahti = rivi 1;
 täsmäytys player_id:llä ja SUKUNIMELLÄ (etunimimuodot vaihtelevat). Tulos:
 1X2 (varsinainen peliaika) ennen -> kokoonpanokorjattu, maaliodottamat,
 reilut kertoimet, maalivahdit, merkittävät poissaolot. Paikallisesti:
-`.venv/bin/python scripts/kokoonpanot.py [YYYY-MM-DD]`. 16.10.: Tapparan 1
+`.venv/bin/python scripts/tools/kokoonpanot.py [YYYY-MM-DD]`. 16.10.: Tapparan 1
 47,2 -> 43,9 (Blichfeld poissa), sama luku paikallisesti ja Snowflakessa.
 
-**2e. Tietopankki `liiga_tieto` (Cortex Search, 16.10.)** -- `docs/agentti/*.md`
+**2e. Tietopankki `liiga_tieto` (Cortex Search, 16.10.)** -- `snowflake/LIIGA/MODEL/cortex_search/LIIGA_TIETO/*.md`
 (malli, havainnot, rajoitukset, data), KIRJOITETTU agentille. CLAUDE.md:tä ei
 anneta agentille: se on kehitysmuistio. Ennen tätä agentti päätteli menetelmän
 sarakkeista ("miten malli toimii" sekoitti Elon ja Poisson-osan, "60 ottelua"
-vaikka 64) ja arvasi merkitsevyyksiä. `scripts/deploy_knowledge.py` pilkkoo
+vaikka 64) ja arvasi merkitsevyyksiä. `scripts/deploy/deploy_knowledge.py` pilkkoo
 tiedostot ##-osioiksi (33) tauluun `AGENT_KNOWLEDGE_<sha>` ja palveluun
 `LIIGA_TIETO_<sha>`, upotusmalli monikielinen `snowflake-arctic-embed-l-v2.0`.
 Cortex Search ei hyväksy vakiokyselyä lähteeksi ("Dynamic Tables must have at
 least one base table"), siksi taulu. `max_results` 6: neljällä agentti haki
 kolmesti (132 000 -> 75 600 tokenia). **Kun mallia tai havaintoja muuttuu, päivitä
-`docs/agentti/` samassa commitissa** -- muuten agentti kertoo vanhaa.
+`snowflake/LIIGA/MODEL/cortex_search/LIIGA_TIETO/` samassa commitissa** -- muuten agentti kertoo vanhaa.
 
 **1X2 ja maaliodottamat näkymässä:** `V_UPCOMING_PREDICTIONS` + VQR `TODAY_1X2`.
 Ennen agentti johti 1/2:n itse voittosuhteista (Pelicans 49,4 % mallin 52,3 %:n
@@ -832,8 +843,8 @@ muuttui, mitä jos illan tasaisimmassa) ja proseduuri lähettää vastauksen HTM
 integraatiolla `LIIGA_EMAIL` (vain `mika.heino@recordlydata.com`). Ensimmäinen
 demo lähetettiin 16.10. aliaksella DEV. **Ei vielä ajastettu** (task tekemättä).
 
-Oikeudet: `snowflake/agent_tools.sql` (ACCOUNTADMIN, ajettu 16.10.). Proseduurit:
-`python scripts/deploy_tools.py [--dev]`, kiinnitys kuten semanttisilla
+Oikeudet: `snowflake/_account/` (ACCOUNTADMIN, ajettu 16.10.). Proseduurit:
+`python scripts/deploy/deploy_tools.py [--dev]`, kiinnitys kuten semanttisilla
 malleilla. Deploy-putken ehdokasvaihe ajaa sen ennen agenttia.
 
 ## Agentin julkaisuputki: oma kone → GitHub → Snowflake (2026-10-16)
@@ -866,10 +877,10 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 ```
 
 - **Kirjautuminen:** palvelukäyttäjä `LIIGA_CI` (TYPE = SERVICE, avainpari),
-  rooli `LIIGA_DEPLOYER` (`snowflake/ci_user.sql`). Yksityinen avain on
+  rooli `LIIGA_DEPLOYER` (`snowflake/_account/roles/LIIGA_DEPLOYER.sql`). Yksityinen avain on
   `~/.snowflake/keys/liiga_ci_rsa_key.p8` ja GitHubin salaisuutena
   `SNOWFLAKE_PRIVATE_KEY` -- **älä koskaan tulosta tai kopioi sitä**.
-- **Sama rooli paikallisesti:** `scripts/snow_conn.py`:n oletus on
+- **Sama rooli paikallisesti:** `scripts/deploy/snow_conn.py`:n oletus on
   `LIIGA_DEPLOYER`. ACCOUNTADMINin `CREATE OR REPLACE` siirtäisi näkymien ja
   DEV-mallien omistajuuden takaisin, ja seuraava CI-ajo kaatuisi.
 - **Laatuportti** (`agent_eval.GATE`): oikeellisuus ≥ 0,90, työkalun valinta
@@ -958,7 +969,7 @@ from liiga.ingest import refresh_schedule
 refresh_schedule()            # tämän jälkeen daily_update.py
 ```
 
-⚠️ **Vie ohjelma myös Snowflakeen:** `python scripts/sync_to_snowflake.py -t raw_games`
+⚠️ **Vie ohjelma myös Snowflakeen:** `python scripts/deploy/sync_to_snowflake.py -t raw_games`
 ja `EXECUTE NOTEBOOK LIIGA.CODE.LIIGA_DAILY()`. `raw_games` ei ole
 `CURATED_TABLES`issa, joten `daily_update.py`:n synkka ei vie sitä, eikä
 notebook hae kauden ohjelmaa (se päivittää vain pelatut ottelut
@@ -1049,7 +1060,7 @@ the merge has to happen in pandas.
 `game_lineups` / `game_goalies` / `game_penalties` (all in `LIIGA.RAW`).
 
 `pipeline.refresh_results()` is the single scheduled entry point: season
-results → SQL transforms → per-game detail. Both `scripts/daily_update.py` and
+results → SQL transforms → per-game detail. Both `scripts/local/daily_update.py` and
 the Snowflake notebook call it, so they cannot drift.
 
 It is built for unattended runs: **no disk cache** (ingest's `data/raw/` is
@@ -1244,7 +1255,7 @@ vaihtanut sijaa ja suurin liike oli KooKoo −0,4.
 Tunnistat sen tästä: **`prediction_meta.updated_at` ei päivity**, koska
 `refresh_standings.py` ei kirjoita sitä. Taulut jäävät keskenään eri ajoista.
 
-Kauden aikana aja aina **`python scripts/daily_update.py`**. CLAUDE.md:n
+Kauden aikana aja aina **`python scripts/local/daily_update.py`**. CLAUDE.md:n
 kohta "Adding new players" askel 7 neuvoo yhä `refresh_standings.py`:tä —
 se neuvo pätee vain ennen kauden avausta.
 
@@ -1311,7 +1322,7 @@ When the user says to add a new player (new signing, transfer update):
 
 1. **Update `data/transfers_2026_27.txt`** with the new player in the correct team section.
 2. **Check for existing stats** — query `player_rates` and `raw_goal_events`/`player_season_scoring` by last name to see if the player already has Liiga history in the DB.
-3. **Check that history is actually CURRENT — do this for every player, not just brand-new ones.** "Has Liiga history" only means they've played in Liiga *at some point*; it is not proof their record is up to date. A player can have five Liiga seasons on file and still be missing last season because they spent it abroad before returning. Compare the player's most recent season on file against the most recently completed season (`config.yaml → ingestion.target_season - 1`). If it's older, that's a real gap — treat it exactly like a player with no Liiga history at all (go to step 4) for the missing season(s), even though older Liiga seasons stay in the DB. **Never skip this check just because the player already showed up in step 2.** Run `python scripts/check_roster_coverage.py` after any roster batch to catch this systematically (flags "STALE" players — have history, but nothing in the latest completed season).
+3. **Check that history is actually CURRENT — do this for every player, not just brand-new ones.** "Has Liiga history" only means they've played in Liiga *at some point*; it is not proof their record is up to date. A player can have five Liiga seasons on file and still be missing last season because they spent it abroad before returning. Compare the player's most recent season on file against the most recently completed season (`config.yaml → ingestion.target_season - 1`). If it's older, that's a real gap — treat it exactly like a player with no Liiga history at all (go to step 4) for the missing season(s), even though older Liiga seasons stay in the DB. **Never skip this check just because the player already showed up in step 2.** Run `python scripts/local/check_roster_coverage.py` after any roster batch to catch this systematically (flags "STALE" players — have history, but nothing in the latest completed season).
 4. **Fetch external stats for any gap** — whether the player has zero Liiga history or a stale/missing recent season, look up the missing seasons (aim for the last 5, regular season only: GP, G, A, league, club).
    **Working fetch method (confirmed 2026-08-04): EliteProspects.com via the `r.jina.ai` reader proxy** — `curl -s "https://r.jina.ai/https://www.eliteprospects.com/player/<id>/<slug>/print" -A "Mozilla/5.0"` (the `/print` path is more reliably server-rendered than the main profile, which sometimes snapshots mid-JS-load and returns "No Data Found"). This bypasses EliteProspects' normal Cloudflare/scraping block and returns the verbatim season-by-season markdown table — parse it directly with regex, don't trust an AI summarizer's numeric tables. hockeydb.com used to work the same way (direct curl, or via the same jina proxy) but started hard Cloudflare-challenging both plain curl *and* the jina proxy in Aug 2026 — try it, but don't burn time on it if it 403s. For Finnish Mestis players, `mestis.fi/fi/pelaajat/<player_id>/<slug>` (same `<player_id>` as our own Liiga player_id) is directly curlable, server-rendered, and a great independent cross-check against the EliteProspects table. Note any season gaps rather than guessing.
 5. **Add to `data/external_players.csv`** — format: `player_id,name,birth_year,season,league,games,goals,assists,position` (player_id and birth_year can be blank — a blank player_id resolves to the existing Liiga player automatically by name, which is exactly what lets a returnee's abroad season merge with their old Liiga rows into a `blended` rate). Combine mid-season splits into one row per season (per league if they switched leagues). League names must match `data/league_factors.csv` exactly (e.g. `AHL`, `SHL`, `Allsvenskan`, `Switzerland`).
@@ -1324,16 +1335,16 @@ When the user says to add a new player (new signing, transfer update):
    ```
 7. **Re-run standings + rebuild site:**
    ```bash
-   python scripts/daily_update.py        # in season -- NOT refresh_standings.py
+   python scripts/local/daily_update.py        # in season -- NOT refresh_standings.py
    ```
    Before the season opens `refresh_standings.py` + `build_site.py` is the
    path; once games are played it throws away banked points and current Elo
    (see "Kesken kauden: refresh_standings.py on VÄÄRÄ skripti").
-8. **Verify:** `python scripts/check_roster_coverage.py` — confirm the players you just touched are no longer flagged STALE (or, if they legitimately didn't play a full season anywhere last year — injury, juniors — confirm that's genuinely the case rather than a missed lookup).
+8. **Verify:** `python scripts/local/check_roster_coverage.py` — confirm the players you just touched are no longer flagged STALE (or, if they legitimately didn't play a full season anywhere last year — injury, juniors — confirm that's genuinely the case rather than a missed lookup).
 
 9. **Commit the roster, then log its effect:**
    ```bash
-   python scripts/roster_impact.py
+   python scripts/local/roster_impact.py
    ```
    Rewrites `docs/roster_impact.md` and `data/roster_impact.csv` -- every
    committed roster version run through the pre-season forecast with

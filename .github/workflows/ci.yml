@@ -24,18 +24,18 @@ jobs:
       - name: Testit (malli, simulaatio, maalivahdit)
         run: pytest -q tests
       - name: Skriptit kääntyvät
-        run: python -m py_compile scripts/*.py snowflake/skills/*/render.py snowflake/procedures/*.py
+        run: python -m py_compile scripts/*/*.py snowflake/LIIGA/CODE/stages/AGENT_SKILLS/*/render.py snowflake/LIIGA/MODEL/procedures/*/*.py
       - name: Semanttisten mallien YAML vastaa koodia
-        # snowflake/semantic/*.yaml generoidaan scripts/semantic_views.py:stä.
+        # snowflake/LIIGA/MODEL/semantic_views/*.yaml generoidaan scripts/deploy/semantic_views.py:stä.
         # Jos joku muokkasi koodia mutta ei generoinut tiedostoja, PR kaatuu.
         run: |
-          python scripts/semantic_views.py --write
-          git diff --exit-code snowflake/semantic/
+          python scripts/deploy/semantic_views.py --write
+          git diff --exit-code snowflake/LIIGA/MODEL/semantic_views/
       - name: Skillin renderöinti toimii esimerkkidatalla
         run: |
           python - <<'PY'
           import sys, tempfile
-          sys.path.insert(0, "snowflake/skills/esikatselu-html")
+          sys.path.insert(0, "snowflake/LIIGA/CODE/stages/AGENT_SKILLS/esikatselu-html")
           from render import render, _parse
           row = {"ottelu": "18:30 HPK – Ilves",
                  "ennuste": "Ennuste: HPK 43,2 % · Ilves 56,8 % (jatkoaika 23,9 %)",

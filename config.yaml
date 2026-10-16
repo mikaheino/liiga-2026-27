@@ -35,7 +35,7 @@ database:
 # offline -- the local pipeline is unaffected either way.
 snowflake_sync:
   enabled: true
-  # Palvelukäyttäjä LIIGA_SYNC avainparilla, rooli LIIGA_LOADER (snowflake/loader_user.sql):
+  # Palvelukäyttäjä LIIGA_SYNC avainparilla, rooli LIIGA_LOADER (snowflake/_account/roles/LIIGA_LOADER.sql):
   # ei selainkirjautumista, joten toimii myös launchdin aamuajossa.
   connection: liiga_sync           # profile in ~/.snowflake/connections.toml
   role: LIIGA_LOADER

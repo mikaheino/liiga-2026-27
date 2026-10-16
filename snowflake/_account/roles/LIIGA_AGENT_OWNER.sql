@@ -1,0 +1,36 @@
+-- Omistaa Liiga Ennustaja -agentin. Rajattu tarkoituksella: koodinsuoritus
+-- (johtoryhmävisualisointi) perii OMISTAJAROOLIN oikeudet -- ACCOUNTADMINina
+-- hiekkalaatikko olisi toiminut tilin laajimmilla oikeuksilla. Ei dataa.
+--
+-- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_AGENT_OWNER.sql
+-- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
+
+USE ROLE ACCOUNTADMIN;
+
+-- Roolit ja hierarkia: SYSADMIN (ja sitä kautta ACCOUNTADMIN) perii molemmat,
+-- joten deploy-skriptit toimivat ACCOUNTADMINina kuten ennenkin.
+CREATE ROLE IF NOT EXISTS LIIGA_AGENT_OWNER
+  COMMENT = 'Omistaa Liiga Ennustaja -agentit. Rajattu: koodinsuoritus perii nämä oikeudet.';
+
+GRANT ROLE LIIGA_AGENT_OWNER TO ROLE SYSADMIN;
+
+-- Omistaja: agenttiskeema, skillien stage ja Cortex.
+GRANT USAGE ON DATABASE SNOWFLAKE_INTELLIGENCE TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT USAGE ON SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT USAGE ON DATABASE LIIGA TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT USAGE ON SCHEMA LIIGA.CODE TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT READ ON STAGE LIIGA.CODE.AGENT_SKILLS TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE LIIGA_AGENT_OWNER;
+
+-- Agenttien omistajuus. COPY CURRENT GRANTS säilyttää olemassa olevat oikeudet.
+GRANT OWNERSHIP ON AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA
+  TO ROLE LIIGA_AGENT_OWNER COPY CURRENT GRANTS;
+
+GRANT USAGE ON FUTURE PROCEDURES IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_OWNER;
+
+GRANT USAGE ON FUTURE CORTEX SEARCH SERVICES IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_OWNER;

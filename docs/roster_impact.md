@@ -1,6 +1,6 @@
 # Rosterimuutosten vaikutus aloituspisteisiin
 
-*Generoitu: `python scripts/roster_impact.py` — älä muokkaa käsin.*
+*Generoitu: `python scripts/local/roster_impact.py` — älä muokkaa käsin.*
 
 Esikauden ennuste (kaikki 544 ottelua, esikauden Elo) laskettuna jokaisella committoidulla rosteriversiolla. Kaikki muu pidetään samana, joten luvut kertovat pelkän rosterin vaikutuksen. Pisteiden summa on joka versiossa sama: kun joku vahvistuu, muut menettävät vähän, siksi muuttumattomillakin joukkueilla on pieni miinus.
 

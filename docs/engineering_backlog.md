@@ -20,9 +20,9 @@ muutoksille.
   `goalies_raw.txt`), dokumentaatio, diat ja sovellus, ideat ja raportit.
 - **Isot muutokset vaativat erillisen hyväksynnän:** kaikki mikä muuttaa
   julkaistua agenttia, sen oikeuksia tai putkea --
-  `scripts/semantic_views*.py`, `scripts/deploy_agent.py`,
-  `scripts/agent_eval.py` (laatuportin rajat), `snowflake/*.sql`
-  (roolit, näkymät), `snowflake/skills/**`, `.github/**` -- sekä mallin
+  `scripts/deploy/semantic_views*.py`, `scripts/deploy/deploy_agent.py`,
+  `scripts/deploy/agent_eval.py` (laatuportin rajat), `snowflake/*.sql`
+  (roolit, näkymät), `snowflake/LIIGA/CODE/stages/AGENT_SKILLS/**`, `.github/**` -- sekä mallin
   ydin `src/liiga/**` (AGENTS.md §10: ei viritystä kesken kauden).
 
 **Päätös 16.10.:** ei vaadittua katselmointia PR:ssä. GitHub ei salli PR:n

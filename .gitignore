@@ -32,4 +32,4 @@ streamlit_app/output/
 .DS_Store
 
 # Evaluointien raakatulokset (CI tallentaa ne artefakteiksi; yhteenveto docs/agent_evals.md)
-snowflake/evals/
+snowflake/LIIGA/EVALS/results/

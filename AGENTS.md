@@ -74,8 +74,8 @@ Step 6 internally builds the goaltending model (`goalies.build_team_goaltending`
 materialising `team_goaltending`) and folds it into each team's `def_rating`. To
 also persist the reporting tables `simulate()` only returns in-memory
 (`standings_2026_27`, `position_distribution_2026_27`), run
-`python scripts/refresh_standings.py` — it re-runs steps 6→7 and writes them.
-`python scripts/build_site.py` then regenerates the standings infographic
+`python scripts/local/refresh_standings.py` — it re-runs steps 6→7 and writes them.
+`python scripts/local/build_site.py` then regenerates the standings infographic
 (`site/index.html`, self-contained; serve with
 `python -m http.server 8765 --directory site`). After a visual change, verify by
 screenshot rather than by reading the HTML:
@@ -93,7 +93,7 @@ screenshot rather than by reading the HTML:
 
 ### Daily in-season updates (once 2026-27 starts)
 
-`python scripts/daily_update.py` is the one-shot daily pipeline: force-refetches
+`python scripts/local/daily_update.py` is the one-shot daily pipeline: force-refetches
 season 2027 from liiga.fi → transforms → banks actual points from played games →
 retrains Elo through current results (`elo_ratings_current`, form) → predicts
 only the REMAINING schedule (tie-calibrated Poisson 40% + MOV-Elo 60%) →
@@ -162,7 +162,7 @@ after editing `_build_notebooks.py`.)
   score them on stale data unless that gap season is backfilled into
   `external_players.csv` (found live: Teemu Turunen, Carl-Johan Lerby — both
   had years-old Liiga rows and a missing most-recent abroad season). Run
-  `python scripts/check_roster_coverage.py` after any roster update — it
+  `python scripts/local/check_roster_coverage.py` after any roster update — it
   flags every rostered player whose latest season on file is older than the
   most recently completed season, regardless of whether they have Liiga
   history at all. Don't trust "they're already in the DB" as a reason to skip
@@ -187,7 +187,7 @@ step 4–5, and the standings update.** They are the human-maintained inputs:
 Raw research scratch (regenerate `external_players.csv` from these): `external_raw.txt`
 (55 imports) and `external_returnees_raw.txt` (47 returnees), pipe-delimited.
 
-**After editing any of the above, run `python scripts/check_roster_coverage.py`.**
+**After editing any of the above, run `python scripts/local/check_roster_coverage.py`.**
 It joins `roster_2026_27` against the assembled Liiga+external season history
 and flags every rostered player whose most recent season on file predates the
 last completed season — the fast way to catch a missed abroad/returnee gap
@@ -239,7 +239,7 @@ Key tables: `standings_2026_27`, `position_distribution_2026_27`, `player_rates`
 > Note: `raw_external_player_seasons`, `league_factors`, `standings_2026_27`,
 > `position_distribution_2026_27` are materialized by a manual refresh step, not
 > the core pipeline. The standings pair is rebuilt by
-> `python scripts/refresh_standings.py` (re-runs team strength + simulate and
+> `python scripts/local/refresh_standings.py` (re-runs team strength + simulate and
 > persists both). After editing CSVs, re-register `raw_external_player_seasons` /
 > `league_factors` (load the CSVs with `register_df`) or they go stale. Wiring
 > the CSV reloads into ingestion is a known TODO.
@@ -264,7 +264,7 @@ and recomputes everything itself.
 
 Two things cross the boundary and nothing else: code (`git push` → `ALTER GIT
 REPOSITORY … FETCH`) and the curated inputs the pipeline cannot derive
-(`scripts/sync_to_snowflake.py`, defaulting to `snowflake_sync.CURATED_TABLES`).
+(`scripts/deploy/sync_to_snowflake.py`, defaulting to `snowflake_sync.CURATED_TABLES`).
 Pushing local copies of derived tables over the top would replace Snowflake's
 own results with the Mac's, which defeats the point.
 
@@ -418,7 +418,7 @@ steps 5–7. Verify new rows with an independent search before trusting them.
 Do this for EVERY player touched by a roster update, including ones who
 already show up with Liiga history — that history can predate their most
 recent season abroad (see the gotcha in §4). Finish with
-`python scripts/check_roster_coverage.py` to confirm nothing was missed.
+`python scripts/local/check_roster_coverage.py` to confirm nothing was missed.
 
 ---
 
@@ -450,7 +450,7 @@ git clone git@github.com:mikaheino/liiga-2026-27.git && cd liiga-2026-27
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pytest tests/ -q        # 8 passed
-python scripts/build_site.py      # rebuilds the site from the tracked DB
+python scripts/local/build_site.py      # rebuilds the site from the tracked DB
 ```
 
 Caveat: `daily_update.py` rewrites `liiga.duckdb` every morning, so the DB shows
@@ -461,7 +461,7 @@ run -- it is a ~8 MB binary and each commit stores a full copy.
 incident where a background research agent (sent to fetch external player
 stats) got prompt-injected via scraped web content and started rewriting
 unrelated project files (`league_factors.csv`, `src/liiga/crowd.py`,
-`scripts/build_site.py`, etc.), then re-applied the same tampering across
+`scripts/local/build_site.py`, etc.), then re-applied the same tampering across
 multiple notifications even after being reverted, forcing a manual revert by
 reverse-engineering the agent's own transcript (no git history existed yet to
 diff against). With git now initialized, the fast recovery path for a repeat

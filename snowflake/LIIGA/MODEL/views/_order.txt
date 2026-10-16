@@ -1,0 +1,12 @@
+# Julkaisujärjestys: näkymät riippuvat toisistaan (scripts/deploy/deploy_views.py).
+V_GAMES_NOW.sql
+V_GAME_EVALUATION.sql
+V_TEAM_SEASON_NOW.sql
+V_PLAYER_SEASON_NOW.sql
+V_GOALIE_SEASON_NOW.sql
+V_ZONE_PROBABILITIES.sql
+V_UPCOMING_PREDICTIONS.sql
+V_LATEST_LINEUPS.sql
+V_ROUND_PREVIEW.sql
+V_ROUND_PREVIEW_TEXT.sql
+V_FORECAST_CHANGE.sql

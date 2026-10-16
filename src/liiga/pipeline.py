@@ -2,8 +2,8 @@
 
 Both callers use this so the model math has exactly one home:
 
-  * `scripts/daily_update.py` -- the local (dev) run against DuckDB
-  * `snowflake/daily_update.ipynb` -- the in-Snowflake (prod) run
+  * `scripts/local/daily_update.py` -- the local (dev) run against DuckDB
+  * `snowflake/LIIGA/CODE/notebooks/LIIGA_DAILY/daily_update.ipynb` -- the in-Snowflake (prod) run
 
 Nothing here touches the filesystem or the site; it reads tables, runs the
 model, and writes tables. Everything goes through `liiga.db`, so the same code
@@ -24,7 +24,7 @@ from .ensemble import ensemble_game_probs
 from .model import calibrate_ties, predict_games
 from .simulate import banked_points, simulate
 
-POISSON_WEIGHT = 0.4      # keep in sync with scripts/refresh_standings.py
+POISSON_WEIGHT = 0.4      # keep in sync with scripts/local/refresh_standings.py
 
 HISTORY_COLUMNS = ["snapshot_date", "games_played", "proj_rank", "team",
                    "mean_points", "p_title", "p_top_playoff"]

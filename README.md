@@ -87,12 +87,12 @@ pip install -e .            # add ".[snowflake]" for the Snowflake backend
 ## Run
 
 ```bash
-python scripts/daily_update.py       # in-season: fetch results, re-predict, rebuild the site
-python scripts/refresh_standings.py  # pre-season / after a roster edit: re-simulate only
+python scripts/local/daily_update.py       # in-season: fetch results, re-predict, rebuild the site
+python scripts/local/refresh_standings.py  # pre-season / after a roster edit: re-simulate only
 python -m pytest tests/ -q
 ```
 
-`daily_update.py` also runs from launchd at 08:30 (`scripts/com.liiga.daily-update.plist`).
+`daily_update.py` also runs from launchd at 08:30 (`scripts/local/com.liiga.daily-update.plist`).
 
 Or walk through the stages:
 
@@ -111,7 +111,7 @@ Or walk through the stages:
   percentile ranges, title and playoff probabilities, a position-distribution
   heatmap, where the model disagrees with the crowd, who carries each team's
   rating, and a ten-step plain-language explanation. Built by
-  `scripts/build_site.py`; serve it with
+  `scripts/local/build_site.py`; serve it with
   `python -m http.server 8765 --directory site`.
 - **`streamlit_app/streamlit_app.py`** — the heatmap, the forecast history and a
   month-by-month fixture list with the probabilities the model gave beforehand.
@@ -129,7 +129,7 @@ runs of the same code rather than a copy of one another. The Mac computes into
 liiga.fi itself through the notebook `LIIGA.CODE.LIIGA_DAILY`, driven by a git
 mirror of this repository. Only two things cross over: the code, via `git push`,
 and the curated inputs the pipeline cannot derive, via
-`scripts/sync_to_snowflake.py`.
+`scripts/deploy/sync_to_snowflake.py`.
 
 Nothing is scheduled in Snowflake yet — the notebook is run on demand until the
 model has been checked against real in-season results.

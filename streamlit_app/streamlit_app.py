@@ -1389,7 +1389,7 @@ def sidebar_controls(log: pd.DataFrame, stamp: str,
 # --------------------------------------------------------------------------
 # Instagram- / LinkedIn-diat
 #
-# Diat rakentaa scripts/build_instagram.py, ei tämä tiedosto. Sama koodi
+# Diat rakentaa scripts/local/build_instagram.py, ei tämä tiedosto. Sama koodi
 # tuottaa myös levylle kirjoitettavan yhdeksän dian karusellin, joten ilme ei
 # voi karata erilleen -- kaksi rinnakkaista toteutusta samasta ulkoasusta
 # eroaisi ensimmäisellä muutoksella.
@@ -1398,10 +1398,10 @@ def sidebar_controls(log: pd.DataFrame, stamp: str,
 # Snowflakessa. Osio kertoo sen ääneen sen sijaan että katoaisi hiljaa.
 # --------------------------------------------------------------------------
 def _slide_builder():
-    """scripts/build_instagram, tai None jos sitä ei voi ladata täältä."""
+    """scripts/local/build_instagram, tai None jos sitä ei voi ladata täältä."""
     import importlib.util
     from pathlib import Path
-    path = Path(__file__).resolve().parent.parent / "scripts" / "build_instagram.py"
+    path = Path(__file__).resolve().parent.parent / "scripts" / "local" / "build_instagram.py"
     if not path.exists():
         return None
     spec = importlib.util.spec_from_file_location("liiga_instagram", path)
@@ -1420,7 +1420,7 @@ def build_slides(updated_at: str) -> tuple[list, bytes, str]:
     try:
         builder = _slide_builder()
         if builder is None:
-            return [], b"", "scripts/build_instagram.py ei ole käytettävissä."
+            return [], b"", "scripts/local/build_instagram.py ei ole käytettävissä."
         slides = builder.live_slides()
         if not slides:
             return [], b"", "standings_2026_27 on tyhjä."
@@ -1445,7 +1445,7 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
     try:
         builder = _slide_builder()
         if builder is None:
-            return {}, "scripts/build_instagram.py ei ole käytettävissä."
+            return {}, "scripts/local/build_instagram.py ei ole käytettävissä."
         out = {}
         for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post),
                           ("mv", builder.goalie_post),

@@ -1,6 +1,6 @@
 # Agentin evaluoinnit
 
-*Kirjoittaa `scripts/agent_eval.py`. Append-only.*
+*Kirjoittaa `scripts/deploy/agent_eval.py`. Append-only.*
 
 Mittarit: oikeellisuus (answer_correctness v3), oikea työkalu = osuus
 kysymyksistä joissa valittiin oikea työkalu (laatuportti), työkalu (raaka) =
@@ -24,3 +24,4 @@ portti hylkäsi raa'an työkalumittarin 0,94 takia).
 | 20261016_132044 | LIIGA_ENNUSTAJA | DEV | 33 | 0.97 | 1.00 | 1.00 | 1.00 | 0.88 | 0 | – |
 | 20261016_133424 | LIIGA_ENNUSTAJA | DEV | 33 | 0.91 | 1.00 | 0.98 | 1.00 | 0.93 | 0 | Millä todennäköisyydellä JYP pääsee kuuden joukkoon?; Miten tämän päivän pelit päättyvät? |
 | 20261016_140131 | LIIGA_ENNUSTAJA | DEV | 33 | 0.96 | 1.00 | 1.00 | 1.00 | 0.94 | 0 | – |
+| 20261016_162954 | LIIGA_ENNUSTAJA | DEV | 35 | 0.92 | 0.97 | 0.97 | 1.00 | 0.90 | 0 | Voiko maalivahtien torjuntaprosentin laskea tältä kaudelta? |

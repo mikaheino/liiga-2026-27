@@ -35,7 +35,7 @@ re-running it re-lands the current local state.
 **This is an ongoing dev -> prod publish, not a one-time migration.** Local
 DuckDB is development; Snowflake is production. `daily_update.py` and
 `refresh_standings.py` call `sync_all()` as their last step, and
-`scripts/sync_to_snowflake.py` is the manual entry point. Inside the pipeline
+`scripts/deploy/sync_to_snowflake.py` is the manual entry point. Inside the pipeline
 the publish is best-effort (`strict=False`) so a prod failure cannot fail a
 dev run; run by hand it is strict and exits non-zero.
 
@@ -120,7 +120,7 @@ of two models running independently.
 ### Built and verified (2026-08-30)
 
 `LIIGA.CODE.LIIGA_DAILY` is the notebook, created from
-`@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/`, with
+`@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/LIIGA/CODE/notebooks/LIIGA_DAILY/`, with
 `EXTERNAL_ACCESS_INTEGRATIONS = (LIIGA_FI_ACCESS)`. It bootstraps the package
 out of the git repo, fetches liiga.fi, rebuilds the tables and re-forecasts.
 
@@ -134,7 +134,7 @@ Redeploy after a code change:
 ```sql
 ALTER GIT REPOSITORY LIIGA.CODE.LIIGA_REPO FETCH;
 CREATE OR REPLACE NOTEBOOK LIIGA.CODE.LIIGA_DAILY
-  FROM '@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/'
+  FROM '@LIIGA.CODE.LIIGA_REPO/branches/main/snowflake/LIIGA/CODE/notebooks/LIIGA_DAILY/'
   MAIN_FILE = 'daily_update.ipynb' QUERY_WAREHOUSE = LIIGA_WH;
 ALTER NOTEBOOK LIIGA.CODE.LIIGA_DAILY
   SET EXTERNAL_ACCESS_INTEGRATIONS = (LIIGA_FI_ACCESS);
@@ -232,7 +232,7 @@ model is making decisions against live results.
 
 ## What does NOT move (scope boundary)
 
-The standings site (`site/index.html`, built by `scripts/build_site.py`) stays
+The standings site (`site/index.html`, built by `scripts/local/build_site.py`) stays
 **local-only**, per the standing policy in CLAUDE.md/AGENTS.md — this
 migration is about the data/model/scheduling layer, not the front end.
 
