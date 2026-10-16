@@ -1449,6 +1449,8 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
         out = {}
         for key, make in (("xg", builder.xg_post), ("forty", builder.forty_post),
                           ("mv", builder.goalie_post),
+                          ("score", builder.scorecard_post),
+                          ("combo", builder.scorecard_surprise_post),
                           ("surprise", builder.surprise_post)):
             slides = make()
             out[key] = (slides, builder.slides_to_pdf(slides) if slides else b"")
@@ -1458,6 +1460,16 @@ def build_posts(updated_at: str) -> tuple[dict, str]:
 
 
 POSTS = [
+    ("combo", "Ennuste ja yllättäjät", "ennuste-ja-yllattajat",
+     "Yhdistelmäpostaus, neljä diaa: ennuste nyt vs. esikausi (oman joukkueen "
+     "sijoitus), varjosarjataulukko maalipaikoista, alkukauden "
+     "yllättäjäjoukkueet ja yllättäjien kokoonpano. "
+     "Osumaprosentti kerrotaan postauksen tekstissä."),
+    ("score", "Välitilinpäätös", "valitilinpaatos",
+     "Miten malli on osunut: ottelun voittajan osumaprosentti verrattuna siihen, "
+     "että kotijoukkue voittaa aina, ja otoksen epävarmuus. Toinen dia näyttää "
+     "nykyisen ennusteen rinnakkain esikauden ennusteen ja tämänhetkisen "
+     "sarjasijan kanssa."),
     ("surprise", "Alkukauden yllättäjät", "yllattajat",
      "Pisteet tähän mennessä verrattuna siihen, mitä esikauden ennuste "
      "(1.9.) antoi juuri pelatuista otteluista — vastustajat ja koti/vieras "

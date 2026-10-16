@@ -336,6 +336,7 @@ def css(t: dict) -> str:
   .g17.xg {{ grid-template-columns:58px 40px minmax(0,1fr) 40px 104px 96px 96px 108px; }}
   .g17.ft {{ grid-template-columns:40px minmax(0,1fr) 178px 196px 70px; }}
   .g17.sp {{ grid-template-columns:40px minmax(0,1fr) 40px 112px 112px 112px; }}
+  .g17.sc {{ grid-template-columns:58px 40px minmax(0,1fr) 96px 96px 104px 104px; }}
   .g17.hd {{ font-family:{HEAD_F}; font-size:14px; letter-spacing:2px;
             text-transform:uppercase; color:{t['muted']}; padding-bottom:9px;
             border-bottom:2px solid {GOLD_LO}; }}
@@ -397,6 +398,11 @@ def css(t: dict) -> str:
   .hero-s {{ font-size:24px; color:{t['muted']}; margin-top:8px; }}
   .versus {{ display:flex; gap:22px; }}
   .versus .callout {{ flex:1; }}
+  /* Välitilinpäätös: luku keskelle vapaata tilaa eikä vasempaan yläkulmaan. */
+  .hero.center {{ justify-content:space-evenly; }}
+  .hero.center > div:first-child {{ text-align:center; }}
+  .hero.center .hero-n {{ font-size:300px; }}
+  .hero.center .hero-t {{ margin:0 auto; }}
   .vnum {{ font-family:{HEAD_F}; font-size:56px; font-style:italic; color:{CREAM};
           line-height:1; margin:2px 0 10px; }}
 
@@ -1233,7 +1239,9 @@ def xg_table_slide(t: dict, g) -> str:
     <div class="body tbl17">{head}{"".join(rows)}</div>
     <div class="foot">Paikkojen mukaan = pisteet, jotka joukkue olisi saanut
       maalipaikkojensa perusteella · yli / ali = kuinka paljon enemmän (+) tai
-      vähemmän (−) pisteitä joukkue on saanut kuin paikat antaisivat odottaa</div>
+      vähemmän (−) pisteitä joukkue on saanut kuin paikat antaisivat odottaa ·
+      järjestys eroaa liiga.fi:n xME-järjestyksestä, koska tässä maalipaikat
+      muutetaan ottelu kerrallaan sarjapisteiksi</div>
   </div>""")
 
 
@@ -1809,6 +1817,162 @@ def surprise_post(con=None) -> list:
         out.append(("yllattajat_kentalla.png",
                     surprise_players_slide(theme(GRADIENTS[1]), picks,
                                            players.attrs.get("min_games", 5))))
+    return [(name, rasterise(html)) for name, html in out]
+
+
+def scorecard(con) -> dict | None:
+    """Välitilinpäätös: osumaprosentti ja ennusteen liike esikaudesta.
+
+    Osuma lasketaan täsmälleen kuten sovelluksen tulostaulussa
+    (render_scoreboard): viimeisin snapshot ottelupäivänä tai ennen sitä,
+    suosikki = p_home_win >= 0,5. Vertailutaso on "aina kotijoukkue", ei
+    50 % -- 2.10. molemmat olivat 59 %, ja kolikkoa vasten 57 % näyttäisi
+    hyvältä syyttä.
+
+    Esikausi = viimeisin ennuste ennen kauden alkua (games_played = 0), sama
+    määritelmä kuin rank_context(). Sarjasija liiga.fi:n järjestyksellä.
+    """
+    ev = query_df(con, """
+        SELECT g.home_goals > g.away_goals AS home_won, p.p_home_win
+        FROM stg_games g JOIN prediction_games p ON p.game_id = g.game_id
+        WHERE g.season = (SELECT MAX(season) FROM stg_games) AND g.ended
+          AND p.snapshot_date = (SELECT MAX(p2.snapshot_date) FROM prediction_games p2
+                                 WHERE p2.game_id = g.game_id
+                                   AND p2.snapshot_date <= SUBSTR(g.start_ts, 1, 10))""")
+    if ev.empty:
+        return None
+    n = len(ev)
+    hits = int(((ev["p_home_win"] >= 0.5) == ev["home_won"]).sum())
+    home = int(ev["home_won"].sum())
+    rate = hits / n
+    tab = query_df(con, """
+        WITH pre AS (SELECT team, proj_rank AS r0 FROM prediction_history
+                     WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM prediction_history
+                                            WHERE games_played = 0)),
+        now AS (SELECT team, proj_rank AS r1, mean_points AS p1 FROM standings_2026_27),
+        tab AS (SELECT team, SUM(points) AS pts,
+                  RANK() OVER (ORDER BY SUM(points) DESC,
+                               SUM(goals_for) - SUM(goals_against) DESC,
+                               SUM(goals_for) DESC) AS tr
+                FROM team_game_log WHERE season = (SELECT MAX(season) FROM stg_games)
+                GROUP BY team)
+        SELECT now.team, r0, r1, p1, tr FROM now JOIN pre USING (team)
+        LEFT JOIN tab USING (team) ORDER BY r1""")
+    return {"n": n, "hits": hits, "home": home, "rate": rate,
+            "se": 100 * (rate * (1 - rate) / n) ** 0.5, "table": tab}
+
+
+def scorecard_hero_slide(t: dict, s: dict) -> str:
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · {s['n']} ottelun välitilinpäätös</div>
+      <div class="title">Miten malli<br>on osunut?</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body">
+      <div class="hero center">
+        <div>
+          <div class="hero-n">{s['rate'] * 100:.0f} %</div>
+          <div class="hero-t">Niin usein malli on ennustanut ottelun voittajan oikein.</div>
+          <div class="hero-s">{s['hits']} / {s['n']} ottelua · ennuste otettu aina ennen ottelua</div>
+        </div>
+        <div class="versus">
+          <div class="callout"><b>Vertailu: aina kotijoukkue</b>
+            <div class="vnum">{s['home'] / s['n'] * 100:.0f} %</div>
+            <span>{s['home']} / {s['n']} ottelua</span></div>
+          <div class="callout"><b>Ero on vielä kohinaa</b>
+            <div class="vnum">±{s['se']:.0f} %-yks.</div>
+            <span>{s['n']} ottelun otoksen epävarmuus</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">Voittaja sisältää jatkoajan ja voittolaukaukset. Mallia ei viritetä kesken
+      kauden, jotta vertailu pysyy reiluna.</div>
+  </div>""")
+
+
+def _rank_arrow(r0: int, r1: int) -> str:
+    """Esikauden sija -> nykyinen ennuste. Pienempi sija on parempi, joten
+    LASKU on nousu (▲) -- tämä on se kohta jonka saa helposti väärinpäin."""
+    d = int(r0) - int(r1)
+    if d == 0:
+        return f'<span style="color:{MUTED}">–</span>'
+    col = XG_UP if d > 0 else XG_DOWN
+    return f'<span style="color:{col}">{"▲" if d > 0 else "▼"}{abs(d)}</span>'
+
+
+def forecast_change_slide(t: dict, s: dict) -> str:
+    head = ('<div class="g17 sc hd"><div>Ennuste</div><div></div><div class="l">Joukkue</div>'
+            '<div>Esikausi</div><div>Muutos</div><div>Sarjassa</div><div>Pisteet</div></div>')
+    rows = "".join(f"""
+      <div class="g17 sc r">
+        <div class="r17">{r.r1}</div>
+        <div class="c17"><img src="{logo_uri(r.team)}" alt=""></div>
+        <div class="n17">{r.team}</div>
+        <div class="m17">{r.r0}.</div>
+        <div class="d17">{_rank_arrow(r.r0, r.r1)}</div>
+        <div class="m17">{f"{int(r.tr)}." if r.tr == r.tr else "–"}</div>
+        <div class="b17">{_fi(r.p1)}</div>
+      </div>""" for r in s["table"].itertuples())
+    return page(t, f"""
+  <div class="slide">
+    <div class="head">
+      <div class="kicker">Liiga 2026–27 · {s['n']} ottelun jälkeen</div>
+      <div class="title long">Ennuste nyt vs. esikausi</div>
+    </div>
+    <div class="rule"></div>
+    <div class="body tbl17">{head}{rows}</div>
+    <div class="foot">Ennuste = ennustettu loppusija ja -pisteet 10 000 simulaatiosta · esikausi =
+      julkaistu ennuste 1.9. · sarjassa = sija taulukossa nyt · muutos sisältää pelattujen
+      otteluiden lisäksi omat datakorjauksemme (rosterit ja tilastot, syyskuu)</div>
+  </div>""")
+
+
+def scorecard_surprise_post(con=None) -> list:
+    """Yhdistelmä: ennuste nyt vs. esikausi, varjosarjataulukko ja alkukauden
+    yllättäjät, neljä diaa.
+
+    Ilman osumaprosenttidiaa (käyttäjän päätös 11.10.): luku kerrotaan
+    postauksen tekstissä, ja lukijaa kiinnostaa oman joukkueen sijoitus.
+    """
+    own = con is None
+    con = con or get_connection()
+    try:
+        s, g = scorecard(con), xg_shadow(con)
+        head = ([("ennuste_vs_esikausi.png",
+                  rasterise(forecast_change_slide(theme(GRADIENTS[2]), s)))] if s else [])
+        # Varjosarjataulukko tämän kauden toteutuneista maalipaikoista (xG).
+        if not g.empty:
+            head.append(("varjosarjataulukko.png", rasterise(xg_table_slide(theme(GRADIENTS[5]), g))))
+        sp = dict(surprise_post(con))
+        # Järjestys (käyttäjä 11.10.): ennuste, yllättäjät kentällä, varjosarja-
+        # taulukko, yllättäjäjoukkueet.
+        out = head[:1]
+        if "yllattajat_kentalla.png" in sp:
+            out.append(("yllattajat_kentalla.png", sp["yllattajat_kentalla.png"]))
+        out += head[1:]
+        if "yllattajat_joukkueet.png" in sp:
+            out.append(("yllattajat_joukkueet.png", sp["yllattajat_joukkueet.png"]))
+        return out
+    finally:
+        if own:
+            con.close()
+
+
+def scorecard_post(con=None) -> list:
+    """Välitilinpäätös: osumaprosentti + ennuste nyt vs. esikausi. [(tiedostonimi, png)]."""
+    own = con is None
+    con = con or get_connection()
+    try:
+        s = scorecard(con)
+    finally:
+        if own:
+            con.close()
+    if not s:
+        return []
+    out = [("valitilinpaatos_osumat.png", scorecard_hero_slide(theme(GRADIENTS[0]), s)),
+           ("valitilinpaatos_ennuste.png", forecast_change_slide(theme(GRADIENTS[2]), s))]
     return [(name, rasterise(html)) for name, html in out]
 
 

@@ -8,6 +8,9 @@ The standing rule from AGENTS.md §10 applies throughout: **tune on log-loss
 and points MAE, never on Spearman ρ.** ρ was already too noisy at n=4 seasons;
 half a season is worse.
 
+Ideas that are not yet scheduled (fatigue, goalie weighting, the day's
+starting goalie, ...) live in `docs/model_improvement_ideas.md`.
+
 ---
 
 ## Done — capture the evidence (2026-08-30)
