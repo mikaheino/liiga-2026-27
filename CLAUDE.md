@@ -631,8 +631,8 @@ python scripts/semantic_views.py --deploy --dev   # *_DEV-mallit, DEV-agentti
 python scripts/semantic_views.py --deploy         # tuotanto
 ```
 
-Tuotannossa 10.10. alkaen (DEV-versiot `*_DEV` ja `LIIGA_ENNUSTAJA_DEV`
-jäävät testausta varten). Agentin spec: `SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/
+Tuotannossa 10.10. alkaen (DEV-mallit `*_DEV` jäävät aliaksen `DEV` käyttöön;
+erillinen DEV-agentti poistettu 16.10.). Agentin spec: `SNOWFLAKE_INTELLIGENCE_AGENTS_LIIGA_ENNUSTAJA/
 versions/v20261010/`. Vanha `data/apply_sv.sql` + `semantic_view_backup.yaml`
 on poistettu -- ajettuna se olisi korvannut uuden mallin vanhalla. Mittaus
 optimointilokissa: input-tokenit −68 %, output −81 %, 9/9 oikein.
@@ -801,7 +801,8 @@ palautus:  deploy_agent --promote VERSION$<vanha>
   (`complete_results`): 16.10. tuotantoajo luki ne heti `COMPLETED`-tilan
   jälkeen, kaatui laatuporttiin vajailla pisteillä, ja sama ajo antoi
   myöhemmin 28/28 joka mittarille ja läpäisi portin.
-- `LIIGA_ENNUSTAJA_DEV`-agentti on vanhan mallin jäänne; putki ei käytä sitä.
+- Erillinen `LIIGA_ENNUSTAJA_DEV`-agentti **poistettiin 16.10.**; sen roolin
+  hoitaa alias `DEV`. `*_DEV`-semanttiset mallit jäävät DEV-aliaksen käyttöön.
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
   evaluoinnin tulos. `agent-v2` (010d045) ja `agent-v3` (0a7ce21) on merkitty jälkikäteen.
 

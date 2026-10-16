@@ -2,7 +2,7 @@
 
 ## Agent details
 - Fully qualified agent name: `SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA`
-- Clone FQN (development/staging): `SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA_DEV`
+- Kehitys: saman agentin versiot aliaksilla `DEV` / `STAGING` (erillinen `LIIGA_ENNUSTAJA_DEV` poistettu 2026-10-16)
 - Owner / stakeholders: Mika Heino (Recordly)
 - Purpose / domain: Finnish ice hockey league (Liiga) 2026-27 season standings and match predictions
 - Current status: tuotannossa v20261010 (kaksi semanttista mallia)
