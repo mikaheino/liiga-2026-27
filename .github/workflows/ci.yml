@@ -50,3 +50,23 @@ jobs:
           assert "HPK – Ilves" in open(path, encoding="utf-8").read()
           print("ok", path)
           PY
+
+  app:
+    # Next.js-sovellus ilman Snowflakea: tyypit ja tuotantokäännös.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/package-lock.json
+      - name: Riippuvuudet ja tietoturva (npm audit, tuotantoriippuvuudet)
+        run: npm ci && npm audit --omit=dev --audit-level=high
+      - name: Tyypit
+        run: npm run typecheck
+      - name: Tuotantokäännös
+        run: npm run build

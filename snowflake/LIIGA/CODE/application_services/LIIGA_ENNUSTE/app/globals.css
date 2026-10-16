@@ -1,0 +1,162 @@
+/* Liiga Ennuste -- tyyli. Paletti Liigan logosta (sama kuin streamlit_app.py ja
+   aamutiedote): kulta #CCA752, korostus #EBCA68, musta pohja lämpimin harmain. */
+:root {
+  --bg: #050403; --bg-2: #0b0906; --surface: #100d09; --surface-2: #17130d;
+  --line: #241e15; --line-2: #33291b;
+  --ink: #f4efe4; --body: #d6cdbb; --muted: #8f8573; --faint: #5d5546;
+  --gold: #cca752; --gold-hi: #ebca68; --gold-mid: #9a7c33; --gold-dim: #4a3a18;
+  --danger: #e0574b; --danger-dim: #4a1f1a; --up: #ebca68; --down: #e0574b;
+  --sans: var(--font-hanken), "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: var(--font-mono), "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--body); font: 400 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+body { background:
+  radial-gradient(1200px 500px at 70% -10%, rgba(204,167,82,.10), transparent 60%),
+  radial-gradient(800px 400px at -10% 10%, rgba(204,167,82,.05), transparent 60%), var(--bg); min-height: 100vh; }
+button { font: inherit; color: inherit; }
+.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.dim { color: var(--muted); }
+
+/* --- Yläpalkki ---------------------------------------------------------- */
+.top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: auto 1fr auto; gap: 32px; align-items: center;
+  padding: 14px 32px; background: rgba(5,4,3,.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.brand { display: flex; gap: 12px; align-items: center; }
+.mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: #1a1206; font-size: 16px;
+  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 55%, var(--gold-mid)); box-shadow: 0 0 24px rgba(204,167,82,.35); }
+.brand-name { font: 800 16px/1.1 var(--sans); color: var(--ink); letter-spacing: -.01em; }
+.brand-sub { font: 500 11.5px/1.3 var(--sans); color: var(--muted); letter-spacing: .02em; }
+.season { max-width: 360px; justify-self: center; width: 100%; }
+.season-row { display: flex; justify-content: space-between; font: 600 11px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px; }
+.season-row b { font-family: var(--mono); color: var(--ink); letter-spacing: 0; }
+.season-bar { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.season-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi)); }
+.fresh { display: flex; align-items: center; gap: 8px; font: 500 12.5px var(--sans); color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-hi); box-shadow: 0 0 0 4px rgba(235,202,104,.14); }
+
+/* --- Asettelu ----------------------------------------------------------- */
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); max-width: 1440px; margin: 0 auto; }
+.rail { position: sticky; top: 64px; align-self: start; height: calc(100vh - 64px); overflow: auto; padding: 28px 22px; border-right: 1px solid var(--line); }
+.rail-foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); font: 11.5px/1.6 var(--sans); color: var(--faint); }
+.main { padding: 40px 48px 72px; min-width: 0; }
+.eyebrow { font: 700 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-hi); }
+h1 { margin: 10px 0 6px; font: 800 40px/1.05 var(--sans); letter-spacing: -.03em; color: var(--ink); }
+.lede { margin: 0 0 26px; max-width: 64ch; color: var(--muted); font-size: 15px; }
+
+/* --- Ohjaimet ----------------------------------------------------------- */
+.ctl { display: grid; gap: 26px; transition: opacity .2s; }
+.ctl.is-pending { opacity: .55; }
+.ctl-label { display: flex; justify-content: space-between; align-items: center; font: 700 11px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.ctl-hint { margin-top: 8px; font-size: 12px; color: var(--faint); }
+.ctl-clear { background: none; border: 0; padding: 0; font: 600 11.5px var(--sans); color: var(--gold); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; gap: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; padding: 7px 0; border-radius: 7px; font: 600 13px var(--mono); color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--surface-2); color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--line-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px 5px 6px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface);
+  font: 600 12px var(--sans); color: var(--body); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.chip img { border-radius: 4px; }
+.chip:hover { border-color: var(--line-2); color: var(--ink); }
+.chip.on { border-color: var(--gold); background: rgba(204,167,82,.12); color: var(--gold-hi); }
+.sw { display: flex; align-items: center; gap: 10px; font: 500 13.5px var(--sans); color: var(--body); cursor: pointer; margin-bottom: 12px; }
+.sw input { position: absolute; opacity: 0; }
+.sw span { position: relative; width: 34px; height: 20px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line-2); transition: background .2s; flex: none; }
+.sw span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
+.sw input:checked + span { background: rgba(204,167,82,.25); border-color: var(--gold-mid); }
+.sw input:checked + span::after { transform: translateX(14px); background: var(--gold-hi); }
+.sw input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* --- Nostokortit -------------------------------------------------------- */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 30px; }
+.kpi { position: relative; padding: 16px 16px 15px; border-radius: var(--r); background: linear-gradient(180deg, var(--surface-2), var(--surface)); border: 1px solid var(--line); overflow: hidden; }
+.kpi::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--line-2); }
+.kpi.gold::before { background: linear-gradient(90deg, var(--gold-hi), transparent); }
+.kpi.cold::before { background: linear-gradient(90deg, var(--muted), transparent); }
+.kpi.danger::before { background: linear-gradient(90deg, var(--danger), transparent); }
+.kpi-k { font: 700 10.5px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.kpi.gold .kpi-k { color: var(--gold-hi); }
+.kpi-main { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.kpi-main img { flex: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.kpi-big { font: 800 20px/1.15 var(--sans); color: var(--ink); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-sub { font: 12px/1.4 var(--sans); color: var(--muted); }
+
+/* --- Välilehdet ----------------------------------------------------------- */
+.tabs { display: flex; gap: 4px; margin: 0 0 14px; padding: 4px; width: fit-content; border-radius: 11px; background: var(--surface); border: 1px solid var(--line); }
+.tabs a { padding: 7px 14px; border-radius: 8px; font: 600 13px var(--sans); color: var(--muted); text-decoration: none; }
+.tabs a.on { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.tabs a.soon { color: var(--faint); cursor: default; }
+
+/* --- Taulukko ----------------------------------------------------------- */
+.tbl { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.tr { display: grid; grid-template-columns: 46px minmax(150px, 1.4fr) 40px 124px 132px 108px 96px minmax(150px, 1fr); align-items: center;
+  gap: 0 6px; padding: 0 16px 0 0; min-height: 46px; border-bottom: 1px solid var(--line); position: relative;
+  animation: rise .35s ease both; transition: opacity .2s, background .2s; }
+.tr.with-xg { grid-template-columns: 46px minmax(150px, 1.4fr) 40px 124px 64px 132px 108px 96px minmax(150px, 1fr); }
+.tr.no-spark { grid-template-columns: 46px minmax(150px, 1.4fr) 40px 124px 132px 96px minmax(150px, 1fr); }
+.tr.with-xg.no-spark { grid-template-columns: 46px minmax(150px, 1.4fr) 40px 124px 64px 132px 96px minmax(150px, 1fr); }
+.tr:last-child { border-bottom: 0; }
+.tr:not(.th):hover { background: var(--surface-2); }
+.tr.sep { border-top: 1px solid var(--line-2); }
+.th { min-height: 38px; background: var(--bg-2); font: 700 10.5px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); animation: none; }
+.th > div:first-child { text-align: center; }
+.rank { align-self: stretch; display: grid; place-items: center; font: 600 13px var(--mono); color: var(--muted); border-left: 3px solid transparent; }
+.z-top .rank { border-left-color: var(--gold); color: var(--ink); }
+.z-quali .rank { border-left-color: var(--gold-mid); }
+.z-down .rank { border-left-color: var(--danger); }
+.team { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.team img { flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,.7)); }
+.name { font: 650 14px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.z-down .name { color: #f0b3ac; }
+.mv { font: 600 11px var(--mono); padding: 1px 5px; border-radius: 5px; }
+.mv-up { color: var(--up); background: rgba(235,202,104,.10); }
+.mv-dn { color: var(--down); background: rgba(224,87,75,.10); }
+.mv-0, .mv-na { color: var(--faint); }
+.form { display: flex; gap: 4px; }
+.res { display: inline-grid; place-items: center; width: 21px; height: 21px; border-radius: 6px; font: 800 10.5px/1 var(--sans); font-style: normal; }
+.res-w { background: var(--gold); color: #1a1206; }
+.res-otw { background: var(--gold-mid); color: #0d0b07; }
+.res-otl { background: var(--gold-dim); color: var(--gold-hi); }
+.res-l { background: #221d16; color: #7d7464; }
+.res-empty { background: transparent; border: 1px dashed var(--line-2); }
+.spark { display: block; }
+.spark-mid { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 3; }
+.gd { font-size: 11.5px; margin-left: 4px; }
+.gd.pos { color: var(--gold); } .gd.neg { color: #b46a60; }
+.pts { display: flex; align-items: center; gap: 10px; }
+.pts b { font: 800 15px var(--mono); color: var(--ink); min-width: 26px; text-align: right; order: 2; }
+.bar { flex: 1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold-dim), var(--gold-mid)); transform-origin: left; animation: grow .7s cubic-bezier(.2,.8,.2,1) both; }
+.z-top .bar i { background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi)); }
+.z-down .bar i { background: linear-gradient(90deg, var(--danger-dim), var(--danger)); }
+
+/* Korostus: valittu nousee, muut vetäytyvät (sama periaate kuin Streamlitissä). */
+.has-hl .tr:not(.th):not(.hl) { opacity: .28; }
+.tr.hl { background: linear-gradient(90deg, rgba(204,167,82,.16), rgba(204,167,82,.02) 60%); box-shadow: inset 0 0 0 1px rgba(204,167,82,.35); }
+.tr.hl .name { color: var(--gold-hi); }
+
+/* --- Selite ------------------------------------------------------------- */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font: 12px var(--sans); color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend .res { width: 17px; height: 17px; font-size: 9.5px; border-radius: 5px; }
+.legend .sep-l { margin-left: 10px; }
+.zl { width: 3px; height: 14px; border-radius: 2px; display: inline-block; }
+.zl.z-top { background: var(--gold); } .zl.z-quali { background: var(--gold-mid); } .zl.z-down { background: var(--danger); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .tr, .bar i { animation: none; } }
+
+/* --- Kapeat näytöt ------------------------------------------------------ */
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .top { grid-template-columns: 1fr auto; padding: 12px 16px; } .season { display: none; }
+  .main { padding: 28px 16px 56px; }
+  h1 { font-size: 30px; }
+  .hide-sm { display: none !important; }
+  .tr, .tr.with-xg, .tr.no-spark, .tr.with-xg.no-spark { grid-template-columns: 38px minmax(0, 1fr) 30px 122px minmax(90px, .8fr); padding-right: 10px; }
+}
+.tr > .num { padding-right: 14px; }

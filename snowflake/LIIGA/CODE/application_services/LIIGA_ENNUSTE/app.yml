@@ -1,0 +1,58 @@
+# Snowflake App Runtime: Liiga Ennuste -sovellus (Next.js), LIIGA.CODE.
+# Korvaa Streamlitin (streamlit_app/) osio kerrallaan; prototyyppi 16.10.2026.
+#
+# Sama polku kuin agentilla (CLAUDE.md, "Agentin julkaisuputki"):
+#   oma kone:  snow app deploy --target dev                    # LIIGA_ENNUSTE_DEV, oma repo
+#   CI-ehdokas: snow app deploy --target staging               # käännös + LIIGA_ENNUSTE_STAGING
+#   tuotanto:  snow app deploy --target prod --promote-only    # SAMA käännös, ei uutta buildia
+# staging ja prod jakavat artifact repositoryn, joten tuotantoon menee täsmälleen
+# ehdokkaana tarkistettu versio. dev:llä on oma repo, joten paikallinen kokeilu ei
+# voi päätyä tuotantoon.
+version: 2
+
+name: LIIGA_ENNUSTE
+database: LIIGA
+schema: CODE
+query_warehouse: LIIGA_WH
+
+default_target: dev
+artifact_repo: LIIGA.CODE.LIIGA_ENNUSTE_REPO
+package_name: liiga_ennuste
+targets:
+  dev:
+    name: LIIGA_ENNUSTE_DEV
+    artifact_repo: LIIGA.CODE.LIIGA_ENNUSTE_DEV_REPO
+  staging:
+    name: LIIGA_ENNUSTE_STAGING
+  prod:
+    name: LIIGA_ENNUSTE
+
+label: Liiga Ennuste
+description: Liigapörssi 2026-27 -- sarjataulukko, vire ja mallin ennuste (LIIGA.MODEL).
+
+ignore:
+  - node_modules
+  - .next
+  - .env*
+  - .git
+
+install:
+  commands:
+    - [npm, ci]
+build:
+  commands:
+    - [npm, run, build]
+run:
+  command: [node, .next/standalone/server.js]
+
+# Ei jää päälle: sammuu 5 min käyttämättömänä (pienin sallittu), herää
+# seuraavasta pyynnöstä. Yksi instanssi riittää demolle.
+auto_suspend_secs: 300
+auto_resume: true
+min_instances: 1
+max_instances: 1
+
+# HOSTNAME on alustan varaama (094516), eikä sitä saa asettaa.
+environment_variables:
+  - name: LIIGA_WAREHOUSE
+    value: "LIIGA_WH"

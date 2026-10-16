@@ -949,6 +949,32 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
   evaluoinnin tulos. `agent-v2` (010d045) ja `agent-v3` (0a7ce21) on merkitty jälkikäteen.
 
+## Sovellus: Next.js Snowflake App Runtimessa (16.10.2026, korvaa Streamlitin)
+
+`snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
+`app.yml`). Käyttäjän päätös: Streamlit warehouse runtime on vanhentuva ja container
+runtime jää päälle (ei sleep timeria) -- App Runtime sammuu itse
+(`auto_suspend_secs: 300`, `auto_resume: true`). Python-tuki App Runtimessa on vasta
+suunnitteilla, siksi TypeScript.
+
+- **Sama data paikallisesti ja Snowflakessa:** `lib/snowflake.ts` käyttää palvelun
+  sessiotokenia (`/snowflake/session/token`) tai paikallisesti `liiga_ci`-avainparia
+  (`connections.toml`). Ei DuckDB-polkua, ei selainta. `npm run dev` -> :3010.
+- **Agentin linkki:** valinnat ovat URL-parametreja: `?joukkue=KooKoo,Jokerit&ikkuna=10&xg=1&kayra=0`.
+- **Putki:** dev (oma kone, oma artifact-repo) -> CI `app-candidate` (`npm ci`,
+  `typecheck`, `snow app deploy --target staging`, palvelu käynnissä) -> tuotanto
+  hyväksynnällä `--target prod --promote-only` (sama käännös) + `GRANT USAGE` käyttäjäroolille.
+  `ci.yml`: `npm audit --audit-level=high`, `typecheck`, `next build`. Paikallinen
+  laatuportti ajaa `typecheck`in jos `node_modules` on asennettu.
+- **Mitattu 16.10.:** ensimmäinen julkaisu 12 min (järjestelmäpoolin `SYSTEM_COMPUTE_POOL_CPU`
+  kylmäkäynnistys ~8,5 min + käännös ~1 min), lämpimänä ~3 min. DEV-osoite
+  https://ewduovc-zueemdq-container-services.snowflakecomputing.app (Snowflake-kirjautuminen).
+- **Kolme ansaa:** `HOSTNAME` on alustan varaama (094516) -- älä aseta; Next.js
+  standalone ei kopioi `.next/static`ia eikä `public`ia (build-skripti tekee sen);
+  Next.js 16 kirjoittaa projektiin oman `AGENTS.md`:n (`agentRules: false`).
+- **Tila:** osio "Kuka on kuumana?" (sarjataulukko, nostokortit, korostus) valmis;
+  muut Streamlitin osiot siirtämättä. Streamlit pysyy, kunnes kaikki osiot on siirretty.
+
 ## ⚠️ Streamlit: do NOT deploy to Snowflake
 
 The app is being developed locally and the Snowflake copy is deliberately

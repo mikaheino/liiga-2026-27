@@ -14,7 +14,8 @@ runs:
         if [ -z "$SNOWFLAKE_PRIVATE_KEY" ]; then
           echo "::error::Salaisuus SNOWFLAKE_PRIVATE_KEY puuttuu (ks. deploy.yml:n alun ohje)"; exit 1
         fi
-        pip install -e . snowflake-cli
+        # 3.29: App Runtime -komennot (snow app deploy --target ... --promote-only).
+        pip install -e . snowflake-cli==3.29.0
         mkdir -p ~/.snowflake && chmod 700 ~/.snowflake
         printf '%s\n' "$SNOWFLAKE_PRIVATE_KEY" > ~/.snowflake/liiga_ci.p8 && chmod 600 ~/.snowflake/liiga_ci.p8
         cat > ~/.snowflake/config.toml <<TOML

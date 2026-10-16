@@ -3,7 +3,6 @@
  "coverage_min": 21.4,
  "complex_functions": {
   "scripts/deploy/deploy_agent.py::candidate": 29,
-  "scripts/dev/quality.py::main": 35,
   "scripts/local/build_site.py::_assets": 19,
   "scripts/local/hockeydb.py::seasons": 24,
   "scripts/local/roster_impact.py::write": 20,

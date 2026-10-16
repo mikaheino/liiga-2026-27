@@ -33,6 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = Path(__file__).resolve().parent / "quality_baseline.json"
 LIMIT = 15
+APP = ROOT / "snowflake" / "LIIGA" / "CODE" / "application_services" / "LIIGA_ENNUSTE"
 CODE_DIRS = ["src", "scripts", "snowflake", "streamlit_app", "tests"]
 COVER = ["src/liiga", "snowflake/LIIGA/MODEL/procedures", "snowflake/LIIGA/CODE/stages/AGENT_SKILLS",
          "scripts/tools"]
@@ -50,6 +51,15 @@ def ruff() -> tuple[bool, str]:
     exe = Path(sys.executable).with_name("ruff")
     cmd = [str(exe) if exe.exists() else "ruff", "check", "--output-format", "concise", str(ROOT)]
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+    return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+
+def typescript() -> tuple[bool, str] | None:
+    """Next.js-sovelluksen tyypit (sama kuin ci.yml:n app-job). Ohitetaan, jos
+    riippuvuuksia ei ole asennettu (npm ci) -- CI tarkistaa ne silloinkin."""
+    if not (APP / "node_modules").exists():
+        return None
+    r = subprocess.run(["npm", "run", "-s", "typecheck"], capture_output=True, text=True, cwd=APP)
     return r.returncode == 0, (r.stdout + r.stderr).strip()
 
 
@@ -79,64 +89,85 @@ def tests() -> tuple[bool, float, str]:
     return r.returncode == 0, pct, (r.stdout + r.stderr).strip().splitlines()[-1] if (r.stdout + r.stderr).strip() else ""
 
 
+class Report:
+    """Kerää tarkistusten tulokset: rivit tulostukseen, hylkäykset ja huomiot."""
+
+    def __init__(self) -> None:
+        self.rows: list[tuple[str, str]] = []
+        self.fails: list[str] = []
+        self.notes: list[str] = []
+
+
+def check_lint(r: Report) -> None:
+    ok, out = ruff()
+    r.rows.append(("ruff", "läpi" if ok else "LÖYDÖKSIÄ"))
+    if not ok:
+        r.fails.append("ruff:\n" + out)
+    ts = typescript()
+    r.rows.append(("typescript", "ohitettu (ei node_modules)" if ts is None else ("läpi" if ts[0] else "VIRHEITÄ")))
+    if ts is not None and not ts[0]:
+        r.fails.append("typescript:\n" + ts[1])
+
+
+def check_complexity(r: Report, old: dict[str, int], init: bool) -> dict[str, int]:
+    cx = complexity()
+    r.rows.append(("monimutkaisuus", f"{len(cx)} funktiota yli rajan {LIMIT} (lähtötaso {len(old)})"))
+    if not init:
+        r.fails += [f"uusi funktio yli monimutkaisuusrajan {LIMIT}: {k} = {v}" for k, v in cx.items() if k not in old]
+    r.fails += [f"monimutkaisuus kasvoi: {k} {old[k]} -> {v}" for k, v in cx.items() if k in old and v > old[k]]
+    r.notes += [f"parantui: {k} {o} -> {cx.get(k, 0)}" + (" (alle rajan)" if cx.get(k, 0) <= LIMIT else "")
+                for k, o in old.items() if cx.get(k, 0) < o]
+    return cx
+
+
+def check_tests(r: Report, minimum: float) -> float:
+    ok, pct, line = tests()
+    r.rows.append(("testit", line or ("läpi" if ok else "KAATUI")))
+    r.rows.append(("kattavuus", f"{pct:.1f} % (lähtötaso {minimum:.1f} %)"))
+    if not ok:
+        r.fails.append(f"testit kaatuivat: {line}")
+    if pct + 0.05 < minimum:
+        r.fails.append(f"kattavuus laski: {minimum:.1f} % -> {pct:.1f} %")
+    elif pct >= minimum + 1.0:
+        r.notes.append(f"kattavuus nousi: {minimum:.1f} % -> {pct:.1f} %")
+    return pct
+
+
+def publish(r: Report, locking: bool) -> None:
+    for name, val in r.rows:
+        print(f"{name:16} {val}")
+    for n in r.notes:
+        print("  +", n)
+    if r.notes and not locking:
+        print("  -> lukitse parannukset: python scripts/dev/quality.py --update-baseline")
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        failed = "".join(f"- {f.splitlines()[0]}\n" for f in r.fails)
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+            fh.write("### Koodin laatu\n\n| tarkistus | tulos |\n|---|---|\n"
+                     + "".join(f"| {n} | {v} |\n" for n, v in r.rows)
+                     + (f"\n**Hylätty:**\n\n{failed}" if r.fails else ""))
+    if r.fails:
+        print("\nLAATUPORTTI EI LÄPI:")
+        for f in r.fails:
+            print(" -", f)
+        raise SystemExit(1)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fast", action="store_true", help="ilman testejä")
     ap.add_argument("--update-baseline", action="store_true")
     ap.add_argument("--init", action="store_true", help="kirjaa nykyinen monimutkaisuus lähtötasoksi")
     a = ap.parse_args()
+    if (a.update_baseline or a.init) and a.fast:
+        raise SystemExit("--update-baseline vaatii testit (ilman --fast)")
     base = json.loads(BASELINE.read_text()) if BASELINE.exists() else {"complex_functions": {}, "coverage_min": 0.0}
-    fails, notes, rows = [], [], []
-
-    ok, out = ruff()
-    rows.append(("ruff", "läpi" if ok else "LÖYDÖKSIÄ"))
-    if not ok:
-        fails.append("ruff:\n" + out)
-
-    cx = complexity()
-    old = base["complex_functions"]
-    new_fns = {k: v for k, v in cx.items() if k not in old}
-    worse = {k: (old[k], v) for k, v in cx.items() if k in old and v > old[k]}
-    better = {k: (old[k], cx.get(k, 0)) for k in old if cx.get(k, 0) < old[k]}
-    rows.append(("monimutkaisuus", f"{len(cx)} funktiota yli rajan {LIMIT} (lähtötaso {len(old)})"))
-    for k, v in ({} if a.init else new_fns).items():
-        fails.append(f"uusi funktio yli monimutkaisuusrajan {LIMIT}: {k} = {v}")
-    for k, (o, v) in worse.items():
-        fails.append(f"monimutkaisuus kasvoi: {k} {o} -> {v}")
-    for k, (o, v) in better.items():
-        notes.append(f"parantui: {k} {o} -> {v}" + (" (alle rajan)" if v <= LIMIT else ""))
-
-    pct = None
-    if not a.fast:
-        ok_t, pct, line = tests()
-        rows.append(("testit", line or ("läpi" if ok_t else "KAATUI")))
-        rows.append(("kattavuus", f"{pct:.1f} % (lähtötaso {base['coverage_min']:.1f} %)"))
-        if not ok_t:
-            fails.append(f"testit kaatuivat: {line}")
-        if pct + 0.05 < base["coverage_min"]:
-            fails.append(f"kattavuus laski: {base['coverage_min']:.1f} % -> {pct:.1f} %")
-        elif pct >= base["coverage_min"] + 1.0:
-            notes.append(f"kattavuus nousi: {base['coverage_min']:.1f} % -> {pct:.1f} %")
-
-    for name, val in rows:
-        print(f"{name:16} {val}")
-    for n in notes:
-        print("  +", n)
-    if notes and not a.update_baseline:
-        print("  -> lukitse parannukset: python scripts/dev/quality.py --update-baseline")
-    if os.environ.get("GITHUB_STEP_SUMMARY"):
-        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
-            fh.write("### Koodin laatu\n\n| tarkistus | tulos |\n|---|---|\n"
-                     + "".join(f"| {n} | {v} |\n" for n, v in rows)
-                     + ("\n**Hylätty:**\n\n" + "\n".join(f"- {f.splitlines()[0]}" for f in fails) + "\n" if fails else ""))
-    if fails:
-        print("\nLAATUPORTTI EI LÄPI:")
-        for f in fails:
-            print(" -", f)
-        raise SystemExit(1)
+    r = Report()
+    check_lint(r)
+    cx = check_complexity(r, base["complex_functions"], a.init)
+    pct = None if a.fast else check_tests(r, base["coverage_min"])
+    publish(r, a.update_baseline or a.init)
     if a.update_baseline or a.init:
-        if a.fast:
-            raise SystemExit("--update-baseline vaatii testit (ilman --fast)")
         BASELINE.write_text(json.dumps({"limit": LIMIT, "coverage_min": round(pct, 1),
                                         "complex_functions": dict(sorted(cx.items()))},
                                        ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
