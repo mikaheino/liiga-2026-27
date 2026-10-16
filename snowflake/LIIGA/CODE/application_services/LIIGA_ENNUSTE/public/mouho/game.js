@@ -23,7 +23,7 @@ Object.assign(ROOMS, {
     walk: [[[0, 123], [238, 123], [238, 136], [0, 136]], [[72, 124], [248, 124], [178, 72], [142, 72]]],
     actors: [{ id: "salkkumies", x: 184, y: 92, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(184, 92, t, talking) },
              RAIMO],
-    draw: (t) => { satamaDraw(t); satamaPiano(t); },
+    draw: (t) => { satamaDraw(t); satamaPiano(t); ghostLynx(t); },
     onStop: (x, y) => st.flags.pianoT && pianoStep(keyAt(x, y)),
     props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 121, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
     spots: [
@@ -228,7 +228,8 @@ function pianoStep(k) {
   entered.push(k);
   if (entered.join("") === CODE.join("")) { st.flags.unlocked = true; entered = []; iq("piano", 10);
     [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140));
-    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu."); await raimoCameo(); });
+    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
+      st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); });
   } else if (!entered.every((c, n) => c === CODE[n])) {        // väärä: summeri, ja alusta (ykkönen aloittaa uuden yrityksen)
     setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered = k === CODE[0] ? [k] : [];
     if (!busy) script(() => say(["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."][Math.floor(Math.random() * 3)], "salkkumies"));
