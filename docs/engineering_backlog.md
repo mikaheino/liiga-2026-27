@@ -106,3 +106,42 @@ mitään sen ansiosta.
 **Milloin:** kun tuotannossa on oikeita käyttäjiä (CoWork) tai demo tarvitsee
 "linjaus pitää 100 %:ssa vastauksista" -luvun. Decision GA:na pienentäisi hintaa
 mutta ei muuta suuntaa: lisäkulu, ei säästö.
+
+---
+
+## 4. Koodin laatu: ruff, tyypit, monimutkaisuus, yksikkötestit (lisätty 2026-10-16)
+
+**Nykytila, mitattu 16.10.** (Pythonia ~15 700 riviä: `src/`, `scripts/`,
+`snowflake/`, `streamlit_app/`):
+
+| | tila |
+|---|---|
+| lint | ei ruffia eikä muuta lintteriä, ei asetuksia `pyproject.toml`:ssa. Ruff säännöillä E,F,W,I,B,UP: **995 löydöstä**, joista 879 rivin pituutta (E501), 29 importtijärjestystä, **27 käyttämätöntä importtia**, 26 `zip()` ilman `strict=`, 6 silmukkamuuttujan sulkeumaa (B023, mahdollisia oikeita bugeja), 2 käyttämätöntä muuttujaa |
+| tyypit | tyyppivihjeitä käytetään, mutta mypyä/pyrightia ei ajeta |
+| monimutkaisuus | radon: **40 funktiota luokkaa C tai huonompi**; pahimmat `render` (E 36, aamutiedote/raportti), `apply_injuries` (E 34), `deploy_agent.candidate` (D 29), `simulate_scenario.compute` (D 28), `standings.reconstruct_games` (D 27), `results._parse_goalies` (D 27) |
+| yksikkötestit | **12 testiä** (`tests/test_pipeline.py`, `tests/test_simulate_scenario.py`). Kattavuus testien koskemista moduuleista 22 %: `simulate.py` 96 %, simulaattori 68 %, `model.py` 36 %, `pipeline.py` 20 %, `players.py` ja `results.py` **0 %** |
+| muu laatu | agentin evaluointi (33-35 kysymystä, laatuportti) on jo olemassa; se testaa agenttia, ei koodia |
+
+**Tavoite, järjestyksessä (halvin ensin):**
+
+1. **Ruff CI:hin** (`ruff check` + `ruff format --check`), säännöt E,F,W,I,B,UP,
+   rivinpituus 110. Ensin `--fix` turvallisille (importit), sitten B023/B905
+   käsin -- ne voivat olla oikeita bugeja. E501 ei estä CI:tä ennen kuin rivit
+   on siivottu.
+2. **Yksikkötestit niille, jotka ovat jo kerran menneet rikki** (CLAUDE.md
+   luettelee ne): `game_id`-liitokset `(season, game_id)`, RL0/VT0 ei maaleja,
+   tyhjän maalin nettous, debytantin ulkomaantilastot, rangaistuksen joukkue,
+   `reconstruct_games`-suojaukset, `forty_minutes`-summatarkistus, lineups-täsmäytys
+   sukunimellä. `players.py` ja `results.py` ensin (0 %).
+3. **Monimutkaisuusraja** (radon / ruff C901, esim. 15) uudelle koodille;
+   E-luokan funktiot pilkotaan kun niihin koskee muutenkin.
+4. **Tyyppitarkistus** (mypy, `--ignore-missing-imports`) ensin `scripts/deploy/`
+   ja proseduureille, sitten `src/liiga/`.
+
+**Rajoite:** `src/liiga/` on mallin ydin -- **ei kesken kauden** muuttuvia
+refaktorointeja (AGENTS.md §10). Ruff-korjaukset, joissa käytös ei muutu
+(importit, muotoilu), ja uudet testit ovat sallittuja; logiikan pilkkominen
+odottaa kauden loppua. Testit kirjoitetaan nykyistä käytöstä vasten.
+
+**Milloin:** kohdat 1-2 heti kun halutaan (ei vaikuta ennusteeseen), 3-4
+kauden jälkeen.
