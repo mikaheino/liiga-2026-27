@@ -405,9 +405,9 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .tabs a, .topnav a { font-size: 12px; } .months a, .seg button { font-size: 11.5px; }
 .label::before { content: "▸ "; color: var(--gold-hi); }
 
-/* Pelikello: luku pikselifontilla, sama kultaliukuma. */
-.sh-num { font-family: var(--pixel) !important; font-weight: 400 !important; font-size: 96px; letter-spacing: -.02em;
-  filter: drop-shadow(4px 4px 0 rgba(74,58,24,.9)); font-variant-numeric: tabular-nums; }
+/* Pelikello: alkuperäinen fontti (käyttäjä 16.10.: pikselifontilla huonompi),
+   tasalevyiset numerot ettei luku hypi laskiessaan. */
+.sh-num { font-variant-numeric: tabular-nums; }
 
 /* Kiekko liukuu palkin alusta paikalleen ja jää hehkumaan. */
 @keyframes slide { from { left: 0; } }
@@ -437,4 +437,3 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .season-hero, .sh-now { animation: none; }
   .reveal, .reveal:not(.in) { transition: none; opacity: 1; transform: none; }
 }
-@media (max-width: 860px) { .sh-num { font-size: 64px; } }
