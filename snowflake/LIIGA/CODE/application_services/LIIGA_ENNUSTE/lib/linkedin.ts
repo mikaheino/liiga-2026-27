@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 
 // Sovellus on repossa polussa snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE.
-const REPO = process.env.LIIGA_REPO ?? path.resolve(process.cwd(), "../../../../..");
+const REPO = process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ process.cwd(), "../../../../..");
 const PY = path.join(REPO, ".venv", "bin", "python");
 const SCRIPT = path.join(REPO, "scripts", "local", "export_linkedin.py");
 export const OUT = path.join(os.tmpdir(), "liiga-linkedin");

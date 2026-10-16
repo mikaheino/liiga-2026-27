@@ -12,7 +12,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ name: st
   const { name } = await params;
   const v = new URL(req.url).searchParams.get("v") ?? "";
   if (!/^[a-z0-9_-]+\.(png|pdf)$/.test(name) || !/^[A-Za-z0-9-]+$/.test(v)) return new Response("virheellinen nimi", { status: 400 });
-  const dir = path.join(OUT, v), file = path.join(dir, name);
+  // turbopackIgnore: polku on ajonaikainen väliaikaishakemisto, ei projektin tiedosto --
+  // ilman merkintää käännös jäljitti koko projektin palvelinkoodiin.
+  const dir = path.join(/* turbopackIgnore: true */ OUT, v), file = path.join(/* turbopackIgnore: true */ dir, name);
   if (!fs.existsSync(file)) return new Response("ei löydy", { status: 404 });
   const pdf = name.endsWith(".pdf");
   const m = pdf ? (JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8")) as Manifest) : null;

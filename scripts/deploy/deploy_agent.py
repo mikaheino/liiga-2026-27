@@ -93,6 +93,39 @@ Betting (pitkäveto, veto, kertoimet): numbers, not advice. 1X2 is regulation ti
 Other leagues: decline in one sentence. Liiga playoffs are in scope: answer with the regular-season forecast."""
 
 
+# Sovellus Liiga Ennuste (App Runtime). Osoite ei ole ennustettavissa
+# (<satunnainen>-<org>-<tili>.snowflakecomputing.app), joten se luetaan
+# palvelusta julkaisuhetkellä. Ilman palvelua ohjeeseen ei tule linkkiä --
+# agentti ei saa keksiä osoitetta.
+APP_SERVICE = {True: "LIIGA_ENNUSTE_DEV", False: "LIIGA_ENNUSTE"}
+
+
+def app_url(dev: bool) -> str | None:
+    try:
+        rows = json.loads(_snow("sql", "--format", "json", "-q",
+                                f"SHOW APPLICATION SERVICES LIKE '{APP_SERVICE[dev]}' IN SCHEMA LIIGA.CODE"))
+    except (RuntimeError, OSError, json.JSONDecodeError):     # ei snowia / ei yhteyttä -> ei linkkiä
+        return None
+    url = next((r.get("url") for r in rows if r.get("name") == APP_SERVICE[dev] and r.get("url")), None)
+    return f"https://{url}" if url else None
+
+
+def app_note(url: str | None) -> str:
+    """Käyttäjän pyyntö 16.10.: agentti kertoo, että lisätietoja saa sovelluksesta.
+
+    Syvälinkit ovat sovelluksen omia reittejä, joten agentti voi viedä suoraan
+    kysyttyyn joukkueeseen tai osioon. Yksi rivi vastauksen loppuun, ei joka
+    lauseeseen: muuten linkki syö tilan jonka vastaus tarvitsee.
+    """
+    if not url:
+        return ""
+    return (f"\n\nMore in the app: end every answer about a team, the table, the forecast, games or model accuracy "
+            f"with one line 'Lisää sovelluksessa: <link>', choosing the most specific link: a team {url}/joukkue/<team name>, "
+            f"the table {url}/sarjataulukko, the regular-season winner {url}/voittaja, games and model accuracy {url}/ottelut, "
+            f"forecast movement {url}/liike, otherwise {url}. Add ?joukkue=<team> to a section link when the question is about one team. "
+            "Team names exactly as in the data (Kärpät, Ässät). Never invent another address.")
+
+
 def git_sha() -> str:
     return subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True, check=True).stdout.strip()
@@ -124,7 +157,7 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
         "orchestration": {"budget": {"seconds": 300, "tokens": 20000}},
         "instructions": {
             "orchestration": orch,
-            "response": RESPONSE,
+            "response": RESPONSE + app_note(app_url(dev)),
             "sample_questions": [{"question": q} for q in (
                 # Demon aloituskortit CoWorkissa: yksi per ominaisuus (16.10.).
                 "Kierroksen esikatselu: tämän illan ottelut",

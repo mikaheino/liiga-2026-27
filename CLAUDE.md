@@ -951,16 +951,21 @@ palautus:  deploy_agent --promote VERSION$<vanha>
 
 ## Sovellus: Next.js Snowflake App Runtimessa (16.10.2026, korvaa Streamlitin)
 
-⚠️ **EI SNOWFLAKEEN ENNEN KUIN KÄYTTÄJÄ SANOO OLEVANSA TYYTYVÄINEN** (käyttäjän
-päätös 16.10.: "voitasko viedä Snowflakeen vasta kun meillä on applikaatio mihin
-olen tyytyväinen"). Kehitys tapahtuu paikallisesti (`npm run dev`, :3010, oikea
-data `liiga_ci`:llä). Älä aja `snow app deploy`ta mihinkään targetiin, älä palauta
-sovellusvaiheita `deploy.yml`:iin. DEV-palvelu `LIIGA_ENNUSTE_DEV` on luotu
-kokeiluna ja **pysäytetty** (SUSPEND). Kun lupa tulee: sovellusvaiheet
-(`app-candidate` + tuotannon `--promote-only` ja `GRANT USAGE`) ovat commitissa
-75afe01 (`git show 75afe01:.github/workflows/deploy.yml`). CI:n paikalliset
-tarkistukset (`app`-job: audit, tyypit, käännös) ovat käytössä, koska ne eivät koske
-Snowflakeen.
+**Hyväksytty tuotantoon 16.10.2026** ("Vie tämä tuotantoon CI/CD putken kautta"). Aiemmin
+sovellus oli käyttäjän päätöksellä paikallinen, kunnes hän oli siihen tyytyväinen. Nyt se
+julkaistaan **vain putken kautta** kuten agentti: `deploy.yml`:n `app-candidate`
+(`snow app deploy --target staging`) -> hyväksyntä -> `--target prod --promote-only` +
+`GRANT USAGE ... TO ROLE LIIGA_AGENT_USER`. Älä aja `snow app deploy`ta staging- tai
+prod-targetiin omalta koneelta. Prototypointi jatkuu paikallisesti (`npm run dev`, :3010).
+DEV-palvelu `LIIGA_ENNUSTE_DEV` on pysäytetty.
+
+**Agentti linkittää sovellukseen** (käyttäjä 16.10.): `deploy_agent.app_note()` lisää
+vastausohjeeseen rivin "Lisää sovelluksessa: <linkki>" syvälinkkeineen (`/joukkue/<nimi>`,
+`/sarjataulukko`, ...). Osoite luetaan `SHOW APPLICATION SERVICES`ista julkaisuhetkellä,
+koska se ei ole ennustettavissa; ilman palvelua linkkiä ei tule. Seuraus: **ensimmäinen
+tuotantoajo julkaisee sovelluksen, mutta agentti saa linkin vasta seuraavassa ajossa**
+(sen versio rakennetaan ehdokasvaiheessa ennen kuin tuotantopalvelu on olemassa).
+Todennettu DEV-aliaksella: "Miten Kärppien ennuste näyttää?" -> linkki `/joukkue/Kärpät`.
 
 `snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
 `app.yml`). Käyttäjän päätös: Streamlit warehouse runtime on vanhentuva ja container
