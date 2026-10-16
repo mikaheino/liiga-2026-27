@@ -1,5 +1,8 @@
 // Mouhon salaisuus -- sisältö: esineet, ruudut ja tarina Mouho-moottorille.
 "use strict";
+// Raimo Helminen -cameon hahmo (määritelty ennen ruutuja, koska satama viittaa siihen).
+const RAIMO = { id: "helminen", x: -20, y: 127, h: 46, color: "#b4fc5c", moving: false, dir: 1, hidden: () => !st.flags.raimo,
+  draw(t, talking) { helminen(this.x, this.y, t, talking, this.moving, this.dir); } };
 Object.assign(ITEMS, {
   kebab: { name: "kebab", look: () => say("Aito Istanbulin döner kebab. Säästän sen Mouhoon. Pizza on yliarvostettu.") },
   kortti: { name: "käyntikortti", look: () => say("\"Signor Investimenti, Milano. Lisärahoitusta joustavasti.\"\nSama mies. Eri aurinkolasit.") },
@@ -18,7 +21,8 @@ Object.assign(ROOMS, {
   koti: {
     title: "Satama, Lappeenranta", scale: [72, 136, 0.38, 1.06], start: 128,
     walk: [[[0, 123], [238, 123], [238, 136], [0, 136]], [[72, 124], [248, 124], [178, 72], [142, 72]]],
-    actors: [{ id: "salkkumies", x: 216, y: 104, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(216, 104, t, talking) }],
+    actors: [{ id: "salkkumies", x: 216, y: 104, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(216, 104, t, talking) },
+             RAIMO],
     draw: (t) => { satamaDraw(t); satamaPiano(t); },
     onStop: (x, y) => st.flags.pianoT && pianoStep(keyAt(x, y)),
     props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 114, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
@@ -201,6 +205,18 @@ async function sellIdol(inScript) {
 // Kohde nimellä, ei indeksillä: uusi kohde ruudun alkuun siirsi indeksit kerran.
 const spot = (room, id) => ROOMS[room].spots.find((p) => p.id === id);
 
+// ---------------------------------------------------------------- Raimo Helminen -cameo
+// Onnistuneen Ilves-visan jälkeen: luistelee sisään vasemmalta, onnittelee ja lähtee heti.
+async function skate(to, speed = 2.2) { RAIMO.moving = true; RAIMO.dir = to > RAIMO.x ? 1 : -1; while (Math.abs(RAIMO.x - to) > speed) { RAIMO.x += Math.sign(to - RAIMO.x) * speed; await sleep(30); } RAIMO.x = to; RAIMO.moving = false; }
+async function raimoCameo() {
+  RAIMO.x = -20; st.flags.raimo = true; st.dir = -1; await skate(Math.max(30, st.x - 34));
+  await say("Oikein! Ilves, 1985. Hienosti tassuteltu, Markkanen!", "helminen");
+  await say("Raimo Helminen?!");
+  await say("Pitää mennä. Treenit alkaa.", "helminen");
+  await skate(-30, 3.2); st.flags.raimo = false;
+  await say("...Ja hän oli poissa. Kukaan ei usko tätä Mouhossa.");
+}
+
 // ---------------------------------------------------------------- lattiapiano (satama)
 // Ilves voitti viimeksi Suomen mestaruuden 1985. Koodi kirjautuu pysähtymisistä.
 const CODE = ["1", "9", "8", "5"], NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9: 587, 0: 659 };
@@ -212,7 +228,7 @@ function pianoStep(k) {
   entered.push(k);
   if (entered.join("") === CODE.join("")) { st.flags.unlocked = true; entered = []; iq("piano", 10);
     [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140));
-    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu."); });
+    script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu."); await raimoCameo(); });
   } else if (!entered.every((c, n) => c === CODE[n])) {        // väärä: summeri, ja alusta (ykkönen aloittaa uuden yrityksen)
     setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered = k === CODE[0] ? [k] : [];
     if (!busy) script(() => say(["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."][Math.floor(Math.random() * 3)], "salkkumies"));

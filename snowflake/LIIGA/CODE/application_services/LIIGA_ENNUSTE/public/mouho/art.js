@@ -213,3 +213,22 @@ function salesman(x, y, t, talking = false) {
   r(x - 5, y - 34 + sw, 10, 2, "#0c0c14"); px(x - 4, y - 34 + sw, "#7ca0fc"); px(x + 1, y - 34 + sw, "#7ca0fc"); r(x - 1, y - 34 + sw, 2, 1, "#0c0c14");
   if (mo) r(x - 2, y - 30 + sw, 4, 2, "#4a1410"); else { r(x - 3, y - 30 + sw, 6, 1, "#fcfcfc"); px(x + 1, y - 30 + sw, "#e8c430"); r(x - 3, y - 29 + sw, 6, 1, "#a86048"); }
 }
+
+// Raimo Helminen -cameo: Ilveksen keltavihreä pelipaita, maila kädessä, luistelee
+// sisään onnittelemaan 1985-visasta ja saman tien ulos. Pikseleinä Jussin mittakaavassa.
+function helminen(x, y, t, talking = false, moving = false, dir = 1) {
+  g.save(); g.translate(x, y); g.scale(dir, 1); g.translate(-x, -y);
+  const st2 = moving ? Math.floor(t / 110) % 2 : 0, mo = talking && Math.floor(t / 110) % 2;
+  shadow(x, y, 7);
+  r(x - 5 + st2, y - 2, 6, 1, "#c8c8d0"); r(x + 1 - st2, y - 2, 6, 1, "#c8c8d0"); r(x - 4 + st2, y - 4, 4, 2, "#1c1c1c"); r(x + 1 - st2, y - 4, 4, 2, "#1c1c1c");
+  r(x - 4, y - 12, 3, 8, "#1c5c2c"); r(x + 1, y - 12, 3, 8, "#1c5c2c"); r(x - 4, y - 8, 8, 1, "#fcd41c");
+  r(x - 6, y - 25, 12, 13, "#fcd41c"); r(x - 6, y - 17, 12, 2, "#1c7c3c"); r(x - 6, y - 25, 12, 1, "#1c7c3c"); r(x - 1, y - 24, 2, 3, "#1c7c3c");
+  r(x - 8, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 17, 2, 1, "#1c7c3c"); r(x + 6, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 15, 2, 2, "#1c1c1c"); r(x + 6, y - 15, 2, 2, "#1c1c1c");
+  for (let k = 0; k < 14; k++) px(x + 7 + k * .5, y - 15 + k, "#8c5c2c"); r(x + 12, y - 1, 5, 1, "#8c5c2c");
+  r(x - 2, y - 27, 4, 2, "#d89c74");
+  r(x - 5, y - 37, 10, 10, "#ecbc94"); r(x + 3, y - 36, 2, 8, "#d8a07c");
+  r(x - 5, y - 39, 10, 3, "#5c3c24"); r(x - 6, y - 38, 2, 5, "#5c3c24");
+  px(x - 2, y - 33, "#1c1c1c"); px(x + 2, y - 33, "#1c1c1c"); r(x - 3, y - 35, 2, 1, "#5c3c24"); r(x + 1, y - 35, 2, 1, "#5c3c24");
+  if (mo) r(x - 2, y - 30, 4, 2, "#5c1c14"); else { r(x - 3, y - 30, 6, 1, "#fcfcfc"); r(x - 3, y - 29, 6, 1, "#a86048"); }
+  g.restore();
+}
