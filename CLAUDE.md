@@ -959,6 +959,12 @@ julkaistaan **vain putken kautta** kuten agentti: `deploy.yml`:n `app-candidate`
 prod-targetiin omalta koneelta. Prototypointi jatkuu paikallisesti (`npm run dev`, :3010).
 DEV-palvelu `LIIGA_ENNUSTE_DEV` on pysäytetty.
 
+**Keskustelu ja peli (16.10.):** jokaisella sivulla on "Kysy agentilta" (`components/Chat.tsx`,
+`/api/chat` -> `SNOWFLAKE.CORTEX.DATA_AGENT_RUN` samalla yhteydellä kuin data, n. 25-30 s/vastaus).
+`/mouho` = point-and-click-peli Mouho 2026 -turnaukseen (`public/mouho/`, oma moottori
+`engine.js`, grafiikka `art.js`, tarina `game.js`; iframessa). Repo on julkinen, joten
+pelin koodi on kaikkien luettavissa -- käyttäjä valitsi tämän tietoisesti.
+
 **Agentti linkittää sovellukseen** (käyttäjä 16.10.): `deploy_agent.app_note()` lisää
 vastausohjeeseen rivin "Lisää sovelluksessa: <linkki>" syvälinkkeineen (`/joukkue/<nimi>`,
 `/sarjataulukko`, ...). Osoite luetaan `SHOW APPLICATION SERVICES`ista julkaisuhetkellä,

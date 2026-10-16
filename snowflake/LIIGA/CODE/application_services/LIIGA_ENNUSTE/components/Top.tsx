@@ -9,7 +9,7 @@ export function stamp(iso: string) {
 
 export const SECTIONS = [
   ["/sarjataulukko", "Sarjataulukko"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"],
-  ["/liike", "Liike"], ["/linkedin", "LinkedIn"],
+  ["/liike", "Liike"], ["/linkedin", "LinkedIn"], ["/mouho", "Mouho 2026"],
 ] as const;
 
 export default function Top({ updatedAt, active }: { updatedAt?: string; active: string }) {

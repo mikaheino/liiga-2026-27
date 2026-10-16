@@ -45,6 +45,7 @@ export default function Chat() {
     } finally { setBusy(null); }
   }
 
+  if (path.startsWith("/mouho")) return null;       // peli käyttää koko ruudun, nappi peittäisi sen
   return (
     <>
       <button className={`chat-fab ${open ? "on" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="chat">
