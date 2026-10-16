@@ -6,8 +6,8 @@ import { logo } from "@/lib/table";
 import { fi } from "@/lib/table";
 import type { HistoryPoint } from "@/components/TitleRace";
 
-export default function History({ history, order, highlight, preseason }: {
-  history: HistoryPoint[]; order: string[]; highlight: Set<string>; preseason: Map<string, number>;
+export default function History({ history, order, highlight, preseason, big = false }: {
+  history: HistoryPoint[]; order: string[]; highlight: Set<string>; preseason: Map<string, number>; big?: boolean;
 }) {
   const dates = [...new Set(history.map((h) => h.date))].sort();
   if (dates.length < 2) return null;
@@ -16,12 +16,13 @@ export default function History({ history, order, highlight, preseason }: {
   const lo = Math.min(...history.map((h) => h.points)), hi = Math.max(...history.map((h) => h.points));
   const x = (d: string) => (dates.indexOf(d) / (dates.length - 1)) * W;
   const y = (v: number) => H - 4 - ((v - lo) / Math.max(hi - lo, 1)) * (H - 8);
-  const series = new Map(order.map((t) => [t, history.filter((h) => h.team === t).sort((a, b) => a.date.localeCompare(b.date))]));
+  const all = [...new Set(history.map((h) => h.team))];
+  const series = new Map(all.map((t) => [t, history.filter((h) => h.team === t).sort((a, b) => a.date.localeCompare(b.date))]));
   const path = (pts: HistoryPoint[]) => pts.map((p, k) => `${k ? "L" : "M"}${x(p.date).toFixed(1)} ${y(p.points).toFixed(1)}`).join(" ");
   // Harmaa kenttä piirretään kerran ja käytetään jokaisessa paneelissa.
-  const context = order.map((t) => path(series.get(t) ?? [])).join(" ");
+  const context = all.map((t) => path(series.get(t) ?? [])).join(" ");
   return (
-    <div className={`multiples ${highlight.size ? "has-hl" : ""}`}>
+    <div className={`multiples ${big ? "big" : ""} ${highlight.size ? "has-hl" : ""}`}>
       {panels.map((t, i) => {
         const pts = series.get(t) ?? [];
         if (!pts.length) return null;

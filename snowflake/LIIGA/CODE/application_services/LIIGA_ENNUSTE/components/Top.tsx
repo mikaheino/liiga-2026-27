@@ -1,4 +1,4 @@
-// Yläpalkki: brändi, kaksi näkymää ja ennusteen aikaleima.
+// Yläpalkki: brändi (= etusivulle), osiot ja ennusteen aikaleima.
 import Link from "next/link";
 
 export function stamp(iso: string) {
@@ -7,19 +7,23 @@ export function stamp(iso: string) {
   return `${p.day}.${p.month}. klo ${p.hour}.${p.minute}`;
 }
 
-export default function Top({ updatedAt, active }: { updatedAt?: string; active: "ennuste" | "linkedin" }) {
+export const SECTIONS = [
+  ["/sarjataulukko", "Sarjataulukko"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"],
+  ["/liike", "Liike"], ["/linkedin", "LinkedIn"],
+] as const;
+
+export default function Top({ updatedAt, active }: { updatedAt?: string; active: string }) {
   return (
     <header className="top">
-      <div className="brand">
+      <Link href="/" className="brand" aria-label="Etusivu">
         <span className="mark" aria-hidden>◆</span>
         <div>
           <div className="brand-name">Liiga Ennuste</div>
           <div className="brand-sub">Runkosarja 2026–27</div>
         </div>
-      </div>
+      </Link>
       <nav className="topnav">
-        <Link href="/" className={active === "ennuste" ? "on" : ""}>Ennuste</Link>
-        <Link href="/linkedin" className={active === "linkedin" ? "on" : ""}>LinkedIn</Link>
+        {SECTIONS.map(([href, label]) => <Link key={href} href={href} className={active === href ? "on" : ""}>{label}</Link>)}
       </nav>
       <div className="fresh"><span className="dot" />{updatedAt ? stamp(updatedAt) : "–"}</div>
     </header>

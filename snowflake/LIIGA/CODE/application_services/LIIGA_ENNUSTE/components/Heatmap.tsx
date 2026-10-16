@@ -2,6 +2,7 @@
 // streamlit_app.py:n position_matrix / _cell_style / rank_stdev: rivit ennustetussa
 // järjestyksessä, potenssiramppi (tasaiset keskikastin rivit pysyvät näkyvinä) ja
 // rajaviivat playoff-, karsinta- ja putoamisrajalla.
+import Link from "next/link";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, logo } from "@/lib/table";
 
 export type PositionRow = { team: string; projRank: number; points: number; p05: number; p95: number; p: number[] };
@@ -23,7 +24,8 @@ const edge = (rank: number) => (rank === PLAYOFF_CUT + 1 ? "e-top" : rank === QU
 // Todennäköisin sija hehkuu taustalla (globals.css: .peak).
 const peakOf = (p: number[]) => p.indexOf(Math.max(...p)) + 1;
 
-export default function Heatmap({ rows, highlight }: { rows: PositionRow[]; highlight: Set<string> }) {
+// `link` tekee rivistä drilldownin joukkuesivulle (etusivu).
+export default function Heatmap({ rows, highlight, link }: { rows: PositionRow[]; highlight: Set<string>; link?: (team: string) => string }) {
   const ranks = Array.from({ length: TEAMS }, (_, i) => i + 1);
   return (
     <div className={`heat ${highlight.size ? "has-hl" : ""}`} role="table" aria-label="Sijaintijakauma">
@@ -32,8 +34,9 @@ export default function Heatmap({ rows, highlight }: { rows: PositionRow[]; high
         {ranks.map((k) => <div key={k} className={`hc ${edge(k)}`}>{k}</div>)}
         <div className="hp">Pisteet</div>
       </div>
-      {rows.map((r, i) => (
-        <div key={r.team} role="row" className={`hr ${highlight.has(r.team) ? "hl" : ""}`}>
+      {rows.map((r, i) => {
+        const cls = `hr ${highlight.has(r.team) ? "hl" : ""} ${link ? "go" : ""}`;
+        const cells = (<>
           <div className="ht">
             <span className="hrank">{r.projRank}</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -45,8 +48,11 @@ export default function Heatmap({ rows, highlight }: { rows: PositionRow[]; high
               title={`${r.team}: sija ${k} -- ${(r.p[k - 1] * 100).toFixed(1).replace(".", ",")} %`}>{label(r.p[k - 1])}</div>
           ))}
           <div className="hp"><b>{Math.round(r.points)}</b><span>{Math.round(r.p05)}–{Math.round(r.p95)}</span></div>
-        </div>
-      ))}
+        </>);
+        return link
+          ? <Link key={r.team} href={link(r.team)} role="row" className={cls} aria-label={`${r.team}: avaa joukkue`}>{cells}</Link>
+          : <div key={r.team} role="row" className={cls}>{cells}</div>;
+      })}
     </div>
   );
 }

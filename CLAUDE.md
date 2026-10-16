@@ -983,6 +983,14 @@ suunnitteilla, siksi TypeScript.
 - **Kolme ansaa:** `HOSTNAME` on alustan varaama (094516) -- älä aseta; Next.js
   standalone ei kopioi `.next/static`ia eikä `public`ia (build-skripti tekee sen);
   Next.js 16 kirjoittaa projektiin oman `AGENTS.md`:n (`agentRules: false`).
+- **Rakenne (16.10. myöhään, käyttäjän toive):** etusivu `/` = kauden tilanne + heatmap +
+  viisi "ovea" elävine nostoineen. Kaikki muu on drilldownia: heatmapin rivi ->
+  `/joukkue/<nimi>` (jakauma, ennuste, viimeiset/seuraavat, liike, ◀ ▶ selaus), ovet ->
+  `/sarjataulukko`, `/voittaja`, `/ottelut`, `/liike`, `/linkedin`. Data `lib/data.ts`
+  (React `cache()`, jokainen sivu hakee vain omansa). Osiot eivät näy oletuksena.
+- ⚠️ **Kehityspalvelin voi jäädä tarjoamaan vanhaa käännöstä** tiedoston muokkauksen
+  jälkeen (16.10.: luokka puuttui SSR-HTML:stä, vaikka koodi oli oikein). Tarkista
+  `curl`illa; korjaus: pysäytä `next dev`, `rm -rf .next/dev`, käynnistä uudelleen.
 - **Tila (16.10. ilta):** kaikki Streamlitin osiot siirretty: kauden tilanne, sijaintijakauma,
   sarjataulukko + välilehdet (`?nakyma=koti|maalit|erikois`), runkosarjan voittaja,
   ottelut kuukausittain (`?kk=2026-10`) + "missä malli menee pieleen", ennusteen liike.
