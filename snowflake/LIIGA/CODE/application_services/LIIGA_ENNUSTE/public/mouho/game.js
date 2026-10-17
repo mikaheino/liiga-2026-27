@@ -477,7 +477,8 @@ function bark(x, y, text, t, ph = 0, period = 9000, dur = 2600) {
   if (busy || overlay) return; const k = (t + ph * 1301) % period; if (k > dur) return;
   const a = Math.min(1, k / 200, (dur - k) / 300);
   g.save(); g.globalAlpha = a; g.font = "9px VT323, monospace"; g.textAlign = "center"; g.lineWidth = 3;
-  const hw = g.measureText(text).width / 2 + 3; x = Math.max(hw, Math.min(W - hw, x));        // aina ruudun sisällä g.strokeStyle = "#0c0c14"; g.strokeText(text, x, y - (k / dur) * 3); g.fillStyle = "#fcf4c8"; g.fillText(text, x, y - (k / dur) * 3); g.restore(); g.textAlign = "left";
+  const hw = g.measureText(text).width / 2 + 3; x = Math.max(hw, Math.min(W - hw, x));        // aina ruudun sisällä
+  g.strokeStyle = "#0c0c14"; g.strokeText(text, x, y - (k / dur) * 3); g.fillStyle = "#fcf4c8"; g.fillText(text, x, y - (k / dur) * 3); g.restore(); g.textAlign = "left";
 }
 function guideKisa(t) {
   const f = st.flags; if (!f.introDone) return;
