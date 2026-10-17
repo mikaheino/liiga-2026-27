@@ -55,11 +55,19 @@ const ROOMS = {}, ITEMS = {};
 const VERBS = ["Anna", "Poimi", "Käytä", "Avaa", "Katso", "Työnnä", "Sulje", "Puhu", "Vedä"];
 let verb = "Kävele", first = null, busy = false, onArrive = null, overlay = null, speaking = null, skip = null;
 let callSpk = null;   // puhelun aikana: puhujien kuplien kohdat paneeleissa (call.js)
-const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+// Testitila ?testi (17.10., sokkotestien sykli): puhe, tauot ja kävely nopeampia, ja jokainen
+// repliikki, valinta, esine ja ruutu kirjautuu pelin alle tekstilokiin (#loki), josta testaaja
+// lukee ne ilman kuvakaappausta jokaisesta kuplasta.
+const TEST = new URLSearchParams(location.search).has("testi");
+function logLine(s) { if (!TEST) return; let el = document.getElementById("loki");
+  if (!el) { el = document.createElement("pre"); el.id = "loki"; el.style.cssText = "max-height:14em;overflow:auto;white-space:pre-wrap;font:13px/1.25 monospace;color:#c8c8d8;background:#0c0c14;padding:6px;margin:6px 0 0";
+    $game.after(el); }
+  el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; }
+const sleep = (ms) => new Promise((res) => setTimeout(res, TEST ? ms * 0.35 : ms));
 const has = (k) => st.inv.includes(k);
 // Uusi esine välähtää tavaroissa ja soi (17.10.: "siirtyy inventaariin ilman että tajusin").
 let newItem = null;
-function give(k) { if (!has(k)) { st.inv.push(k); newItem = k; [659, 880].forEach((f, n) => setTimeout(() => beep(f, 120, "triangle", .05), n * 110)); setTimeout(() => { newItem = null; renderInv(); }, 2600); } renderInv(); }
+function give(k) { if (!has(k)) { st.inv.push(k); logLine(`+ tavaroihin: ${ITEMS[k].name}`); newItem = k; [659, 880].forEach((f, n) => setTimeout(() => beep(f, 120, "triangle", .05), n * 110)); setTimeout(() => { newItem = null; renderInv(); }, 2600); } renderInv(); }
 function take(k) { st.inv = st.inv.filter((x) => x !== k); if (first === k) first = null; renderInv(); }
 const room = () => ROOMS[st.scene];
 
@@ -130,10 +138,10 @@ function say(text, who = "jussi") {
         const cx = Math.min(Math.max(spk.x, half + 2), W - half - 2), maxTail = Math.max(0, el.offsetWidth / 2 - 16);
         el.style.left = (100 * cx / W) + "%"; el.style.setProperty("--tail", Math.max(-maxTail, Math.min(maxTail, (spk.x - cx) / W * stageW)) + "px"); });
     }
-    el.textContent = text; $say.replaceChildren(el); speaking = who;
+    el.textContent = text; $say.replaceChildren(el); speaking = who; logLine(`${who === "muu" ? "[kertoja]" : who}: ${text}`);
     const done = () => { clearTimeout(tm); skip = null; speaking = null; el.remove(); res(); };
     // Kesto pituuden mukaan (17.10. sokkotesti: ~3 s riitti vain lyhyille, tärkeitä rivejä jäi lukematta).
-    const tm = setTimeout(done, 2200 + text.length * 70); skip = done;
+    const tm = setTimeout(done, TEST ? 700 + text.length * 22 : 2200 + text.length * 70); skip = done;
   });
 }
 // Klikkaus repliikkien välissä (busy, ei kuplaa) talletetaan ja toteutetaan heti skriptin
@@ -146,7 +154,7 @@ async function script(fn) { busy = true; $game.classList.add("cut"); for (const 
 const asked = new Set();
 function choose(options) {
   return new Promise((res) => {
-    $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
+    logLine("? " + options.map((o, i) => `[${i + 1}] ${o}`).join("  ")); $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
       // stopPropagation: muuten sama klikkaus kuplii dokumenttiin ja ohittaa heti Jussin repliikin.
       b.onclick = (e) => { e.stopPropagation(); asked.add(o); $game.classList.remove("talking"); res(i); }; return b; }));
   });
@@ -157,7 +165,7 @@ const IQ_MAX = 100;   // kaikkien iq()-pisteiden summa (game.js), tarkistettu 17
 function iq(key, n) { st.iq ??= {}; if (st.iq[key]) return; st.iq[key] = n; renderIq(); }
 const iqTotal = () => Object.values(st.iq ?? {}).reduce((a, b) => a + b, 0);
 function renderIq() { const el = document.getElementById("iq"); if (el) el.textContent = `Mouho-IQ ${iqTotal()} / ${IQ_MAX}`; }
-function go(scene, x, keep, y) { st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }
+function go(scene, x, keep, y) { if (st.scene !== scene) logLine(`== ${ROOMS[scene]?.title ?? scene}`); st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }
 
 // ---------------------------------------------------------------- verbit ja kohteet
 const GENERIC = { Poimi: "En voi ottaa sitä.", Avaa: "Se ei aukea.", Sulje: "Se ei sulkeudu.", Työnnä: "Se ei liiku.", Vedä: "Se ei liiku.", Puhu: "Se ei vastaa. Hyvä niin.", Käytä: "En keksi, miten.", Anna: "Ei kiitos.", Katso: "Ei mitään erikoista." };
@@ -236,7 +244,7 @@ function frame(t) {
   const s = room(); s.draw(t);
   // liike reittiä pitkin
   let moving = false, dx = 0, dy = 0;
-  if (st.path.length) { const [tx, ty] = st.path[0]; dx = tx - st.x; dy = ty - st.y; const d = Math.hypot(dx, dy * 1.5), sp = (st.flags.boulder != null ? 110 : 62) * depth(st.y) * dt;
+  if (st.path.length) { const [tx, ty] = st.path[0]; dx = tx - st.x; dy = ty - st.y; const d = Math.hypot(dx, dy * 1.5), sp = (st.flags.boulder != null ? 110 : 62) * (TEST ? 2 : 1) * depth(st.y) * dt;
     if (d <= sp) { st.x = tx; st.y = ty; st.path.shift(); } else { st.x += dx * sp / d; st.y += dy * sp / d; }
     moving = true; if (Math.abs(dx) > 0.5) st.dir = Math.sign(dx); st.frame = Math.floor(t / 120); }
   else { if (st.frame !== 0 && !busy) s.onStop?.(st.x, st.y);     // pysähtyi juuri (lattiapiano)

@@ -240,7 +240,7 @@ const flown = new Set();
 async function travel(from = "lpr", to = "ist") {
   // Toistuva väli (basaari <-> luola) lennetään lyhyemmin (sokkotesti 2: 12 s joka kerta puuduttaa).
   const leg = [from, to].sort().join("-"), again = flown.has(leg); flown.add(leg);
-  const A = EUP[from], B = EUP[to], start = performance.now(), dur = again ? 1800 : 4200;
+  const A = EUP[from], B = EUP[to], start = performance.now(), dur = TEST ? 700 : again ? 1800 : 4200;
   const at = (q) => [A[0] + (B[0] - A[0]) * q + Math.sin(q * Math.PI) * 26, A[1] + (B[1] - A[1]) * q - Math.sin(q * Math.PI) * 6];
   overlay = () => {
     const k = Math.min(1, (performance.now() - start) / dur), q = .5 - .5 * Math.cos(k * Math.PI);
