@@ -148,7 +148,7 @@ function choose(options) {
 }
 
 // Mouho-IQ (Fate of Atlantiksen "Indy Quotient"): pisteet oivalluksista, kukin kerran.
-const IQ_MAX = 125;   // kaikkien iq()-pisteiden summa (game.js), tarkistettu 17.10.
+const IQ_MAX = 115;   // kaikkien iq()-pisteiden summa (game.js), tarkistettu 17.10.
 function iq(key, n) { st.iq ??= {}; if (st.iq[key]) return; st.iq[key] = n; renderIq(); }
 const iqTotal = () => Object.values(st.iq ?? {}).reduce((a, b) => a + b, 0);
 function renderIq() { const el = document.getElementById("iq"); if (el) el.textContent = `Mouho-IQ ${iqTotal()} / ${IQ_MAX}`; }

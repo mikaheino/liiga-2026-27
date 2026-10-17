@@ -105,6 +105,14 @@ function coachPanel() {
   text3("KAMAT", 226, 166, "#5c3c1c");
 }
 let panelCache = {};
+// Jussin paneelin tausta: Kisapuistossa oma huipputarkka kuva, muualla ruudun oma tausta
+// rajattuna ja 2x terävänä, valaistu iltaan sopivaksi.
+const SCENE_CROP = { basaari: ["basaari", () => basaariBg, 84, 18], temppeli: ["temppeli2", () => temppeliBg, 85, 8], loppu: ["mouhoIn", () => mouhoInBg, 168, 8] };
+function jussiPanelBg() {
+  const c = SCENE_CROP[st.scene]; if (!c) return kisaPanel;
+  return () => { const [name, fn, sx, sy] = c, src = paintBg(name, fn()); g.imageSmoothingEnabled = false; g.drawImage(src, sx, sy, 150, 94, 0, 0, PW, PH);
+    g.fillStyle = "rgba(10,6,20,.18)"; g.fillRect(0, 0, PW, PH); };
+}
 // Käsi ja kännykkä: hiha olkapäästä kyynärpään kautta korvalle, käsi pitelee puhelinta.
 function phoneArm(sx, sy, ex, ey, hx, hy, sleeve, sleeveD, cuff, t, ringing) {
   const limb = (x0, y0, x1, y1, w, c) => { const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * w / 2, ny = dx / L * w / 2;
@@ -121,7 +129,8 @@ function phoneArm(sx, sy, ex, ey, hx, hy, sleeve, sleeveD, cuff, t, ringing) {
 function panelDraw(P, off, who, t, bgFn, ringing) {
   const x = P.x + off, { y, w, h } = P;
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.scale(.5, .5); g.imageSmoothingEnabled = false;
-  g.drawImage(panelCache[who] ??= hiCanvas(bgFn), 0, 0);
+  const key = who === "jussi" ? `jussi|${st.scene}` : who;          // Jussin tausta = missä hän oikeasti on (17.10.)
+  g.drawImage(panelCache[key] ??= hiCanvas(who === "jussi" ? jussiPanelBg() : bgFn), 0, 0);
   if (who === "myrra") {                            // tihkusade Kouvolan ikkunassa (harmaata, tietysti)
     g.save(); g.beginPath(); g.rect(178, 12, 112, 84); g.clip();
     for (let i = 0; i < 32; i++) { const rx = 178 + ((i * 37 + t / 9) % 112), ry = 12 + ((i * 53 + t / 4) % 84); r(rx, ry, 1, 4, "rgba(98,98,100,.7)"); }
@@ -151,7 +160,8 @@ function bulb(x, y, t, since) {
 async function phoneCall(lines, { incoming = false } = {}) {
   const t0 = performance.now(); let state = "ring", stT = t0, bulbT = null;
   const prev = overlay, under = prev ?? ((t) => room().draw(t));     // lopussa ei ole ruutua: taustana käynnissä oleva välikuva
-  const slide = (side) => { const t = performance.now(); if (state === "ring") return side * -170 * (1 - ease((t - stT - 700) / 450)); if (state === "out") return side * -170 * ease((t - stT) / 420); return 0; };
+  // vasen paneeli (side -1) tulee vasemmalta ja poistuu vasemmalle, oikea oikealta (ei ristiin)
+  const slide = (side) => { const t = performance.now(); if (state === "ring") return side * 170 * (1 - ease((t - stT - 700) / 450)); if (state === "out") return side * 170 * ease((t - stT) / 420); return 0; };
   overlay = (t) => {
     const now = performance.now();               // ajastus aina tällä kellolla (rAF:n t voi erota)
     under(t); g.fillStyle = `rgba(8,6,16,${Math.min(.8, (now - t0) / 600)})`; g.fillRect(0, 0, W, H);

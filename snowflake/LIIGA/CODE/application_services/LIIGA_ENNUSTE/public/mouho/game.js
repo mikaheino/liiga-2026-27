@@ -194,7 +194,7 @@ async function toTemple() {
   await script(async () => {
     if (!st.flags.quest) return say("Miksi menisin itään? Sijoittajilla on ensin asiaa. Puhutaan Mehmetin kanssa.");
     if (!st.flags.map) return say("Pyramidin huippu on jossain idässä. Mutta missä? Jossain täällä on varmasti kartta.");
-    if (!st.whip) return say("Luolatemppeliin ilman ruoskaa? Elokuvissa kaikilla on ruoska.");
+    if (!st.whip) return say("Luolatemppeliin ilman ruoskaa? Mehmet sanoi, että kuilun yllä on koukku.");
     await walkTo(160, 72); go("temppeli", 160, true, 128);
     if (!st.flags.refMet) {
       await say("Kappadokia. Kalliotorneja, luolia... ja tuolla! Korkea jalusta ja sen huipulla kultainen idoli.");
@@ -230,38 +230,34 @@ async function talk() {
     if (!st.flags.merhaba) { st.flags.merhaba = true;
       await say("Hoş geldiniz! Merhaba, ystäväni! Tervetuloa Mehmetin kojuun, Istanbulin rehellisimpään.", "kauppias");
       await say("Teşekkür... ederim? Opettelin sen lentokoneessa."); }
-    // Yleinen keskustelu ensin (17.10.): kaavion esittely vasta kun Mehmet on kertonut kuka on,
-    // ruoska ja NHL-visa vasta kun sijoittajien ehto on kuultu.
+    // Keskustelu etenee yhtä polkua (17.10.): kuka olet -> suunnitelma ja sopimus -> lahja
+    // (idoli) -> kartta ja ruoska. Ruoska ansaitaan riitelemällä; se on basaarin tehtävä.
     while (true) {
       const f = st.flags, opts = [];
       if (has("idoli")) opts.push("Löysin pyramidin huipun!");
       if (!f.mehmetWho) opts.push("Mouho Global Partners? Kirjeessä luki teidän osoitteenne.");
-      if (f.mehmetWho && !f.signed) opts.push("Esittelen pyramidikaavion!");
-      if (f.signed && !f.questHeard) opts.push("Mitä sijoittajat vielä haluavat?");
-      if (f.quest && !st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!");
-      if (f.signed && !f.cupDone) opts.push("Olen entinen NHL-maalivahti.");
+      if (f.mehmetWho && !f.signed) opts.push("Esittelen jäsenhankintasuunnitelmani.");
+      if (f.quest && !f.map && !f.askedMap) opts.push("Missä se Kappadokian luola on?");
+      if (f.quest && !st.whip) opts.push("Tarvitsen ruoskan luolaa varten.");
       if (!f.kebabQ) opts.push("Missä saa Istanbulin parhaan kebabin?");
-      if (!f.logo) opts.push("Teettekö logoja?");
       opts.push("Ei mitään, näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
+      if (pick.startsWith("Löysin")) return deliverIdol(true);
       if (pick.startsWith("Mouho Global")) { f.mehmetWho = true;
         await say("Ah, herra Markkanen, brändin mies! Mehmet, Mouho Global Partnersin johtaja. Serkkuni Lappeenrannassa kertoi teistä.", "kauppias");
         await say("Se liituraitainen mies on serkkunne? Maailma on pieni. Ja pyramidin muotoinen.");
-        await say("Näytä kasvusuunnitelma, ystäväni. Sijoittajat haluavat nähdä, mitä ostavat.", "kauppias"); continue; }
-      if (pick.startsWith("Löysin")) return deliverIdol(true);
+        await say("Näytä suunnitelma, ystäväni. Sijoittajat haluavat nähdä, mitä ostavat.", "kauppias"); continue; }
       if (pick.startsWith("Esittelen")) { await pitchPyramid(); continue; }
-      if (pick.startsWith("Mitä sijoittajat")) { await questLines(); continue; }
-      if (pick.startsWith("Olen entinen NHL")) {
-        await say("Sinä?! Maalivahti? Todista se, ystäväni. Minä vuonna pelasit Stanley Cupin finaalissa?", "kauppias");
-        await say("Tassuttele se kadulle. Basaarissa kaikki maksetaan jaloin.", "kauppias");
-        st.flags.quizT_basaari = Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
-        await sleep(1100); await say("Numerot heijastuivat kadun kiviin. Mehmet on valmistautunut tähän."); return; }
-      else if (pick.startsWith("Missä saa")) { st.flags.kebabQ = true; await say("Serkkuni kioskista Galatan sillan alta. Hänellä on myös logofirma. Ja tulkkipalvelu. Ja sijoitusyhtiö.", "kauppias");
-        await say("Kuulostaa monialaiselta konsernilta."); await say("Çok güzel! Sinä ymmärrät liiketoimintaa.", "kauppias"); }
-      else if (pick.startsWith("Paljonko")) await say("Sinulle, toiminnanjohtaja, vain 500 liiraa. Ja hattusi.", "kauppias");
-      else if (pick.startsWith("Teettekö")) { st.flags.logo = true; await say("Teen! Mouho, pyramidi ja kebab samassa kuvassa. Vain 50 tonnia.", "kauppias"); await say("Kiitos, olen nähnyt vastaavan jo."); }
-      else if (pick.startsWith("Tingitään")) { if (await bargain()) return; }
-      else { await say("Palaa pian, toiminnanjohtaja! Hinnat nousevat joka minuutti.", "kauppias"); return; }
+      if (pick.startsWith("Missä se")) { f.askedMap = true;
+        await say("Isoisäni kutoi tien mattoon, ettei kukaan unohtaisi. Tuossa, seinällä vasemmalla. Katso tarkkaan.", "kauppias"); continue; }
+      if (pick.startsWith("Tarvitsen ruoskan")) {
+        await say("Ruoska? Luolassa on kuilu, ja kuilun yllä koukku. Isoisäkin tarvitsi ruoskan.", "kauppias");
+        await say("Mutta Mehmetin ruoskaa ei osteta, ystäväni. Basaarissa hinnasta riidellään. Voita minut sanoillasi, niin ruoska on sinun.", "kauppias");
+        if (await bargain()) return; continue; }
+      if (pick.startsWith("Missä saa")) { f.kebabQ = true;
+        await say("Täältä! Mehmetin kebab on Istanbulin paras. Serkun kioskin kebab on toiseksi paras. Mutta älä kerro hänelle.", "kauppias");
+        await say("Hyvä kebab. Hyvä ruoka, kuten Jouko sanoi. Tämä voi vielä olla tärkeää."); continue; }
+      await say("Palaa pian, ystäväni! Hinnat nousevat joka minuutti.", "kauppias"); return;
     }
   });
 }
@@ -270,7 +266,7 @@ async function talk() {
 async function pitchPyramid() {
   await say("Tässä, herra Mehmet. Jäsenhankinta: jokainen jäsen tuo kaksi uutta. Ja Mouho on kaikille ilmainen!");
   await say("Muhteşem! Ilmainen tuote, joka leviää itsestään. Ostamme sen. Koko brändin. Allekirjoita tähän.", "kauppias");
-  await say("Kumppanuussopimus! Odottakaa hetki, puhelin soi.");
+  await say("Kumppanuussopimus! Juuri sitä...");
   await myrraIncoming(1);
   await say("Luin sen, herra Mehmet. Kebabtarjoilu Mouhoon, maksetaan jälkikäteen. Allekirjoitan.");
   st.flags.signed = true; give("velkakirja"); iq("jalkikateen", 5);
@@ -283,7 +279,7 @@ async function questLines() {
   await say("Vielä yksi asia, ystäväni. Basaarissa kauppa sinetöidään lahjalla. Ja minä tiedän, minkä lahjan haluan.", "kauppias");
   await say("Isoisäni puhui kultaisesta idolista Kappadokian luolassa. Pyramidin huippu, hän sanoi. Tuo se, niin kauppa on valmis.", "kauppias");
   await say("Pyramidin huippu! Ja kultainen. Siitä tulisi turnaukselle hieno kiertopalkinto.");
-  await say(st.flags.map ? "Matossa oli kartta itään. Kappadokia." : "Mutta mistä löytää Kappadokian luolan? Täällä täytyy olla kartta.");
+  await say(st.flags.map ? "Matossa oli kartta itään. Kappadokia. Ja luolaan tarvitaan varmasti ruoska." : "Mutta mistä löytää Kappadokian luolan? Ja mitä sinne pitää ottaa mukaan? Kysytään Mehmetiltä.");
 }
 // Idoli basaariin: sijoittajat tyytyväisiä, ja peli siirtyy loppuanimaatioon.
 async function deliverIdol(inScript) {
@@ -300,20 +296,24 @@ async function deliverIdol(inScript) {
 }
 
 async function bargain() {
-  await say("Tingitään? Kukaan ei tingi Mehmetin kanssa!", "kauppias");
+  await say("Riita alkaa! Koko basaari kokoontuu kuuntelemaan.", "muu");
   for (const b of BARGAIN) {
     await say(b.a, "kauppias");
     const opts = [...b.no, b.ok].sort(() => Math.random() - 0.5);
     const i = await choose(opts); await say(opts[i]);
-    if (opts[i] !== b.ok) { await say(opts[i].includes("kameli") ? "Mehmet ei käänny. Hän on nähnyt kolmipäisen kamelin. Kahdesti." : "Ha! Palaa kun opit tinkimään.", opts[i].includes("kameli") ? "muu" : "kauppias"); return false; }
+    if (opts[i] !== b.ok) { await say(opts[i].includes("kameli") ? "Mehmet ei käänny. Hän on nähnyt kolmipäisen kamelin. Kahdesti." : "Ha! Basaari nauraa. Palaa kun osaat riidellä.", opts[i].includes("kameli") ? "muu" : "kauppias"); return false; }
   }
-  await say("...Sinä tingit kuin oma veljeni. Hyvä on! Ruoska sinulle 3,50 eurolla ja napilla.", "kauppias");
-  // Varmistus vanhoille tallennuksille (ennen taksin rahavaatimusta): ruoska annetaan
-  // velaksi, ettei peli jää jumiin basaariin ilman paluuta.
-  if (!has("rahat")) { await say("Ei rahaa? No, tingit kuin veljeni. Maksat kun olet rikas. Mehmet luottaa.", "kauppias"); }
+  await say("...Sinä riitelet kuin oma veljeni. Hyvä on! Ruoska sinulle 3,50 eurolla ja napilla.", "kauppias");
+  // Varmistus vanhoille tallennuksille: ilman rahoja ruoska annetaan velaksi, ettei peli jumitu.
+  if (!has("rahat")) { await say("Ei rahaa? No, riitelit kuin veljeni. Maksat kun olet rikas. Mehmet luottaa.", "kauppias"); }
   else take("rahat");
-  st.whip = true; give("ruoska"); iq("tinkiminen", 10); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari.");
-  await say("Ja kaupan päälle kebab, ystäväni. Kukaan ei lähde Mehmetin kojulta nälkäisenä.", "kauppias"); give("kebab"); return true;
+  st.whip = true; give("ruoska"); iq("tinkiminen", 10);
+  await say("Ja kaupan päälle kebab, ystäväni. Kukaan ei lähde Mehmetin kojulta nälkäisenä.", "kauppias"); give("kebab");
+  // Riidan voitto on jäsenhankintaa: basaari haluaa mukaan siihen, mitä tämä mies tekee.
+  await say("Basaari huutaa! Kukaan ei ole ennen voittanut Mehmetiä riidassa. Ja kaikki haluavat liittyä siihen, mitä tämä mies tekee.", "muu");
+  st.flags.recruits = (st.flags.recruits ?? 0) + 40; st.flags.bazaar = true; iq("basaari", 5);
+  await say("Neljäkymmentä uutta jäsentä! Jäsenhankinta etenee nopeammin kuin kaavioon mahtuu. Ruoskakin on nyt minulla.");
+  return true;
 }
 
 
@@ -519,7 +519,7 @@ function guideBasaari(t) {
   if (!f.merhaba) bark(258, 46, "Merhaba, ystäväni! Täällä!", t, 1, 6000);
   else if (has("idoli")) bark(258, 46, "Aarre?! Tuo se tänne!", t, 2, 6000);
   else if (f.mehmetWho && !f.signed) bark(258, 46, "Se kaavio, ystäväni! Näytä!", t, 3, 8000);
-  else if (f.quest && !st.whip) bark(258, 46, "Arkeologi ilman ruoskaa? Tingitään!", t, 4, 9000);
+  else if (f.quest && !st.whip) bark(258, 46, "Ruoska ansaitaan riidalla, ystäväni!", t, 4, 9000);
   if (f.quest && !f.map) sparkle(33, 70, t, 5, 1800);
   if (f.quest && !f.bag) sparkle(84, 64, t, 6, 2200);
   if (f.quest && !st.whip) sparkle(224, 74, t, 7, 2400);
@@ -566,9 +566,7 @@ const QUIZZES = {
       st.flags.cupT = Date.now(); [262, 330, 392, 523].forEach((f, n) => setTimeout(() => beep(f, 500, "sine", .05), n * 200)); await sleep(1600);
       await say("MARK-KA-NEN! MARK-KA-NEN!", "muu"); await sleep(1500);
       await say("Kesä 2006. Jotkut asiat eivät unohdu. Edes Istanbulissa.");
-      await say("Koko basaari huutaa nimeäsi, ystäväni! Ja koko basaari haluaa liittyä Mouhoon!", "kauppias");
-      st.flags.recruits = (st.flags.recruits ?? 0) + 40; st.flags.bazaar = true; iq("basaari", 5);
-      await say("Neljäkymmentä uutta jäsentä! Jäsenhankinta etenee nopeammin kuin kaavioon mahtuu. Piirrän reunoille.");
+
       if (!has("kebab")) { await say("Tästä hyvästä kebab on ilmainen, ystäväni. Maalivahdit tarvitsevat proteiinia.", "kauppias"); give("kebab"); } }); } },
   temppeli: { code: "64", done: () => st.flags.refDone, taunt: "tuomari",
     lines: ["Väärin. Kaksi minuuttia jäähyä.", "Ei. Tarkista sääntökirja.", "Väärin. Pilli soi, peli seis."],
@@ -696,13 +694,13 @@ const HINTS = () => {
     return ["Kaikki on valmista. Lentokenttä kutsuu.", "Käytä taksia oikealla."];
   }
   if (here === "basaari") {
-    if (has("idoli")) return ["Sijoittajat odottavat pyramidin huippua.", "Anna kultainen idoli Mehmetille."];
+    if (has("idoli")) return ["Sijoittajat odottavat lahjaa.", "Anna kultainen idoli Mehmetille."];
     if (!f.mehmetWho) return ["Kirjeen osoite vei tähän kojuun. Kysytään kauppiaalta Mouho Global Partnersista.", "Puhu Mehmetille ja kysy Mouho Global Partnersista."];
-    if (!f.signed) return ["Mehmet haluaa nähdä suunnitelmani.", "Puhu Mehmetille ja valitse \"Esittelen pyramidikaavion!\""];
-    if (!f.map) return ["Pyramidi on jossain idässä. Seinällä on matto, jossa on outoja kuvioita.", "Katso mattoa vasemmalla seinällä."];
+    if (!f.signed) return ["Mehmet haluaa nähdä suunnitelmani.", "Puhu Mehmetille ja esittele jäsenhankintasuunnitelma."];
+    if (!f.map) return ["Mehmetin isoisä kutoi tien luolaan mattoon.", "Katso mattoa vasemmalla seinällä."];
+    if (!st.whip) return ["Luolassa tarvitaan ruoska. Mehmetin ruoska ansaitaan riidalla.", "Puhu Mehmetille ruoskasta ja voita riita: vastaa piikkiin samalla mitalla."];
     if (!f.bag) return ["Jotain ilmaista roikkuu naulassa. Ilmainen on aina epäilyttävää, mutta hyödyllistä.", "Poimi kangaspussi vasemmalta seinältä."];
-    if (!st.whip) return ["Jokainen arkeologi tarvitsee ruoskan. Mehmet myy sellaisen, jos osaan tinkiä.", "Puhu Mehmetille ja valitse \"Tingitään ruoskasta!\". Vastaa piikkiin samalla mitalla."];
-    return ["Kartan mukaan pyramidin huippu on idässä.", "Kävele kadun päähän moskeijan alle."];
+    return ["Kartan mukaan luola on idässä.", "Kävele kadun päähän moskeijan alle."];
   }
   if (here === "temppeli") {
     if (st.flags.idol) return ["Ulos ja äkkiä.", "Mene ovesta vasemmalle."];

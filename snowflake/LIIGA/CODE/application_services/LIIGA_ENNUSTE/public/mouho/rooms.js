@@ -207,6 +207,31 @@ function basaariBg() {
   // kadun pää: kuja moskeijan alla
   r(146, 54, 28, 16, "#2c1428"); disc(160, 54, 14, "#2c1428"); r(146, 68, 28, 2, "#4a2440");
   g.fillStyle = "rgba(20,0,0,.22)"; g.fillRect(0, 108, W, 28);
+  basaariDetail();
+}
+// Yksityiskohtakerros (17.10.: "paranna grafiikat Istanbuliin" Kisapuiston tasolle):
+// pilvet ja kaukaiset minareetit, kangaskattokaistale, keramiikkalautaset, kuparipannut,
+// riippuvat matot, kankaat, mausteiden ja teelasien pöytä, kaukaiset kojut, kissa.
+function basaariDetail() {
+  seed = 51;
+  for (let i = 0; i < 22; i++) { const x = (rnd() * W) | 0, y = 4 + ((rnd() * 28) | 0), w = 8 + ((rnd() * 30) | 0), lo = y > 18;
+    r(x, y, w, 1, lo ? "#8c3448" : "#3c1c48"); r(x + 2, y + 1, w - 4, 1, lo ? "#fca468" : "#d0587c"); }
+  for (const [x, h] of [[96, 34], [224, 30], [74, 22], [246, 20]]) { const M2 = "#5c2448"; r(x, 70 - h, 2, h, M2); tri(x - 1, 70 - h - 5, 4, 5, M2); r(x - 1, 70 - h + 6, 4, 1, M2); }
+  // kaukaiset kojut kadun päässä
+  for (const [x, c] of [[138, "#2c7c4c"], [148, "#b81c1c"], [166, "#2c4c9c"], [176, "#c8941c"]]) { fillPoly([[x, 64], [x + 8, 64], [x + 9, 67], [x - 1, 67]], c); r(x, 67, 8, 4, "#3c1c18"); }
+  // keramiikkalautaset oikealla seinällä markiisin yläpuolella
+  for (let i = 0; i < 7; i++) { const x = 220 + i * 11, y = 34 + (i % 2) * 6 - i * .6;
+    disc(x, y, 4, "#f4f0e4", "#2c4c9c"); disc(x, y, 2, i % 3 ? "#2c6cb4" : "#c83c2c"); px(x, y, "#f4f0e4"); px(x - 2, y - 2, "#ffffff"); }
+  // kuparipannut ja lyhtyrypäs vasemmalla seinällä kaarien yläpuolella
+  for (let i = 0; i < 5; i++) { const x = 62 + i * 13, y = 36 + i * 3.4; r(x, y - 6, 1, 6, "#3c2c1c"); disc(x, y + 2, 3, "#c87c3c", "#8c4c1c"); px(x - 1, y + 1, "#fcc890"); r(x + 3, y + 1, 2, 1, "#8c4c1c"); }
+  // riippuvat kankaat oikealla sivuseinällä (kojun ja kuvan reunan välissä)
+  for (const [x, c1, c2] of [[302, "#c83c4c", "#e8c84c"], [310, "#2c6c9c", "#e8e0c4"]]) { for (let y = 46; y < 92; y++) { const w = 6 + Math.sin(y / 5) * .8; r(x, y, w, 1, (y >> 2) % 3 ? c1 : c2); } r(x - 1, 45, 8, 1, "#5c3418"); }
+  // pöytä: teelasit ja baklava edustalla vasemmalla
+  fillPoly([[112, 112], [140, 112], [142, 116], [110, 116]], "#7c4c24"); r(110, 116, 32, 2, "#5c341c"); r(112, 118, 2, 10, "#4c2c14"); r(138, 118, 2, 10, "#4c2c14");
+  for (const x of [116, 122, 128]) { r(x, 107, 3, 5, "#c84c1c"); r(x, 107, 3, 1, "#fce0b0"); r(x - 1, 106, 5, 1, "#e8c81c"); }
+  r(132, 108, 8, 4, "#d8a04c"); for (let k = 0; k < 4; k++) px(133 + k * 2, 109, "#7c9c3c");
+  // kissa kadulla (piirretään animoituna basaariDraw:ssa, tässä vain varjo)
+  g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(186, 127, 6, 1.5, 0, 0, 7); g.fill();
 }
 const CROWD2 = Array.from({ length: 5 }, (_, i) => ({ x: 140 + i * 9, v: (i % 2 ? -1 : 1) * (3 + i), fez: i % 2 === 0, c: ["#3c1c24", "#2c1c34", "#4c2c1c"][i % 3] }));
 function basaariDraw(t) {
@@ -224,6 +249,11 @@ function basaariDraw(t) {
     r(x - 2 * s, y, 5 * s, 6 * s, "#a8741c"); r(x - s, y + s, 3 * s, 4 * s, f > .5 ? "#fce070" : "#fcc040"); glow(x, y + 3, 12 * s, "255,160,60", .16 + .05 * f); }
   if (!st.flags.bag) { r(84, 60, 1, 4, "#3c3c3c"); r(80, 64, 9, 11, "#c8b48c"); r(80, 64, 9, 1, "#e0d0a8"); r(82, 65, 5, 2, "#a8946c"); r(87, 66, 2, 9, "#a8946c"); }
   if (!st.whip) { r(222, 72, 2, 12, "#6c4420"); r(219, 71, 6, 2, "#6c4420"); for (let k = 0; k < 8; k++) px(224 + k, 82 + Math.sin(k) * 2, "#6c4420"); }
+  // höyry teelaseista, kissa jonka häntä heiluu, kyyhkyt
+  for (let i = 0; i < 3; i++) { const k = ((t / 900 + i / 3) % 1); px(118 + i * 6 + Math.sin(t / 300 + i) * 1.5, 105 - k * 10, `rgba(240,230,220,${.5 * (1 - k)})`); }
+  { const tw = Math.sin(t / 420) * 3; r(182, 120, 8, 6, "#4c3c34"); disc(188, 119, 3, "#4c3c34"); px(186, 116, "#4c3c34"); px(190, 116, "#4c3c34"); px(187, 119, "#c8e85c"); px(189, 119, "#c8e85c");
+    lineC(182, 124, 177, 120 + tw, "#4c3c34"); }
+  for (const [x0, ph] of [[200, 0], [208, 1.7]]) { const hop = Math.max(0, Math.sin(t / 260 + ph)) * 1.5; r(x0, 128 - hop, 4, 3, "#8c8c9c"); px(x0 + 4, 128 - hop, "#6c6c7c"); px(x0 + 5, 129 - hop, "#d8a43c"); }
   // döner kojun edustalla
   { const ph = Math.floor(t / 140) % 3; r(226, 68, 1, 24, "#8c8c8c"); r(230, 66, 6, 26, "#2c2c2c"); r(231, 68, 4, 22, "#e8401c"); glow(233, 80, 11, "255,90,30", .2);
     for (let j = 0; j < 20; j++) { const w = 5.5 - Math.abs(j - 8) / 4; r(226 - w / 2 + .5, 70 + j, w, 1, (j + ph) % 3 === 0 ? "#6c3414" : (j + ph) % 3 === 1 ? "#a8642c" : "#c8843c"); } }
