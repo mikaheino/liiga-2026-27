@@ -10,7 +10,7 @@
 import type { PositionRow } from "@/components/Heatmap";
 import type { HistoryPoint, TitleRow } from "@/components/TitleRace";
 import type { Fixture } from "@/lib/fixtures";
-import { query } from "@/lib/snowflake";
+import { DATA_MODE, query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
 
 const M = "LIIGA.MODEL";
@@ -24,10 +24,14 @@ function metaQuery() {
   return Promise.all([
     query<{ UPDATED_AT: string; GAMES_PLAYED: number; GAMES_TOTAL: number }>(
       `SELECT updated_at, games_played, games_total FROM ${M}.PREDICTION_META`),
-    query<{ D: string; N: number }>(`
+    // Seuraava pelipäivä: Snowflakessa näkymästä, DuckDB:ssä (ei näkymää) otteluohjelmasta.
+    query<{ D: string; N: number }>(DATA_MODE === "snowflake" ? `
       SELECT TO_CHAR(MIN(game_date), 'YYYY-MM-DD') AS d,
              COUNT_IF(game_date = (SELECT MIN(game_date) FROM ${M}.V_UPCOMING_PREDICTIONS)) AS n
-      FROM ${M}.V_UPCOMING_PREDICTIONS`),
+      FROM ${M}.V_UPCOMING_PREDICTIONS` : `
+      WITH up AS (SELECT SUBSTR(start_ts, 1, 10) AS d FROM stg_games
+                  WHERE season = (SELECT MAX(season) FROM stg_games) AND NOT ended AND SUBSTR(start_ts, 1, 10) >= strftime(current_date, '%Y-%m-%d'))
+      SELECT MIN(d) AS d, COUNT(*) FILTER (WHERE d = (SELECT MIN(d) FROM up)) AS n FROM up`),
   ]).then(([meta, next]) => ({ meta: meta[0], next: next[0] }));
 }
 

@@ -19,7 +19,7 @@ function starters(path: string): string[] {
   return ["Kierroksen esikatselu: tämän illan ottelut", "Kuka voittaa runkosarjan?", "Miksi KooKoon ennuste on romahtanut?", "Kuinka hyvin malli on osunut?"];
 }
 
-export default function Chat() {
+export default function Chat({ source = "snowflake" }: { source?: string }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -54,7 +54,7 @@ export default function Chat() {
       {open && (
         <aside id="chat" className="chat" aria-label="Keskustelu agentin kanssa">
           <header className="chat-h">
-            <div><div className="label">Liiga Ennustaja</div><div className="chat-sub">Snowflake Intelligence -agentti</div></div>
+            <div><div className="label">Liiga Ennustaja</div><div className="chat-sub">{source === "local" ? "Paikallinen Claude · data koneelta" : "Snowflake Intelligence -agentti"}</div></div>
             {turns.length > 0 && <button className="chat-clear" onClick={() => setTurns([])}>Tyhjennä</button>}
           </header>
           <div className="chat-log">

@@ -7,6 +7,7 @@
 //
 // Molemmat lukevat samat taulut (LIIGA.MODEL), joten paikallinen kehitys näyttää
 // täsmälleen saman datan kuin tuotanto -- ero Streamlitin DuckDB-polkuun.
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -14,6 +15,27 @@ import { parse } from "smol-toml";
 import snowflake from "snowflake-sdk";
 
 const TOKEN = "/snowflake/session/token";
+
+// Datalähde (17.10., "lokaaliapplikaatio tulisi toimia ilman Snowflake-yhteyttä"):
+//   App Runtime (sessiotoken olemassa)  -> Snowflake LIIGA.MODEL
+//   paikallisesti                        -> data/liiga.duckdb Python-sillan kautta
+//   LIIGA_DATA=snowflake|duckdb pakottaa jommankumman.
+export const DATA_MODE: "snowflake" | "duckdb" =
+  process.env.LIIGA_DATA === "snowflake" || process.env.LIIGA_DATA === "duckdb" ? process.env.LIIGA_DATA : fs.existsSync(TOKEN) ? "snowflake" : "duckdb";
+const REPO = process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ process.cwd(), "../../../../..");
+
+// DuckDB: scripts/local/duckdb_query.py, yksi prosessi per kysely (~0,1 s; tulokset
+// välimuistissa lib/data.ts:ssä). Snowflaken nimiavaruus LIIGA.MODEL riisutaan pois.
+function duck<T>(sql: string, binds: snowflake.Binds): Promise<T[]> {
+  return new Promise((resolve, reject) => {
+    const p = spawn(path.join(REPO, ".venv/bin/python"), [path.join(REPO, "scripts/local/duckdb_query.py")], { cwd: REPO });
+    let out = "", err = "";
+    p.stdout.on("data", (b) => { out += b; }); p.stderr.on("data", (b) => { err += b; });
+    p.on("error", reject);
+    p.on("close", () => { try { const j = JSON.parse(out); return j.error ? reject(new Error(j.error)) : resolve(j as T[]); } catch { reject(new Error(err.trim().split("\n").pop() || "DuckDB-kysely epäonnistui")); } });
+    p.stdin.end(JSON.stringify({ sql: sql.replace(/LIIGA\.MODEL\./g, ""), binds }));
+  });
+}
 const WAREHOUSE = process.env.LIIGA_WAREHOUSE ?? "LIIGA_WH";
 
 type Row = Record<string, unknown>;
@@ -68,9 +90,10 @@ async function run<T>(sql: string, binds: snowflake.Binds): Promise<T[]> {
 }
 
 export async function query<T extends Row = Row>(sql: string, binds: snowflake.Binds = []): Promise<T[]> {
-  snowflake.configure({ logLevel: "ERROR" });
   const t0 = Date.now();
   let out: T[];
+  if (DATA_MODE === "duckdb") return duck<T>(sql, binds);
+  snowflake.configure({ logLevel: "ERROR" });
   try {
     out = await run<T>(sql, binds);
   } catch (e) {
