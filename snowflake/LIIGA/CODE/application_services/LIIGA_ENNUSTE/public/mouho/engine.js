@@ -207,7 +207,7 @@ const iconCache = {};
 function icon(k) { if (iconCache[k]) return iconCache[k]; const c = document.createElement("canvas"); c.width = 24; c.height = 16; const prev = g; g = c.getContext("2d"); ITEMS[k].icon?.(); g = prev; return (iconCache[k] = c); }
 function renderInv() { $inv.replaceChildren(...st.inv.map((k) => { const b = document.createElement("button"); b.title = ITEMS[k].name; b.setAttribute("aria-label", ITEMS[k].name);
   const img = document.createElement("img"); img.src = icon(k).toDataURL(); img.alt = ""; b.append(img);
-  if (first === k) b.className = "sel"; else if (newItem === k) b.className = "new";
+  if (first === k) b.className = "sel"; else if (newItem === k) b.className = "new"; else if (ITEMS[k].nudge?.()) b.className = "nudge";
   b.onclick = () => { if (busy) return; if (first && first !== k) return script(() => say("Ne eivät sovi yhteen.")); act(verb === "Kävele" ? "Katso" : verb, k); if (verb !== "Käytä" && verb !== "Anna") { verb = "Kävele"; renderVerbs(); } };
   b.oncontextmenu = (e) => { e.preventDefault(); if (!busy) act("Katso", k); };
   b.onmouseenter = () => setSentence(k); return b; })); }

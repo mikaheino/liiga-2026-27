@@ -26,7 +26,9 @@ Object.assign(ITEMS, {
   pussi: { name: "kangaspussi", look: () => say("Tyhjä kangaspussi. Siinä on juuri idolin kokoinen ruumiinavaus.") },
   sakki: { name: "hiekkasäkki", look: () => say("Hiekkasäkki. Painaa suunnilleen yhtä paljon kuin kultainen idoli. Toivottavasti.") },
   ruoska: { name: "ruoska", look: () => say("Ruoska. En tiedä miten tätä käytetään, mutta näytän tosi hyvältä.") },
-  puhelin: { name: "kännykkä", look: () => say("Kännykkä. Pikavalinnassa ykkösenä Jouko Myrrä. Hän tietää aina mitä tehdä."),
+  puhelin: { name: "kännykkä", look: async () => { if (st.flags.adRead && !st.flags.pyramid) { await say("Jouko Myrrä, pikavalinta ykkönen. Soitetaan."); return callMyrra(); }
+      return say("Kännykkä. Pikavalinnassa ykkösenä Jouko Myrrä. Hän tietää aina mitä tehdä."); },
+    nudge: () => st.flags.adRead && !st.flags.pyramid,         // sykkii tavaroissa, kunnes Joukolle on soitettu
     Käytä: () => callMyrra(), Puhu: () => callMyrra() },
   lappu: { name: "Saarnin lappu", look: () => say(st.flags.adRead ? "\"Kiitos, rehellistä. Mouho kuulostaa hauskalta. Ollaan mukana. -M.S.\"" : "\"Kiitos, rehellistä. Kuulin että etsit töitä. Ilmoitustaululla on paikka, joka sopii sinulle. -M.S.\"") },
   velkakirja: { name: "velkakirja", look: () => say("\"Mouho Global Partners. Kebabtarjoilu Mouhoon, maksetaan JÄLKIKÄTEEN.\"\nEn maksanut mitään etukäteen. Jouko olisi ylpeä.") },
@@ -64,7 +66,7 @@ Object.assign(ROOMS, {
         Käytä: () => standOnBox(), Työnnä: () => say("Laatikko on hyvä paikallaan. Siitä saisi vaikka korokkeen."),
         Poimi: () => say("Jätän sen tähän hetkeksi. Kantaa ehtii myöhemminkin. Koko loppuelämän, oikeastaan."),
         Vedä: () => say("Vedän laatikkoa lähemmäs. Se on ainoa asia, joka seuraa minua tänään vapaaehtoisesti.") },
-      { id: "juliste", name: "ilmoitustaulu", x: 16, y: 84, w: 38, h: 30, at: 58, aty: 129,
+      { id: "juliste", name: "ilmoitustaulu", x: 16, y: 84, w: 38, h: 30, at: 72, aty: 131,
         Katso: () => readAd(), Poimi: () => readAd() },
       { id: "piano", name: "lattiapiano", floor: true, hidden: () => !st.flags.pianoT, x: 80, y: 98, w: 160, h: 18, at: 160, aty: 108,
         Katso: () => say("Parkkipaikan asfalttiin heijastettu jättipiano, numerot 1-9 ja 0. Kuin siinä Tom Hanksin elokuvassa.\nPitää vain seistä oikeilla numeroilla oikeassa järjestyksessä."),
@@ -378,7 +380,7 @@ const BOARD_SPOT = [44, 104];
 function gust() { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOARD_SPOT; beep(220, 300, "triangle", .03); }
 async function chaseBill() {
   if (st.flags.billStuck) {            // toinen yritys: seteli ilmoitustaululta käteen
-    await walkTo(58, 124); st.dir = -1; await sleep(200);
+    await walkTo(72, 131); st.dir = -1; await sleep(200);             // taulun oikealla ja edessä, ei sen takana
     st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
     await say("Sain sen! Herra Saarnin viisikymppinen on nyt tavaroissani.");
     await say("Se ei ole minun. Herra Saarni meni SaiPan toimistoon. Palautan sen toimiston postiluukusta, tuosta postilaatikosta.");
@@ -438,6 +440,7 @@ async function readAd() {
   await say("\"MOUHO hakee TOIMINNANJOHTAJAA. Tehtävät: uuden turnauksen järjestäminen, jäsenten hankinta, tarjoilu. Osallistuminen kaikille ilmaista.\"", "muu");
   await say("Toiminnanjohtaja... JOHTAJA! Työpaikka, ja vielä johtajan! Jäsenten hankinta... Jokainen jäsen hankkii jäseniä!");
   await say("Otan ilmoituksen mukaan. Tästä pitää kysyä neuvoa joltakulta viisaalta. Joukolla on aina neuvo.");
+  await say("Soitan Joukolle. Hänen numeronsa on kännykässä pikavalinnassa ykkösenä.");
 }
 // Taustakohtaus intron aikana: Saarni ja maskotti autolta toimistoon, seteleitä lentää.
 // Vuorotellen (17.10.: "menee päällekkäin puheruutujen kanssa"): Jussi puhuu ensin, he
@@ -458,7 +461,6 @@ async function saarniScene() {
   await sleep(300);
   await say("Pitkävetovalmentaja? Ei, se vaatisi, että voittaisin.");
   await say("Hetkinen. Herra Saarnin salkusta putosi jotain. Tuolla lentää viisikymppinen!");
-  await say("Ja Kisapuiston ilmoitustaululla on aina ollut työpaikkoja. Mutta ensin tuo seteli.");
   st.flags.introDone = true;
 }
 
@@ -645,8 +647,8 @@ const HINTS = () => {
   if (here === "koti") {
     if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni ilmoitustauluun.", "Poimi seteli ilmoitustaululta."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
     if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon, ja toimiston postilaatikossa on luukku.", "Valitse Käytä, klikkaa seteliä tavaroissa ja sitten postilaatikkoa."];
-    if (!f.adRead) return [f.noteHint ? "Saarnin lappu sanoi, että ilmoitustaululla on minulle sopiva paikka." : "Tarvitsen työn. Ilmoitustaululla on aina ollut työpaikkoja.", "Katso ilmoitustaulua vasemmalla."];
-    if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
+    if (!f.adRead) return [f.noteHint ? "Saarnin lappu sanoi, että ilmoitustaululla on minulle sopiva paikka." : "Setelin vieressä ilmoitustaululla oli uusi ilmoitus.", "Katso ilmoitustaulua vasemmalla."];
+    if (!f.pyramid) return ["Tarvitsen neuvoa. Joukon numero on kännykässä.", "Valitse Käytä ja klikkaa kännykkää tavaroissa: soita Myrrälle."];
     if (!f.unlocked && !f.pianoT) return ["Liituraitamies katselee kaaviotani kiinnostuneena.", "Puhu salkkumiehelle ja kysy, mitä sijoittajat haluavat."];
     if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat asfaltissa.", "Kävele asfaltin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
     if (!f.letterTaken) return ["Lukko on auki. Posti odottaa.", "Avaa postilaatikko ja poimi kirje."];
