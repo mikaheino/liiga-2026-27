@@ -19,47 +19,56 @@ const SKIN = { skin: "#f0bc94", skinL: "#fcd8b4", skinD: "#d08c68", skinDD: "#a8
 const FACES = {
   // Jussi Markkanen: vaalea, taakse harjattu tukka, ohimoilta väistyvä hiusraja ja korkea otsa,
   // pyöreät täyteläiset kasvot, pienet siniset silmät, suora nenä, hillitty hymy hampaineen.
-  // Jussi Markkanen, karikatyyri (17.10.: "enemmän karikatyyrin puolelle, Jussi liian vakava"):
-  // hyväntahtoinen innokas hölmö. Iso leuka ja virne hampaineen, isot pyöreät siniset silmät,
-  // korkealle nousseet kulmat, ulkonevat korvat, korkea vaalea kiehkura, väistyvät ohimot.
+  // Jussi Markkanen, karikatyyri NHL-ajan pukukoppikuvasta (17.10., käyttäjän "target"):
+  // märkä sotkuinen vaalea piikkitukka, pitkät kasvot ja leuka, pitkä suora nenä, syvällä
+  // otsaluun alla olevat harmaansiniset silmät katsovat hämmentyneenä ylös sivuun, iso korva,
+  // suu puoliksi auki ja täyteläinen alahuuli: "häh?" -- hyväntahtoinen hölmö.
   jussi: {
     outline: "#3c2414",
-    pal: { ...SKIN, hair: "#dcbc68", hairL: "#f8e4a4", hairD: "#a8823c", white: "#fcfcfc", iris: "#3c80d0", pupil: "#14243c", brow: "#b08a44", tongue: "#d0606c" },
-    weight: { iris: 4, pupil: 6, white: 3, brow: 3, lip: 3, mouth: 4, teeth: 3.5, skinDD: 2.4, hairD: 1.3, tongue: 2 },
+    pal: { ...SKIN, skin: "#f0bc9c", skinL: "#fcdcc4", skinD: "#d0927c", skinDD: "#a8685c", lip: "#c8645c", lipL: "#e0907c",
+      hair: "#dcbc6c", hairL: "#fcecb4", hairD: "#a07c3c", white: "#fcfcfc", iris: "#7ca0bc", pupil: "#1c2c3c", brow: "#b08a4c" },
+    weight: { iris: 4, pupil: 6, white: 3, brow: 3, lip: 2.5, lipL: 2, mouth: 4, teeth: 3, skinDD: 2.6, hairD: 1.3, hairL: 1.2 },
     shapes: [
-      { e: [5, 62, 9, 13], c: "skin" }, { e: [95, 62, 9, 13], c: "skinD" }, { e: [6, 63, 4, 7], c: "skinD" }, { e: [94, 63, 4, 7], c: "skinDD" },
-      { e: [50, 52, 37, 42], c: "skin" },
-      { p: [[8, 60], [92, 60], [93, 86], [82, 104], [62, 115], [38, 115], [18, 104], [7, 86]], c: "skin" },
-      { p: [[70, 30], [90, 56], [93, 86], [82, 104], [64, 114], [76, 90], [80, 62]], c: "skin", d: "skinD", sparse: true },
-      { p: [[80, 46], [92, 62], [93, 86], [82, 104], [72, 110], [84, 86], [86, 64]], c: "skinD" },
-      { e: [22, 80, 9, 6], c: "skin", d: "blush" }, { e: [78, 80, 9, 6], c: "skinD", d: "blush" },
-      { e: [40, 26, 14, 5], c: "skin", d: "skinL" }, { e: [50, 108, 9, 4], c: "skin", d: "skinL", sparse: true },
-      // tukka: korkea kiehkura eteen ja oikealle, väistyvät ohimot
-      { p: [[13, 46], [12, 30], [20, 14], [34, 2], [52, -6], [72, -4], [88, 8], [92, 28], [90, 44], [85, 34], [76, 26], [62, 21], [48, 20], [36, 22], [26, 28], [18, 36], [17, 48]], c: "hair" },
-      { p: [[36, 12], [52, -12], [80, -14], [96, -2], [84, 6], [66, 2], [52, 8]], c: "hair" },
-      { l: [[40, 10], [56, -6], [82, -8]], c: "hairL", w: 3.2 }, { l: [[26, 20], [44, 6]], c: "hairL", w: 2.4 },
-      { l: [[56, 18], [80, 14], [90, 28]], c: "hairD", w: 2 }, { l: [[18, 30], [24, 16]], c: "hairD", w: 2 }, { l: [[60, 4], [88, 2]], c: "hairD", w: 1.8 },
-      { l: [[22, 40], [33, 33], [44, 37]], c: "brow", w: 3.5 }, { l: [[56, 37], [67, 33], [78, 40]], c: "brow", w: 3.5 },
-      { e: [34, 52, 9, 7], c: "white", on: "open" }, { e: [66, 52, 9, 7], c: "white", on: "open" },
-      { e: [36, 53, 5, 5], c: "iris", on: "open" }, { e: [64, 53, 5, 5], c: "iris", on: "open" },
-      { e: [36.5, 53.5, 2.4, 2.4], c: "pupil", on: "open" }, { e: [63.5, 53.5, 2.4, 2.4], c: "pupil", on: "open" },
-      { e: [34.5, 51, 1.4, 1.4], c: "white", on: "open" }, { e: [62, 51, 1.4, 1.4], c: "white", on: "open" },
-      { l: [[25, 53], [43, 53]], c: "skinDD", w: 2.6, on: "blink" }, { l: [[57, 53], [75, 53]], c: "skinDD", w: 2.6, on: "blink" },
-      { e: [52, 71, 7, 6], c: "skin" }, { p: [[56, 66], [59, 72], [55, 77], [52, 76]], c: "skinD" }, { e: [50, 69, 2, 2], c: "skinL" },
-      { e: [47, 76, 2.4, 1.4], c: "skinDD" }, { e: [56, 76, 2.4, 1.4], c: "skinDD" },
-      // valtava virne hampaineen (aina), puhuessa suu aukeaa lisää
-      { p: [[24, 83], [37, 87], [50, 88], [63, 87], [76, 83], [72, 94], [62, 101], [50, 104], [38, 101], [28, 94]], c: "mouth", on: "still" },
-      { p: [[27, 84], [73, 84], [70, 90], [50, 92], [30, 90]], c: "teeth", on: "still" }, { e: [50, 99, 9, 3], c: "tongue", on: "still" },
-      { p: [[24, 82], [37, 86], [50, 87], [63, 86], [76, 82], [72, 98], [62, 107], [50, 110], [38, 107], [28, 98]], c: "mouth", on: "talk" },
-      { p: [[27, 83], [73, 83], [70, 89], [50, 91], [30, 89]], c: "teeth", on: "talk" }, { e: [50, 104, 10, 4], c: "tongue", on: "talk" },
-      { l: [[19, 78], [23, 90]], c: "skinD", w: 2 }, { l: [[81, 78], [77, 90]], c: "skinD", w: 2 },
-      { l: [[50, 109], [50, 113]], c: "skinD", w: 1.6 },
+      { e: [90, 62, 10, 15], c: "skinD" }, { e: [91, 63, 4.5, 8], c: "skinDD" }, { e: [11, 62, 7, 11], c: "skin" },
+      { e: [50, 50, 35, 42], c: "skin" },
+      { p: [[15, 56], [85, 56], [84, 82], [74, 104], [58, 118], [42, 118], [28, 106], [18, 84]], c: "skin" },
+      { p: [[66, 30], [86, 56], [84, 82], [74, 104], [60, 116], [70, 92], [74, 62]], c: "skin", d: "skinD", sparse: true },
+      { p: [[76, 44], [86, 58], [84, 82], [74, 104], [66, 112], [78, 88], [80, 62]], c: "skinD" },
+      { p: [[20, 72], [30, 80], [34, 92], [26, 86]], c: "skin", d: "skinD", sparse: true }, { p: [[80, 72], [70, 80], [66, 92], [74, 86]], c: "skinD" },  // kuopat poskissa
+      { e: [42, 30, 14, 6], c: "skin", d: "skinL" }, { e: [50, 112, 8, 3], c: "skin", d: "skinL", sparse: true },
+      // märkä piikkitukka: kypärä ja piikit ylös ja eteen (vasemmalle)
+      { p: [[15, 44], [12, 28], [22, 14], [40, 7], [62, 7], [80, 14], [89, 30], [89, 50], [83, 38], [70, 30], [54, 27], [38, 28], [25, 33], [19, 46]], c: "hair" },
+      { p: [[14, 30], [-6, 18], [24, 16]], c: "hair" }, { p: [[20, 18], [2, -4], [32, 10]], c: "hair" }, { p: [[30, 12], [18, -16], [42, 8]], c: "hair" },
+      { p: [[40, 9], [36, -8], [50, 7]], c: "hair" }, { p: [[48, 7], [46, -22], [60, 6]], c: "hair" }, { p: [[58, 7], [64, -6], [68, 9]], c: "hair" },
+      { p: [[66, 10], [78, -14], [78, 14]], c: "hair" }, { p: [[76, 14], [96, 4], [86, 22]], c: "hair" }, { p: [[84, 22], [100, 26], [89, 34]], c: "hair" },
+      { p: [[26, 28], [20, 46], [34, 30]], c: "hair" }, { p: [[40, 27], [38, 42], [48, 28]], c: "hair" }, { p: [[60, 27], [64, 38], [68, 29]], c: "hairD" },    // märät suortuvat otsalla
+      { l: [[18, 26], [0, 18]], c: "hairL", w: 2 }, { l: [[26, 16], [8, -2]], c: "hairL", w: 2 }, { l: [[36, 10], [22, -12]], c: "hairL", w: 2 }, { l: [[52, 8], [48, -16]], c: "hairL", w: 2 }, { l: [[72, 12], [77, -8]], c: "hairL", w: 2 },
+      { l: [[30, 30], [46, 22], [66, 26], [80, 34]], c: "hairD", w: 2.2 }, { l: [[20, 40], [24, 24]], c: "hairD", w: 2 }, { l: [[84, 36], [86, 48]], c: "hairD", w: 2 },
+      // otsaluu ja kulmat: sisäpäät koholla (hämmennys)
+      { l: [[24, 47], [34, 44], [44, 46]], c: "skinD", w: 4 }, { l: [[56, 46], [66, 44], [76, 47]], c: "skinD", w: 4 },
+      { l: [[24, 44], [34, 40], [44, 42]], c: "brow", w: 3 }, { l: [[56, 42], [66, 40], [76, 44]], c: "brow", w: 3 },
+      { e: [34, 54, 7, 4.4], c: "white", on: "open" }, { e: [66, 54, 7, 4.4], c: "white", on: "open" },
+      { e: [30, 53, 4, 4], c: "iris", on: "open" }, { e: [62, 53, 4, 4], c: "iris", on: "open" },
+      { e: [29.5, 52.5, 1.8, 1.8], c: "pupil", on: "open" }, { e: [61.5, 52.5, 1.8, 1.8], c: "pupil", on: "open" },
+      { e: [31.5, 51.5, 1, 1], c: "white", on: "open" }, { e: [63.5, 51.5, 1, 1], c: "white", on: "open" },
+      { l: [[26, 50.5], [42, 50]], c: "skinDD", w: 2.4, on: "open" }, { l: [[58, 50], [74, 50.5]], c: "skinDD", w: 2.4, on: "open" },
+      { l: [[27, 60], [40, 61]], c: "skinD", w: 1.6 }, { l: [[60, 61], [73, 60]], c: "skinD", w: 1.6 },          // pussit silmien alla
+      { l: [[26, 54], [42, 54]], c: "skinDD", w: 2.6, on: "blink" }, { l: [[58, 54], [74, 54]], c: "skinDD", w: 2.6, on: "blink" },
+      // pitkä suora nenä
+      { p: [[46, 52], [53, 52], [60, 80], [51, 86], [40, 81]], c: "skin" }, { e: [49, 81, 9, 6], c: "skin" }, { p: [[53, 54], [60, 80], [58, 86], [52, 86]], c: "skinD" },
+      { l: [[48, 56], [45, 78]], c: "skinL", w: 2.4 }, { e: [45, 80, 2, 1.6], c: "skinL" }, { e: [44, 85, 3, 1.6], c: "skinDD" }, { e: [55, 85, 3, 1.6], c: "skinDD" },
+      // suu puoliksi auki, täyteläinen alahuuli; puhuessa auki enemmän
+      { p: [[36, 94], [45, 91], [50, 92], [55, 91], [64, 94], [50, 96]], c: "lip" },
+      { e: [50, 98, 11, 4.4], c: "mouth", on: "still" }, { p: [[38, 100], [62, 100], [57, 106], [50, 107], [43, 106]], c: "lipL", on: "still" },
+      { e: [50, 100, 12, 7], c: "mouth", on: "talk" }, { p: [[41, 95], [59, 95], [58, 97], [42, 97]], c: "teeth", on: "talk" }, { p: [[38, 105], [62, 105], [57, 110], [50, 111], [43, 110]], c: "lipL", on: "talk" },
+      { l: [[50, 113], [50, 116]], c: "skinD", w: 1.6 },
     ],
-    // takaa (kävelee poispäin): niska, korvat ja tukka
+    // takaa (kävelee poispäin): niska, korvat ja piikkitukka
     back: [
-      { e: [5, 62, 9, 13], c: "skinD" }, { e: [95, 62, 9, 13], c: "skinD" },
-      { e: [50, 56, 40, 46], c: "skin" }, { p: [[24, 90], [76, 90], [70, 112], [30, 112]], c: "skinD" },
-      { e: [50, 46, 42, 46], c: "hair" }, { p: [[12, 56], [88, 56], [82, 90], [18, 90]], c: "hair" }, { p: [[36, 8], [56, -12], [82, -12], [92, 0]], c: "hair" },
+      { e: [11, 62, 7, 11], c: "skinD" }, { e: [89, 62, 8, 13], c: "skinD" },
+      { e: [50, 54, 38, 46], c: "skin" }, { p: [[26, 92], [74, 92], [68, 116], [32, 116]], c: "skinD" },
+      { e: [50, 46, 40, 44], c: "hair" }, { p: [[14, 56], [86, 56], [80, 92], [20, 92]], c: "hair" },
+      { p: [[24, 16], [12, -10], [38, 8]], c: "hair" }, { p: [[46, 8], [54, -20], [60, 6]], c: "hair" }, { p: [[70, 12], [92, -4], [82, 18]], c: "hair" },
       { l: [[26, 26], [50, 12], [76, 20]], c: "hairL", w: 3 }, { l: [[20, 54], [50, 44], [82, 54]], c: "hairD", w: 2 }, { l: [[28, 80], [72, 80]], c: "hairD", w: 2 },
     ],
   },
