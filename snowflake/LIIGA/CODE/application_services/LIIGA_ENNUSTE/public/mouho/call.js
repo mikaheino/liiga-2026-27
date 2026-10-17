@@ -150,10 +150,11 @@ function bulb(x, y, t, since) {
 // Puhelu: lines = [[puhuja, teksti] | { bulb: true }]. Puhujat "jussi" ja "myrra".
 async function phoneCall(lines, { incoming = false } = {}) {
   const t0 = performance.now(); let state = "ring", stT = t0, bulbT = null;
+  const prev = overlay, under = prev ?? ((t) => room().draw(t));     // lopussa ei ole ruutua: taustana käynnissä oleva välikuva
   const slide = (side) => { const t = performance.now(); if (state === "ring") return side * -170 * (1 - ease((t - stT - 700) / 450)); if (state === "out") return side * -170 * ease((t - stT) / 420); return 0; };
   overlay = (t) => {
     const now = performance.now();               // ajastus aina tällä kellolla (rAF:n t voi erota)
-    room().draw(t); g.fillStyle = `rgba(8,6,16,${Math.min(.8, (now - t0) / 600)})`; g.fillRect(0, 0, W, H);
+    under(t); g.fillStyle = `rgba(8,6,16,${Math.min(.8, (now - t0) / 600)})`; g.fillRect(0, 0, W, H);
     const ringing = state === "ring" && now - stT < 1300;
     panelDraw(PANEL.L, slide(-1), "jussi", t, kisaPanel, ringing && !incoming);
     panelDraw(PANEL.R, slide(1), "myrra", t, coachPanel, ringing);
@@ -175,6 +176,6 @@ async function phoneCall(lines, { incoming = false } = {}) {
       await say(l[1], l[0]); if (bulbT && l[0] === "jussi") bulbT = null;   // lamppu sammuu ahaa-repliikin jälkeen
     }
   } finally {
-    callSpk = null; beep(220, 90, "square", .05); state = "out"; stT = performance.now(); await sleep(520); overlay = null;
+    callSpk = null; beep(220, 90, "square", .05); state = "out"; stT = performance.now(); await sleep(520); overlay = prev;
   }
 }
