@@ -112,7 +112,9 @@ function findPath(x0, y0, x1, y1) {
   while (k < raw.length) { let far = k; for (let q = raw.length - 1; q > k; q--) if (lineFree(m, px0, py0, raw[q][0], raw[q][1])) { far = q; break; } out.push(raw[far]); [px0, py0] = raw[far]; k = far + 1; }
   return out;
 }
-function walkTo(x, y = st.y) { return new Promise((res) => { st.path = findPath(st.x, st.y, x, y); onArrive = res; if (!st.path.length) { onArrive = null; res(); } }); }
+function walkTo(x, y = st.y) { return new Promise((res) => { st.path = findPath(st.x, st.y, x, y);
+  if (TEST && st.path.length) { [st.x, st.y] = st.path.at(-1); st.path = []; }      // testitila: perille heti, ei odotusta kävelyyn
+  onArrive = res; if (!st.path.length) { onArrive = null; res(); } }); }
 function depth(y) { const sc = room()?.scale; if (!sc) return 1; const [y0, y1, s0 = 0.7, s1 = 1.02] = sc; return s0 + (s1 - s0) * Math.max(0, Math.min(1, (y - y0) / (y1 - y0))); }
 function place(x, y) { st.x = x; st.y = y; st.path = []; onArrive = null; }
 
@@ -275,4 +277,50 @@ function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
   setInterval(() => { if (!title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
   document.getElementById("load")?.addEventListener("click", (e) => { e.stopPropagation(); loadGame(); });
   requestAnimationFrame(frame);
+}
+
+// ---------------------------------------------------------------- testaajan rajapinta (?testi)
+// Sokkotestin nopeutus (17.10.): yksi kutsu = yksi pelaajan toiminto, ja vastaus on vain se,
+// minkä pelaaja näkisi: ruutu, näkyvien kohteiden nimet, tavarat, keskusteluvaihtoehdot ja
+// uudet repliikit. Ei pelin tilaa, ei lippuja, ei ratkaisuja.
+if (TEST) {
+  let seen = 0;
+  const visible = () => { const s = room(); if (!s || overlay) return [];
+    const out = s.spots.filter((p) => !(p.hidden && p.hidden())).map((p) => p.name);
+    if (QUIZ_AREA?.[st.scene] && st.flags[quizFlag()]) for (const k of KEYS) out.push(`numero ${k}`);
+    return out; };
+  const view = () => { const el = document.getElementById("loki"), all = el ? el.textContent.split("\n").filter(Boolean) : [];
+    const lines = all.slice(seen); seen = all.length;
+    const form = document.getElementById("mouho2027");
+    return { ruutu: room()?.title ?? "(välianimaatio)", kohteet: visible(), tavarat: st.inv.map((k) => ITEMS[k].name),
+      vaihtoehdot: $game.classList.contains("talking") ? [...$dlg.children].map((b) => b.textContent) : null,
+      lomake: form ? form.innerText.slice(0, 400) : null, uudet_repliikit: lines, mouho_iq: document.getElementById("iq")?.textContent }; };
+  const settle = async () => { const t0 = performance.now(); let calm = 0;
+    while (performance.now() - t0 < 60000) { await new Promise((r) => setTimeout(r, 60));
+      if ($game.classList.contains("talking") || document.getElementById("mouho2027")) { calm += 60; if (calm > 300) break; continue; }
+      if (!busy && !skip && !overlay && !title) { calm += 60; if (calm > 400) break; } else calm = 0; }
+    return view(); };
+  const findSpot = (name) => { const s = room(), n = name.toLowerCase();
+    return s?.spots.find((p) => !(p.hidden && p.hidden()) && p.name.toLowerCase() === n) ?? s?.spots.find((p) => !(p.hidden && p.hidden()) && p.name.toLowerCase().includes(n)); };
+  const findItem = (name) => { const n = name.toLowerCase(); return st.inv.find((k) => ITEMS[k].name.toLowerCase() === n) ?? st.inv.find((k) => ITEMS[k].name.toLowerCase().includes(n)); };
+  window.mouho = {
+    ohje: "mouho.katso() | mouho.tee(verbi, kohde[, esine]) | mouho.valitse(n) | mouho.vihje() | mouho.aloita(). Verbit: " + VERBS.join(", "),
+    katso: () => view(),
+    aloita: async () => { if (title) cv.dispatchEvent(new MouseEvent("click", { clientX: 1, clientY: 1 })); while (skip || busy || overlay) { skip?.(); await new Promise((r) => setTimeout(r, 80)); } return settle(); },
+    async tee(verbi, kohde, esine) {
+      if (busy || $game.classList.contains("talking")) return { virhe: "Odota: kohtaus tai keskustelu on kesken.", ...view() };
+      const m = /^numero (\d)$/.exec(kohde ?? "");
+      if (m) { const A = QUIZ_AREA[st.scene], y = (A.y0 + A.y1) / 2, [a, b] = A.edges(y), i = KEYS.indexOf(m[1]);
+        place(a + (i + .5) / 10 * (b - a), y); room().onStop?.(st.x, st.y); return settle(); }
+      if (esine) { const k = findItem(esine); if (!k) return { virhe: `Tavaroissa ei ole: ${esine}`, ...view() };
+        const p = findSpot(kohde); if (!p) { const k2 = findItem(kohde); if (!k2) return { virhe: `Ei näkyvissä: ${kohde}`, ...view() }; first = k; act(verbi, k2); return settle(); }
+        first = k; act(verbi, p); return settle(); }
+      const p = findSpot(kohde);
+      if (p) { first = null; act(verbi, p); return settle(); }
+      const k = findItem(kohde); if (k) { first = null; act(verbi, k); return settle(); }
+      return { virhe: `Ei näkyvissä: ${kohde}`, ...view() }; },
+    async valitse(n) { const b = $dlg.children[n - 1]; if (!$game.classList.contains("talking") || !b) return { virhe: "Ei vaihtoehtoja", ...view() };
+      await new Promise((r) => setTimeout(r, 380)); b.click(); return settle(); },
+    async vihje() { hint?.(); return settle(); },
+  };
 }

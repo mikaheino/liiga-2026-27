@@ -55,7 +55,7 @@ Object.assign(ROOMS, {
     props: [{ y: 127, draw: () => st.flags.leafPile && leafPile(LAND[0], LAND[1]) }, { y: 128, draw: kisaPoster }, { y: 80, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi },
             { get y() { return st.flags.billStuck ? 129 : BILL.y; }, draw: drawBill }],      // nastan alla taulun edessä
     spots: [
-      { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
+      { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 156, aty: 102,
         Katso: () => say(st.flags.pyramid ? "Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Hän katselee pyramidikaaviotani kuin se olisi tuttu." : "Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Ei herra Saarni; tämä mies on seissyt täällä koko ajan, kuin odottaen jotakuta."),
         Puhu: () => salesmanTalk(),
         Anna: (it) => it === "seteli" ? salesmanBill() : it === "kaavio" ? (st.flags.mgp ? salesmanTalk() : showChartToSalesman()) : say("Otan vastaan vain tilisiirtoja, kiitos.", "salkkumies") },
@@ -65,9 +65,10 @@ Object.assign(ROOMS, {
         Poimi: () => chaseBill(), Käytä: () => chaseBill() },
       { id: "pollari", name: "pahvilaatikko", x: 91, y: 109, w: 26, h: 22, at: 122, aty: 128,
         Katso: () => say("Tavarani Liigan toimistolta. Kahvikuppi ja otteluohjelma, jossa on enemmän post-it-lappuja kuin otteluita."),
-        Avaa: () => say("Kahvikuppi. Siinä lukee \"Maailman paras urheilujohtaja\". Ostin sen itse."),
+        // Sokkotesti 4: Ilveksen vuosi ei löytynyt pelistä. Vihje laatikosta, päättely itse (2025 - 40).
+        Avaa: () => say("Kahvikuppi: \"Maailman paras urheilujohtaja\". Ostin sen itse.\nJa viime kevään otteluohjelma. Post-it: \"Ilves-ilta 2025: 40 vuotta viimeisestä mestaruudesta!\""),
+        Poimi: () => say("Otteluohjelma laatikon pohjalla. Post-it: \"Ilves-ilta 2025: 40 vuotta viimeisestä mestaruudesta!\" Muuten jätän laatikon tähän."),
         Käytä: () => standOnBox(), Työnnä: () => say("Laatikko on hyvä paikallaan. Siitä saisi vaikka korokkeen."),
-        Poimi: () => say("Jätän sen tähän hetkeksi. Kantaa ehtii myöhemminkin. Koko loppuelämän, oikeastaan."),
         Vedä: () => say("Vedän laatikkoa lähemmäs. Se on ainoa asia, joka seuraa minua tänään vapaaehtoisesti.") },
       { id: "juliste", name: "ilmoitustaulu", x: 16, y: 84, w: 38, h: 30, at: 72, aty: 131,
         Katso: () => readAd(), Poimi: () => (st.flags.billStuck && !st.flags.billCaught ? chaseBill() : readAd()) },   // sokkotesti 3: seteli taulussa
@@ -80,7 +81,7 @@ Object.assign(ROOMS, {
         Avaa: async () => { if (st.flags.boxOpen) return say(st.flags.unlocked && !st.flags.letterTaken ? "Se on jo auki. Sisällä on kultareunainen kirje." : "Se on jo auki."); st.flags.boxOpen = true;
           await say(st.flags.letterTaken ? "Tyhjä." : st.flags.unlocked ? "Laatikossa on uusi kirje! Kultareunainen kuori." : "Laskuja. Ja Liigan kiitoskirje, toinen kappale. Ei mitään uutta."); },
         Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
-        Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (!st.flags.unlocked) return say("Pelkkiä laskuja. Ne saavat jäädä sinne."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje! Joku muistaa minut."); },
+        Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (!st.flags.unlocked) return say("Pelkkiä laskuja. Ne saavat jäädä sinne."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje sijoittajilta! Kultareunainen kuori. Joku muistaa minut."); },
         "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(),
         Katso: () => say("SaiPan toimiston postilaatikko, keltaisen oven vieressä. Postini tulee yhä tänne, vaikka lähdin keväällä 2023.") },
       { id: "ovi", name: "SaiPan toimiston ovi", x: 219, y: 62, w: 8, h: 18, at: 224, aty: 88,
@@ -90,7 +91,8 @@ Object.assign(ROOMS, {
         Avaa: () => say("Lukossa. Pelaajakaupoissa ei häiritä."), Puhu: () => say("Koputan. Sisältä kuuluu: \"Ja tekstitv:stä löytyi vielä yksi!\"\nEn keskeytä.") },
       { id: "taksi", name: "taksi lentokentälle", x: 242, y: 88, w: 78, h: 46, at: 234, aty: 130,
         Katso: () => say("Taksi Lappeenrannan lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
-        Käytä: () => leave(), Avaa: () => leave(), Puhu: () => say(has("lippu") ? "Kuljettaja: \"Lentokentälle? Istanbuliin? Hyppää kyytiin.\"" : "Kuljettaja: \"Lentokentälle? Minne sitten? Kun tiedät, tule takaisin. Mittari ei käy vielä.\"", "muu") },
+        Käytä: () => leave(), Avaa: () => leave(), "Käytä:lippu": () => leave(), "Anna:lippu": () => leave(),
+        Puhu: () => has("lippu") ? leave() : say(has("lippu") ? "Kuljettaja: \"Lentokentälle? Istanbuliin? Hyppää kyytiin.\"" : "Kuljettaja: \"Lentokentälle? Minne sitten? Kun tiedät, tule takaisin. Mittari ei käy vielä.\"", "muu") },
       { id: "halli", name: "Kisapuiston halli", x: 124, y: 62, w: 58, h: 18, at: 150, aty: 92,
         Katso: () => say("Kisapuisto, SaiPan kotihalli. Ovista kuuluu kiekon kopse. Treenit ovat käynnissä."), Avaa: () => say("Treenit ovat kesken. En ole enää kenenkään urheilujohtaja.") },
       { id: "keltainen", name: "keltainen rakennus", x: 40, y: 28, w: 42, h: 50, at: 110, aty: 92,
@@ -577,7 +579,7 @@ const NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9
 const QUIZZES = {
   koti: { code: "1985", done: () => st.flags.unlocked, taunt: "salkkumies",
     lines: ["Hah! Väärin. Sijoittajat merkitsevät tämän muistiin.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."],
-    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("1985. Pätevyys todistettu. Sijoittajat jättivät teille kirjeen postilaatikkoonne.", "salkkumies"); await say("Kirje? Minulle? Joku on tänään pitänyt minua pätevänä."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
+    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("1985. Pätevyys todistettu. Sijoittajat jättivät teille kirjeen. SaiPan toimiston postilaatikkoon, sinne teidän postinne kai yhä tulee.", "salkkumies"); await say("Kirje? Minulle? Joku on tänään pitänyt minua pätevänä."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
       st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); }); } },
   basaari: { code: "2006", done: () => st.flags.cupDone, taunt: "kauppias",
     lines: ["Ei, ei, ystäväni. Maalivahti muistaisi.", "Väärä vuosi! Tuollaisella muistilla et pääse edes Galatan sillalle.", "Hmm. Ehkä sinä olit vain katsomossa."],
@@ -613,7 +615,7 @@ async function refereeAppears() {
 // Jussi värvää tuomarin (Myrrä: "tärkeintä on joukkue").
 function refereeTalk() {
   return script(async () => {
-    const f = st.flags, opts = [];
+    while (true) { const f = st.flags, opts = [];      // sokkotesti 4: keskustelu jatkuu kysymyksen jälkeen
     if (!f.refWho) opts.push("Kuka sinä olet? Ja miksi luolassa?");
     if (f.refWho && f.myrra2 && !f.refRecruited) opts.push("Liity Mouhoon! Joukkue tarvitsee tuomarin.");
     opts.push("Ei mitään.");
@@ -621,7 +623,8 @@ function refereeTalk() {
     if (pick.startsWith("Kuka")) { f.refWho = true;
       await say("Olin muinaisten pelien erotuomari. Kaksituhatta vuotta sitten vihelsin viimeisen pelin, ja kaikki lähtivät kotiin.", "tuomari");
       await say("Minä jäin. Kukaan ei kutsunut minua enää mihinkään joukkueeseen.", "tuomari"); }
-    else if (pick.startsWith("Liity")) await recruitReferee();
+    else if (pick.startsWith("Liity")) return recruitReferee();
+    else return; }
   });
 }
 async function recruitReferee() {
@@ -699,7 +702,7 @@ const HINTS = () => {
     if (!f.adRead) return [f.noteHint ? "Saarnin lappu sanoi, että ilmoitustaululla on minulle sopiva paikka." : "Setelin vieressä ilmoitustaululla oli uusi ilmoitus.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukon numero on kännykässä.", "Valitse Käytä ja klikkaa kännykkää tavaroissa: soita Myrrälle."];
     if (!f.unlocked && !f.pianoT) return [f.mgp ? "Mouho Global Partners on kiinnostunut. Mitä sijoittajat oikein haluavat?" : "Liituraitamies pyysi näyttämään suunnitelman, kun minulla on sellainen.", f.mgp ? "Puhu salkkumiehelle ja kysy, mitä sijoittajat haluavat." : "Näytä pyramidikaavio salkkumiehelle (Anna kaavio, tai Puhu)."];
-    if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat asfaltissa.", "Kävele asfaltin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
+    if (!f.unlocked) return ["Liigan toimiston otteluohjelmassa oli post-it Ilveksestä. Se on pahvilaatikossani.", "Ilves-ilta 2025 juhli 40 vuotta mestaruudesta: kävele numeroille 1, 9, 8 ja 5."];
     if (!f.letterTaken) return ["Sijoittajat jättivät kirjeen postilaatikkoon.", "Avaa postilaatikko ja poimi kirje."];
     if (!has("lippu")) return ["Kirjeessä voi olla muutakin kuin sanoja.", "Katso kirjettä: oikea painike kirjeen kuvaan tavaroissa."];
     return ["Kaikki on valmista. Lentokenttä kutsuu.", "Käytä taksia oikealla."];
