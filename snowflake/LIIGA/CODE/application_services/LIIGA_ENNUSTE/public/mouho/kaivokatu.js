@@ -43,7 +43,7 @@ function kaivokatuBg() {
 function kaivokatuDraw(t, jx, idol) {
   g.drawImage(paintBg("kaivokatu", kaivokatuBg), 0, 0);
   tram(-140 + ((t / 1000 * 60) % 600));
-  for (const [x0, c, v] of [[60, "#3c2c4c", 9], [210, "#2c4c3c", -7], [260, "#5c2c2c", 6]]) { const x = ((x0 + t / 1000 * v) % 340 + 340) % 340 - 10; figure(x, 116, c, false, t + x0 * 50, v); }
+  for (const [x0, c, v] of [[60, "#3c2c4c", 9], [210, "#2c4c3c", -7], [260, "#5c2c2c", 6]]) { const x = ((x0 + t / 1000 * v) % 340 + 340) % 340 - 10; npc(x0 % 6, x, 116, t + x0 * 50, { moving: true, dir: Math.sign(v), sc: .85 }); }
   shadow(jx, 117, 6); jussi(jx, 117, 1, Math.floor(t / 120) % 4, {}, .9);
   if (idol) { r(jx + 6, 99, 4, 6, "#e8c81c"); r(jx + 7, 97, 2, 2, "#e8c81c"); glow(jx + 8, 101, 8, "255,220,100", .3); }
 }
@@ -76,13 +76,22 @@ function mouhoInBg() {
 // tuomarit.png, pikselöity pixel_face.py:llä), pöydän takana oikealla.
 function boardTable(t) {
   // Sama rajaus kaikille (pää 1/2,2 kuvan leveydestä), sama koko, ja peilattuna niin, että
-  // katse kääntyy Jussiin (17.10.: "eri kokoisia ja väärin päin").
-  [["hallitus_mikko", 244], ["hallitus_ilkka", 274], ["hallitus_mika", 304]].forEach(([k, x], i) => {
+  // katse kääntyy Jussiin (17.10.: "eri kokoisia ja väärin päin"). Backlog 5.3: jäsenet
+  // istuvat -- selkänojat takana, vartalo rintakuvan jatkeena pöydän reunaan, kädet pöydällä.
+  const B = [["hallitus_mikko", 244], ["hallitus_ilkka", 274], ["hallitus_mika", 304]];
+  for (const [, x] of B) { r(x - 13, 82, 26, 32, "#1c1418"); r(x - 12, 83, 24, 30, "#2c2026"); r(x - 12, 83, 24, 2, "#4c3c44"); r(x - 10, 86, 2, 24, "#3c2c34"); }
+  B.forEach(([k, x], i) => {
     const img = faceCache[`bust|${k}`] ??= renderPix(PIXFACES[k].bust, {}), w = 32, h = img.height * 32 / img.width;
-    const bob = Math.round(Math.sin(t / 600 + i * 2) * .5);
-    g.save(); g.imageSmoothingEnabled = false; g.translate(x, 0); g.scale(-1, 1); g.drawImage(img, -w / 2, 116 - h + bob, w, h); g.restore(); });
-  r(226, 112, 94, 12, "#5c4632"); r(226, 112, 94, 2, "#7c6448"); r(230, 124, 3, 10, "#3c2c20"); r(314, 124, 3, 10, "#3c2c20");
-  r(255, 114, 38, 7, "#f4f0e4"); text3("HALLITUS", 257, 115, "#2c2c3c");
+    const shirt = (faceCache[`shirt|${k}`] ??= (() => { const c = img.getContext("2d");      // paidan väri olkapäästä: alin peittävä pikseli
+      for (let yy = img.height - 1; yy > img.height / 2; yy--) { const d = c.getImageData(Math.round(img.width * .3), yy, 1, 1).data; if (d[3] > 200) return `rgb(${d[0]},${d[1]},${d[2]})`; }
+      return "#3c3c4c"; })());
+    const bob = Math.round(Math.sin(t / 600 + i * 2) * .5), top = 108 - h + bob;
+    fillPoly([[x - 13, 106], [x + 13, 106], [x + 15, 118], [x - 15, 118]], shirt);            // vartalo pöydän reunaan
+    r(x - 15, 106, 3, 10, "rgba(0,0,0,.25)"); r(x + 12, 106, 3, 10, "rgba(0,0,0,.25)");
+    g.save(); g.imageSmoothingEnabled = false; g.translate(x, 0); g.scale(-1, 1); g.drawImage(img, -w / 2, top, w, h); g.restore(); });
+  r(226, 114, 94, 12, "#5c4632"); r(226, 114, 94, 2, "#7c6448"); r(230, 126, 3, 8, "#3c2c20"); r(314, 126, 3, 8, "#3c2c20");
+  for (const [, x] of B) { r(x - 11, 113, 6, 3, "#e0a888"); r(x + 5, 113, 6, 3, "#e0a888"); r(x - 2, 113, 7, 2, "#f4f0e4"); }   // kädet ja paperit pöydällä
+  r(255, 117, 38, 7, "#f4f0e4"); text3("HALLITUS", 257, 118, "#2c2c3c");
 }
 
 // ---------------------------------------------------------------- loppu
@@ -120,7 +129,7 @@ async function ending() {
       else if (c.who === "mehmet") merchant(c.x, c.ty, t, speaking === "kauppias");
       else if (c.who === "salkkumies") salesman(c.x, c.ty, t);
       else if (c.who === "tuomari") ghostRef(c.x, c.ty, t, speaking === "tuomari");
-      else figure(c.x, c.ty, c.c, c.fez, t, mv ? 4 : Math.sin(t / 300 + c.tx)); }
+      else npc(c.v ?? 0, c.x, c.ty, t, { moving: mv, sc: .85 }); }
     shadow(176, 128, 7); jussi(176, 128, -1, 0, {});
     // jäsenhankintakaavio telineessä; Jussi kääntää sen turnauskaavioksi (17.10.: "kaavio rumalta")
     const k2 = flipT ? Math.min(1, (performance.now() - flipT) / 1400) : 0, sy = Math.cos(k2 * Math.PI);
@@ -152,7 +161,7 @@ async function ending() {
   beep(140, 120, "square", .05); arrive([{ who: "maskotti" }, { who: "saarni" }]); await sleep(1600);
   await say("Lappusi sanoi, että Mouho hakee jäseniä. Täällä ollaan. Maskotti otti pelaajakorttinsa mukaan.", "saarni");
   beep(140, 120, "square", .05); arrive([{ who: "mehmet" }, { who: "salkkumies" }]);
-  if (f.bazaar) arrive(Array.from({ length: 6 }, (_, i) => ({ who: "basaari", c: ["#3c1c24", "#2c1c34", "#4c2c1c"][i % 3], fez: i % 2 === 0 })));
+  if (f.bazaar) arrive(Array.from({ length: 6 }, (_, i) => ({ who: "basaari", v: i })));
   await sleep(1800);
   await say("Mouho Global Partners saapuu! Ja koko basaari. Kebabit lämpiminä, ystäväni!", "muu");
   if (f.refRecruited) { beep(2200, 160, "square", .04); arrive([{ who: "tuomari" }]); await sleep(1500); await say("Haamutuomari leijuu sisään.", "muu"); await say("Pilli on mukana.", "tuomari"); }

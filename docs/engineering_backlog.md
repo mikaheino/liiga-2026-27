@@ -171,7 +171,11 @@ odottaa kauden loppua. Testit kirjoitetaan nykyistä käytöstä vasten.
 **Milloin:** kohdat 1-2 heti kun halutaan (ei vaikuta ennusteeseen), 3-4
 kauden jälkeen.
 
-## 5. Mouho-peli: grafiikan tasoon nosto (lisätty 2026-10-17)
+## 5. Mouho-peli: grafiikan tasoon nosto (lisätty ja tehty 2026-10-17)
+
+**Tehty 17.10.:** kartat oikeista koordinaateista (`MAP_P`, `SEP` prologue.js:ssä),
+nimettömät hahmot, Mehmet ja salkkumies bobblehead-tyyliin (`npc()` faces.js:ssä), hallitus
+tuoleissa pöydän takana. Esikatselu: `index.html?nayta=kartta|suomi|hallitus|hahmot|basaari`.
 
 Käyttäjän havainnot pelatessa (`public/mouho/`):
 

@@ -240,7 +240,7 @@ function basaariDraw(t) {
   g.drawImage(paintBg("basaari", basaariBg), 0, 0);
   // kaukainen väkijoukko kadun päässä (pienet)
   for (const p of CROWD2) { p.x += p.v * 0.016; if (p.x < 138) p.v = Math.abs(p.v); if (p.x > 182) p.v = -Math.abs(p.v);
-    g.save(); g.translate(p.x, 72); g.scale(.45, .45); g.translate(-p.x, -72); figure(p.x, 72, p.c, p.fez, t + p.x * 40, p.v); g.restore(); }
+    npc(CROWD2.indexOf(p), p.x, 72, t + p.x * 40, { moving: true, dir: Math.sign(p.v), sc: .42, hsc: .45 }); }
   for (let i = 0; i < 3; i++) { const x = ((t / (38 + i * 9) + i * 130) % 380) - 30, y = 10 + i * 7 + Math.sin(t / 320 + i) * 3, up = Math.floor(t / 160 + i) % 2;
     px(x, y + up, "#2c1428"); px(x + 1, y, "#2c1428"); px(x + 2, y + 1, "#2c1428"); px(x + 3, y, "#2c1428"); px(x + 4, y + up, "#2c1428"); }
   // viirinauha Turkin lipuin kadun yli
@@ -269,9 +269,8 @@ function basaariBags() { lineC(274, 64, 296, 64, "#5c3c1c");
     disc(x, 64 + h - 4, 4, "#8c5428", "#6c3c1c"); r(x - 2, 64 + h - 9, 4, 2, "#7c4824"); px(x - 1, 64 + h - 5, "#b07440"); r(x - 3, 64 + h - 7, 6, 1, "#e8c81c"); } }
 // Tinkimistä kuunteleva väki etualalla (sokkotesti 2: "koko basaari kokoontuu", mutta ketään ei näkynyt).
 function basaariCrowd(t) {
-  const C = ["#3c1c24", "#2c1c34", "#4c2c1c", "#1c2c3c", "#5c3c24", "#2c3c2c"];
-  for (let i = 0; i < 8; i++) { const x = 104 + i * 24 + (i % 2) * 8, y = 150 + (i % 2) * 4;   // selät katsojaan päin, pää ja hartiat näkyvissä
-    g.save(); g.translate(x, y); g.scale(1.8, 1.8); figure(0, 0, C[i % 6], i % 3 === 0, t, Math.sin(t / 260 + i) * 1.2); g.restore(); } }
+  // Reunoille, ettei väki peitä Jussia ja Mehmetiä keskellä; selät katsojaan päin.
+  [14, 42, 70, 250, 278, 306].forEach((x, i) => npc(i, x, 156 + (i % 2) * 3, t, { sc: 1.2, back: true })); }
 function basaariAmphora() { shadow(38, 131, 8); disc(38, 122, 8, "#b85c2c", "#8c3c1c"); r(35, 110, 7, 5, "#a84c24"); r(34, 109, 9, 2, "#c86c3c");
   r(32, 117, 2, 5, "#8c3c1c"); r(42, 117, 2, 5, "#8c3c1c"); px(34, 119, "#e88c5c"); px(35, 118, "#e88c5c"); r(31, 123, 14, 1, "#e8c81c"); }
 

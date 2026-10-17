@@ -71,36 +71,45 @@ function tumbleBox(x, y, a, s = 1) {
 // ---------------------------------------------------------------- kartta
 // Monkey Island 2 -henkinen pergamenttikartta: saaristo, metsät puu puulta, Saimaan labyrintti,
 // kaupungit omina pikkukuvinaan, kompassiruusu, kartussi ja lautta Suomenlahdella.
-const MAPP = { hki: [58, 104], kvl: [168, 70], lpr: [266, 56] };
+// Kaakkois-Suomi oikeista koordinaateista (backlog 5.1): lon 23.5-30.5, lat 61.35 ylhäällä,
+// leveysasteet kerrottu 1/cos(60.5°):lla, jotta mittasuhteet ovat oikeat.
+const SEP = (lon, lat) => [(lon - 23.5) * 45.7, (61.35 - lat) * 92.8];
+const MAPP = { hki: SEP(24.94, 60.17), kvl: SEP(26.70, 60.87), lpr: SEP(28.19, 61.06) };
 function seFinlandMapBg() {
   seed = 3; noise(0, 0, W, H, "#e8d4a4", ["#dcc896", "#f0e0b8", "#d4bc88", "#e4cc9c"], .45);
   for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const e = Math.min(i, j, W - 1 - i, H - 1 - j); if (e < 10 && bay(i, j) < (10 - e) / 12) px(i, j, "#b89c6c"); }
   for (const [x, y, rr] of [[40, 30, 12], [250, 110, 9]]) { g.strokeStyle = "rgba(140,100,50,.35)"; g.lineWidth = 2; g.beginPath(); g.arc(x, y, rr, .3, 5.6); g.stroke(); }   // kahvirenkaat
-  // Suomenlahti, rannikko ja saaristo
-  const coast = [[0, 112], [24, 108], [40, 112], [58, 108], [74, 114], [100, 110], [128, 116], [150, 108], [176, 112], [204, 104], [228, 100], [256, 96], [284, 92], [320, 88]];
+  // Suomenlahti: rannikko Porkkalasta Pietariin (lon, lat), saaristo rannan edustalla
+  const coast = [[23.3, 59.98], [24, 60.05], [24.5, 60.1], [24.95, 60.15], [25.3, 60.22], [25.66, 60.3], [26, 60.35], [26.22, 60.42], [26.6, 60.42], [26.94, 60.46], [27.2, 60.55], [27.6, 60.5], [27.85, 60.55], [28.3, 60.55], [28.75, 60.7], [28.7, 60.55], [28.6, 60.36], [29, 60.2], [29.5, 60.18], [30, 60], [30.6, 59.95]].map(([lo, la]) => SEP(lo, la));
   fillPoly([...coast, [320, 136], [0, 136]], "#94b4c8"); for (let i = 0; i < coast.length - 1; i++) lineC(...coast[i], ...coast[i + 1], "#5c7c94");
   for (let i = 0; i < coast.length - 1; i++) { const [x0, y0] = coast[i], [x1, y1] = coast[i + 1]; lineC(x0, y0 + 2, x1, y1 + 2, "#b4ccdc"); }
-  seed = 17; for (let i = 0; i < 46; i++) { const x = (rnd() * W) | 0, y = 118 + ((rnd() * 14) | 0); r(x, y, 4, 1, "#b4ccdc"); px(x + 1, y - 1, "#b4ccdc"); }
-  for (let i = 0; i < 26; i++) { const x = 10 + ((rnd() * 290) | 0), y = 112 + ((rnd() * 8) | 0); disc(x, y, 1 + (i % 2), "#c8b484", "#8c7c54"); }
+  seed = 17; for (let i = 0; i < 46; i++) { const x = (rnd() * W) | 0, y = 124 + ((rnd() * 10) | 0); r(x, y, 4, 1, "#b4ccdc"); px(x + 1, y - 1, "#b4ccdc"); }
+  for (let i = 0; i < 30; i++) { const k = (rnd() * (coast.length - 1)) | 0, [x, y] = coast[k]; disc(x + (rnd() * 12 - 6) | 0, y + 3 + ((rnd() * 6) | 0), 1 + (i % 2), "#c8b484", "#8c7c54"); }
   // lautta
   r(110, 124, 16, 4, "#f4f4ec"); r(110, 127, 16, 1, "#2c4c7c"); r(114, 121, 8, 3, "#f4f4ec"); r(118, 118, 2, 3, "#c81c1c"); for (let k = 0; k < 6; k++) px(106 - k * 2, 128 + (k % 2), "#e4ecf4");
   // järvet: Saimaa labyrinttina, pienempiä lammia
-  for (const [x, y, rx, ry] of [[240, 26, 16, 6], [262, 20, 12, 5], [284, 30, 18, 7], [296, 44, 10, 6], [252, 40, 8, 4], [276, 46, 9, 4], [300, 18, 10, 5], [120, 40, 8, 3], [96, 56, 6, 3], [200, 36, 7, 3]]) {
+  // Saimaan eteläosa Lappeenrannan pohjoispuolella, Kymijoki, Vuoksi ja pikkujärvet
+  { const saimaa = [[27.75, 61.35], [27.9, 61.15], [28.12, 61.09], [28.35, 61.12], [28.6, 61.18], [28.85, 61.2], [29.05, 61.3], [29.1, 61.4]].map(([lo, la]) => SEP(lo, la));
+    fillPoly([...saimaa, [saimaa.at(-1)[0], 0], [saimaa[0][0], 0]], "#94b4c8"); for (let i = 0; i < saimaa.length - 1; i++) lineC(...saimaa[i], ...saimaa[i + 1], "#5c7c94");
+    seed = 9; for (let i = 0; i < 14; i++) { const [x, y] = SEP(27.8 + rnd() * 1.2, 61.22 + rnd() * .12); disc(x, y, 1 + (i % 2), "#c8b484", "#8c7c54"); } }
+  g.strokeStyle = "#7c9cb4"; g.lineWidth = 1;
+  for (const R of [[[26.85, 61.35], [26.75, 61], [26.7, 60.87], [26.75, 60.65], [26.9, 60.47]], [[29.1, 61.4], [29.4, 61.2], [29.6, 61.05]]]) { g.beginPath(); R.forEach(([lo, la], k) => { const [x, y] = SEP(lo, la); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); }
+  for (const [lo, la, rx, ry] of [[25.5, 61.2, 7, 3], [27.2, 61.25, 6, 3], [24.4, 60.6, 5, 2], [25.9, 60.8, 4, 2], [27.8, 60.95, 5, 2]]) { const [x, y] = SEP(lo, la);
     g.fillStyle = "#94b4c8"; g.beginPath(); g.ellipse(x, y, rx, ry, (x % 7) / 10, 0, 7); g.fill(); g.strokeStyle = "#5c7c94"; g.lineWidth = 1; g.stroke(); }
-  g.fillStyle = "#6c5c3c"; g.font = "9px VT323, monospace"; g.fillText("Saimaa", 256, 12);
+  g.fillStyle = "#6c5c3c"; g.font = "9px VT323, monospace"; { const [x, y] = SEP(28.5, 61.2); g.fillText("Saimaa", x, y); }
   // metsät: pikkukuuset sävyineen, vältä vettä ja kaupunkeja
   seed = 41; for (let i = 0; i < 260; i++) { const x = 6 + ((rnd() * 306) | 0), y = 8 + ((rnd() * 96) | 0);
-    const near = Object.values(MAPP).some(([cx, cy]) => Math.hypot(cx - x, cy - y) < 20), wet = (x > 228 && y < 52 && rnd() < .7) || y > 100;
+    const near = Object.values(MAPP).some(([cx, cy]) => Math.hypot(cx - x, cy - y) < 20), wet = g.getImageData(x + 2, y + 6, 1, 1).data[2] > 180 || g.getImageData(x + 2, y, 1, 1).data[2] > 180;
     if (near || wet) continue; tri(x, y, 5, 6, (x + y) % 3 ? "#6c8c4c" : "#5c7c40"); px(x + 2, y + 1, "#8cac64"); r(x + 2, y + 6, 1, 2, "#5c4c34"); }
   // tiet
-  g.strokeStyle = "#9c7c4c"; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(...MAPP.hki); g.bezierCurveTo(100, 96, 130, 78, ...MAPP.kvl); g.bezierCurveTo(200, 66, 232, 62, ...MAPP.lpr); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = "#9c7c4c"; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(...MAPP.hki); g.bezierCurveTo(...SEP(25.6, 60.4), ...SEP(26.2, 60.75), ...MAPP.kvl); g.bezierCurveTo(...SEP(27.2, 60.95), ...SEP(27.7, 61.0), ...MAPP.lpr); g.stroke(); g.setLineDash([]);
   // kaupungit pikkukuvina
   { const [x, y] = MAPP.hki; r(x - 10, y - 6, 20, 8, "#f4f0e4"); r(x - 10, y - 6, 20, 1, "#ffffff"); r(x - 4, y - 12, 8, 6, "#f4f0e4"); disc(x, y - 14, 4, "#5c9c7c", "#3c6c54"); r(x - 1, y - 20, 2, 3, "#f0c84c");
     for (const dx of [-8, 6]) { r(x + dx, y - 10, 2, 4, "#f4f0e4"); disc(x + dx + 1, y - 11, 1, "#5c9c7c"); } for (let k = 0; k < 4; k++) r(x - 8 + k * 5, y - 3, 2, 3, "#8c9cac"); }
   { const [x, y] = MAPP.kvl; for (const [dx, h] of [[-12, 14], [-6, 20], [0, 16], [6, 22], [12, 12]]) { r(x + dx - 2, y - h, 5, h, "#626264"); r(x + dx - 2, y - h, 5, 1, "#79797D"); for (let yy = y - h + 2; yy < y - 1; yy += 3) r(x + dx - 1, yy, 3, 1, "#3A3938"); } }
   { const [x, y] = MAPP.lpr; r(x - 10, y - 8, 14, 9, "#e8b83c"); r(x - 10, y - 8, 14, 1, "#fcd870"); r(x + 4, y - 6, 10, 7, "#9c9cac"); r(x - 4, y - 5, 3, 3, "#1c1c1c");
     r(x + 6, y - 14, 1, 6, "#5c4c34"); fillPoly([[x + 7, y - 14], [x + 13, y - 12], [x + 7, y - 10]], "#fcd41c"); }
-  for (const [k, label, dx, dy] of [["hki", "Helsinki", -16, 12], ["kvl", "Kouvola", -14, 10], ["lpr", "Lappeenranta", -28, 12]]) { const [x, y] = MAPP[k];
+  for (const [k, label, dx, dy] of [["hki", "Helsinki", -16, 12], ["kvl", "Kouvola", -14, 10], ["lpr", "Lappeenranta", -24, 12]]) { const [x, y] = MAPP[k];
     g.font = "10px VT323, monospace"; g.fillStyle = "#f4e4c0"; g.fillText(label, x + dx + 1, y + dy + 1); g.fillStyle = k === "kvl" ? "#626264" : "#4c3c24"; g.fillText(label, x + dx, y + dy); }
   g.fillStyle = "#6c5c3c"; g.font = "9px VT323, monospace"; g.fillText("Suomenlahti", 140, 130);
   // kartussi ja kompassiruusu
@@ -197,38 +206,62 @@ async function prologue() {
 
 // ---------------------------------------------------------------- lento Lappeenrannasta Istanbuliin ja takaisin
 // Samaa pergamenttityyliä kuin Kaakkois-Suomen kartta (17.10.: "kartta-animaatio on vielä vanha").
-const EUP = { lpr: [214, 20], hki: [200, 26], ist: [222, 106], kap: [262, 114] };
+// Kartta oikeista koordinaateista (backlog 5.1, 17.10.: "Euroopan kartta ei noudata oikeaa
+// karttaa"). Tasavälinen projektio, pituusasteet kerrottu cos(50°):lla, ettei pohjoinen veny:
+// lat 66 -> 35 täyttää korkeuden, Eurooppa keskellä. Rantaviivat yksinkertaistettu (lon, lat).
+const MAP_P = (lon, lat) => [160 + (lon - 24) * 2.82, (66 - lat) * 4.39];
+const EUP = { lpr: MAP_P(28.19, 61.06), hki: MAP_P(24.94, 60.17), ist: MAP_P(28.98, 41.01), kap: MAP_P(34.83, 38.65) };
+const EURASIA = [[13.5, 67.5], [12.4, 66], [11, 64.8], [9.6, 63.8], [8, 63.2], [6, 62.5], [5, 61.6], [4.9, 60.5], [5.3, 59.3], [5.7, 58.7], [6.6, 58.1], [8, 58.1], [9.4, 58.8], [10.4, 59.4], [10.7, 59.9], [11, 59], [11.2, 58.4], [11.8, 57.7], [12.4, 56.9], [12.9, 56.4], [12.6, 55.7], [13, 55.4], [14.2, 55.4], [14.4, 56], [15.9, 56.1], [16.5, 56.8], [16.6, 57.8], [17, 58.5], [18.3, 59.3], [18.9, 60.1], [17.3, 60.7], [17.2, 61.7], [17.6, 62.4], [18.6, 63.2], [20.3, 63.8], [21.4, 64.6], [22.3, 65.5], [24.2, 65.8], [25.4, 65], [24.6, 64.3], [23.1, 63.6], [21.5, 63], [21.2, 62], [21.6, 61.3], [21.4, 60.7], [22.3, 60.3], [22.9, 59.9], [24.6, 60.1], [26, 60.4], [27.5, 60.5], [28.7, 60.6], [29.8, 60.2], [30.2, 59.9], [28.9, 59.8], [28, 59.5], [26.5, 59.5], [24.8, 59.5], [23.5, 59.2], [23.5, 58.7], [23.9, 58.4], [24.4, 58.3], [24.3, 57.9], [24.4, 57.2], [23.6, 56.9], [23, 57.2], [22.6, 57.7], [21.7, 57.5], [21.1, 56.9], [21, 56.1], [21.2, 55.5], [20.6, 54.9], [19.6, 54.4], [18.6, 54.4], [18.4, 54.8], [16.8, 54.6], [14.6, 54], [13.7, 54.2], [12.3, 54.2], [11.1, 54], [10.8, 54.5], [10, 54.8], [10.3, 55.6], [10.6, 56.5], [10.3, 57], [10.6, 57.7], [9.8, 57.6], [8.6, 57.1], [8.1, 56.5], [8.1, 55.6], [8.6, 55], [8.9, 54.2], [8.6, 53.7], [7.2, 53.6], [6.2, 53.4], [4.8, 52.9], [4.4, 52], [3.6, 51.4], [2.5, 51.1], [1.6, 50.9], [1.6, 50.2], [0.2, 49.7], [-1.3, 49.6], [-1.6, 48.7], [-3, 48.8], [-4.7, 48.4], [-4.3, 47.8], [-2.5, 47.3], [-1.2, 46.2], [-1.2, 44.6], [-1.6, 43.4], [-3.8, 43.4], [-6.5, 43.6], [-8.3, 43.4], [-9.2, 43], [-8.8, 42], [-8.9, 40.9], [-9.5, 38.8], [-8.8, 37.9], [-8.9, 37], [-7.4, 37.2], [-6.3, 36.8], [-5.6, 36], [-4.4, 36.7], [-2.1, 36.7], [-0.5, 38.3], [0.2, 38.8], [-0.3, 39.5], [0.9, 41], [3.2, 41.9], [3.1, 43.1], [4.6, 43.4], [6.6, 43.1], [7.5, 43.8], [8.8, 44.4], [10.2, 43.9], [10.5, 42.9], [12, 42], [13, 41.2], [14.3, 40.8], [15.6, 40], [15.7, 38.9], [16.1, 38], [16.6, 38.4], [17.2, 39], [16.6, 40], [17.3, 40.5], [18.5, 40.1], [18, 40.7], [16, 41.5], [14, 42.6], [12.4, 44.2], [12.3, 45.3], [13.7, 45.7], [13.9, 44.9], [15.2, 44.3], [16.4, 43.5], [18.5, 42.5], [19.4, 41.8], [19.4, 40.5], [20.2, 39.6], [20.7, 38.8], [21.3, 37.7], [21.7, 36.8], [22.4, 36.4], [23, 37.4], [23.2, 38], [24, 38.2], [23, 39], [22.8, 40.4], [23.7, 40.2], [24.4, 40.9], [26, 40.8], [26.2, 40], [26.1, 39.4], [26.9, 39], [26.7, 38.4], [27.2, 37.9], [27.3, 37], [28.2, 36.7], [29.6, 36.2], [30.6, 36.8], [32, 36.5], [33.5, 36.2], [34.6, 36.8], [36, 36.6], [35.9, 35.9], [35.8, 35.2], [35.4, 33.8], [34.6, 31.5], [34.2, 29.5], [90, 29], [90, 68], [13.5, 68]];
+const ISLANDS = [
+  [[-5.7, 50], [-3.5, 50.3], [-1, 50.7], [1.4, 51.2], [1.7, 52.6], [0.3, 53.4], [-0.2, 54.1], [-1.5, 55], [-2, 55.9], [-3, 56], [-1.8, 57.5], [-3, 58.6], [-5, 58.6], [-6.2, 57.5], [-5.6, 56.3], [-5, 55], [-3.6, 54.6], [-3, 53.4], [-4.6, 53.3], [-4.1, 52.3], [-5.2, 51.7], [-3.3, 51.4], [-4.5, 51]],   // Iso-Britannia
+  [[-6, 52.2], [-6.2, 53.3], [-6, 54.6], [-7.3, 55.3], [-8.5, 54.6], [-10, 54.2], [-9.5, 53.4], [-10.3, 52], [-9.6, 51.5], [-8, 51.8]],   // Irlanti
+  [[-22.7, 63.9], [-18, 63.4], [-14.5, 64.4], [-13.5, 65.3], [-15, 66.2], [-18, 66.2], [-22.4, 66.4], [-24, 65.5], [-22, 64.6]],         // Islanti
+  [[-12, 29], [-12, 34], [-6, 35.8], [-5.3, 35.9], [-2, 35.1], [0, 35.9], [3, 36.8], [6.5, 37.1], [9.8, 37.3], [11.1, 37], [10.4, 36.1], [11.1, 35.2], [10.1, 34.2], [20, 32.5], [32, 31.3], [34.2, 29.5]],   // Pohjois-Afrikka
+  [[8.6, 41.4], [9.3, 41.4], [9.5, 42.8], [8.6, 42.6]], [[8.4, 39], [9.6, 39.1], [9.8, 40.9], [8.3, 41]],                                  // Korsika, Sardinia
+  [[12.4, 37.9], [15.6, 38.3], [15.1, 36.7], [12.7, 37.6]], [[23.5, 35.3], [26.3, 35.2], [24.9, 35]], [[32.3, 34.9], [34.6, 35.7], [33.5, 35.1], [32.9, 34.6]],   // Sisilia, Kreeta, Kypros
+  [[11.1, 55.3], [12.6, 55.6], [12.3, 56.1], [11, 55.8]], [[18.2, 56.9], [18.9, 57.8], [18.6, 57.1]],                                       // Seelanti, Gotlanti
+];
+const INLAND_SEAS = [
+  [[27.5, 42.4], [28, 43.4], [28.6, 44.3], [29.7, 45.2], [30.6, 46.5], [31.8, 46.6], [33.5, 46], [33, 45.3], [33.6, 44.4], [35.4, 45], [36.6, 45.3], [38.2, 47.1], [39.3, 47.1], [37.6, 45.9], [37.8, 44.7], [39.9, 43.4], [41.6, 41.6], [40, 41], [37.5, 41], [35.1, 42], [33.3, 42], [31.3, 41.2], [29.1, 41.2], [28, 41.6]],   // Mustameri
+  [[49, 46.7], [51.3, 47], [53, 46.6], [53, 45.2], [51.3, 44.5], [51, 43.2], [52.7, 42.3], [52.9, 41], [54, 40], [53.9, 38], [52.5, 36.8], [50.4, 37.2], [49, 38.3], [49.4, 40.2], [50.4, 40.4], [49.1, 41.5], [47.5, 43], [47.5, 44.5], [46.7, 44.8], [47.4, 46]],   // Kaspianmeri
+  [[26.7, 40.4], [27.5, 40.9], [28.9, 41], [29.4, 40.8], [29, 40.4], [27.8, 40.3], [26.9, 40.2]],                                       // Marmaranmeri
+  [[32, 67], [34.5, 66.6], [32.6, 65.5], [34.6, 64.5], [36.5, 64], [37.9, 64.3], [36.7, 65], [40, 64.6], [40.9, 65.5], [42, 67]],       // Vienanmeri
+  [[30.6, 60.8], [31, 61.6], [32.5, 61.3], [32.9, 60.6], [31.5, 59.9], [30.6, 60.3]], [[34.6, 61.2], [35.4, 62.8], [36.2, 62.4], [35.9, 61]],   // Laatokka, Ääninen
+  [[12.4, 58.9], [13.2, 59.3], [14.1, 59.1], [13.5, 58.5], [12.6, 58.5]],                                                              // Vänern
+];
 function europeMapBg() {
-  seed = 7; noise(0, 0, W, H, "#e8d4a4", ["#dcc896", "#f0e0b8", "#d4bc88", "#e4cc9c"], .45);
-  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const e = Math.min(i, j, W - 1 - i, H - 1 - j); if (e < 10 && bay(i, j) < (10 - e) / 12) px(i, j, "#b89c6c"); }
-  const sea = (pts) => { fillPoly(pts, "#94b4c8"); g.strokeStyle = "#5c7c94"; g.lineWidth = 1; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke(); };
-  // Itämeri ja Pohjanlahti, Suomenlahti
-  sea([[150, 0], [176, 0], [180, 12], [190, 22], [210, 28], [196, 32], [180, 36], [176, 48], [168, 58], [150, 62], [140, 56], [146, 40], [156, 26], [152, 12]]);
-  // Pohjanmeri ja Atlantti vasemmalla
-  sea([[0, 20], [40, 14], [70, 24], [96, 34], [100, 54], [84, 66], [60, 60], [40, 70], [20, 84], [0, 96]]);
-  // Välimeri ja Egeanmeri
-  sea([[0, 118], [40, 112], [80, 118], [120, 110], [150, 116], [176, 108], [196, 112], [206, 120], [214, 112], [212, 128], [250, 130], [320, 128], [320, 136], [0, 136]]);
-  // Mustameri
-  sea([[230, 80], [256, 74], [290, 76], [306, 86], [296, 98], [270, 100], [246, 98], [232, 92]]);
-  sea([[218, 102], [224, 98], [230, 92], [226, 104]]);                                          // Bosporin suu
-  // järvet ja joet
-  for (const [x, y, rx, ry] of [[226, 18, 8, 3], [236, 12, 6, 3], [188, 92, 5, 2]]) { g.fillStyle = "#94b4c8"; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); }
-  g.strokeStyle = "#7c9cb4"; g.lineWidth = 1; g.beginPath(); g.moveTo(110, 70); g.quadraticCurveTo(160, 84, 236, 90); g.stroke();   // Tonava
-  // vuoristot ja metsät
-  seed = 23; for (let i = 0; i < 200; i++) { const x = 8 + ((rnd() * 304) | 0), y = 8 + ((rnd() * 118) | 0);
-    if ((x > 140 && x < 212 && y < 62) || (x < 100 && y > 20 && y < 96 && x < 96 - (y - 20) * .1) || y > 108 || (x > 228 && x < 306 && y > 72 && y < 100)) continue;
-    if (y > 60 && y < 80 && x > 90 && x < 170 && i % 3 === 0) { tri(x, y, 7, 5, "#a08c6c"); px(x + 3, y, "#f4f0e8"); } else { tri(x, y, 5, 6, (x + y) % 3 ? "#6c8c4c" : "#5c7c40"); r(x + 2, y + 6, 1, 2, "#5c4c34"); } }
+  const SEA = "#94b4c8", COAST = "#5c7c94", path = (pts) => { g.beginPath(); pts.forEach(([lo, la], k) => { const [x, y] = MAP_P(lo, la); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); };
+  r(0, 0, W, H, SEA); seed = 3; for (let i = 0; i < 260; i++) px((rnd() * W) | 0, (rnd() * H) | 0, "#a4c4d8");          // aallot
+  // maa: pergamentti rajattuna rantaviivoihin
+  for (const P of [EURASIA, ...ISLANDS]) { g.save(); path(P); g.clip(); seed = 7; noise(0, 0, W, H, "#e8d4a4", ["#dcc896", "#f0e0b8", "#d4bc88", "#e4cc9c"], .45); g.restore(); }
+  for (const P of INLAND_SEAS) { path(P); g.fillStyle = SEA; g.fill(); }
+  g.strokeStyle = COAST; g.lineWidth = 1; for (const P of [EURASIA, ...ISLANDS, ...INLAND_SEAS]) { path(P); g.stroke(); }
+  // Bosporin salmi Marmaranmereltä Mustallemerelle
+  { const [x0, y0] = MAP_P(29.05, 41.0), [x1, y1] = MAP_P(29.1, 41.25); lineC(x0, y0, x1, y1, SEA); }
+  // joet: Tonava ja Volga
+  g.strokeStyle = "#7c9cb4"; g.lineWidth = 1;
+  for (const R of [[[9, 48], [12, 48.5], [16.4, 48.2], [19, 47.6], [19, 45.6], [22.5, 44.6], [25, 43.7], [28, 44.5], [29.6, 45.2]], [[37, 57], [42, 56.3], [46, 56.3], [48, 55.8], [49, 53.2], [46, 51.5], [44.5, 48.7], [47.5, 46.6]]]) {
+    g.beginPath(); R.forEach(([lo, la], k) => { const [x, y] = MAP_P(lo, la); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); }
+  // vuoristot oikeilla paikoillaan: Alpit, Karpaatit, Kaukasus, Skandit, Pyreneet, Tauros
+  const mount = (lo, la) => { const [x, y] = MAP_P(lo, la); tri(x, y, 7, 5, "#a08c6c"); px(x + 3, y, "#f4f0e8"); };
+  for (const [lo, la] of [[7, 46], [9.5, 46.4], [12, 47], [14, 46.8], [24, 47.6], [26, 46], [22, 48.6], [41, 43], [44, 42.7], [46.5, 41.8], [12, 64], [14, 66], [9, 61.5], [0, 42.7], [-2, 43], [32, 37.4], [35, 38], [37.5, 38.4], [20.5, 41.5], [17, 44.5]]) mount(lo, la);
+  // metsät maalle: vain pisteisiin, jotka ovat maata (väri luetaan kankaalta)
+  const img = g.getImageData(0, 0, W, H).data, land = (x, y) => img[(y * W + x) * 4 + 2] < 180;
+  seed = 23; for (let i = 0; i < 500; i++) { const x = 6 + ((rnd() * 308) | 0), y = 6 + ((rnd() * 124) | 0);
+    if (!land(x, y) || !land(x + 4, y + 6) || !land(x, y + 6) || y > 100) continue;
+    tri(x, y, 4, 5, (x + y) % 3 ? "#6c8c4c" : "#5c7c40"); }
+  // reunus
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const e = Math.min(i, j, W - 1 - i, H - 1 - j); if (e < 6 && bay(i, j) < (6 - e) / 8) px(i, j, "#b89c6c"); }
   // kaupungit
   const city = (k, label, dx, dy, c = "#b81c1c") => { const [x, y] = EUP[k]; disc(x, y, 3, c, "#4c3c24"); g.font = "10px VT323, monospace"; g.fillStyle = "#f4e4c0"; g.fillText(label, x + dx + 1, y + dy + 1); g.fillStyle = "#4c3c24"; g.fillText(label, x + dx, y + dy); };
-  city("lpr", "Lappeenranta", 6, 4); city("hki", "Helsinki", -10, 12); city("ist", "Istanbul", -48, 4); city("kap", "Kappadokia", -18, 14, "#c8941c");
-  // mosheijan siluetti Istanbulin kohdalla, halli Lappeenrannan kohdalla
+  city("lpr", "Lappeenranta", 6, 0); city("hki", "Helsinki", -42, 10); city("ist", "Istanbul", -42, 0); city("kap", "Kappadokia", 6, 4, "#c8941c");
   { const [x, y] = EUP.ist; disc(x + 6, y - 8, 3, "#5c3c4c"); r(x + 3, y - 8, 7, 3, "#5c3c4c"); r(x + 2, y - 13, 1, 6, "#5c3c4c"); r(x + 11, y - 13, 1, 6, "#5c3c4c"); }
-  { const [x, y] = EUP.lpr; r(x - 6, y - 8, 9, 5, "#e8b83c"); r(x + 3, y - 7, 6, 4, "#9c9cac"); }
-  g.fillStyle = "#6c5c3c"; g.font = "9px VT323, monospace";
-  g.fillText("Itämeri", 156, 50); g.fillText("Mustameri", 252, 90); g.fillText("Välimeri", 96, 128); g.fillText("SUOMI", 222, 34); g.fillText("TURKKI", 270, 124);
+  g.fillStyle = "#4c6c84"; g.font = "9px VT323, monospace";
+  for (const [t, lo, la] of [["Itämeri", 18.2, 56.2], ["Mustameri", 31.5, 43.6], ["Välimeri", 15, 36.2], ["Atlantti", -20, 50]]) { const [x, y] = MAP_P(lo, la); g.fillText(t, x, y); }
+  g.fillStyle = "#6c5c3c"; for (const [t, lo, la] of [["SUOMI", 25.5, 63.5], ["TURKKI", 33, 39.6]]) { const [x, y] = MAP_P(lo, la); g.fillText(t, x, y); }
   r(8, 6, 74, 16, "#f4e4c0"); g.strokeStyle = "#6c4c2c"; g.strokeRect(8.5, 6.5, 73, 15); g.strokeRect(10.5, 8.5, 69, 11); g.fillStyle = "#4c2c14"; g.font = "11px VT323, monospace"; g.fillText("EUROOPPA", 20, 18);
-  { const x = 30, y = 100; g.strokeStyle = "#6c4c2c"; g.beginPath(); g.arc(x, y, 11, 0, 7); g.stroke();
-    fillPoly([[x, y - 14], [x + 3, y], [x, y + 14], [x - 3, y]], "#6c4c2c"); fillPoly([[x - 14, y], [x, y - 3], [x + 14, y], [x, y + 3]], "#8c6c44"); fillPoly([[x, y - 14], [x + 3, y], [x - 3, y]], "#b81c1c"); }
+  { const x = 300, y = 116; g.strokeStyle = "#6c4c2c"; g.beginPath(); g.arc(x, y, 9, 0, 7); g.stroke();
+    fillPoly([[x, y - 12], [x + 3, y], [x, y + 12], [x - 3, y]], "#6c4c2c"); fillPoly([[x - 12, y], [x, y - 3], [x + 12, y], [x, y + 3]], "#8c6c44"); fillPoly([[x, y - 12], [x + 3, y], [x - 3, y]], "#b81c1c"); }
   g.strokeStyle = "#6c4c2c"; g.lineWidth = 1; g.strokeRect(2.5, 2.5, W - 5, H - 5); g.strokeStyle = "#a07c4c"; g.strokeRect(4.5, 4.5, W - 9, H - 9);
 }
 function plane(x, y, ang) {

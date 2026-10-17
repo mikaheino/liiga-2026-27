@@ -266,3 +266,73 @@ function person(name, x, y, t, { moving = false, dir = 1, talking = false, sc = 
   g.save(); g.translate(Math.round(x), Math.round(y - 21 * sc)); g.scale(hs, hs);
   head(name, 0, 0, t, { talking, moving, dir, seedv: name.length }); g.restore();
 }
+
+// --- nimettömät hahmot (backlog 5.2, 17.10.) ------------------------------------
+// Basaarin väki ja muut sivuhahmot samalla bobblehead-mitalla kuin Jussi ja Raimo: pieni
+// vartalo, iso pää tuplatarkkuudella (40 x 50, kuten valokuvapäät). Valokuvaa ei ole, joten
+// pää piirretään käsin: ihonsävy, hiukset tai päähine, kulmat, silmät, nenä, viikset, suu.
+const NPCS = [
+  { skin: "#d8a070", hair: "#2c1c14", hat: "fez", stache: true, shirt: "#f0ece0", vest: "#9c1c1c", legs: "#2c2c34" },
+  { skin: "#c88c5c", hair: "#1c1410", beard: true, shirt: "#3c6cac", vest: null, legs: "#3c3c44" },
+  { skin: "#e0b088", hair: "#3c2414", hat: "scarf", scarf: "#3c8c5c", shirt: "#7c3c8c", vest: null, legs: "#7c3c8c", dress: true },
+  { skin: "#d09868", hair: "#9c9c9c", hat: "bald", stache: true, shirt: "#e8e4d8", vest: "#6c4c2c", legs: "#2c2418" },
+  { skin: "#e8b890", hair: "#5c3c1c", hat: "cap", shirt: "#e8c81c", vest: null, legs: "#2c3c5c" },
+  { skin: "#b87c50", hair: "#141010", hat: "curly", shirt: "#f4f4f4", stripe: "#2c4c9c", vest: null, legs: "#3c2c24" },
+  // 6 Mehmet: fetsi, valkoinen parta, mustat viikset, punainen kaapu ja kultainen vyö
+  { skin: "#d89060", hair: "#ececec", brow: "#3c2414", stacheC: "#2c1c10", hat: "fez", stache: true, beard: true, shirt: "#8c1c1c", legs: "#8c1c1c", robe: true, sash: "#e8c81c" },
+  // 7 salkkumies: liimattu tukka, aurinkolasit, liituraitapuku, punainen solmio, salkku
+  { skin: "#e8b48c", hair: "#1c140c", hat: "slick", shades: true, shirt: "#f0f0f0", vest: "#2a2c3c", pin: true, tie: "#c81c1c", legs: "#1c1e2a", bag: true },
+];
+function npcHead(v, { talk = false, blink = false, back = false } = {}) {
+  const N = NPCS[v % NPCS.length], k = `npc|${v % NPCS.length}|${talk ? 1 : 0}${blink ? 1 : 0}${back ? 1 : 0}`;
+  if (faceCache[k]) return faceCache[k];
+  const c = document.createElement("canvas"); c.width = 40; c.height = 50; const prev = g; g = c.getContext("2d");
+  const ell = (x, y, rx, ry, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); };
+  const dark = "#1c140c", shade = "rgba(80,30,10,.22)";
+  ell(20, 30, 14, 18, "#1c140c");                                        // ääriviiva
+  if (back) {
+    ell(20, 30, 13, 17, N.hat === "bald" ? N.skin : N.hat === "scarf" ? N.scarf : N.hair);
+    if (N.hat === "bald") { ell(20, 34, 13, 10, N.hair); ell(24, 26, 5, 6, "rgba(255,255,255,.15)"); }
+  } else {
+    ell(7, 31, 3, 4, N.skin); ell(33, 31, 3, 4, N.skin);                 // korvat
+    ell(20, 30, 13, 17, N.skin); ell(26, 33, 7, 14, shade);              // kasvot, varjo oikealla
+    ell(15, 37, 3, 2, "rgba(220,90,70,.25)"); ell(26, 37, 3, 2, "rgba(220,90,70,.25)");   // posket
+    if (N.beard) { ell(20, 41, 12, 8, N.hair); ell(20, 39, 7, 4, N.skin); }
+    // kulmat ja silmät
+    g.fillStyle = N.brow ?? (N.hair === "#9c9c9c" ? "#6c6c6c" : N.hair); g.fillRect(11, 22, 7, 2); g.fillRect(23, 22, 7, 2);
+    if (blink) { g.fillStyle = dark; g.fillRect(12, 27, 6, 1); g.fillRect(23, 27, 6, 1); }
+    else { g.fillStyle = "#fcfcf4"; g.fillRect(12, 25, 6, 4); g.fillRect(23, 25, 6, 4); g.fillStyle = dark; g.fillRect(15, 25, 2, 4); g.fillRect(25, 25, 2, 4); g.fillStyle = "#fff"; g.fillRect(15, 25, 1, 1); g.fillRect(25, 25, 1, 1); }
+    g.fillStyle = "rgba(90,40,20,.55)"; g.fillRect(19, 28, 3, 7); g.fillRect(18, 34, 5, 2);              // nenä
+    if (N.shades) { g.fillStyle = "#0c0c14"; g.fillRect(10, 24, 9, 6); g.fillRect(22, 24, 9, 6); g.fillRect(18, 25, 5, 2); g.fillStyle = "#7ca0fc"; g.fillRect(12, 25, 2, 1); g.fillRect(24, 25, 2, 1); }
+    if (N.stache) { g.fillStyle = N.stacheC ?? (N.hair === "#9c9c9c" ? "#d8d8d8" : N.hair); g.fillRect(13, 37, 15, 3); g.fillRect(12, 38, 2, 2); g.fillRect(27, 38, 2, 2); }
+    g.fillStyle = "#7c1c1c"; if (talk) g.fillRect(16, 40, 9, 4); else { g.fillRect(16, 41, 9, 2); g.fillRect(15, 40, 1, 1); g.fillRect(25, 40, 1, 1); }
+  }
+  // hiukset ja päähineet
+  if (N.hat === "fez") { g.fillStyle = "#b01c1c"; g.fillRect(11, 4, 18, 13); g.fillStyle = "#d83030"; g.fillRect(11, 4, 5, 13); g.fillStyle = dark; g.fillRect(11, 16, 18, 1); g.fillRect(27, 4, 2, 10); g.fillStyle = "#1c1c1c"; g.fillRect(19, 2, 2, 3); }
+  else if (N.hat === "cap") { ell(20, 16, 14, 7, "#4c5c3c"); g.fillStyle = "#3c4c2c"; g.fillRect(4, 16, 32, 3); }
+  else if (N.hat === "scarf") { if (!back) { g.fillStyle = N.scarf; g.beginPath(); g.ellipse(20, 26, 15, 22, 0, Math.PI, 0); g.fill(); g.fillRect(5, 26, 4, 18); g.fillRect(31, 26, 4, 18); g.fillStyle = "rgba(255,255,255,.18)"; g.fillRect(8, 10, 3, 14); } }
+  else if (N.hat === "curly") { for (const [x, y] of [[10, 16], [15, 12], [21, 11], [27, 13], [31, 18], [8, 22], [32, 24]]) ell(x, y, 5, 5, N.hair); }
+  else if (N.hat === "slick") { ell(20, 16, 14, 8, N.hair); g.fillStyle = N.hair; g.fillRect(6, 16, 3, 10); g.fillRect(31, 16, 3, 10); g.fillStyle = "rgba(255,255,255,.3)"; g.fillRect(14, 11, 10, 1); g.fillRect(12, 13, 5, 1); }
+  else if (N.hat === "bald") { if (!back) { g.fillStyle = N.hair; g.fillRect(7, 24, 4, 10); g.fillRect(29, 24, 4, 10); g.fillStyle = "rgba(255,255,255,.25)"; g.fillRect(14, 15, 6, 3); } }
+  else { ell(20, 17, 14, 8, N.hair); g.fillStyle = N.hair; g.fillRect(6, 17, 4, 9); g.fillRect(30, 17, 4, 9); }
+  g = prev; return (faceCache[k] = c);
+}
+function npc(v, x, y, t, { moving = false, dir = 1, talking = false, sc = 1, back = false, hsc = null } = {}) {
+  const N = NPCS[v % NPCS.length], f = moving ? Math.floor(t / 120) % 4 : 0, l1 = f === 1 ? 2 : f === 3 ? -1 : 0, l2 = -l1;
+  g.save(); g.translate(Math.round(x), Math.round(y)); g.scale(dir < 0 ? -sc : sc, sc);
+  shadow(0, 0, 7);
+  if (N.robe) { fillPoly([[-7, -22], [7, -22], [8, -1], [-8, -1]], N.shirt); r(-7, -22, 3, 21, "rgba(255,255,255,.12)"); r(-7, -13, 14, 3, N.sash); r(-6, -1, 4, 1, "#3c1010"); r(2, -1, 4, 1, "#3c1010"); }
+  else if (N.dress) { fillPoly([[-6, -14], [6, -14], [8, -1], [-8, -1]], N.legs); r(-4, -1, 3, 1, "#1c1410"); r(1, -1, 3, 1, "#1c1410"); }
+  else { r(-4 + l1, -10, 3, 9, N.legs); r(1 + l2, -10, 3, 9, N.legs); r(-5 + l1, -2, 4, 2, "#1c1410"); r(1 + l2, -2, 4, 2, "#1c1410"); }
+  if (!N.robe) r(-6, -22, 12, 11, N.shirt); if (N.stripe) for (let k = -21; k < -11; k += 3) r(-6, k, 12, 1, N.stripe);
+  if (N.vest) { r(-6, -22, 4, 11, N.vest); r(2, -22, 4, 11, N.vest); if (N.pin) { r(-6, -22, 12, 1, N.vest); r(-2, -22, 4, 2, N.vest); for (const xx of [-5, -3, 3, 5]) r(xx, -21, 1, 10, "#3a3c52"); for (const xx of [-3, 2]) r(xx, -10, 1, 8, "#2c2e44"); } }
+  if (N.tie) { r(-1, -21, 2, 7, N.tie); r(-2, -22, 4, 1, N.shirt); }
+  const sw = moving ? (f % 2 ? 1 : -1) : 0, arm = N.pin ? N.vest : N.shirt;
+  r(-8, -21 + sw, 2, 9, arm); r(6, -21 - sw, 2, 9, arm); r(-8, -12 + sw, 2, 2, N.skin); r(6, -12 - sw, 2, 2, N.skin);
+  if (N.bag) { r(6, -11 - sw, 8, 6, "#6c4420"); r(6, -11 - sw, 8, 1, "#8c5c2c"); r(8, -12 - sw, 4, 1, "#c8a030"); }
+  g.restore();
+  const hs = hsc ?? Math.pow(sc, .6), blink = !back && (t + v * 977) % 4100 < 130, talk = talking && Math.floor(t / 110) % 2 === 1;
+  const img = npcHead(v, { talk, blink, back }), bob = moving ? Math.round(Math.sin(t / 95)) : Math.round(Math.sin(t / 700 + v) * .5);
+  g.save(); g.imageSmoothingEnabled = false; g.translate(Math.round(x), Math.round(y - 21 * sc) + bob); g.scale(hs * (dir < 0 ? -1 : 1), hs);
+  g.drawImage(img, -img.width / PXS / 2, -img.height / PXS + 2, img.width / PXS, img.height / PXS); g.restore();
+}

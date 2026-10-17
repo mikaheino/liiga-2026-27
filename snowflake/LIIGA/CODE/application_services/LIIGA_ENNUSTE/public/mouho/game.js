@@ -750,7 +750,7 @@ ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c");
 
 // ---------------------------------------------------------------- käynnistys
 startEngine({
-  titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
+  titleScreen: drawTitle, startRoom: "koti", startX: LAND[0], hint,
   intro: async () => {
     give("puhelin");
     await prologue(); give("nimikyltti");
@@ -774,4 +774,24 @@ startEngine({
     if (alku === "kappadokia") { go("basaari", 160, true, 74); script(() => toTemple()); }
     else { go("basaari", 96, true); script(() => say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä jokainen on potentiaalinen jäsen.")); }
   }, 200));
+})();
+
+// ---------------------------------------------------------------- esikatselu (kehitys)
+// ?nayta=kartta|hallitus|hahmot|basaari piirtää yhden näkymän paikallaan, jotta grafiikan voi
+// tarkistaa kuvakaappauksella (myös päätteettömällä Chromella) pelaamatta sinne asti.
+(() => {
+  const n = new URLSearchParams(location.search).get("nayta"); if (!n) return;
+  addEventListener("load", () => setTimeout(() => {
+    title = false;
+    if (n === "suomi") overlay = () => g.drawImage(paintBg("seMap", seFinlandMapBg), 0, 0);
+    else if (n === "kartta") overlay = () => { g.drawImage(paintBg("europe", europeMapBg), 0, 0); plane(...EUP.ist, .3); };
+    else if (n === "hallitus") overlay = (t) => { g.drawImage(paintBg("mouhoIn", mouhoInBg), 0, 0); boardTable(t); shadow(176, 128, 7); jussi(176, 128, -1, 0, {});
+      for (let i = 0; i < 6; i++) npc(i, 14 + i * 13, 110, t, { sc: .85 });
+      person("maskotti", 22, 124, t, { sc: .85 }); person("saarni", 46, 124, t, { sc: .85 }); merchant(72, 124, t); salesman(96, 124, t); ghostRef(154, 122, t); };
+    else if (n === "hahmot") overlay = (t) => { r(0, 0, W, H, "#5c6c7c"); r(0, 100, W, 36, "#3c3c44");
+      jussi(20, 120, 1, 0, {}); helminen(48, 120, t); person("saarni", 76, 120, t); merchant(104, 120, t); salesman(130, 120, t);
+      for (let i = 0; i < 6; i++) npc(i, 160 + i * 26, 120, t, { talking: i === 0 }); for (let i = 0; i < 3; i++) npc(i, 170 + i * 30, 70, t, { back: true }); };
+    else if (n === "basaari") { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, 128); }
+    renderVerbs(); renderInv();
+  }, 300));
 })();

@@ -28,19 +28,8 @@ function jussi(x, y, dir, frame, st, sc = 1, back = false) {
 // ---- ruutujen apuhahmot (ruudut itse: rooms.js) ---------------------------------
 function turkFlag(x, y) { r(x, y, 9, 6, "#e30a17"); disc(x + 3, y + 3, 2, "#fcfcfc"); disc(x + 4, y + 3, 1, "#e30a17"); px(x + 6, y + 3, "#fcfcfc"); px(x + 6, y + 2, "#fcfcfc"); px(x + 7, y + 3, "#fcfcfc"); }
 function figure(x, y, c, fez, t, v) { const st2 = Math.floor(t / 180) % 2; r(x - 2, y - 12, 5, 8, c); disc(x, y - 14, 2, c); if (fez) r(x - 1, y - 17, 3, 2, "#7c1c1c"); r(x - 2 + (st2 ? 1 : 0), y - 4, 2, 4, c); r(x + 1 - (st2 ? 1 : 0), y - 4, 2, 4, c); }
-function merchant(x, y, t, talking = false) {
-  const blink = Math.sin(t / 400) > .93, arm = Math.sin(t / 700) * 2;
-  shadow(x, y, 9);
-  r(x - 7, y - 22, 14, 22, "#8c1c1c"); r(x - 7, y - 22, 3, 22, "#a83030"); r(x + 4, y - 22, 3, 22, "#6c1414"); r(x - 7, y - 13, 14, 3, "#e8c81c"); px(x, y - 12, "#fcf09c");
-  r(x - 7, y - 2, 14, 2, "#5c1010");
-  r(x - 9, y - 20 + arm, 2, 8, "#8c1c1c"); r(x - 9, y - 12 + arm, 2, 2, "#d89060"); r(x + 7, y - 20, 2, 8, "#6c1414"); r(x + 7, y - 12, 2, 2, "#c88050");
-  r(x - 4, y - 32, 9, 10, "#d89060"); r(x + 3, y - 31, 2, 8, "#c07850");
-  r(x - 4, y - 25 + (talking && Math.floor(t / 120) % 2 ? 1 : 0), 9, 5, "#ececec");
-  if (talking && Math.floor(t / 120) % 2) r(x - 1, y - 26, 3, 1, "#3c1c14"); r(x - 3, y - 21, 7, 2, "#d8d8d8"); r(x - 3, y - 27, 7, 1, "#3c2414");
-  if (!blink) { px(x - 2, y - 29, "#000"); px(x + 2, y - 29, "#000"); } r(x - 3, y - 31, 3, 1, "#3c2414"); r(x + 1, y - 31, 3, 1, "#3c2414"); px(x, y - 27, "#a86040");
-  r(x - 3, y - 37, 7, 5, "#c81c1c"); r(x - 3, y - 37, 7, 1, "#e83c3c"); r(x - 4, y - 33, 9, 1, "#9c1414");
-  const tas = Math.round(Math.sin(t / 300) * 1.5); r(x + 3, y - 37, 1, 1, "#1c1c1c"); r(x + 4 + (tas > 0 ? 1 : 0), y - 36, 1, 3, "#1c1c1c");
-}
+// Mehmet ja salkkumies samalla bobblehead-mitalla kuin muut (backlog 5.2): faces.js npc().
+function merchant(x, y, t, talking = false) { npc(6, x, y, t, { talking, dir: -1 }); }
 function flame(x, y, t) { const f = (Math.sin(t / 70 + x) + Math.sin(t / 113 + x * 2)) / 2; r(x, y, 3, 10, "#4c2c14"); r(x - 1, y - 1, 5, 2, "#3c3c3c");
   const h = 6 + f * 2; r(x - 1, y - h, 5, h, "#c83c0c"); r(x, y - h - 2, 3, h, "#fc8c1c"); r(x + 1, y - h - 3 + (f > 0 ? 1 : 0), 1, h - 1, "#fcfc7c");
   if (Math.sin(t / 37 + x) > .9) px(x + 1 + Math.sin(t / 50) * 2, y - h - 6, "#fcc040"); }
@@ -144,21 +133,7 @@ function host(x, y, t, shirt) { const b = Math.round(Math.sin(t / 450 + x) * .6)
 
 // Salkkumies (Kisapuisto): liituraitapuku, aurinkolasit yölläkin, kultaketju, salkku.
 // Pikseleinä samalla mittakaavalla kuin Jussi ja Mehmet.
-function salesman(x, y, t, talking = false) {
-  const sw = Math.sin(t / 700) > 0 ? 0 : 1, arm = talking ? Math.round(Math.sin(t / 140) * 2) : 0, mo = talking && Math.floor(t / 110) % 2;
-  shadow(x, y, 7);
-  r(x - 4, y - 12, 3, 11, "#1c1e2a"); r(x + 1, y - 12, 3, 11, "#24263a"); r(x - 5, y - 2, 4, 2, "#0c0c0c"); r(x + 1, y - 2, 5, 2, "#0c0c0c"); px(x + 4, y - 2, "#8c8c9c");
-  r(x - 6, y - 26 + sw, 12, 15, "#2a2c3c"); for (let xx = x - 5; xx < x + 6; xx += 2) r(xx, y - 25 + sw, 1, 13, "#3a3c52");
-  r(x - 2, y - 26 + sw, 4, 6, "#f0f0f0"); r(x - 1, y - 25 + sw, 2, 7, "#c81c1c"); r(x - 2, y - 26 + sw, 1, 1, "#e8c430"); r(x + 1, y - 26 + sw, 1, 1, "#e8c430"); px(x, y - 23 + sw, "#e8c430");
-  r(x + 6, y - 24 + sw, 2, 10, "#2a2c3c"); r(x + 6, y - 14 + sw, 2, 2, "#e8b48c");
-  r(x - 8, y - 24 + sw - arm, 2, 9, "#2a2c3c"); r(x - 8, y - 15 + sw - arm, 2, 2, "#e8b48c");
-  r(x + 7, y - 12, 7, 6, "#6c4420"); r(x + 7, y - 12, 7, 1, "#8c5c2c"); r(x + 9, y - 13, 3, 1, "#c8a030");
-  r(x - 2, y - 28 + sw, 4, 2, "#d89c74");
-  r(x - 5, y - 37 + sw, 10, 10, "#e8b48c"); r(x + 3, y - 36 + sw, 2, 8, "#d09c74");
-  r(x - 5, y - 39 + sw, 10, 3, "#1c140c"); r(x - 6, y - 38 + sw, 2, 4, "#1c140c"); px(x - 2, y - 39 + sw, "#5c4c3c");
-  r(x - 5, y - 34 + sw, 10, 2, "#0c0c14"); px(x - 4, y - 34 + sw, "#7ca0fc"); px(x + 1, y - 34 + sw, "#7ca0fc"); r(x - 1, y - 34 + sw, 2, 1, "#0c0c14");
-  if (mo) r(x - 2, y - 30 + sw, 4, 2, "#4a1410"); else { r(x - 3, y - 30 + sw, 6, 1, "#fcfcfc"); px(x + 1, y - 30 + sw, "#e8c430"); r(x - 3, y - 29 + sw, 6, 1, "#a86048"); }
-}
+function salesman(x, y, t, talking = false) { npc(7, x, y, t, { talking }); }
 
 // Raimo Helminen -cameo: Ilveksen keltavihreä pelipaita, maila kädessä, luistelee
 // sisään onnittelemaan 1985-visasta ja saman tien ulos. Pikseleinä Jussin mittakaavassa.
