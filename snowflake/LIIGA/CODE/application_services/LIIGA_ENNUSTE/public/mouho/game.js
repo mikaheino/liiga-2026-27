@@ -211,14 +211,18 @@ async function grabIdol() {
   });
 }
 
-// Kaupanteko haukkumalla, kuten miekkailu Melee Islandilla: oikea vastaus kolmesti.
+// Kaupanteko haukkumalla, kuten miekkailu Melee Islandilla (17.10. uudistettu: oikea vastaus
+// oli aina ainoa nokkela). Vaihtoehdot ovat kaikki nokkelia vastauksia samasta joukosta;
+// vain yksi kääntää juuri tämän piikin takaisin. Häviössä Mehmet kertoo, mikä olisi osunut.
 const BARGAIN = [
-  { a: "Tuollaisella takilla et pääse edes Mikkelin torille!", ok: "Ja tuollaisilla hinnoilla et myisi edes Mikkelin torilla.", no: ["Ai.", "Takki on Liigan!"] },
-  { a: "Äitini tinkii paremmin kuin sinä!", ok: "Ilmeisesti, koska hän ei ole koskaan ostanut sinulta mitään.", no: ["Terveisiä äidillesi.", "Minulla on kumikana väkipyörällä."] },
-  { a: "Sinä maksaisit ennakkoon kenelle tahansa, joka puhuu italiaa!", ok: "Siksi tingin nyt turkiksi, enkä maksa mitään ennakkoon.", no: ["Grazie.", "Tarvitsen tulkin."] },
-  { a: "Sinä et erottaisi döneriä iskenderistä!", ok: "Mutta erotan hyvän kaupan huonosta. Tällä kertaa.", no: ["Molemmat ovat kebabia.", "Saako valkosipulikastikkeella?"] },
-  { a: "Tämä pussi kuului itse sulttaanille!", ok: "Sitten sulttaani ostaa sen takaisin kalliimmalla.", no: ["Wau.", "Katso takanasi, kolmipäinen kameli!"] },
+  { a: "Tuollaisella takilla et pääse edes Mikkelin torille!", ok: "Ja tuollaisilla hinnoilla et myisi edes Mikkelin torilla." },
+  { a: "Äitini tinkii paremmin kuin sinä!", ok: "Ilmeisesti, koska hän ei ole koskaan ostanut sinulta mitään." },
+  { a: "Sinä maksaisit ennakkoon kenelle tahansa, joka puhuu italiaa!", ok: "Siksi tingin nyt turkiksi, enkä maksa mitään ennakkoon." },
+  { a: "Sinä et erottaisi döneriä iskenderistä!", ok: "Mutta erotan hyvän kaupan huonosta. Tällä kertaa." },
+  { a: "Tämä pussi kuului itse sulttaanille!", ok: "Sitten sulttaani ostaa sen takaisin kalliimmalla." },
 ];
+// Hämäysvastauksia, jotka eivät osu mihinkään piikkiin, mutta kuulostavat siltä.
+const BARGAIN_DECOYS = ["Minulla on kumikana väkipyörällä.", "Ainakin minun kebabini on maksettu.", "Sanoo mies, jonka viikset ovat vuokralla."];
 async function talk() {
   await script(async () => {
     if (!st.flags.merhaba) { st.flags.merhaba = true;
@@ -295,10 +299,13 @@ async function bargain() {
   st.flags.crowd = true; await say("Tinkiminen alkaa! Koko basaari kokoontuu kuuntelemaan.", "muu");
   for (const b of BARGAIN) {
     await say(b.a, "kauppias");
-    const opts = [...b.no, b.ok]; for (let k = opts.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [opts[k], opts[j]] = [opts[j], opts[k]]; }   // Fisher-Yates: sort-satunnaistus suosi kolmatta paikkaa
+    const others = [...BARGAIN.filter((o) => o !== b).map((o) => o.ok), ...BARGAIN_DECOYS];
+    for (let k = others.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [others[k], others[j]] = [others[j], others[k]]; }
+    const opts = [b.ok, ...others.slice(0, 2)]; for (let k = opts.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [opts[k], opts[j]] = [opts[j], opts[k]]; }   // Fisher-Yates: sort-satunnaistus suosi kolmatta paikkaa
     const i = await choose(opts); await say(opts[i]);
     if (opts[i] === b.ok) { const n = BARGAIN.indexOf(b) + 1; beep(523 + n * 60, 140, "triangle", .05); if (n < BARGAIN.length) await say(`Osuma! Basaari kohahtaa. (${n}/${BARGAIN.length})`, "muu"); }
-    if (opts[i] !== b.ok) { await say(opts[i].includes("kameli") ? "Mehmet ei käänny. Hän on nähnyt kolmipäisen kamelin. Kahdesti." : "Ha! Basaari nauraa. Palaa kun osaat tinkiä.", opts[i].includes("kameli") ? "muu" : "kauppias"); st.flags.crowd = false; return false; }
+    if (opts[i] !== b.ok) { await say("Ha! Basaari nauraa. Se ei osunut mihinkään.", "kauppias");
+      await say(`Mehmet virnistää: "Olisit voinut sanoa: '${b.ok}' Palaa, kun osaat tinkiä, ystäväni."`, "muu"); st.flags.crowd = false; return false; }
   }
   await say("...Sinä tinkaat kuin oma veljeni. Hyvä on. Mitä tarjoat pussista?", "kauppias");
   await say("Minulla on... nimikyltti. \"Jussi Markkanen, urheilujohtaja.\" Messinkiä.");
@@ -698,7 +705,7 @@ const HINTS = () => {
     if (!f.mehmetWho) return ["Kirjeen osoite vei tähän kojuun. Kysytään kauppiaalta Mouho Global Partnersista.", "Puhu Mehmetille ja kysy Mouho Global Partnersista."];
     if (!f.signed) return ["Mehmet haluaa nähdä suunnitelmani.", "Puhu Mehmetille ja esittele jäsenhankintasuunnitelma."];
     if (!f.map) return ["Mehmetin isoisä kutoi tien luolaan mattoon.", "Katso mattoa vasemmalla seinällä."];
-    if (f.needWeight && !has("pussi") && !has("sakki") && !f.swapped) return ["Idolin tilalle tarvitaan hiekkaa, ja hiekalle pussi. Mehmetin pusseista pitää tinkiä.", "Puhu Mehmetille pussista ja pärjää tinkimisessä: vastaa piikkiin samalla mitalla."];
+    if (f.needWeight && !has("pussi") && !has("sakki") && !f.swapped) return ["Idolin tilalle tarvitaan hiekkaa, ja hiekalle pussi. Mehmetin pusseista pitää tinkiä.", "Puhu Mehmetille pussista. Tinkiessä vain yksi vastaus kääntää juuri sen piikin takaisin; jos häviät, Mehmet kertoo mikä olisi osunut."];
     return ["Kartan mukaan luola on idässä.", "Kävele kadun päähän moskeijan alle."];
   }
   if (here === "temppeli") {
