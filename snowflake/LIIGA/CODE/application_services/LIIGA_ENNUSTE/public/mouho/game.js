@@ -230,15 +230,16 @@ async function sellIdol(inScript) {
 
 // ---------------------------------------------------------------- Myrrän puhelut (call.js)
 // Kolme puhelua; joka kerta järkevä neuvo, jonka Jussi ymmärtää täsmälleen väärin.
+// Mouho on ilmainen: kukaan ei maksa mitään (käyttäjä 17.10.).
 const MYRRA_CALLS = [
   [["myrra", "Myrrä. Pakkailen tässä kamojani valmentajakopista. Kuka siellä?"],
    ["jussi", "Jussi tässä! Kuule, minäkin pakkasin tänään. Liiga kiitti yhteistyöstä."],
    ["myrra", "No niin. Kaksi vapaata miestä samana syksynä. Elämä jatkuu, Jussi."],
    ["jussi", "Mouho hakee toiminnanjohtajaa. Mitä neuvoisit?"],
-   ["myrra", "Pidä se yksinkertaisena. Hyvä peli, hyvä ruoka, ja kaikki maksavat vain osallistumismaksun."],
+   ["myrra", "Pidä se yksinkertaisena. Hyvä peli, hyvä ruoka, ja kaikki pääsevät mukaan ilmaiseksi."],
    ["myrra", "Ja pilkettä silmäkulmaan."],
    { bulb: true },
-   ["jussi", "Yksinkertainen... yksi taso. Hyvä ruoka... kebab! Kaikki maksavat... KAIKKI REKRYTOIVAT!"],
+   ["jussi", "Yksinkertainen... yksi taso. Hyvä ruoka... kebab! Kaikki mukaan... KAIKKI REKRYTOIVAT! Jokainen tuo kaksi uutta!"],
    ["jussi", "Kiitos, Jouko! Tämä on nerokasta!"],
    ["myrra", "...Mitä minä juuri sanoin?"]],
 ];
