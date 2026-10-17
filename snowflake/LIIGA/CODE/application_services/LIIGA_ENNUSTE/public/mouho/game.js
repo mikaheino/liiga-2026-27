@@ -48,7 +48,7 @@ Object.assign(ROOMS, {
     post: (t) => guideKisa(t),
     onStop: (x, y) => quizStep(keyAt(x, y)),
     props: [{ y: 127, draw: () => st.flags.leafPile && leafPile(LAND[0], LAND[1]) }, { y: 128, draw: kisaPoster }, { y: 104, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 121, draw: kisaPig }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi },
-            { get y() { return BILL.y; }, draw: drawBill }],
+            { get y() { return st.flags.billStuck ? 129 : BILL.y; }, draw: drawBill }],      // nastan alla taulun edessä
     spots: [
       { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
         Katso: () => say(st.flags.pyramid ? "Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Hän katselee pyramidikaaviotani kuin se olisi tuttu." : "Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Seisoo SaiPan hallin parkkipaikalla kuin olisi odottanut jotakuta."),
@@ -364,23 +364,28 @@ const BILL = { x: 204, y: 104, tx: 204, ty: 104, i: 0, fly: null };
 function drawBill(t) {
   if (!st.flags.billOut || st.flags.billCaught) return;
   BILL.x += (BILL.tx - BILL.x) * .06; BILL.y += (BILL.ty - BILL.y) * .06;
-  const f = Math.sin(t / 90), y = BILL.y - 6 - Math.abs(Math.sin(t / 300)) * 4;
-  shadow(BILL.x, BILL.y, 3);
-  g.save(); g.translate(BILL.x, y); g.rotate(f * .5); g.scale(1, .5 + .5 * Math.abs(Math.cos(t / 140)));
+  const pinned = st.flags.billStuck && Math.hypot(BILL.x - BOARD_SPOT[0], BILL.y - BOARD_SPOT[1]) < 2;
+  const f = Math.sin(t / 90) * (pinned ? .3 : 1), y = BILL.y - 6 - (pinned ? 0 : Math.abs(Math.sin(t / 300)) * 4);
+  if (!pinned) shadow(BILL.x, BILL.y, 3);
+  g.save(); g.translate(BILL.x, y); g.rotate(f * .5); g.scale(1, pinned ? 1 : .5 + .5 * Math.abs(Math.cos(t / 140)));
   r(-4, -2, 8, 4, "#c8a87c"); r(-4, -2, 8, 1, "#e8d0a8"); r(-1, -1, 2, 2, "#8c6c4c"); g.restore();
+  if (pinned) { px(BILL.x - 3, y - 2, "#c81c1c"); px(BILL.x - 3, y - 3, "#fc5c5c"); }               // nasta
 }
-// 17.10.: ensimmäinen Poimi -- tuulenpuuska vie setelin pahvilaatikon kylkeen; toinen Poimi --
-// seteli käteen ja selvästi tavaroihin (laatikon päältä saa yhä heti).
-const BOX_SPOT = [104, 117];
-function gust() { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOX_SPOT; beep(220, 300, "triangle", .03); }
+// 17.10.: ensimmäinen Poimi -- tuulenpuuska vie setelin ilmoitustauluun nastan alle; toinen
+// Poimi -- seteli käteen, ja samalla Jussi huomaa Mouhon ilmoituksen (käyttäjän idea: seteli
+// ohjaa ilmoitustaululle). Laatikon päältä saa yhä heti.
+const BOARD_SPOT = [44, 104];
+function gust() { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOARD_SPOT; beep(220, 300, "triangle", .03); }
 async function chaseBill() {
-  if (st.flags.billStuck) {            // toinen yritys: seteli laatikon kyljestä käteen
-    await walkTo(108, 124); st.dir = -1; await sleep(200);
+  if (st.flags.billStuck) {            // toinen yritys: seteli ilmoitustaululta käteen
+    await walkTo(58, 124); st.dir = -1; await sleep(200);
     st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
     await say("Sain sen! Herra Saarnin viisikymppinen on nyt tavaroissani.");
-    return say("Se ei ole minun. Herra Saarni meni SaiPan toimistoon. Palautan sen toimiston postiluukusta, tuosta postilaatikosta.");
+    await say("Se ei ole minun. Herra Saarni meni SaiPan toimistoon. Palautan sen toimiston postiluukusta, tuosta postilaatikosta.");
+    if (!st.flags.adRead) await say("Ja hetkinen... taululla on uusi ilmoitus Mouho-logon alla. Työpaikkailmoitus? Luen sen.");
+    return;
   }
-  gust(); await say("Melkein! Tuulenpuuska vei sen viime hetkellä... suoraan pahvilaatikkoni kylkeen. Siellä se nyt lepattaa.");
+  gust(); await say("Melkein! Tuulenpuuska vei sen viime hetkellä... suoraan ilmoitustauluun, nastan alle. Siellä se nyt lepattaa.");
 }
 async function standOnBox() {
   if (!st.flags.billOut || st.flags.billCaught) return say("Seison laatikolla hetken. Näköala on sama, mutta ylempää.");
@@ -474,7 +479,7 @@ function bark(x, y, text, t, ph = 0, period = 9000, dur = 2600) {
 }
 function guideKisa(t) {
   const f = st.flags; if (!f.introDone) return;
-  if (f.billOut && !f.billCaught) sparkle(BILL.x + 4, BILL.y - 12, t, 1, 2000);
+  if (f.billOut && !f.billCaught) sparkle(BILL.x + 5, BILL.y - 10, t, 1, 2000);
   if (!f.adRead) { sparkle(30, 92, t, 2, f.noteHint ? 1400 : 3200); if (f.noteHint) sparkle(44, 100, t, 5, 1400); }
   if (f.pyramid && !f.mgp) bark(184, 54, "Psst! Toiminnanjohtaja!", t, 3, 7000);
   if (f.unlocked && !f.letterTaken) sparkle(99, 83, t, 4, 1600);
@@ -638,7 +643,7 @@ async function salesmanTalk() {
 const HINTS = () => {
   const f = st.flags, here = st.scene;
   if (here === "koti") {
-    if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
+    if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni ilmoitustauluun.", "Poimi seteli ilmoitustaululta."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
     if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon, ja toimiston postilaatikossa on luukku.", "Valitse Käytä, klikkaa seteliä tavaroissa ja sitten postilaatikkoa."];
     if (!f.adRead) return [f.noteHint ? "Saarnin lappu sanoi, että ilmoitustaululla on minulle sopiva paikka." : "Tarvitsen työn. Ilmoitustaululla on aina ollut työpaikkoja.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
