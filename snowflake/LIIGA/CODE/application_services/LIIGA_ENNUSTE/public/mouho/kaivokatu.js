@@ -75,12 +75,14 @@ function mouhoInBg() {
 // Mouhon hallitus: isäntien Mikon, Ilkan ja Mikan omat pikselimuotokuvat (käyttäjän asset
 // tuomarit.png, pikselöity pixel_face.py:llä), pöydän takana oikealla.
 function boardTable(t) {
-  [["hallitus_mikko", 246], ["hallitus_ilkka", 276], ["hallitus_mika", 305]].forEach(([k, x], i) => {
-    const img = faceCache[`bust|${k}`] ??= renderPix(PIXFACES[k].bust, {}), w = img.width / PXS * 1.45, h = img.height / PXS * 1.45;
+  // Sama rajaus kaikille (pää 1/2,2 kuvan leveydestä), sama koko, ja peilattuna niin, että
+  // katse kääntyy Jussiin (17.10.: "eri kokoisia ja väärin päin").
+  [["hallitus_mikko", 244], ["hallitus_ilkka", 274], ["hallitus_mika", 304]].forEach(([k, x], i) => {
+    const img = faceCache[`bust|${k}`] ??= renderPix(PIXFACES[k].bust, {}), w = 32, h = img.height * 32 / img.width;
     const bob = Math.round(Math.sin(t / 600 + i * 2) * .5);
-    g.imageSmoothingEnabled = false; g.drawImage(img, x - w / 2, 114 - h + bob, w, h); });
-  r(230, 112, 90, 12, "#5c4632"); r(230, 112, 90, 2, "#7c6448"); r(234, 124, 3, 10, "#3c2c20"); r(314, 124, 3, 10, "#3c2c20");
-  r(256, 114, 38, 7, "#f4f0e4"); text3("HALLITUS", 258, 115, "#2c2c3c");
+    g.save(); g.imageSmoothingEnabled = false; g.translate(x, 0); g.scale(-1, 1); g.drawImage(img, -w / 2, 116 - h + bob, w, h); g.restore(); });
+  r(226, 112, 94, 12, "#5c4632"); r(226, 112, 94, 2, "#7c6448"); r(230, 124, 3, 10, "#3c2c20"); r(314, 124, 3, 10, "#3c2c20");
+  r(255, 114, 38, 7, "#f4f0e4"); text3("HALLITUS", 257, 115, "#2c2c3c");
 }
 
 // ---------------------------------------------------------------- loppu

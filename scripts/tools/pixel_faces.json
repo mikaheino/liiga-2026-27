@@ -200,10 +200,10 @@
   "hallitus_mikko": {
     "src": "tuomarit.png",
     "box": [
-      160,
-      130,
-      425,
-      428
+      122,
+      132,
+      462,
+      456
     ],
     "board": true,
     "bg": "sample",
@@ -212,10 +212,10 @@
   "hallitus_ilkka": {
     "src": "tuomarit.png",
     "box": [
-      458,
-      136,
-      742,
-      396
+      431,
+      142,
+      749,
+      445
     ],
     "board": true,
     "bg": "sample",
@@ -224,10 +224,10 @@
   "hallitus_mika": {
     "src": "tuomarit.png",
     "box": [
-      764,
-      144,
-      1046,
-      372
+      782,
+      148,
+      1012,
+      367
     ],
     "board": true,
     "bg": "sample",
