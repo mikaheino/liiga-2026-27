@@ -33,3 +33,6 @@ streamlit_app/output/
 
 # Evaluointien raakatulokset (CI tallentaa ne artefakteiksi; yhteenveto docs/agent_evals.md)
 snowflake/LIIGA/EVALS/results/
+
+# Sovelluksen ajettavat paketit (n. 20 Mt) jäävät gitin ulkopuolelle; lähde = tagi app-vN
+releases/app/

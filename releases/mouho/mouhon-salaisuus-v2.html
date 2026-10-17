@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mouhon salaisuus v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Mouhon salaisuus -- point-and-click 1990-luvun LucasArts-hengessä.
+   Kolme pelattavaa ruutua: kotilaituri, Istanbulin basaari, luolatemppeli.
+   Kaikki grafiikka piirretään koodilla canvasille; ei ulkoisia kuvia. */
+:root {
+  --bg: #000; --ui: #000; --verb: #2c7c2c; --verb-hi: #5cfc5c; --sentence: #5cfcfc;
+  --inv: #1c1c6c; --inv-hi: #fcfc54; --txt: #fcfcfc;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #000; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--txt); font-family: "VT323", ui-monospace, monospace; }
+body { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+#game { width: min(960px, 100%); position: relative; user-select: none; }
+#stage { position: relative; width: 100%; aspect-ratio: 320 / 136; background: #000; }
+canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; }
+#say { position: absolute; inset: 0; pointer-events: none; }
+/* Puhekupla: valkoinen, puhujan värinen reunus, häntä puhujan päähän (--tail = sivusiirtymä). */
+.bubble { position: absolute; transform: translateX(-50%); width: max-content; max-width: 48%; padding: .35em .6em .4em; background: #fcfcf4; color: #1c1c1c;
+  border: 3px solid var(--c, #1c1c1c); border-radius: 14px; box-shadow: 3px 3px 0 rgba(0,0,0,.55); text-align: center;
+  font-size: clamp(14px, 2.4vw, 24px); line-height: 1.05; white-space: pre-line; animation: pop .14s ease-out both; }
+.bubble::after, .bubble::before { content: ""; position: absolute; left: calc(50% + var(--tail, 0px)); transform: translateX(-50%); width: 0; height: 0; border-style: solid; }
+.bubble::before { top: 100%; border-width: 13px 9px 0 9px; border-color: var(--c, #1c1c1c) transparent transparent transparent; }
+.bubble::after { top: calc(100% - 1px); border-width: 9px 6px 0 6px; border-color: #fcfcf4 transparent transparent transparent; }
+@keyframes pop { from { transform: translateX(-50%) scale(.7); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+/* Kertoja: tekstilaatikko ruudun yläreunassa, kuin sarjakuvan tekstiruutu. */
+.caption { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); max-width: 80%; padding: .3em .7em; background: #fcf09c; color: #2c1c08;
+  border: 3px solid #2c1c08; box-shadow: 3px 3px 0 rgba(0,0,0,.55); text-align: center; font-size: clamp(14px, 2.4vw, 24px); line-height: 1.05; white-space: pre-line; }
+.line { position: absolute; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: clamp(15px, 2.6vw, 26px); line-height: 1.05;
+  text-shadow: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000; white-space: pre-line; }
+#sentence { height: 1.4em; text-align: center; color: var(--sentence); font-size: clamp(16px, 2.8vw, 28px); padding-top: 4px; }
+#ui { display: grid; grid-template-columns: 1.15fr 1fr; gap: 10px; padding: 4px 6px 10px; min-height: 9.2em; font-size: clamp(16px, 2.8vw, 28px); }
+#verbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 6px; align-content: start; }
+#verbs button, #dialog button { all: unset; cursor: pointer; color: var(--verb); line-height: 1.15; }
+#verbs button:hover, #verbs button.on { color: var(--verb-hi); }
+#verbs button.def { color: #a8fca8; text-shadow: 0 0 6px #2c7c2c; }
+#inv { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(0, max-content); gap: 6px; align-content: start; background: var(--inv); padding: 6px; border: 2px solid #3c3cac; }
+/* Tavarat kuvakkeina (MI2): 24 x 16 pikseliä, skaalattu terävänä. */
+#inv button { all: unset; cursor: pointer; display: grid; place-items: center; aspect-ratio: 3 / 2; background: #10104c; border: 1px solid #2c2c8c; }
+#inv button img { width: 100%; height: 100%; image-rendering: pixelated; }
+#inv button:hover { border-color: #a8a8fc; } #inv button.sel { border-color: var(--inv-hi); background: #2c2c6c; }
+.sys button { all: unset; cursor: pointer; color: #5c8c5c; } .sys button:hover { color: var(--verb-hi); }
+#dialog { display: none; flex-direction: column; gap: 2px; padding: 4px 6px 10px; min-height: 9.2em; font-size: clamp(16px, 2.8vw, 28px); }
+#dialog button { color: #fc54fc; } #dialog button.asked { color: #7c3c9c; } #dialog button:hover { color: #fcfc54; }
+#iq { color: #fcc81c; }
+#game.talking #ui { display: none; } #game.talking #dialog { display: flex; }
+#game.cut canvas { cursor: wait; }
+.hint { margin-top: 10px; color: #545454; font-size: 18px; text-align: center; }
+@media (max-width: 520px) { #ui { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="stage"><canvas id="c" width="320" height="136"></canvas><div id="say"></div></div>
+  <div id="sentence"></div>
+  <div id="ui"><div id="verbs"></div><div id="inv"></div></div>
+  <div id="dialog"></div>
+  <div class="hint">Valitse verbi, sitten kohde. Oikea painike = oletustoiminto. Esc tai klikkaus ohittaa repliikin.
+    <span class="sys"><span id="iq">Mouho-IQ 0 / 100</span> · <button id="hint">Vihje</button> · <button id="save">Tallenna</button> · <button id="load">Lataa</button></span></div>
+</div>
+<script>/* engine.js */
+// =============================================================================
+// MOUHO-MOOTTORI -- pieni SCUMM-henkinen point-and-click-moottori selaimeen.
+//
+// Oma toteutus (SCUMM ja sen työkalut ovat LucasArtsin/Disneyn omaisuutta);
+// periaatteet Video Game History Foundationin julkisesta Monkey Island -aineistosta:
+//   * kävelyalueet (walk boxes) monikulmioina + A*-reitinhaku ruudukossa
+//   * syvyystasot (z-planes): hahmot ja esineet piirretään jalkojen y:n mukaan
+//   * hahmot (actors) puku- eli costume-funktiolla, kävely 4 suuntaan, puheanimaatio
+//   * verbit, tavarakuvakkeet, oletustoiminto oikealla painikkeella
+//   * skriptit async-funktioina: say / walkTo / choose / cutscene
+//
+// Sisältö (ruudut, esineet, tarina) on game.js:ssä, grafiikka art.js:ssä.
+// =============================================================================
+"use strict";
+const W = 320, H = 136;
+const cv = document.getElementById("c"), main = cv.getContext("2d");
+let g = main;                         // piirtokohde: pääcanvas tai taustan välimuisti
+const $say = document.getElementById("say"), $sent = document.getElementById("sentence");
+const $verbs = document.getElementById("verbs"), $inv = document.getElementById("inv"), $dlg = document.getElementById("dialog");
+const $game = document.getElementById("game");
+
+// ---------------------------------------------------------------- piirtäminen
+// VGA-henki: 320 x 136, liukuvärit Bayer-ditheröintinä eikä sileinä. Staattiset
+// taustat piirretään kerran välimuistiin (bgCache), joka ruudussa vain liike.
+const r = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x | 0, y | 0, w | 0, h | 0); };
+const px = (x, y, c) => r(x, y, 1, 1, c);
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+const bay = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+function dither(x, y, w, h, a, b, t = 0.5) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px(x + i, y + j, bay(x + i, y + j) < t ? b : a); }
+// Pystysuora liukuväri väripaletin läpi, ditheröity siirtymä jokaisen värin välissä.
+function vgrad(x, y, w, h, cols) {
+  for (let j = 0; j < h; j++) {
+    const f = (j / Math.max(h - 1, 1)) * (cols.length - 1), k = Math.min(Math.floor(f), cols.length - 2), t = f - k;
+    for (let i = 0; i < w; i++) px(x + i, y + j, bay(x + i, y + j) < t ? cols[k + 1] : cols[k]);
+  }
+}
+let seed = 1; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+function noise(x, y, w, h, base, cols, p) { r(x, y, w, h, base); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (rnd() < p) px(x + i, y + j, cols[(rnd() * cols.length) | 0]); }
+function disc(cx, cy, rad, c, edge) { for (let j = -rad; j <= rad; j++) for (let i = -rad; i <= rad; i++) { const d = i * i + j * j; if (d <= rad * rad) px(cx + i, cy + j, edge && d > (rad - 1) * (rad - 1) ? edge : c); } }
+function tri(x, y, w, h, c) { for (let j = 0; j < h; j++) { const ww = Math.round(w * (j + 1) / h); r(x + (w - ww) / 2, y + j, ww, 1, c); } }
+function shadow(x, y, w) { g.fillStyle = "rgba(0,0,0,.35)"; g.beginPath(); g.ellipse(x, y, w, 2, 0, 0, 7); g.fill(); }
+function glow(x, y, rad, rgb, a) { const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.globalCompositeOperation = "lighter"; g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); g.globalCompositeOperation = "source-over"; }
+const bgCache = {};
+function paintBg(name, fn) { if (bgCache[name]) return bgCache[name]; const c = document.createElement("canvas"); c.width = W; c.height = H; const prev = g; g = c.getContext("2d"); seed = 7; fn(); g = prev; return (bgCache[name] = c); }
+function starfield(n, maxY, s0) { seed = s0; const out = []; for (let i = 0; i < n; i++) out.push([(rnd() * W) | 0, (rnd() * maxY) | 0, rnd()]); return out; }
+
+// ---------------------------------------------------------------- tila
+// st = pelaajahahmo (Jussi) + pelin muisti. Tallennetaan sellaisenaan.
+const st = { scene: "koti", x: 60, y: 126, dir: 1, frame: 0, path: [], hat: false, whip: false, inv: [], flags: {} };
+const ROOMS = {}, ITEMS = {};
+const VERBS = ["Anna", "Poimi", "Käytä", "Avaa", "Katso", "Työnnä", "Sulje", "Puhu", "Vedä"];
+let verb = "Kävele", first = null, busy = false, onArrive = null, overlay = null, speaking = null, skip = null;
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+const has = (k) => st.inv.includes(k);
+function give(k) { if (!has(k)) st.inv.push(k); renderInv(); }
+function take(k) { st.inv = st.inv.filter((x) => x !== k); if (first === k) first = null; renderInv(); }
+const room = () => ROOMS[st.scene];
+
+// ---------------------------------------------------------------- kävelyalueet ja reitinhaku
+// Ruudukko 2 px:n soluina. Solu on kävelykelpoinen, jos sen keskipiste on
+// jonkin ruudun kävelymonikulmion sisällä. Monikulmiot voivat riippua tilasta
+// (temppelin kuilun takaosa aukeaa vasta ruoskalla), siksi ruudukko lasketaan
+// joka reitinhaulla -- 160 x 68 solua on halpa.
+const CELL = 2, GW = W / CELL, GH = Math.ceil(H / CELL);
+function inPoly(x, y, poly) { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j];
+  if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside; } return inside; }
+function polys() { const w = room()?.walk; return typeof w === "function" ? w() : w ?? []; }
+function grid() { const ps = polys(), m = new Uint8Array(GW * GH); for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) { const x = i * CELL + 1, y = j * CELL + 1; if (ps.some((p) => inPoly(x, y, p))) m[j * GW + i] = 1; } return m; }
+function nearest(m, ci, cj) {                          // lähin kävelykelpoinen solu (BFS)
+  const seen = new Uint8Array(GW * GH), q = [[ci, cj]]; seen[cj * GW + ci] = 1;
+  while (q.length) { const [i, j] = q.shift(); if (m[j * GW + i]) return [i, j];
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < GW && b < GH && !seen[b * GW + a]) { seen[b * GW + a] = 1; q.push([a, b]); } } }
+  return null;
+}
+function lineFree(m, x0, y0, x1, y1) { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0)); for (let k = 0; k <= n; k++) { const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n; if (!m[Math.floor(y / CELL) * GW + Math.floor(x / CELL)]) return false; } return true; }
+function findPath(x0, y0, x1, y1) {
+  const m = grid(), clampC = (v, n) => Math.max(0, Math.min(n - 1, Math.floor(v / CELL)));
+  const s = nearest(m, clampC(x0, GW), clampC(y0, GH)), e = nearest(m, clampC(x1, GW), clampC(y1, GH)); if (!s || !e) return [];
+  const goal = [e[0] * CELL + 1, e[1] * CELL + 1];
+  const ex = goal[0] === Math.floor(x1 / CELL) * CELL + 1 && goal[1] === Math.floor(y1 / CELL) * CELL + 1 ? [x1, y1] : goal;
+  // A* 8 suuntaan
+  const N = GW * GH, gS = new Float32Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), open = [], closed = new Uint8Array(N);
+  const id = (i, j) => j * GW + i, hh = (i, j) => Math.hypot(i - e[0], j - e[1]);
+  gS[id(...s)] = 0; open.push([hh(...s), s[0], s[1]]);
+  while (open.length) {
+    let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k;
+    const [, i, j] = open.splice(bi, 1)[0], cur = id(i, j); if (closed[cur]) continue; closed[cur] = 1;
+    if (i === e[0] && j === e[1]) break;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { if (!di && !dj) continue; const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= GW || b >= GH || !m[id(a, b)]) continue;
+      const ng = gS[cur] + (di && dj ? 1.414 : 1); if (ng < gS[id(a, b)]) { gS[id(a, b)] = ng; from[id(a, b)] = cur; open.push([ng + hh(a, b), a, b]); } }
+  }
+  if (from[id(...e)] < 0 && id(...e) !== id(...s)) return [];
+  const raw = []; for (let c = id(...e); c >= 0 && c !== id(...s); c = from[c]) raw.unshift([(c % GW) * CELL + 1, Math.floor(c / GW) * CELL + 1]);
+  raw.push(ex);
+  // Suoristus: hypätään kauimpaan näkyvään pisteeseen, jottei reitti ole porrastettu.
+  const out = []; let px0 = x0, py0 = y0, k = 0;
+  while (k < raw.length) { let far = k; for (let q = raw.length - 1; q > k; q--) if (lineFree(m, px0, py0, raw[q][0], raw[q][1])) { far = q; break; } out.push(raw[far]); [px0, py0] = raw[far]; k = far + 1; }
+  return out;
+}
+function walkTo(x, y = st.y) { return new Promise((res) => { st.path = findPath(st.x, st.y, x, y); onArrive = res; if (!st.path.length) { onArrive = null; res(); } }); }
+function depth(y) { const sc = room()?.scale; if (!sc) return 1; const [y0, y1, s0 = 0.7, s1 = 1.02] = sc; return s0 + (s1 - s0) * Math.max(0, Math.min(1, (y - y0) / (y1 - y0))); }
+function place(x, y) { st.x = x; st.y = y; st.path = []; onArrive = null; }
+
+// ---------------------------------------------------------------- ääni
+let actx = null;
+function beep(freq, ms = 220, type = "square", vol = 0.06) { try { actx ??= new AudioContext(); const o = actx.createOscillator(), v = actx.createGain();
+  o.type = type; o.frequency.value = freq; v.gain.value = vol; v.gain.setTargetAtTime(0, actx.currentTime + ms / 1000 * .6, .05); o.connect(v).connect(actx.destination); o.start(); o.stop(actx.currentTime + ms / 1000); } catch { /* ei ääntä */ } }
+
+// ---------------------------------------------------------------- puhe ja skriptit
+// Puhuja: "jussi", ruudun hahmon id (esim. "kauppias") tai "muu" (kertoja).
+// Puhekuplat (16.10.): hahmojen repliikit sarjakuvakuplina, häntä puhujan päähän;
+// kertoja ("muu") tekstilaatikkona ruudun yläreunassa.
+function say(text, who = "jussi") {
+  return new Promise((res) => {
+    const npc = room()?.actors?.find((a) => a.id === who);
+    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#c8a460" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : null;
+    const el = document.createElement("div");
+    if (!spk) el.className = "caption";
+    else {
+      // Kupla mitataan ja pidetään kokonaan ruudussa; häntä osoittaa silti puhujaan.
+      el.className = "bubble"; el.style.left = (100 * spk.x / W) + "%"; el.style.bottom = (100 - 100 * (spk.y - 4) / H) + "%"; el.style.setProperty("--c", spk.c);
+      requestAnimationFrame(() => { const stageW = $say.getBoundingClientRect().width, half = el.offsetWidth / 2 / stageW * W;
+        const cx = Math.min(Math.max(spk.x, half + 2), W - half - 2), maxTail = Math.max(0, el.offsetWidth / 2 - 16);
+        el.style.left = (100 * cx / W) + "%"; el.style.setProperty("--tail", Math.max(-maxTail, Math.min(maxTail, (spk.x - cx) / W * stageW)) + "px"); });
+    }
+    el.textContent = text; $say.replaceChildren(el); speaking = who;
+    const done = () => { clearTimeout(tm); skip = null; speaking = null; el.remove(); res(); };
+    const tm = setTimeout(done, 1300 + text.length * 55); skip = done;
+  });
+}
+async function script(fn) { busy = true; $game.classList.add("cut"); try { await fn(); } finally { busy = false; $game.classList.remove("cut"); setSentence(); } }
+// Keskustelu Fate of Atlantiksen tapaan: vaihtoehdot verbien paikalla, jo kysytyt
+// himmeinä, valittu repliikki Jussin suuhun.
+const asked = new Set();
+function choose(options) {
+  return new Promise((res) => {
+    $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
+      // stopPropagation: muuten sama klikkaus kuplii dokumenttiin ja ohittaa heti Jussin repliikin.
+      b.onclick = (e) => { e.stopPropagation(); asked.add(o); $game.classList.remove("talking"); res(i); }; return b; }));
+  });
+}
+
+// Mouho-IQ (Fate of Atlantiksen "Indy Quotient"): pisteet oivalluksista, kukin kerran.
+const IQ_MAX = 100;
+function iq(key, n) { st.iq ??= {}; if (st.iq[key]) return; st.iq[key] = n; renderIq(); }
+const iqTotal = () => Object.values(st.iq ?? {}).reduce((a, b) => a + b, 0);
+function renderIq() { const el = document.getElementById("iq"); if (el) el.textContent = `Mouho-IQ ${iqTotal()} / ${IQ_MAX}`; }
+function go(scene, x, keep, y) { st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }
+
+// ---------------------------------------------------------------- verbit ja kohteet
+const GENERIC = { Poimi: "En voi ottaa sitä.", Avaa: "Se ei aukea.", Sulje: "Se ei sulkeudu.", Työnnä: "Se ei liiku.", Vedä: "Se ei liiku.", Puhu: "Se ei vastaa. Hyvä niin.", Käytä: "En keksi, miten.", Anna: "Ei kiitos.", Katso: "Ei mitään erikoista." };
+function spotsAt(x, y) { const s = room(); if (!s) return null; return s.spots.find((p) => !(p.hidden && p.hidden()) && x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h) || null; }
+const nameOf = (o) => (typeof o === "string" ? ITEMS[o].name : o.name);
+// Oletustoiminto (oikea painike ja korostettu verbi): hahmo -> Puhu, uloskäynti -> Kävele, muuten Katso.
+const defVerb = (o) => (typeof o === "string" ? "Katso" : o.def ?? (o.actor ? "Puhu" : o.exit ? "Kävele" : "Katso"));
+function setSentence(target) {
+  if (busy) return;
+  const join = verb === "Anna" ? " henkilölle " : " kanssa ";
+  $sent.textContent = first ? `${verb} ${nameOf(first)}${join}${target ? nameOf(target) : ""}` : `${verb}${target ? " " + nameOf(target) : ""}`;
+  const dv = target ? defVerb(target) : null; for (const b of $verbs.children) b.classList.toggle("def", b.textContent === dv);
+}
+async function act(v, target) {
+  if (typeof target === "string") {
+    if (v === "Katso") return script(ITEMS[target].look);
+    if ((v === "Käytä" || v === "Anna") && !first) { first = target; renderInv(); setSentence(); return; }
+    return script(() => say("Ei, se ei toimi noin."));
+  }
+  await walkTo(target.at, target.aty ?? (room().scale?.[0] ?? 126) + 3);
+  st.dir = (target.x + target.w / 2) > st.x ? 1 : -1;
+  const it = first; first = null; renderInv();
+  const f = it ? (target[`${v}:${it}`] || (v === "Anna" && target.Anna && (() => target.Anna(it)))) : target[v];
+  if (target.exit && !it && (v === "Kävele" || v === "Käytä")) return f && f();
+  if (f) return script(f);
+  if (it) return script(() => say("Se ei toimi."));
+  if (v !== "Kävele") return script(() => say(GENERIC[v] || "Hmm."));
+}
+
+// ---------------------------------------------------------------- käyttöliittymä
+function stagePos(e) { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H]; }
+cv.addEventListener("mousemove", (e) => { if (busy || !room()) return; const [x, y] = stagePos(e); setSentence(spotsAt(x, y)); });
+function click(e, right) {
+  if (skip) { skip(); return; } if (busy || !room() || overlay) return;
+  const [x, y] = stagePos(e); let o = spotsAt(x, y);
+  if (o?.floor && verb === "Kävele" && !first && !right) o = null;   // lattiakohteelle (piano) kävellään klikattuun kohtaan
+  if (o) { act(right && !first ? defVerb(o) : verb, o); verb = "Kävele"; renderVerbs(); }
+  else { first = null; renderInv(); onArrive = null;
+    // Klikkaus omien jalkojen kohdalle: hyppy paikallaan, jotta samaa lattiakosketinta voi
+    // painaa kahdesti (koodissa 2006 on kaksi nollaa).
+    if (Math.hypot(x - st.x, y - st.y) < 7 && room().onStop) { st.hop = performance.now(); room().onStop(st.x, st.y); }
+    else st.path = findPath(st.x, st.y, x, y); }
+}
+cv.addEventListener("click", (e) => click(e, false));
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); click(e, true); });
+document.addEventListener("click", (e) => { if (skip && e.target !== cv && !e.target.closest("#dialog")) skip(); });
+document.addEventListener("keydown", (e) => { if ((e.key === "Escape" || e.key === ".") && skip) skip(); });
+function renderVerbs() { $verbs.replaceChildren(...VERBS.map((v) => { const b = document.createElement("button"); b.textContent = v; if (v === verb) b.className = "on"; b.onclick = () => { if (busy) return; verb = v; first = null; renderVerbs(); renderInv(); setSentence(); }; return b; })); }
+// Tavarat kuvakkeina (MI2-tyyli): jokainen esine piirtää oman 24 x 16 kuvakkeensa.
+const iconCache = {};
+function icon(k) { if (iconCache[k]) return iconCache[k]; const c = document.createElement("canvas"); c.width = 24; c.height = 16; const prev = g; g = c.getContext("2d"); ITEMS[k].icon?.(); g = prev; return (iconCache[k] = c); }
+function renderInv() { $inv.replaceChildren(...st.inv.map((k) => { const b = document.createElement("button"); b.title = ITEMS[k].name; b.setAttribute("aria-label", ITEMS[k].name);
+  const img = document.createElement("img"); img.src = icon(k).toDataURL(); img.alt = ""; b.append(img);
+  if (first === k) b.className = "sel";
+  b.onclick = () => { if (busy) return; if (first && first !== k) return script(() => say("Ne eivät sovi yhteen.")); act(verb === "Kävele" ? "Katso" : verb, k); if (verb !== "Käytä" && verb !== "Anna") { verb = "Kävele"; renderVerbs(); } };
+  b.oncontextmenu = (e) => { e.preventDefault(); if (!busy) act("Katso", k); };
+  b.onmouseenter = () => setSentence(k); return b; })); }
+
+// ---------------------------------------------------------------- tallennus
+const SAVE = "mouho-2026-save";
+function saveGame() { if (busy || overlay || !room()) return say("Ei nyt, kesken kaiken.", "muu"); try { localStorage.setItem(SAVE, JSON.stringify({ ...st, path: [] })); } catch { /* yksityinen ikkuna */ } return script(() => say("Peli tallennettu.", "muu")); }
+function loadGame() { let d = null; try { d = JSON.parse(localStorage.getItem(SAVE) ?? "null"); } catch { /* ei tallennusta */ } if (!d) return say("Tallennusta ei löydy.", "muu");
+  Object.assign(st, d, { path: [] }); title = false; overlay = null; renderVerbs(); renderInv(); renderIq(); setSentence(); }
+
+// ---------------------------------------------------------------- silmukka
+let last = performance.now(), title = true, drawTitleFn = null;
+function frame(t) {
+  const dt = Math.min(t - last, 50) / 1000; last = t;
+  if (title) { drawTitleFn?.(t); return requestAnimationFrame(frame); }
+  if (overlay) { overlay(t); return requestAnimationFrame(frame); }
+  const s = room(); s.draw(t);
+  // liike reittiä pitkin
+  let moving = false, dx = 0, dy = 0;
+  if (st.path.length) { const [tx, ty] = st.path[0]; dx = tx - st.x; dy = ty - st.y; const d = Math.hypot(dx, dy * 1.5), sp = (st.flags.boulder != null ? 110 : 62) * depth(st.y) * dt;
+    if (d <= sp) { st.x = tx; st.y = ty; st.path.shift(); } else { st.x += dx * sp / d; st.y += dy * sp / d; }
+    moving = true; if (Math.abs(dx) > 0.5) st.dir = Math.sign(dx); st.frame = Math.floor(t / 120); }
+  else { if (st.frame !== 0 && !busy) s.onStop?.(st.x, st.y);     // pysähtyi juuri (lattiapiano)
+    st.frame = 0; if (onArrive) { const f = onArrive; onArrive = null; f(); } }
+  const away = moving && dy < 0 && Math.abs(dy) * 1.5 > Math.abs(dx);
+  // Syvyysjärjestys: esineet, ruudun hahmot ja Jussi jalkojen y:n mukaan.
+  const items = [...(s.props ?? []).map((p) => ({ y: p.y, draw: () => p.draw(t) })), ...(s.actors ?? []).filter((a) => !a.hidden?.()).map((a) => ({ y: a.y, draw: () => { const sc = depth(a.y); g.save(); g.translate(a.x, a.y); g.scale(sc, sc); g.translate(-a.x, -a.y); a.draw(t, speaking === a.id); g.restore(); } })),
+    { y: st.y, draw: () => { const sc = depth(st.y); const hop = st.hop && t - st.hop < 260 ? Math.sin((t - st.hop) / 260 * Math.PI) * 4 * sc : 0; shadow(st.x, st.y, 7 * sc); jussi(st.x, st.y - hop, st.dir, st.frame, st, sc, away); } }];
+  items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
+  if (s.post) s.post(t);
+  g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, 0, g.measureText(s.title).width + 8, 11); g.fillStyle = "#a8a8a8"; g.font = "10px VT323, monospace"; g.fillText(s.title, 4, 8);
+  requestAnimationFrame(frame);
+}
+function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
+  drawTitleFn = titleScreen;
+  cv.addEventListener("click", async function start(e) {
+    if (!title) return; title = false; cv.removeEventListener("click", start, { capture: true });
+    e.stopImmediatePropagation();          // muuten sama klikkaus ohittaa ensimmäisen repliikin
+    go(startRoom, startX, true); renderVerbs(); renderInv(); renderIq(); setSentence();
+    await script(intro);
+  }, { capture: true });
+  document.getElementById("save")?.addEventListener("click", saveGame);
+  document.getElementById("hint")?.addEventListener("click", (e) => { e.stopPropagation(); idleAt = performance.now(); hint?.(); });   // ei kupli: muuten sama klikkaus ohittaisi vihjeen
+  // Toimettomuus: minuutin hiljaisuuden jälkeen Jussi miettii ääneen seuraavaa askelta.
+  let idleAt = performance.now();
+  for (const ev of ["click", "contextmenu", "keydown"]) document.addEventListener(ev, () => { idleAt = performance.now(); }, true);
+  setInterval(() => { if (!title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
+  document.getElementById("load")?.addEventListener("click", loadGame);
+  requestAnimationFrame(frame);
+}
+
+</script>
+<script>/* art.js */
+// Mouhon salaisuus -- grafiikka. Kaikki piirretään koodilla (ei kuvatiedostoja).
+// Käyttää engine.js:n piirtokirjastoa: r, px, vgrad, dither, disc, tri, glow, shadow, paintBg.
+"use strict";
+
+// Jussi: iso pää (karikatyyri hockeydb-kuvan mukaan): lyhyet vaaleat sivulle
+// harjatut hiukset, siniset silmät, leveä hymy hampaineen, vahva leuka.
+// Vartalo pieni, pää 14 x 15 px. Fedora ja ruoska näkyvät kun ne on hankittu.
+function jussi(x, y, dir, frame, st, sc = 1, back = false) {
+  g.save(); g.translate(x | 0, y | 0); g.scale(dir < 0 ? -sc : sc, sc);
+  const p = (dx, dy, w, h, c) => r(dx, dy, w, h, c);          // origo: jalkojen keskikohta
+  const step = frame % 4, l1 = step === 1 ? 2 : step === 3 ? -1 : 0, l2 = -l1;
+  const SK = "#f0b890", SKD = "#d89870", HR = "#e8c870", HRL = "#f8e4a0", HRD = "#b8944c";
+  // jalat ja saappaat
+  p(-4 + l1, -10, 3, 9, "#4c3c24"); p(1 + l2, -10, 3, 9, "#3c2c1c");
+  p(-5 + l1, -2, 4, 2, "#201408"); p(1 + l2, -2, 4, 2, "#201408");
+  // vartalo: khakipaita, keltainen kaulus (SaiPa), vyö
+  p(-5, -21, 10, 11, "#c8a460"); p(-5, -12, 10, 2, "#5c3c1c"); p(-1, -20, 1, 7, "#a88440");
+  p(-3, -22, 6, 2, "#fcd41c"); p(-1, -21, 2, 2, "#fcd41c");
+  p(-7, -20, 2, 8, "#c8a460"); p(5, -20, 2, 8, "#b8944c"); p(-7, -13, 2, 2, SK); p(5, -13, 2, 2, SKD);
+  if (st.whip) { p(3, -15, 3, 3, "#6c4420"); p(4, -14, 1, 1, "#3c2410"); }
+  // kaula
+  p(-2, -23, 4, 2, SKD);
+  // pää: leveä, vahva leuka
+  p(-6, -36, 12, 13, SK); p(-7, -33, 1, 6, SK); p(6, -33, 1, 6, SK);           // posket
+  p(-5, -24, 10, 1, SKD); p(-4, -23, 8, 1, SKD);                                 // leuka
+  p(-8, -31, 1, 3, SKD); p(7, -31, 1, 3, SKD);                                   // korvat
+  if (back) {                                  // poispäin kävellessä: niska ja takaraivo
+    p(-6, -36, 12, 10, "#e8c870"); p(-7, -34, 1, 6, "#e8c870"); p(6, -34, 1, 6, "#e8c870"); p(-5, -26, 10, 2, "#d0a860"); p(-2, -24, 4, 1, SKD);
+    p(-4, -35, 3, 1, "#f8e4a0"); p(1, -33, 3, 1, "#b8944c"); p(-8, -31, 1, 3, SKD); p(7, -31, 1, 3, SKD);
+    if (st.hat) { p(-9, -36, 18, 2, "#6c4c2c"); p(-6, -41, 12, 5, "#7c5c34"); p(-6, -37, 12, 1, "#3c2414"); }
+    g.restore(); return;
+  }
+  // silmät: valkoinen + sininen, kulmat
+  p(-4, -31, 3, 2, "#fcfcfc"); p(1, -31, 3, 2, "#fcfcfc"); p(-3, -31, 2, 2, "#3c7cc8"); p(2, -31, 2, 2, "#3c7cc8");
+  p(-4, -33, 3, 1, HRD); p(1, -33, 3, 1, HRD);
+  p(0, -29, 1, 2, SKD);                                                           // nenä
+  // leveä hymy hampaineen -- puhuessa suu aukeaa ja sulkeutuu
+  if (st.talk ?? (speaking === "jussi" && Math.floor(performance.now() / 110) % 2)) { p(-3, -28, 6, 3, "#5c1c14"); p(-2, -28, 4, 1, "#fcfcfc"); p(-2, -26, 4, 1, "#c84c4c"); }
+  else { p(-4, -26, 8, 1, "#8c3c2c"); p(-3, -27, 6, 1, "#fcfcfc"); p(-4, -27, 1, 1, "#8c3c2c"); p(3, -27, 1, 1, "#8c3c2c"); }
+  p(-5, -28, 1, 1, SKD); p(4, -28, 1, 1, SKD);                                    // hymykuopat
+  // hiukset: lyhyet, vaaleat, sivulle harjatut
+  if (st.hat) {
+    p(-7, -35, 2, 4, HR); p(5, -35, 2, 3, HR);                                    // näkyy hatun alta
+    p(-9, -36, 18, 2, "#6c4c2c"); p(-6, -41, 12, 5, "#7c5c34"); p(-6, -37, 12, 1, "#3c2414"); p(-1, -41, 2, 1, "#5c3c1c");
+  } else {
+    p(-7, -38, 14, 3, HR); p(-6, -39, 11, 1, HR); p(-7, -35, 2, 4, HR); p(5, -35, 2, 3, HR);
+    p(-5, -39, 4, 1, HRL); p(-2, -38, 6, 1, HRL); p(2, -37, 4, 1, HRD); p(-7, -36, 3, 1, HRD);
+  }
+  g.restore();
+}
+// ================================================================ RUUTUJEN TAITEET
+// ---- ruutujen apuhahmot (ruudut itse: rooms.js) ---------------------------------
+function turkFlag(x, y) { r(x, y, 9, 6, "#e30a17"); disc(x + 3, y + 3, 2, "#fcfcfc"); disc(x + 4, y + 3, 1, "#e30a17"); px(x + 6, y + 3, "#fcfcfc"); px(x + 6, y + 2, "#fcfcfc"); px(x + 7, y + 3, "#fcfcfc"); }
+function figure(x, y, c, fez, t, v) { const st2 = Math.floor(t / 180) % 2; r(x - 2, y - 12, 5, 8, c); disc(x, y - 14, 2, c); if (fez) r(x - 1, y - 17, 3, 2, "#7c1c1c"); r(x - 2 + (st2 ? 1 : 0), y - 4, 2, 4, c); r(x + 1 - (st2 ? 1 : 0), y - 4, 2, 4, c); }
+function merchant(x, y, t, talking = false) {
+  const blink = Math.sin(t / 400) > .93, arm = Math.sin(t / 700) * 2;
+  shadow(x, y, 9);
+  r(x - 7, y - 22, 14, 22, "#8c1c1c"); r(x - 7, y - 22, 3, 22, "#a83030"); r(x + 4, y - 22, 3, 22, "#6c1414"); r(x - 7, y - 13, 14, 3, "#e8c81c"); px(x, y - 12, "#fcf09c");
+  r(x - 7, y - 2, 14, 2, "#5c1010");
+  r(x - 9, y - 20 + arm, 2, 8, "#8c1c1c"); r(x - 9, y - 12 + arm, 2, 2, "#d89060"); r(x + 7, y - 20, 2, 8, "#6c1414"); r(x + 7, y - 12, 2, 2, "#c88050");
+  r(x - 4, y - 32, 9, 10, "#d89060"); r(x + 3, y - 31, 2, 8, "#c07850");
+  r(x - 4, y - 25 + (talking && Math.floor(t / 120) % 2 ? 1 : 0), 9, 5, "#ececec");
+  if (talking && Math.floor(t / 120) % 2) r(x - 1, y - 26, 3, 1, "#3c1c14"); r(x - 3, y - 21, 7, 2, "#d8d8d8"); r(x - 3, y - 27, 7, 1, "#3c2414");
+  if (!blink) { px(x - 2, y - 29, "#000"); px(x + 2, y - 29, "#000"); } r(x - 3, y - 31, 3, 1, "#3c2414"); r(x + 1, y - 31, 3, 1, "#3c2414"); px(x, y - 27, "#a86040");
+  r(x - 3, y - 37, 7, 5, "#c81c1c"); r(x - 3, y - 37, 7, 1, "#e83c3c"); r(x - 4, y - 33, 9, 1, "#9c1414");
+  const tas = Math.round(Math.sin(t / 300) * 1.5); r(x + 3, y - 37, 1, 1, "#1c1c1c"); r(x + 4 + (tas > 0 ? 1 : 0), y - 36, 1, 3, "#1c1c1c");
+}
+function flame(x, y, t) { const f = (Math.sin(t / 70 + x) + Math.sin(t / 113 + x * 2)) / 2; r(x, y, 3, 10, "#4c2c14"); r(x - 1, y - 1, 5, 2, "#3c3c3c");
+  const h = 6 + f * 2; r(x - 1, y - h, 5, h, "#c83c0c"); r(x, y - h - 2, 3, h, "#fc8c1c"); r(x + 1, y - h - 3 + (f > 0 ? 1 : 0), 1, h - 1, "#fcfc7c");
+  if (Math.sin(t / 37 + x) > .9) px(x + 1 + Math.sin(t / 50) * 2, y - h - 6, "#fcc040"); }
+
+// ---- alkuruutu, matka ja loppu --------------------------------------------------
+// Alkuruutu: kesäpäivä satamatorin kioskilla (fiilis satamasanni.com-kuvista, ei logoja).
+function tree(cx, cy, rad, seedv) {
+  seed = seedv; const cols = ["#2c6c1c", "#3c8424", "#4c9c2c", "#6cb43c"];
+  for (let k = 0; k < 26; k++) { const a = rnd() * 6.3, d = rnd() * rad, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * .8; disc(x, y, 5 + rnd() * 6, cols[(rnd() * 2) | 0]); }
+  for (let k = 0; k < 18; k++) { const a = rnd() * 6.3, d = rnd() * rad * .8, x = cx + Math.cos(a) * d - 3, y = cy + Math.sin(a) * d * .7 - 4; disc(x, y, 2 + rnd() * 3, cols[2 + ((rnd() * 2) | 0)]); }
+}
+function titleBg() {
+  vgrad(0, 0, W, 70, ["#5c84c8", "#6c94d4", "#7ca4dc", "#90b4e4", "#a8c4ec"]);
+  r(20, 40, 280, 16, "#6c7c8c"); for (let x = 20; x < 300; x += 6) r(x, 40, 3, 16, "#7c8c9c"); r(20, 38, 280, 2, "#5c6c7c");
+  r(60, 56, 200, 20, "#c8c8c0"); for (let x = 64; x < 256; x += 14) r(x, 60, 9, 8, "#8c9cac");
+  tree(46, 50, 30, 4); tree(160, 40, 30, 8); tree(276, 46, 32, 12);
+  r(0, 72, W, 18, "#e8e4d8"); r(0, 72, W, 2, "#b8b4a8"); for (let x = 0; x < W; x += 22) r(x, 72, 1, 18, "#a8a49c");
+  for (let x = 0; x < W; x += 12) r(x, 78, 8, 8, "#a8c4d0");
+  // kioski
+  r(112, 54, 96, 12, "#ece0c4"); r(112, 54, 96, 1, "#fcf4dc"); r(112, 65, 96, 1, "#8c7c5c"); r(159, 54, 2, 12, "#8c7c5c");
+  g.fillStyle = "#2c1c10"; g.font = "9px VT323, monospace"; g.textAlign = "center"; g.fillText("VETYJÄ", 136, 63); g.fillText("ATOMEJA", 184, 63); g.textAlign = "left";
+  for (let x = 112; x < 208; x += 6) { r(x, 66, 3, 10, "#fcd41c"); r(x + 3, 66, 3, 10, "#fcfcf0"); }
+  for (let x = 112; x < 208; x += 3) tri(x, 76, 3, 2, (x / 3) % 2 ? "#fcfcf0" : "#fcd41c"); r(112, 66, 96, 1, "#e8b40c");
+  r(114, 78, 92, 12, "#3c2c24"); r(118, 79, 20, 9, "#1c140c"); r(182, 79, 20, 9, "#1c140c"); r(142, 80, 10, 10, "#ece4cc"); r(166, 80, 10, 10, "#ece4cc");
+  for (let k = 0; k < 3; k++) { r(143, 82 + k * 2, 8, 1, "#8c7c6c"); r(167, 82 + k * 2, 8, 1, "#8c7c6c"); } r(143, 87, 3, 2, "#c81c1c");
+  r(114, 90, 92, 10, "#5c3c24"); for (let x = 114; x < 206; x += 4) r(x, 90, 1, 10, "#4c2c18");
+  // tori: laatat ja vaaleat raidat
+  vgrad(0, 100, W, 36, ["#a89488", "#b4a094", "#bca89c", "#c4b0a4"]);
+  for (let y = 102; y < 136; y += 3 + ((y - 100) / 6 | 0)) r(0, y, W, 1, "#988478");
+  for (let j = 0; j < 36; j++) { const y = 100 + j, w = 4 + j * .5; r(160 - w / 2 + j * 1.3, y, w, 1, "#ddd0c4"); }
+  r(0, 104, W, 2, "#d4c8bc"); r(0, 120, W, 2, "#d4c8bc");
+  // lyhtypylväät kukkaampeleineen
+  for (const x of [44, 266]) { r(x, 50, 2, 52, "#4c5c5c"); r(x - 4, 48, 10, 3, "#6c7c7c"); r(x - 6, 76, 14, 2, "#3c3c3c");
+    for (const dx of [-6, 6]) { disc(x + dx + 1, 80, 4, "#e84c8c"); px(x + dx, 78, "#fcfcfc"); px(x + dx + 2, 81, "#fc9cc4"); r(x + dx, 84, 2, 2, "#3c6c2c"); } }
+  // pöydät ja tuolit
+  for (const x of [20, 70, 236, 290]) { r(x, 96, 14, 2, "#2c2c2c"); r(x + 6, 98, 2, 6, "#2c2c2c"); r(x - 4, 94, 3, 10, "#1c1c1c"); r(x + 15, 94, 3, 10, "#1c1c1c"); }
+}
+const PARASOLS = [[92, 70], [228, 70]];
+const QUEUE = [[126, "#2c3c6c", "#e8c8a8"], [138, "#c8c8c8", "#5c3c2c"], [176, "#fce81c", "#e8c0a0"], [190, "#4c2c4c", "#3c2c1c"], [202, "#c84c4c", "#d8b088"]];
+function drawTitle(t) {
+  g.drawImage(paintBg("title", titleBg), 0, 0);
+  for (let i = 0; i < 4; i++) { const x = ((t / (90 + i * 20) + i * 95) % 380) - 40, y = 8 + i * 6; disc(x, y, 5, "#fcfcfc"); disc(x + 7, y - 2, 6, "#fcfcfc"); disc(x + 14, y, 5, "#fcfcfc"); r(x - 3, y + 2, 21, 3, "#fcfcfc"); r(x - 3, y + 4, 21, 1, "#dce4f0"); }
+  for (const [x, y] of PARASOLS) { r(x, y, 1, 32, "#8c8c8c"); tri(x - 14, y - 6, 29, 7, "#f4f4ec"); r(x - 14, y, 29, 1, "#c8c8c0"); }
+  QUEUE.forEach(([x, shirt, hair], i) => { const sw = Math.round(Math.sin(t / 500 + i) * .6); r(x - 2 + sw, 86, 5, 9, shirt); disc(x + sw, 83, 2, "#e8b890"); r(x - 2 + sw, 81, 5, 1, hair); r(x - 2, 95, 2, 6, "#2c2c3c"); r(x + 1, 95, 2, 6, "#2c2c3c"); });
+  const gx = ((t / 30) % 380) - 30; px(gx, 30 + Math.sin(t / 200) * 2, "#fcfcfc"); px(gx + 1, 29, "#fcfcfc"); px(gx + 2, 30, "#fcfcfc"); px(gx + 3, 29, "#fcfcfc"); px(gx + 4, 30 + Math.sin(t / 200) * 2, "#fcfcfc");
+  shadow(160, 128, 7); jussi(160, 128, 1, Math.floor(t / 900) % 2 ? 0 : 0, { hat: true });
+  g.textAlign = "center"; g.font = "30px VT323, monospace";
+  g.fillStyle = "#1c0c00"; g.fillText("MOUHON SALAISUUS", 162, 30);
+  const gr = g.createLinearGradient(0, 10, 0, 30); gr.addColorStop(0, "#fff4b0"); gr.addColorStop(.5, "#fcc81c"); gr.addColorStop(1, "#c8641c");
+  g.fillStyle = gr; g.fillText("MOUHON SALAISUUS", 160, 28); g.lineWidth = 1; g.strokeStyle = "#5c2c00"; g.strokeText("MOUHON SALAISUUS", 160, 28);
+  g.font = "10px VT323, monospace"; g.fillStyle = "#1c1c3c"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 161, 39); g.fillStyle = "#fcfcfc"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 160, 38);
+  if (Math.floor(t / 600) % 2) { g.fillStyle = "#1c1c1c"; g.fillText("Klikkaa aloittaaksesi", 161, 133); g.fillStyle = "#fcfc54"; g.fillText("Klikkaa aloittaaksesi", 160, 132); }
+  g.textAlign = "left";
+}
+function mapBg() {
+  noise(0, 0, W, H, "#e4d0a0", ["#d8c490", "#ecdcb0", "#d0b884"], .35);
+  const land = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+  land([[100, 4], [150, 2], [160, 30], [150, 52], [128, 58], [112, 48], [104, 26]], "#a8c08c");
+  land([[40, 60], [120, 56], [170, 64], [200, 70], [150, 84], [110, 92], [60, 86]], "#b4c894");
+  land([[180, 86], [300, 80], [316, 104], [280, 120], [200, 116], [176, 100]], "#bccc8c");
+  g.fillStyle = "#8cb0c8"; g.fillRect(150, 82, 40, 8); g.fillRect(110, 96, 90, 40);
+  g.fillStyle = "#4c3c24"; g.font = "10px VT323, monospace"; g.fillText("SUOMI", 118, 26); g.fillText("Helsinki", 112, 46); r(126, 39, 2, 2, "#4c3c24"); g.fillText("TURKKI", 232, 100); g.fillText("Mustameri", 196, 78); g.fillText("Istanbul", 206, 92);
+  r(198, 88, 1, 8, "#4c3c24"); turkFlag(199, 88);
+  for (const [bx, by, c] of [[262, 108, "#c83c3c"], [272, 104, "#e8b41c"], [282, 110, "#3c7cc8"]]) { disc(bx, by, 3, c); r(bx - 1, by + 4, 3, 2, "#6c4c24"); px(bx - 2, by + 3, "#4c3c24"); px(bx + 2, by + 3, "#4c3c24"); }
+  g.fillText("Kappadokia", 254, 122);
+  r(286, 10, 1, 18, "#5c4c34"); r(278, 18, 17, 1, "#5c4c34"); g.fillText("P", 284, 8);
+  g.strokeStyle = "#8c6c44"; g.strokeRect(2.5, 2.5, W - 5, H - 5);
+}
+async function travel(from = [132, 34], to = [226, 104]) {
+  const start = performance.now(), dur = 3600;
+  overlay = (t) => {
+    const k = Math.min((t - start) / dur, 1);
+    g.drawImage(paintBg("map", mapBg), 0, 0);
+    const [ax, ay] = from, [bx, by] = to, n = Math.floor(k * 48);
+    const at = (q) => [ax + (bx - ax) * q, ay + (by - ay) * q - Math.sin(q * Math.PI) * 22];
+    for (let i = 0; i < n; i += 2) { const [x, y] = at(i / 48); r(x, y, 2, 2, "#b81c1c"); }
+    const [x, y] = at(n / 48); r(x - 4, y, 9, 2, "#2c2c2c"); r(x - 1, y - 3, 3, 8, "#2c2c2c"); r(x - 4, y - 1, 2, 4, "#2c2c2c"); px(x + 4, y, "#fcfcfc");
+    if (k >= 1) { r(bx - 3, by - 1, 7, 1, "#b81c1c"); r(bx, by - 4, 1, 7, "#b81c1c"); }
+  };
+  await sleep(dur + 500); overlay = null;
+}
+// Loppu: Mouho 2026, Kaivokatu 10, 4. krs (recordlydata.com/events/mouho-2026):
+// 2v2 NHL PS5:llä, 3 min erät, parit arvotaan, pizza n. 18.30 -- ja osallistuminen on ILMAINEN.
+function mouhoBg() {
+  vgrad(0, 0, W, 108, ["#1c1c2c", "#24243a", "#2c2c44"]);
+  for (const x of [8, 250]) { r(x, 14, 62, 46, "#0c1430"); for (let k = 0; k < 14; k++) r(x + 4 + (k * 13) % 54, 22 + (k * 7) % 34, 3, 2 + (k % 3), k % 4 ? "#fcd45c" : "#8cacfc");
+    r(x, 36, 62, 1, "#3c3c4c"); r(x + 30, 14, 2, 46, "#3c3c4c"); r(x - 2, 12, 66, 2, "#4c4c5c"); r(x - 2, 60, 66, 3, "#4c4c5c"); }
+  r(0, 8, W, 3, "#3c3c54");
+  r(92, 6, 136, 12, "#c81c1c"); r(92, 6, 136, 1, "#fc5c5c"); r(92, 17, 136, 1, "#7c0c0c");
+  g.textAlign = "center"; g.font = "11px VT323, monospace"; g.fillStyle = "#fcfc54"; g.fillText("MOUHO 2026 · 2v2 NHL", 160, 15); g.textAlign = "left";
+  r(96, 24, 128, 70, "#0c0c0c"); r(98, 26, 124, 64, "#1c1c1c"); r(156, 94, 8, 6, "#2c2c2c"); r(140, 100, 40, 2, "#2c2c2c");
+  r(186, 100, 18, 3, "#ececec"); r(187, 99, 16, 1, "#fcfcfc"); px(200, 100, "#3c7cfc");
+  r(0, 102, W, 34, "#3c3448"); for (let y = 104; y < 136; y += 6) r(0, y, W, 1, "#342c40");
+  r(60, 106, 200, 14, "#2c4c7c"); r(60, 104, 200, 4, "#3c5c8c"); r(56, 104, 8, 18, "#24406c"); r(256, 104, 8, 18, "#24406c");
+  for (const [x, y] of [[18, 118], [30, 114], [276, 116]]) { r(x, y, 20, 4, "#e8d8b8"); r(x, y, 20, 1, "#fcf0d8"); r(x + 6, y + 1, 8, 1, "#c81c1c"); }
+  r(286, 96, 10, 10, "#e8c81c"); r(284, 94, 14, 3, "#fcd84c"); r(289, 106, 4, 4, "#c8a41c"); r(286, 110, 10, 2, "#8c6c1c"); px(288, 98, "#fcf4ac");
+}
+function rinkTV(t) {
+  r(100, 28, 120, 60, "#d8ecfc"); r(100, 28, 120, 1, "#fcfcfc"); r(159, 28, 2, 60, "#c81c1c"); r(130, 28, 1, 60, "#3c5cdc"); r(189, 28, 1, 60, "#3c5cdc");
+  g.strokeStyle = "#c81c1c"; g.beginPath(); g.arc(160, 58, 10, 0, 7); g.stroke();
+  r(101, 50, 4, 16, "#c81c1c"); r(215, 50, 4, 16, "#c81c1c");
+  const k = t / 900, puck = [160 + Math.sin(k) * 48, 58 + Math.sin(k * 1.7) * 18];
+  const pl = (x, y, c) => { r(x - 2, y - 6, 5, 6, c); disc(x, y - 7, 1, "#f0c0a0"); r(x + 2, y - 2, 4, 1, "#5c3c1c"); };
+  pl(puck[0] - 6 + Math.sin(k * 3) * 2, puck[1] + 2, "#c81c1c"); pl(puck[0] + 8, puck[1] - 6, "#2c4cc8");
+  pl(160 + Math.cos(k * .8) * 30, 40 + Math.sin(k) * 6, "#2c4cc8"); pl(140 + Math.sin(k * 1.3) * 22, 76, "#c81c1c");
+  r(puck[0], puck[1], 2, 1, "#000");
+  r(100, 82, 120, 6, "#000a"); g.font = "7px VT323, monospace"; g.fillStyle = "#fcfcfc"; g.fillText(`HOME 2  -  AWAY ${Math.floor(t / 7000) % 4}   3:00`, 104, 87);
+  g.fillStyle = "rgba(255,255,255,.04)"; for (let y = 28; y < 88; y += 2) g.fillRect(100, y, 120, 1);
+}
+function host(x, y, t, shirt) { const b = Math.round(Math.sin(t / 450 + x) * .6); shadow(x, y, 6); r(x - 3, y - 8, 3, 8, "#2c2c3c"); r(x + 1, y - 8, 3, 8, "#2c2c3c");
+  r(x - 4, y - 19 + b, 9, 11, shirt); disc(x, y - 23 + b, 4, "#e8b890"); r(x - 4, y - 27 + b, 9, 3, "#5c3c24"); px(x - 1, y - 23 + b, "#000"); px(x + 2, y - 23 + b, "#000"); r(x - 6, y - 16 + b, 2, 7, "#e8b890"); }
+async function ending() {
+  st.scene = "loppu"; $game.classList.add("cut");
+  await travel([226, 104], [127, 40]);
+  overlay = (t) => { g.drawImage(paintBg("mouho", mouhoBg), 0, 0); rinkTV(t); host(236, 128, t, "#2c7c4c"); host(84, 128, t, "#7c2c6c"); shadow(168, 128, 7); jussi(168, 128, 1, 0, { hat: true, whip: true }); };
+  $sent.textContent = "";
+  await say("Kaivokatu 10, 4. kerros. Mouho 2026.", "muu");
+  await say("Täältä tullaan! 500 euroa Mouho-osallistumismaksua, käteisenä, kultaisen idolin kautta hankittuna!");
+  await say("Järjestäjä: \"Osallistuminen on ilmaista.\"", "muu");
+  await say("...Ilmaista?");
+  await say("Järjestäjä: \"Ilmoittautuminen on kuitenkin sitova. Parit arvotaan paikan päällä, erät ovat kolme minuuttia, pizza tulee puoli seitsemältä.\"", "muu");
+  await say("Sitten tällä kertaa raha menee oikeaan osoitteeseen. Pizzaan.");
+  if (has("kebab")) { await say("Ja toin kebabin Istanbulista. Pizza on yliarvostettu. Mouhoness vaatii proteiinia."); await say("Järjestäjä: \"Kebab Mouhossa. Tämä on uutta. Teşekkürler!\"", "muu"); }
+  await say("Mouhoness: ei apuja, ei armoa. Vain taito, refleksit ja trash talk.\nHyvässä hengessä tietysti.", "muu");
+  await say(`Mouho-IQ: ${iqTotal()} / ${IQ_MAX}. ${iqTotal() >= IQ_MAX ? "Täydet pisteet. Mouhoness saavutettu." : "Löytyikö kaikki? Kokeile uudestaan."}`, "muu");
+  $say.innerHTML = '<div class="line" style="left:50%;bottom:76%;color:#fcfc54">MOUHO 2026 · 22.5. klo 17<br>Kaivokatu 10, 4. krs, Helsinki</div>';
+  $game.classList.remove("cut");
+  $dlg.replaceChildren(Object.assign(document.createElement("button"), { textContent: "Pelaa uudestaan", onclick: () => location.reload() }));
+  $game.classList.add("talking");
+}
+
+// Salkkumies (satama): liituraitapuku, aurinkolasit yölläkin, kultaketju, salkku.
+// Pikseleinä samalla mittakaavalla kuin Jussi ja Mehmet.
+function salesman(x, y, t, talking = false) {
+  const sw = Math.sin(t / 700) > 0 ? 0 : 1, arm = talking ? Math.round(Math.sin(t / 140) * 2) : 0, mo = talking && Math.floor(t / 110) % 2;
+  shadow(x, y, 7);
+  r(x - 4, y - 12, 3, 11, "#1c1e2a"); r(x + 1, y - 12, 3, 11, "#24263a"); r(x - 5, y - 2, 4, 2, "#0c0c0c"); r(x + 1, y - 2, 5, 2, "#0c0c0c"); px(x + 4, y - 2, "#8c8c9c");
+  r(x - 6, y - 26 + sw, 12, 15, "#2a2c3c"); for (let xx = x - 5; xx < x + 6; xx += 2) r(xx, y - 25 + sw, 1, 13, "#3a3c52");
+  r(x - 2, y - 26 + sw, 4, 6, "#f0f0f0"); r(x - 1, y - 25 + sw, 2, 7, "#c81c1c"); r(x - 2, y - 26 + sw, 1, 1, "#e8c430"); r(x + 1, y - 26 + sw, 1, 1, "#e8c430"); px(x, y - 23 + sw, "#e8c430");
+  r(x + 6, y - 24 + sw, 2, 10, "#2a2c3c"); r(x + 6, y - 14 + sw, 2, 2, "#e8b48c");
+  r(x - 8, y - 24 + sw - arm, 2, 9, "#2a2c3c"); r(x - 8, y - 15 + sw - arm, 2, 2, "#e8b48c");
+  r(x + 7, y - 12, 7, 6, "#6c4420"); r(x + 7, y - 12, 7, 1, "#8c5c2c"); r(x + 9, y - 13, 3, 1, "#c8a030");
+  r(x - 2, y - 28 + sw, 4, 2, "#d89c74");
+  r(x - 5, y - 37 + sw, 10, 10, "#e8b48c"); r(x + 3, y - 36 + sw, 2, 8, "#d09c74");
+  r(x - 5, y - 39 + sw, 10, 3, "#1c140c"); r(x - 6, y - 38 + sw, 2, 4, "#1c140c"); px(x - 2, y - 39 + sw, "#5c4c3c");
+  r(x - 5, y - 34 + sw, 10, 2, "#0c0c14"); px(x - 4, y - 34 + sw, "#7ca0fc"); px(x + 1, y - 34 + sw, "#7ca0fc"); r(x - 1, y - 34 + sw, 2, 1, "#0c0c14");
+  if (mo) r(x - 2, y - 30 + sw, 4, 2, "#4a1410"); else { r(x - 3, y - 30 + sw, 6, 1, "#fcfcfc"); px(x + 1, y - 30 + sw, "#e8c430"); r(x - 3, y - 29 + sw, 6, 1, "#a86048"); }
+}
+
+// Raimo Helminen -cameo: Ilveksen keltavihreä pelipaita, maila kädessä, luistelee
+// sisään onnittelemaan 1985-visasta ja saman tien ulos. Pikseleinä Jussin mittakaavassa.
+function helminen(x, y, t, talking = false, moving = false, dir = 1) {
+  g.save(); g.translate(x, y); g.scale(dir, 1); g.translate(-x, -y);
+  const st2 = moving ? Math.floor(t / 110) % 2 : 0, mo = talking && Math.floor(t / 110) % 2;
+  shadow(x, y, 7);
+  r(x - 5 + st2, y - 2, 6, 1, "#c8c8d0"); r(x + 1 - st2, y - 2, 6, 1, "#c8c8d0"); r(x - 4 + st2, y - 4, 4, 2, "#1c1c1c"); r(x + 1 - st2, y - 4, 4, 2, "#1c1c1c");
+  r(x - 4, y - 12, 3, 8, "#1c5c2c"); r(x + 1, y - 12, 3, 8, "#1c5c2c"); r(x - 4, y - 8, 8, 1, "#fcd41c");
+  r(x - 6, y - 25, 12, 13, "#fcd41c"); r(x - 6, y - 17, 12, 2, "#1c7c3c"); r(x - 6, y - 25, 12, 1, "#1c7c3c"); r(x - 1, y - 24, 2, 3, "#1c7c3c");
+  r(x - 8, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 17, 2, 1, "#1c7c3c"); r(x + 6, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 15, 2, 2, "#1c1c1c"); r(x + 6, y - 15, 2, 2, "#1c1c1c");
+  for (let k = 0; k < 14; k++) px(x + 7 + k * .5, y - 15 + k, "#8c5c2c"); r(x + 12, y - 1, 5, 1, "#8c5c2c");
+  r(x - 2, y - 27, 4, 2, "#d89c74");
+  r(x - 5, y - 37, 10, 10, "#ecbc94"); r(x + 3, y - 36, 2, 8, "#d8a07c");
+  r(x - 5, y - 39, 10, 3, "#5c3c24"); r(x - 6, y - 38, 2, 5, "#5c3c24");
+  px(x - 2, y - 33, "#1c1c1c"); px(x + 2, y - 33, "#1c1c1c"); r(x - 3, y - 35, 2, 1, "#5c3c24"); r(x + 1, y - 35, 2, 1, "#5c3c24");
+  if (mo) r(x - 2, y - 30, 4, 2, "#5c1c14"); else { r(x - 3, y - 30, 6, 1, "#fcfcfc"); r(x - 3, y - 29, 6, 1, "#a86048"); }
+  g.restore();
+}
+
+</script>
+<script>/* rooms.js */
+// Mouhon salaisuus -- kolme ruutua perspektiivissä (16.10.: "graafiikkamoottorista
+// puuttuu syvyys"). Fate of Atlantiksen tapaan lattia ulottuu syvälle kuvaan:
+// horisontti on ylhäällä, kohteet ovat eri etäisyyksillä ja hahmot skaalautuvat
+// (game.js: scale). Staattinen osa piirretään kerran välimuistiin (paintBg),
+// tilasta riippuvat esineet ovat syvyysjärjestettyjä propseja game.js:ssä.
+"use strict";
+
+// Täytetty monikulmio (perspektiivitasot: seinät, lattiat, tiskit).
+function fillPoly(pts, c) { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); }
+function lineC(x0, y0, x1, y1, c, w = 1) { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(x0 + .5, y0 + .5); g.lineTo(x1 + .5, y1 + .5); g.stroke(); }
+const lerp = (a, b, k) => a + (b - a) * k;
+
+// =============================================================== SATAMA
+// Laituri kulkee syvälle järvelle; lähimpänä ranta, oikealla taksi.
+const PIER = { yF: 70, xF0: 142, xF1: 178, yN: 122, xN0: 70, xN1: 250 };
+const pierX = (y) => { const k = (y - PIER.yF) / (PIER.yN - PIER.yF); return [lerp(PIER.xF0, PIER.xN0, k), lerp(PIER.xF1, PIER.xN1, k)]; };
+const SAT_STARS = starfield(90, 56, 5);
+function satamaBg() {
+  vgrad(0, 0, W, 62, ["#04041a", "#07072a", "#0c0c3c", "#141452", "#1c1c66", "#26267a"]);
+  for (const [x, y, b] of SAT_STARS) px(x, y, b > .85 ? "#fcfcfc" : b > .5 ? "#a0a0e0" : "#5858a8");
+  for (let j = -16; j <= 16; j++) for (let i = -16; i <= 16; i++) { const d = Math.hypot(i, j); if (d > 9 && d < 16 && bay(280 + i, 20 + j) < (16 - d) / 14) px(280 + i, 20 + j, "#3c3ca0"); }
+  disc(280, 20, 9, "#f6f2c0", "#dcd8a0"); disc(277, 17, 2, "#e4e0a8"); disc(284, 23, 1, "#e4e0a8");
+  // kaukainen ranta: matalat kuuset ja pieni venevaja vastarannalla
+  seed = 13; r(0, 58, W, 5, "#050920"); for (let x = -4; x < W; x += 3 + ((rnd() * 4) | 0)) { const h = 3 + ((rnd() * 7) | 0); tri(x, 63 - h, 5, h, "#050920"); }
+  r(36, 50, 22, 10, "#1c120c"); tri(33, 44, 28, 7, "#2c120c"); r(48, 53, 5, 4, "#ffd76a"); px(84, 60, "#fcd45c"); px(214, 61, "#fcd45c");
+  // vesi: tummuu katsojaa kohti
+  vgrad(0, 63, W, 61, ["#0a1440", "#0c1848", "#0a143c", "#08102f", "#060c26", "#050a20"]);
+  dither(0, 63, W, 2, "#0a1440", "#040818", .6);
+  // laituri perspektiivissä: poikkilaudat tihenevät kauemmas, saumat kohti katoamispistettä
+  const N = 12;
+  for (let k = 0; k < N; k++) {
+    const y0 = PIER.yF + (PIER.yN - PIER.yF) * Math.pow(k / N, 1.6), y1 = PIER.yF + (PIER.yN - PIER.yF) * Math.pow((k + 1) / N, 1.6);
+    for (let y = Math.floor(y0); y < Math.ceil(y1); y++) { const [a, b] = pierX(y); r(a, y, b - a, 1, k % 2 ? "#4c3018" : "#5a3a1e"); }
+    const [a, b] = pierX(Math.floor(y0)); r(a, Math.floor(y0), b - a, 1, "#6c4a28");
+  }
+  for (let i = 1; i < 8; i++) lineC(lerp(PIER.xF0, PIER.xF1, i / 8), PIER.yF, lerp(PIER.xN0, PIER.xN1, i / 8), PIER.yN, "rgba(30,16,6,.55)");
+  for (let y = PIER.yF; y < PIER.yN; y++) { const [a, b] = pierX(y); px(a - 1, y, "#2c1a0c"); px(b, y, "#2c1a0c"); }
+  // laiturin pylväät veteen, isommat lähellä
+  for (const k of [.15, .4, .7, 1]) { const y = lerp(PIER.yF, PIER.yN, k), [a, b] = pierX(y), h = 3 + k * 9, w = 1 + k * 3; r(a - w, y - 1, w, h, "#24160a"); r(b, y - 1, w, h, "#24160a"); }
+  // lyhtypylväs laiturin päässä
+  r(181, 46, 1, 25, "#1c1c26"); r(178, 44, 7, 3, "#2c2c38"); r(179, 47, 5, 1, "#fce88c");
+  // ranta (lähin taso): sora ja reunakivi
+  noise(0, 122, W, 14, "#2e2a28", ["#3c3632", "#24201e", "#46403a"], .35); r(0, 122, W, 1, "#5c5650"); r(0, 123, W, 1, "#1c1816");
+}
+function satamaDraw(t) {
+  g.drawImage(paintBg("satama", satamaBg), 0, 0);
+  // kuun heijastus ja vesiväreet (ei laiturin päälle)
+  for (let y = 66; y < 120; y += 2) { const k = (y - 66) / 54, w = (5 + k * 6) + Math.sin(t / 220 + y) * 2; r(280 - w / 2 + Math.sin(t / 340 + y * .8) * 2, y, w, 1, k < .35 ? "#e8e4a8" : k < .7 ? "#9c9a7c" : "#5c5c5c"); }
+  for (let i = 0; i < 26; i++) { const y = 65 + ((i * 7) % 56), x = (i * 47 + t / (22 + (i % 4) * 8)) % (W + 20) - 10, [a, b] = y < PIER.yN ? pierX(y) : [0, 0];
+    if (x + 6 < a - 2 || x > b + 2) r(x, y, 2 + (i % 4) * (1 + (y - 65) / 30), 1, i % 3 ? "#1c3478" : "#2c4c9c"); }
+  // soutuvene vasemmalla
+  const by = 96 + Math.sin(t / 650) * 1, bx = 34 + Math.sin(t / 1300) * 2;
+  r(bx - 12, by, 24, 3, "#6a3c1c"); r(bx - 10, by + 3, 20, 2, "#4a2810"); r(bx - 12, by, 24, 1, "#9c6c3c"); r(bx + 5, by - 3, 1, 8, "#8c5c2c"); r(bx - 12, by + 5, 24, 1, "#0c1c4c");
+  glow(181, 47, 22, "255,230,150", .26 + .03 * Math.sin(t / 130)); glow(160, 74, 18, "255,220,140", .07);
+}
+// syvyysjärjestetyt esineet (game.js props)
+function satamaPoster() { r(22, 92, 2, 36, "#3a2410"); r(46, 92, 2, 36, "#3a2410"); r(16, 84, 38, 30, "#2c1c0e"); r(18, 86, 34, 26, "#ece0bc");
+  dither(18, 104, 34, 8, "#ece0bc", "#d8c8a0", .3); r(20, 88, 30, 6, "#c81c1c"); r(21, 89, 28, 1, "#fc5c3c");
+  for (let k = 0; k < 4; k++) r(21, 96 + k * 2, 14 + (k * 5) % 12, 1, "#6c6c6c"); r(20, 105, 30, 5, "#2c7c2c"); r(22, 106, 26, 1, "#5cbc5c"); shadow(35, 128, 18); }
+function satamaPostbox() { const open = st.flags.boxOpen; r(98, 92, 2, 12, "#4c4c4c"); shadow(99, 104, 5);
+  r(93, 85, 12, 7, "#2c4cc8"); r(93, 85, 12, 1, "#5c7cfc"); r(93, 91, 12, 1, "#1c2c8c"); r(104, 86, 1, 4, "#c81c1c"); r(105, 86, 2, 2, "#c81c1c");
+  if (open) { r(93, 82, 12, 2, "#3c5cdc"); r(94, 86, 10, 4, "#08081c"); if (!st.flags.letterTaken) { r(96, 87, 6, 2, "#f4f4f4"); px(98, 87, "#c81c1c"); } } else r(97, 88, 3, 1, "#08081c"); }
+function satamaRack() { r(206, 70, 1, 26, "#4a2e16"); r(203, 95, 7, 1, "#3a2410"); r(203, 70, 7, 1, "#4a2e16"); shadow(206, 96, 4);
+  if (!st.hat) { r(201, 68, 11, 1, "#5c3c1c"); r(203, 64, 7, 4, "#7c5c34"); r(203, 66, 7, 1, "#2c1808"); } }
+function satamaPig() { g.save(); g.translate(0, 7); shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
+  px(148, 114, "#d87c94"); px(154, 114, "#d87c94"); r(149, 108, 3, 1, "#3c1c24"); px(154, 109, "#000"); g.restore(); }
+function satamaBollard() { shadow(238, 120, 6); r(234, 110, 7, 10, "#24242c"); r(233, 108, 9, 3, "#3c3c48"); r(235, 111, 2, 8, "#3c3c48");
+  g.fillStyle = "#c8b48c"; g.beginPath(); g.ellipse(246, 119, 6, 2, 0, 0, 7); g.fill(); g.fillStyle = "#a8946c"; g.beginPath(); g.ellipse(246, 119, 3, 1, 0, 0, 7); g.fill(); }
+function satamaTaxi() { shadow(282, 134, 40);
+  r(242, 108, 78, 22, "#e8c81c"); r(242, 122, 78, 8, "#c8a414"); r(242, 108, 78, 1, "#fce870"); r(256, 96, 50, 13, "#e8c81c"); r(257, 95, 48, 1, "#fce870");
+  r(260, 98, 19, 9, "#4c7cd0"); r(283, 98, 20, 9, "#4c7cd0"); r(261, 99, 4, 1, "#a8c8fc"); r(284, 99, 4, 1, "#a8c8fc");
+  r(272, 90, 18, 5, "#202020"); for (const xx of [274, 278, 282, 286]) px(xx, 92, "#fcd41c");
+  r(281, 109, 1, 16, "#a88c10"); r(242, 115, 78, 1, "#202020"); for (let x = 244; x < 320; x += 4) px(x, 115, "#e8e8e8");
+  disc(258, 130, 7, "#141414", "#2c2c2c"); disc(306, 130, 7, "#141414", "#2c2c2c"); disc(258, 130, 3, "#8c8c8c"); disc(306, 130, 3, "#8c8c8c");
+  r(242, 111, 3, 4, "#c81c1c"); }
+
+// =============================================================== BASAARI
+// Katu kapenee kohti moskeijaa; kojut molemmin puolin, Mehmetin tiski oikealla.
+const VPB = [160, 56];
+function basaariBg() {
+  vgrad(0, 0, W, 70, ["#24123c", "#4a1848", "#7c2448", "#b43c40", "#e0603a", "#f48c3c", "#fcb85c"]);
+  disc(118, 50, 8, "#fce890", "#fcd070");
+  const M = "#3a1834"; disc(160, 34, 12, M); r(146, 34, 28, 4, M); disc(143, 42, 6, M); disc(177, 42, 6, M); r(136, 40, 48, 30, M); r(159, 17, 2, 6, M);
+  for (const [x, top] of [[130, 18], [188, 18], [122, 28], [196, 28]]) { r(x, top, 2, 52, M); tri(x, top - 6, 2, 6, M); r(x - 1, top + 10, 4, 1, M); }
+  for (let x = 140; x < 182; x += 6) px(x, 50, "#fcb04c");
+  // seinät perspektiivissä: vasen ja oikea kojurivi
+  fillPoly([[0, 0], [136, 38], [136, 70], [0, 112]], "#b0744a"); fillPoly([[320, 0], [184, 38], [184, 70], [320, 112]], "#a46c40");
+  seed = 9; for (let k = 0; k < 900; k++) { const y = rnd() * 112, x = rnd() * 136, top = 38 * x / 136, bot = 112 - 42 * x / 136; if (y > top && y < bot) px(x, y, rnd() < .5 ? "#9c6438" : "#c4885a"); }
+  for (let k = 0; k < 900; k++) { const y = rnd() * 112, x = 184 + rnd() * 136, xx = 320 - x, top = 38 * xx / 136, bot = 112 - 42 * xx / 136; if (y > top && y < bot) px(x, y, rnd() < .5 ? "#94603a" : "#b87c50"); }
+  // kaaret seinissä (perspektiivissä kapenevat)
+  for (const k of [.12, .38, .6, .78]) { const x = k * 136, top = 38 * k + 26 * (1 - k), bot = 112 - 42 * k, w = 26 * (1 - k * .8);
+    fillPoly([[x, top], [x + w, top + w * .28], [x + w, bot - w * .3], [x, bot]], "#4a2414"); fillPoly([[320 - x, top], [320 - x - w, top + w * .28], [320 - x - w, bot - w * .3], [320 - x, bot]], "#3a1c10"); }
+  // markiisiraidat seinien yläreunassa
+  for (let i = 0; i < 14; i++) { const a = i / 14, b = (i + 1) / 14, c = i % 2 ? "#b81c1c" : "#ece4c4";
+    fillPoly([[a * 136, 38 * a + 8], [b * 136, 38 * b + 8], [b * 136, 38 * b + 20 - 6 * b], [a * 136, 38 * a + 20 - 6 * a]], c);
+    fillPoly([[320 - a * 136, 38 * a + 8], [320 - b * 136, 38 * b + 8], [320 - b * 136, 38 * b + 20 - 6 * b], [320 - a * 136, 38 * a + 20 - 6 * a]], c); }
+  // katu: mukulakivet perspektiivissä
+  for (let y = 70; y < H; y++) { const k = (y - 70) / (H - 70), x0 = lerp(136, -60, k), x1 = lerp(184, 380, k); r(x0, y, x1 - x0, 1, "#6c4422");
+    const step = 3 + k * 9, off = (Math.floor((y - 70) / (1 + k * 4)) % 2) * step / 2;
+    if (((y - 70) % Math.max(1, Math.round(1 + k * 4))) !== 0) for (let x = x0 + off; x < x1; x += step) r(x + 1, y, step - 1.5, 1, ["#8c5c30", "#9c6a3a", "#845428"][Math.floor(x / step) % 3 & 3] ?? "#8c5c30"); }
+  // matto vasemmalla seinällä (kartta kudottuna)
+  fillPoly([[16, 46], [50, 54], [50, 98], [16, 100]], "#6c1428"); fillPoly([[19, 50], [47, 57], [47, 95], [19, 97]], "#b42c38"); fillPoly([[22, 54], [44, 60], [44, 92], [22, 94]], "#d8983c");
+  disc(33, 75, 4, "#2c3c8c"); disc(33, 75, 2, "#e8c84c"); for (let k = 0; k < 7; k++) px(25 + k * 2, 86 - (k % 3), "#c81c1c"); r(39, 83, 1, 3, "#1c1c1c"); r(38, 84, 3, 1, "#1c1c1c");
+  for (let x = 16; x < 50; x += 2) r(x, 99 + (x - 16) / 34, 1, 2, "#e8d8a8");
+  // Mehmetin koju oikealla: katos ja takaseinä (tiski itse on propsi)
+  fillPoly([[214, 58], [300, 50], [300, 60], [214, 66]], "#2c7c4c"); for (let i = 0; i < 6; i++) { const a = 214 + i * 14.3; fillPoly([[a, 58 - i * 1.3], [a + 7, 58 - i * 1.3 - .7], [a + 7, 66 - i * 1], [a, 66 - i * 1]], "#e8e0c4"); }
+  r(216, 66, 2, 26, "#5c3418"); r(296, 60, 2, 34, "#5c3418"); fillPoly([[218, 66], [296, 60], [296, 92], [218, 92]], "#4a2414");
+  for (const x of [232, 240]) { r(x, 82, 6, 5, "#d8a81c"); r(x + 5, 81, 3, 2, "#d8a81c"); r(x + 1, 80, 3, 2, "#e8c84c"); px(x + 1, 83, "#fcf09c"); }
+  r(274, 81, 10, 7, "#3c8cbc"); r(276, 79, 6, 2, "#3c8cbc"); r(283, 82, 3, 1, "#3c8cbc"); px(276, 83, "#e8f4fc");
+  // kadun pää: kuja moskeijan alla
+  r(146, 54, 28, 16, "#2c1428"); disc(160, 54, 14, "#2c1428"); r(146, 68, 28, 2, "#4a2440");
+  g.fillStyle = "rgba(20,0,0,.22)"; g.fillRect(0, 108, W, 28);
+}
+const CROWD2 = Array.from({ length: 5 }, (_, i) => ({ x: 140 + i * 9, v: (i % 2 ? -1 : 1) * (3 + i), fez: i % 2 === 0, c: ["#3c1c24", "#2c1c34", "#4c2c1c"][i % 3] }));
+function basaariDraw(t) {
+  g.drawImage(paintBg("basaari", basaariBg), 0, 0);
+  // kaukainen väkijoukko kadun päässä (pienet)
+  for (const p of CROWD2) { p.x += p.v * 0.016; if (p.x < 138) p.v = Math.abs(p.v); if (p.x > 182) p.v = -Math.abs(p.v);
+    g.save(); g.translate(p.x, 72); g.scale(.45, .45); g.translate(-p.x, -72); figure(p.x, 72, p.c, p.fez, t + p.x * 40, p.v); g.restore(); }
+  for (let i = 0; i < 3; i++) { const x = ((t / (38 + i * 9) + i * 130) % 380) - 30, y = 10 + i * 7 + Math.sin(t / 320 + i) * 3, up = Math.floor(t / 160 + i) % 2;
+    px(x, y + up, "#2c1428"); px(x + 1, y, "#2c1428"); px(x + 2, y + 1, "#2c1428"); px(x + 3, y, "#2c1428"); px(x + 4, y + up, "#2c1428"); }
+  // viirinauha Turkin lipuin kadun yli
+  for (let x = 20; x < 300; x++) px(x, 24 + Math.round(Math.sin((x - 20) / 280 * Math.PI) * 8), "#3c1c1c");
+  for (let x = 30; x < 300; x += 30) turkFlag(x, 25 + Math.round(Math.sin((x - 20) / 280 * Math.PI) * 8));
+  // lyhdyt
+  for (const [x, y, s] of [[60, 40, 1], [110, 50, .7], [210, 50, .7], [262, 40, 1]]) { const f = .5 + .5 * Math.sin(t / 110 + x); r(x, y - 4, 1, 4, "#3c2c1c");
+    r(x - 2 * s, y, 5 * s, 6 * s, "#a8741c"); r(x - s, y + s, 3 * s, 4 * s, f > .5 ? "#fce070" : "#fcc040"); glow(x, y + 3, 12 * s, "255,160,60", .16 + .05 * f); }
+  if (!st.flags.bag) { r(84, 60, 1, 4, "#3c3c3c"); r(80, 64, 9, 11, "#c8b48c"); r(80, 64, 9, 1, "#e0d0a8"); r(82, 65, 5, 2, "#a8946c"); r(87, 66, 2, 9, "#a8946c"); }
+  if (!st.whip) { r(222, 72, 2, 12, "#6c4420"); r(219, 71, 6, 2, "#6c4420"); for (let k = 0; k < 8; k++) px(224 + k, 82 + Math.sin(k) * 2, "#6c4420"); }
+  // döner kojun edustalla
+  { const ph = Math.floor(t / 140) % 3; r(226, 68, 1, 24, "#8c8c8c"); r(230, 66, 6, 26, "#2c2c2c"); r(231, 68, 4, 22, "#e8401c"); glow(233, 80, 11, "255,90,30", .2);
+    for (let j = 0; j < 20; j++) { const w = 5.5 - Math.abs(j - 8) / 4; r(226 - w / 2 + .5, 70 + j, w, 1, (j + ph) % 3 === 0 ? "#6c3414" : (j + ph) % 3 === 1 ? "#a8642c" : "#c8843c"); } }
+}
+function basaariCounter() { fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]], "#8c5c2c"); r(214, 98, 86, 16, "#24448c"); r(214, 98, 86, 1, "#e8c81c");
+  for (let x = 218; x < 298; x += 8) { px(x, 104, "#e8c81c"); px(x - 1, 105, "#e8c81c"); px(x + 1, 105, "#e8c81c"); px(x, 106, "#e8c81c"); }
+  for (const x of [244, 249, 254]) { r(x, 89, 3, 4, "#c84c1c"); r(x, 89, 3, 1, "#fce0b0"); } shadow(257, 114, 42); }
+function basaariSpices() { for (const [x, c, hi] of [[70, "#c83c1c", "#fc6c3c"], [84, "#e8b41c", "#fce06c"], [98, "#5c8c2c", "#8cbc4c"]]) {
+  r(x, 92, 12, 9, "#c8b080"); r(x - 1, 90, 14, 3, "#dcc490"); tri(x + 1, 85, 10, 6, c); px(x + 5, 85, hi); px(x + 3, 88, hi); } shadow(90, 101, 18); }
+function basaariAmphora() { shadow(38, 131, 8); disc(38, 122, 8, "#b85c2c", "#8c3c1c"); r(35, 110, 7, 5, "#a84c24"); r(34, 109, 9, 2, "#c86c3c");
+  r(32, 117, 2, 5, "#8c3c1c"); r(42, 117, 2, 5, "#8c3c1c"); px(34, 119, "#e88c5c"); px(35, 118, "#e88c5c"); r(31, 123, 14, 1, "#e8c81c"); }
+
+// =============================================================== TEMPPELI
+// Kammio: kuilu leikkaa lattian poikittain; idoli takana oviaukon edessä.
+const CHASM = { y0: 82, y1: 96 };
+const floorX = (y) => { const k = (y - 62) / (H - 62); return [lerp(60, -10, k), lerp(260, 330, k)]; };
+function temppeliBg() {
+  noise(0, 0, W, H, "#2a1a10", ["#3a2616", "#1c1008", "#33210f"], .4);
+  // takaseinä ja sivuseinät
+  fillPoly([[60, 8], [260, 8], [260, 62], [60, 62]], "#32200f"); fillPoly([[0, 0], [60, 8], [60, 62], [0, 104]], "#24160c"); fillPoly([[320, 0], [260, 8], [260, 62], [320, 104]], "#20140a");
+  seed = 4; for (let k = 0; k < 1400; k++) { const x = rnd() * W, y = rnd() * 104; if (y < 62 || (x > 60 && x < 260)) continue; px(x, y, rnd() < .5 ? "#2e1e10" : "#160c06"); }
+  for (let y = 16; y < 62; y += 8) { seed = y; let yy = y; for (let x = 60; x < 260; x++) { if (rnd() < .2) yy += rnd() < .5 ? -1 : 1; yy = Math.max(y - 2, Math.min(y + 2, yy)); px(x, yy, "#1a0e06"); } }
+  r(0, 0, W, 8, "#120904"); seed = 3; for (let x = 0; x < W; x += 6 + ((rnd() * 9) | 0)) { const h = 3 + ((rnd() * 8) | 0), w = 3 + ((rnd() * 3) | 0); for (let j = 0; j < h; j++) { const ww = Math.max(1, Math.round(w * (1 - j / h))); r(x + (w - ww) / 2, 8 + j, ww, 1, "#120904"); } }
+  r(152, 0, 16, 8, "#7c6c4c"); r(155, 0, 10, 8, "#a8946c");
+  // kaiverrettu oviaukko takaseinässä
+  r(144, 26, 32, 36, "#0c0603"); disc(160, 26, 16, "#0c0603"); r(140, 26, 4, 36, "#5a4632"); r(176, 26, 4, 36, "#5a4632");
+  for (let a = 0; a < Math.PI; a += .08) { px(160 + Math.cos(a) * 18, 26 - Math.sin(a) * 18, "#6c5640"); px(160 + Math.cos(a) * 19, 26 - Math.sin(a) * 19, "#86704e"); }
+  for (let x = 146; x < 176; x += 7) { r(x, 10, 3, 2, "#3c2c1c"); px(x + 1, 10, "#86704e"); }
+  // reliefi: muinainen otteluohjelma
+  r(76, 20, 50, 30, "#3c2a18"); r(76, 20, 50, 1, "#56402a"); r(76, 49, 50, 1, "#1c1008");
+  for (let row = 0; row < 4; row++) for (let c = 0; c < 6; c++) r(80 + c * 7, 24 + row * 6, 4, 3, (row + c) % 3 ? "#2a1c10" : "#56402a");
+  r(108, 30, 14, 1, "#86704e"); r(108, 36, 10, 1, "#86704e");
+  // seitit
+  for (let k = 0; k < 7; k++) for (let j = 0; j < 14; j++) px(2 + j * Math.cos(k / 4.5), 8 + j * Math.sin(k / 4.5) * 1.2, "#5c5c5c");
+  // lattia perspektiivissä: kivilaatat, rivit tihenevät kauemmas
+  for (let y = 62; y < H; y++) { const [a, b] = floorX(y), k = (y - 62) / (H - 62); r(a, y, b - a, 1, y < CHASM.y0 ? "#3c2a18" : "#4c3420"); }
+  for (const yy of [66, 71, 77, 104, 113, 124]) { const [a, b] = floorX(yy); r(a, yy, b - a, 1, "#2e1e10"); }
+  for (let i = 1; i < 10; i++) { const xf = lerp(60, 260, i / 10), xn = lerp(-10, 330, i / 10); lineC(xf, 62, xn, H, "rgba(30,18,8,.6)"); }
+  r(60, 62, 200, 1, "#5a3e26");
+  // kuilu poikittain
+  for (let y = CHASM.y0; y < CHASM.y1; y++) { const [a, b] = floorX(y), k = (y - CHASM.y0) / (CHASM.y1 - CHASM.y0); r(a, y, b - a, 1, k < .25 ? "#1c1008" : k < .6 ? "#0a0503" : "#000"); }
+  { const [a, b] = floorX(CHASM.y0); r(a, CHASM.y0 - 1, b - a, 1, "#6c4c30"); } { const [a, b] = floorX(CHASM.y1); r(a, CHASM.y1, b - a, 1, "#6c4c30"); r(a, CHASM.y1 + 1, b - a, 1, "#2a1a0e"); }
+  r(122, 98, 6, 4, "#d8d0b8"); px(123, 99, "#1c1008"); px(126, 99, "#1c1008"); r(129, 100, 5, 1, "#c8c0a8");
+  // koukku katossa kuilun yllä, soihtujen pidikkeet, ovi vasemmalla
+  r(160, 8, 1, 16, "#5c5c5c"); r(156, 23, 8, 2, "#7c7c7c"); r(163, 20, 1, 4, "#7c7c7c");
+  r(34, 44, 6, 2, "#3c3c3c"); r(280, 44, 6, 2, "#3c3c3c");
+  fillPoly([[2, 76], [18, 82], [18, 124], [2, 128]], "#0a0503"); lineC(18, 82, 18, 124, "#4a3622");
+}
+const DUST2 = Array.from({ length: 16 }, (_, i) => ({ x: 152 + (i * 7) % 16, y: (i * 13) % 70, s: 3 + (i % 4) }));
+let darkC2 = null;
+function temppeliDraw(t) {
+  g.drawImage(paintBg("temppeli2", temppeliBg), 0, 0);
+  if (st.flags.whipHung) r(160, 25, 1, 46, "#6c4420");
+  if (st.flags.crossed) { fillPoly([[196, CHASM.y0], [209, CHASM.y0], [210, CHASM.y1], [195, CHASM.y1]], "#4a3420"); r(196, CHASM.y0, 13, 1, "#6c4c30"); }
+}
+function temppeliSand() { for (let j = 0; j < 12; j++) { const w = Math.round(32 * Math.pow((j + 1) / 12, .55)), y = 117 + j; for (let i = 0; i < w; i++) { const x = 54 - w / 2 + i; px(x, y, bay(x, y) < j / 12 ? "#b08c48" : bay(x, y) < .7 ? "#d8b46c" : "#c8a45c"); } } px(53, 117, "#f0d090"); }
+function temppeliPillar() { shadow(252, 131, 16); r(236, 121, 32, 10, "#6c5a46"); r(236, 121, 32, 2, "#86704e"); r(236, 129, 32, 2, "#4c3c2c"); r(266, 121, 3, 10, "#5a4a38");
+  r(245, 122, 1, 7, "#3c2c1c"); r(254, 123, 1, 6, "#3c2c1c"); disc(236, 126, 5, "#5a4a38"); }
+function temppeliPedestal() { r(154, 64, 12, 12, "#7c6c5c"); r(163, 64, 3, 12, "#5c4c3c"); r(152, 62, 16, 3, "#9c8c7c"); r(152, 62, 16, 1, "#b4a494");
+  if (!st.flags.idol) { const sp = Math.sin(performance.now() / 260); r(157, 54, 6, 8, "#e8c81c"); r(158, 52, 4, 2, "#e8c81c"); r(157, 54, 1, 8, "#fcf06c"); r(162, 54, 1, 8, "#b8941c");
+    px(158, 56, "#3c2c0c"); px(161, 56, "#3c2c0c"); if (sp > .6) { px(160, 50, "#fff"); px(159, 51, "#fcfc9c"); px(161, 51, "#fcfc9c"); } }
+  else if (st.flags.swapped) { r(156, 57, 8, 5, "#c8b48c"); r(156, 57, 8, 1, "#e0d0a8"); } }
+// Kivenjärkäle vyöryy oviaukosta katsojaa kohti: y ja koko kasvavat.
+const boulderY = () => 52 + st.flags.boulder * 92;
+function temppeliBoulder() { if (st.flags.boulder == null) return; const k = st.flags.boulder, y = boulderY(), rad = 7 + k * 34, rot = k * 9;
+  shadow(160, Math.min(y + rad * .2, 135), rad * .9); disc(160, y - rad * .8, Math.round(rad), "#6c5c4c", "#3c3024"); disc(160 - rad * .3, y - rad * 1.1, Math.round(rad * .3), "#84725e");
+  r(160 + Math.cos(rot) * rad * .5, y - rad * .8 + Math.sin(rot) * rad * .5, rad * .25, rad * .18, "#3c3024"); r(160 - Math.cos(rot) * rad * .55, y - rad * .8 - Math.sin(rot) * rad * .4, rad * .2, rad * .2, "#3c3024"); }
+function temppeliPost(t) {
+  darkC2 ??= Object.assign(document.createElement("canvas"), { width: W, height: H });
+  const L = darkC2.getContext("2d"); L.globalCompositeOperation = "source-over"; L.clearRect(0, 0, W, H); L.fillStyle = "rgba(6,3,0,.66)"; L.fillRect(0, 0, W, H);
+  L.globalCompositeOperation = "destination-out";
+  const hole = (x, y, rad, a) => { const gr = L.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); L.fillStyle = gr; L.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
+  const f = Math.sin(t / 90) * 4 + Math.sin(t / 53) * 2;
+  hole(37, 40, 70 + f, .95); hole(283, 40, 70 - f, .95); hole(st.x, st.y - 16, 34, .55); hole(160, 58, 30, .8);
+  L.beginPath(); L.moveTo(152, 0); L.lineTo(168, 0); L.lineTo(176, 66); L.lineTo(144, 66); L.closePath(); L.fillStyle = "rgba(0,0,0,.6)"; L.fill();
+  g.drawImage(darkC2, 0, 0);
+  g.fillStyle = "rgba(255,236,170,.07)"; g.beginPath(); g.moveTo(152, 0); g.lineTo(168, 0); g.lineTo(176, 66); g.lineTo(144, 66); g.closePath(); g.fill();
+  for (const d of DUST2) { d.y = (d.y + d.s * 0.012) % 64; px(d.x + Math.sin(t / 700 + d.y) * 3 + d.y * .08, d.y, "#f8e4b0"); }
+  flame(36, 48, t); flame(282, 48, t); glow(37, 42, 34, "255,130,40", .28); glow(283, 42, 34, "255,130,40", .28);
+}
+
+// =============================================================== LATTIAPIANO (satama)
+// Tom Hanksin "Big" -elokuvan jättipiano heijastettuna laiturin kanteen 3D-perspektiivissä
+// (16.10.): kymmenen valokosketinta laiturin poikki keskisyvyydellä, saumat seuraavat
+// laiturin pakopistettä ja numerot litistyvät lattian kulmaan. Koodi 1-9-8-5.
+// Sama heijastettu numeropiano jokaisessa ruudussa: ruudun oma lattiakaista ja sen reunat.
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+const streetX = (y) => { const k = (y - 72) / 64; return [lerp(142, 20, k) + 4, Math.min(204, lerp(178, 300, k))]; };
+const templeX = (y) => { const k = (y - 100) / 36; return [lerp(24, 2, k) + 8, lerp(296, 318, k) - 8]; };
+const QUIZ_AREA = { koti: { y0: 98, y1: 116, edges: pierX }, basaari: { y0: 100, y1: 116, edges: streetX }, temppeli: { y0: 103, y1: 117, edges: templeX } };
+const quizFlag = (scene = st.scene) => (scene === "koti" ? "pianoT" : `quizT_${scene}`);
+function keyAt(x, y) {
+  const A = QUIZ_AREA[st.scene]; if (!A || y < A.y0 || y > A.y1) return null;
+  const [a, b] = A.edges(y), i = Math.floor((x - a) / (b - a) * 10);
+  return i >= 0 && i < 10 ? KEYS[i] : null;
+}
+function keyQuad(i) { const A = QUIZ_AREA[st.scene], [a0, b0] = A.edges(A.y0), [a1, b1] = A.edges(A.y1);
+  return [[lerp(a0, b0, i / 10), A.y0], [lerp(a0, b0, (i + 1) / 10), A.y0], [lerp(a1, b1, (i + 1) / 10), A.y1], [lerp(a1, b1, i / 10), A.y1]]; }
+let lastKey = { k: null, t: 0 };
+// Numerot ilmestyvät valona vasta salkkumiehen haasteessa (st.flags.pianoT = hetki),
+// kosketin kerrallaan vasemmalta oikealle.
+function satamaPiano(t) {
+  const A = QUIZ_AREA[st.scene]; if (!A || !st.flags[quizFlag()]) return;
+  const since = Date.now() - st.flags[quizFlag()], flick = .9 + .1 * Math.sin(t / 70);
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 10; i++) {
+    if (since < i * 90) continue;
+    const q = keyQuad(i), lit = lastKey.k === KEYS[i] && t - lastKey.t < 450, fresh = since < i * 90 + 260, a = (lit ? .55 : fresh ? .45 : .16) * flick;
+    g.fillStyle = `rgba(255,236,140,${a})`; g.beginPath(); q.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
+    g.strokeStyle = `rgba(255,244,190,${lit ? .9 : .5})`; g.lineWidth = .6; g.stroke();
+    // numero lattian kulmaan: leveys kuin koskettimen keskikohta, korkeus litistetty
+    const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (A.y0 + A.y1) / 2 + 1, kw = (q[1][0] - q[0][0] + q[2][0] - q[3][0]) / 2;
+    g.save(); g.translate(cx, cy); g.scale(1, .55); g.font = `${Math.round(kw * 1.05)}px VT323, monospace`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = `rgba(255,${lit ? 120 : 250},${lit ? 90 : 210},${lit ? 1 : .75})`; g.fillText(KEYS[i], 0, 0); g.restore();
+    if (lit) glow(cx, cy, 16, "255,230,120", .3);
+  }
+  g.globalCompositeOperation = "source-over"; g.textAlign = "left"; g.textBaseline = "alphabetic";
+}
+
+// Haamuilves (16.10.): oikean 1985-vastauksen jälkeen laiturin kanteen heijastuu hetkeksi
+// aavemainen ilveksen pää. Oma piirros (tupsukorvat, poskiparta, vinot silmät), ei seuran
+// logo. Kesto ~3,2 s: häivähtää esiin, hehkuu, sammuu.
+function ghostLynx(t) {
+  if (!st.flags.ghostT) return;
+  const since = Date.now() - st.flags.ghostT, D = 3200;
+  if (since > D) return;
+  const env = Math.sin(Math.PI * since / D), a = env * (.8 + .2 * Math.sin(t / 60)), rise = Math.min(1, since / 700);
+  const cx = 160, cy = 92 - rise * 14, S = 1.15;
+  glow(cx, cy, 52, "200,230,110", a * .25);
+  g.save(); g.globalAlpha = a * .85; g.translate(cx, cy); g.scale(S, S);
+  const P = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+  // korvat tupsuineen
+  P([[-17, -8], [-20, -36], [-6, -18]], "#e8d860"); P([[17, -8], [20, -36], [6, -18]], "#e8d860");
+  P([[-15, -12], [-18, -30], [-9, -18]], "#8c7c2c"); P([[15, -12], [18, -30], [9, -18]], "#8c7c2c");
+  P([[-20, -36], [-21, -44], [-18, -36]], "#1c1c10"); P([[20, -36], [21, -44], [18, -36]], "#1c1c10");
+  // poskiparta ja pää
+  P([[-18, 0], [-31, 8], [-22, 10], [-29, 17], [-16, 15], [-20, 22], [-6, 18]], "#d8e8a0"); P([[18, 0], [31, 8], [22, 10], [29, 17], [16, 15], [20, 22], [6, 18]], "#d8e8a0");
+  P([[-18, -12], [-8, -20], [8, -20], [18, -12], [21, 2], [12, 15], [0, 19], [-12, 15], [-21, 2]], "#f0dc6c");
+  // otsaraidat
+  for (const x of [-6, 0, 6]) P([[x - 1, -19], [x + 1, -19], [x + .5, -11], [x - .5, -11]], "#6c5c1c");
+  // silmät: keltaiset mantelit, pystypupilli, valoläikkä
+  P([[-14, -4], [-9, -7], [-4, -4], [-9, -1]], "#fcf4a0"); P([[14, -4], [9, -7], [4, -4], [9, -1]], "#fcf4a0");
+  P([[-9.6, -6.5], [-8.4, -6.5], [-8.4, -1.5], [-9.6, -1.5]], "#141408"); P([[8.4, -6.5], [9.6, -6.5], [9.6, -1.5], [8.4, -1.5]], "#141408");
+  // valkoinen kuono, nenä, suu
+  P([[-7, 4], [0, 1], [7, 4], [6, 12], [0, 15], [-6, 12]], "#fcfce8"); P([[-3, 4], [3, 4], [0, 7.5]], "#3c1c14");
+  g.strokeStyle = "#3c1c14"; g.lineWidth = .7; g.beginPath(); g.moveTo(0, 7.5); g.lineTo(0, 10); g.moveTo(-4, 12); g.quadraticCurveTo(0, 9.5, 4, 12); g.stroke();
+  g.restore();
+  // hologrammin juovat
+  g.fillStyle = `rgba(0,0,0,${a * .25})`; for (let y = cy - 52; y < cy + 28; y += 2) g.fillRect(cx - 40, y, 80, 1);
+}
+
+// Hologrammi-apu: sama kesto ja kirjekuori kaikille haamuille (flag = alkuhetki).
+function holo(t, flag, cx, cy, draw, D = 3200) {
+  const t0 = st.flags[flag]; if (!t0) return; const since = Date.now() - t0; if (since > D) return;
+  const a = Math.sin(Math.PI * since / D) * (.8 + .2 * Math.sin(t / 60)), rise = Math.min(1, since / 700), y = cy - rise * 14;
+  glow(cx, y, 50, "170,220,255", a * .25); g.save(); g.globalAlpha = a * .85; g.translate(cx, y); draw(); g.restore();
+  g.fillStyle = `rgba(0,0,0,${a * .25})`; for (let yy = y - 52; yy < y + 28; yy += 2) g.fillRect(cx - 40, yy, 80, 1);
+}
+const PP = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+// Stanley Cup -henkinen pokaali (porrastettu jalusta, malja päällä): basaarin 2006-visa.
+function ghostCup(t) { holo(t, "cupT", 140, 96, () => {
+  const S = "#dce8f4", D = "#8ca4bc", H = "#ffffff";
+  for (const [w, y, h] of [[34, 12, 6], [30, 6, 6], [26, 0, 6], [22, -6, 6], [18, -12, 6]]) { PP([[-w / 2, y], [w / 2, y], [w / 2, y + h], [-w / 2, y + h]], S); PP([[w / 2 - 4, y], [w / 2, y], [w / 2, y + h], [w / 2 - 4, y + h]], D); }
+  PP([[-4, -12], [4, -12], [3, -24], [-3, -24]], S); PP([[-14, -34], [14, -34], [10, -24], [-10, -24]], S); PP([[-14, -34], [14, -34], [14, -36], [-14, -36]], H); PP([[6, -34], [14, -34], [10, -24], [7, -24]], D);
+  for (const y of [9, 3, -3, -9]) PP([[-8, y], [8, y], [8, y + 1], [-8, y + 1]], D); }); }
+// Mestaruusmalja (iso kulho jalalla): temppelin 64-visa.
+function ghostTrophy(t) { holo(t, "trophyT", 160, 86, () => {
+  const S = "#f4ecd0", D = "#a89c74", H = "#ffffff";
+  PP([[-14, 14], [14, 14], [10, 8], [-10, 8]], S); PP([[-3, 8], [3, 8], [2, -6], [-2, -6]], S);
+  PP([[-24, -28], [24, -28], [18, -12], [8, -6], [-8, -6], [-18, -12]], S); PP([[10, -28], [24, -28], [18, -12], [8, -6]], D); PP([[-24, -30], [24, -30], [24, -28], [-24, -28]], H);
+  PP([[-28, -26], [-24, -26], [-24, -16], [-28, -18]], D); PP([[28, -26], [24, -26], [24, -16], [28, -18]], D); }); }
+// Muinaisen erotuomarin haamu temppelissä: raitapaita, pilli, läpikuultava.
+function ghostRef(x, y, t, talking = false) {
+  g.save(); g.globalAlpha = .55 + .15 * Math.sin(t / 300); const fl = Math.sin(t / 400) * 1.5;
+  glow(x, y - 20 + fl, 26, "170,220,255", .2);
+  r(x - 4, y - 12 + fl, 3, 8, "#1c1c1c"); r(x + 1, y - 12 + fl, 3, 8, "#1c1c1c");
+  for (let k = 0; k < 7; k++) r(x - 6 + k * 2, y - 26 + fl, 2, 14, k % 2 ? "#1c1c1c" : "#f4f4f4");
+  r(x - 8, y - 24 + fl, 2, 9, "#f4f4f4"); r(x + 6, y - 24 + fl, 2, 9, "#1c1c1c");
+  r(x - 4, y - 36 + fl, 8, 10, "#e8d8c8"); r(x - 4, y - 38 + fl, 8, 3, "#9c9c9c"); px(x - 2, y - 33 + fl, "#1c1c1c"); px(x + 2, y - 33 + fl, "#1c1c1c");
+  if (talking && Math.floor(t / 110) % 2) r(x - 1, y - 30 + fl, 3, 2, "#5c1c14"); else r(x - 2, y - 30 + fl, 4, 1, "#7c5c4c");
+  r(x + 3, y - 31 + fl, 3, 2, "#c8c8c8"); px(x + 6, y - 31 + fl, "#c8c8c8");
+  g.restore();
+}
+
+</script>
+<script>/* game.js */
+// Mouhon salaisuus -- sisältö: esineet, ruudut ja tarina Mouho-moottorille.
+"use strict";
+// Raimo Helminen -cameon hahmo (määritelty ennen ruutuja, koska satama viittaa siihen).
+const RAIMO = { id: "helminen", x: -20, y: 127, h: 46, color: "#b4fc5c", moving: false, dir: 1, hidden: () => !st.flags.raimo,
+  draw(t, talking) { helminen(this.x, this.y, t, talking, this.moving, this.dir); } };
+Object.assign(ITEMS, {
+  kebab: { name: "kebab", look: () => say("Aito Istanbulin döner kebab. Säästän sen Mouhoon. Pizza on yliarvostettu.") },
+  kortti: { name: "käyntikortti", look: () => say("\"Signor Investimenti, Milano. Lisärahoitusta joustavasti.\"\nSama mies. Eri aurinkolasit.") },
+  kirje: { name: "kirje", look: async () => { await say("\"Arvoisa herra Markkanen! Muistatte minut Milanosta.\nTällä kertaa kaikki on totta: Kappadokian luolatemppelissä lepää kultainen idoli.\"\n-- Signor Investimenti"); await say("Milano. Ensin tulkin kanssa, sitten ilman.\nTällä kertaa en siirrä kenellekään mitään etukäteen."); if (!has("lippu")) { await say("Kirjeen välissä on lentolippu Istanbuliin. Ilmainen! Se on aina hyvä merkki. Eikö olekin?"); give("lippu"); } } },
+  lippu: { name: "lentolippu", look: () => say("Yksisuuntainen lippu Istanbuliin. Paluu järjestyy jotenkin. Aina järjestyy.") },
+  rahat: { name: "3,50 € ja nappi", look: () => say("Kolme euroa viisikymmentä ja yksi nappi. Nappi on kaunis.") },
+  pussi: { name: "kangaspussi", look: () => say("Tyhjä kangaspussi. Siinä on juuri idolin kokoinen ruumiinavaus.") },
+  sakki: { name: "hiekkasäkki", look: () => say("Hiekkasäkki. Painaa suunnilleen yhtä paljon kuin kultainen idoli. Toivottavasti.") },
+  ruoska: { name: "ruoska", look: () => say("Ruoska. En tiedä miten tätä käytetään, mutta näytän tosi hyvältä.") },
+  idoli: { name: "kultainen idoli", look: () => say("Kultainen idoli. Se katsoo minua. Minä katson sitä. Me ymmärrämme toisiamme.") },
+});
+
+// ---------------------------------------------------------------- ruudut
+Object.assign(ROOMS, {
+  // Satama: laituri syvälle järvelle, ranta lähimpänä (rooms.js). Kävelyalue = ranta + laituri.
+  koti: {
+    title: "Satama, Lappeenranta", scale: [72, 136, 0.38, 1.06], start: 128,
+    walk: [[[0, 123], [238, 123], [238, 136], [0, 136]], [[72, 124], [248, 124], [178, 72], [142, 72]]],
+    actors: [{ id: "salkkumies", x: 184, y: 92, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(184, 92, t, talking) },
+             RAIMO],
+    draw: (t) => { satamaDraw(t); satamaPiano(t); ghostLynx(t); },
+    onStop: (x, y) => quizStep(keyAt(x, y)),
+    props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 121, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
+    spots: [
+      { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
+        Katso: () => say("Liituraitapuku, aurinkolasit keskellä yötä ja salkku. Joko kohta taitava liikemies tai sitten hyvin pimeässä kävelevä."),
+        Puhu: () => salesmanTalk(), Anna: (it) => it === "rahat" ? say("En anna. Tällä kertaa en maksa ennakkoon kenellekään.") : say("Salkkumies: \"Otan vastaan vain tilisiirtoja, kiitos.\"", "salkkumies") },
+      { id: "pollari", name: "pollari", x: 232, y: 106, w: 20, h: 16, at: 226, aty: 125,
+        Katso: () => say("Pollari ja köysikieppi. Köysi ei ole sidottu mihinkään. Vähän kuin sijoitussuunnitelmani."), Vedä: () => say("Köysi ei johda mihinkään. Tarkistin.") },
+      { id: "juliste", name: "juliste", x: 16, y: 84, w: 38, h: 30, at: 58, aty: 129,
+        Katso: () => (iq("juliste", 2), say("MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nMouho-osallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
+      { id: "piano", name: "lattiapiano", floor: true, hidden: () => !st.flags.pianoT, x: 80, y: 98, w: 160, h: 18, at: 160, aty: 108,
+        Katso: () => say("Laiturin kanteen heijastettu jättipiano, numerot 1-9 ja 0. Kuin siinä Tom Hanksin elokuvassa.\nPitää vain seistä oikeilla numeroilla oikeassa järjestyksessä."),
+        Työnnä: () => say("Painan jalalla. Pianoja soitetaan tässä kaupungissa jaloin.") },
+      { id: "laatikko", name: "postilaatikko", x: 91, y: 80, w: 16, h: 24, at: 104, aty: 108,
+        Avaa: async () => { if (!st.flags.unlocked) return say("Lukossa, ja avain on hukassa. Tuo liituraitamies katselee laatikkoa vähän liian tietäväisesti."); if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say(st.flags.letterTaken ? "Tyhjä." : "Laatikossa on kirje!"); },
+        Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
+        Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje! Joku muistaa minut."); },
+        Katso: () => say("Postilaatikko laiturilla. Yleensä täynnä laskuja, mutta tänään se näyttää toiveikkaalta.") },
+      { id: "hattu", name: "hattu", x: 199, y: 61, w: 15, h: 10, at: 200, aty: 99, hidden: () => st.hat,
+        Katso: () => say("Vanha fedora naulakossa. Isoisän. Tai jonkun, joka näytti isoisältä."), Poimi: async () => { st.hat = true; await say("Sopii kuin valettu. Nyt näytän seikkailijalta."); } },
+      { id: "possu", name: "säästöpossu", x: 144, y: 112, w: 15, h: 10, at: 150, aty: 124,
+        Katso: () => say("Säästöpossu laiturilla. Sen ilme kertoo kaiken."),
+        Avaa: async () => { if (st.flags.pig) return say("Possu on tyhjä. Kuten minäkin, sisältä."); st.flags.pig = true; give("rahat"); await say("3,50 € ja nappi. Ei riitä edes Mouho-osallistumismaksun postimerkkiin."); },
+        Poimi: () => spot("koti", "possu").Avaa(), Käytä: () => spot("koti", "possu").Avaa() },
+      { id: "taksi", name: "taksi lentokentälle", x: 242, y: 88, w: 78, h: 46, at: 234, aty: 130,
+        Katso: () => say("Taksi lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
+        Käytä: () => leave(), Avaa: () => leave(), Puhu: () => say("Kuljettaja: \"Lentokentälle? Taas Milanoon? Ai, Istanbuliin. No, lippu ensin.\"", "muu") },
+    ],
+  },
+  // Basaari: katu kapenee kohti moskeijaa; Mehmet tiskinsä takana oikealla.
+  basaari: {
+    title: "Suuri basaari, Istanbul", scale: [72, 136, 0.4, 1.06], start: 128,
+    walk: [[[142, 72], [178, 72], [206, 96], [206, 121], [300, 136], [20, 136]]],
+    actors: [{ id: "kauppias", x: 258, y: 96, h: 46, color: "#fc54fc", draw: (t, talking) => merchant(258, 96, t, talking) }],
+    draw: (t) => { basaariDraw(t); satamaPiano(t); ghostCup(t); },
+    onStop: (x, y) => quizStep(keyAt(x, y)),
+    props: [{ y: 114, draw: basaariCounter }, { y: 101, draw: basaariSpices }, { y: 131, draw: basaariAmphora }],
+    spots: [
+      { id: "piano2", name: "heijastetut numerot", floor: true, hidden: () => !st.flags.quizT_basaari, x: 70, y: 100, w: 136, h: 16, at: 150, aty: 108,
+        Katso: () => say("Numerot heijastuvat kadun mukulakiviin. Mehmetillä on yllättävän hyvä tekniikka.") },
+      { id: "amfora", name: "amfora", x: 28, y: 108, w: 22, h: 24, at: 56, aty: 130,
+        Katso: () => say("Amfora. Kyljessä lukee \"ÄLÄ AVAA\". Kerrankin kunnioitan ohjetta."), Avaa: () => say("Siinä lukee \"älä avaa\". Opin jotain Milanosta.") },
+      { id: "mausteet", name: "mausteet", x: 68, y: 84, w: 44, h: 18, at: 104, aty: 104,
+        Katso: () => say("Paprikaa, kurkumaa ja minttua. Basaarin tuoksu on puoliksi näitä, puoliksi kebabia."), Poimi: () => say("Mehmet: \"Mausteet punnitaan, ystäväni. Ei sormia.\"", "kauppias") },
+      { id: "doner", name: "döner-varras", x: 222, y: 64, w: 16, h: 28, at: 206, aty: 108,
+        Katso: () => say("Döner kebab pyörii hitaasti. Kuin Liigan otteluohjelma: aina sama liha, mutta joka kerta eri kohdassa."),
+        Poimi: () => say("Mehmet: \"Kebab maksaa, ystäväni. Mutta tuoksu on ilmainen.\"", "kauppias"),
+        Käytä: () => say("Pyöritän sitä toiseen suuntaan. Mehmet katsoo minua kuin olisin siirtänyt ottelun.") },
+      { id: "matto", name: "matto", x: 16, y: 46, w: 34, h: 54, at: 56, aty: 112,
+        Katso: async () => { st.flags.map = true; iq("kartta", 8); await say("Mattoon on kudottu kartta! Kappadokia... luolatemppeli... ja punainen rasti.\nPainan sen mieleeni. Kadun päästä pääsee itään."); },
+        Poimi: () => say("Kauppias: \"Matto maksaa enemmän kuin sinä.\"", "kauppias"), Työnnä: () => say("Matto ei lennä. Tarkistin.") },
+      { id: "pussi", name: "kangaspussi", x: 78, y: 58, w: 12, h: 18, at: 98, aty: 98, hidden: () => st.flags.bag,
+        Katso: () => say("Tyhjä kangaspussi naulassa. Siinä lukee \"ILMAINEN\". Tässä basaarissa se on epäilyttävää."),
+        Poimi: async () => { st.flags.bag = true; give("pussi"); await say("Otan sen. Se oli ilmainen. Luulisin."); } },
+      { id: "ruoska", name: "ruoska", x: 216, y: 68, w: 18, h: 18, at: 206, aty: 104, hidden: () => st.whip,
+        Katso: () => say("Ruoska kojun tolpassa. Jokainen arkeologi tarvitsee ruoskan. Ja hatun."), Poimi: () => say("Kauppias katsoo minua kuin haukka. Haukka, jolla on fetsi."), },
+      { id: "kauppias", name: "kauppias", actor: true, x: 247, y: 64, w: 22, h: 32, at: 205, aty: 116,
+        Katso: () => say("Basaarin kovin tinkijä, Mehmet. Kuulemma hän on myynyt hiekkaa autiomaahan ja logon Lappeenrantaan."),
+        Puhu: () => talk(), Anna: (it) => it === "idoli" ? sellIdol() : it === "rahat" ? say("Kauppias: \"3,50 ja nappi? Tingi ensin, sitten puhutaan.\"", "kauppias") : say("Kauppias: \"Ei kiitos.\"", "kauppias") },
+      { id: "itaan", name: "itäinen kuja", x: 140, y: 40, w: 40, h: 31, at: 160, aty: 73, exit: true,
+        Katso: () => say(st.flags.map ? "Kuja itään, Kappadokiaan, kartan mukaan." : "Kuja moskeijan alla. En tiedä mihin se vie."), Käytä: () => toTemple(), Kävele: () => toTemple() },
+    ],
+  },
+  // Temppeli: kuilu poikittain lattian halki, idoli sen takana. Takaosaan pääsee
+  // vasta ruoskalla; ylityksen jälkeen kuilun oikealle laidalle jää kapea reunus.
+  temppeli: {
+    title: "Unohdettu luolatemppeli, Kappadokia", scale: [62, 136, 0.34, 1.06], start: 128,
+    walk: () => st.flags.crossed ? [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
+                                 : [[[24, 100], [296, 100], [318, 136], [2, 136]]],
+    draw: temppeliDraw,
+    post: (t) => { temppeliPost(t); satamaPiano(t); ghostTrophy(t); },
+    onStop: (x, y) => quizStep(keyAt(x, y)),
+    actors: [{ id: "tuomari", x: 100, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(100, 106, t, talking) }],
+    props: [{ y: 76, draw: temppeliPedestal }, { y: 129, draw: temppeliSand }, { y: 131, draw: temppeliPillar }, { get y() { return st.flags.boulder == null ? -1 : boulderY(); }, draw: temppeliBoulder }],
+    spots: [
+      { id: "tuomari", name: "erotuomarin haamu", actor: true, hidden: () => !st.flags.refHere, x: 92, y: 64, w: 16, h: 42, at: 112, aty: 110,
+        Katso: () => say("Muinaisen erotuomarin haamu. Raitapaita, pilli ja ilme, joka on nähnyt kaiken."), Puhu: () => refereeChallenge() },
+      { id: "piano3", name: "heijastetut numerot", floor: true, hidden: () => !st.flags.quizT_temppeli, x: 30, y: 103, w: 260, h: 14, at: 160, aty: 110,
+        Katso: () => say("Numerot hehkuvat kivilattiassa. Joku täällä pitää visoista.") },
+      { id: "pylvas", name: "kaatunut pylväs", x: 234, y: 118, w: 36, h: 14, at: 228, aty: 133,
+        Katso: () => say("Kaatunut pylväs. Siinä on enemmän ryhtiä kuin minulla maanantaisin."), Työnnä: () => say("Se ei liiku. Eikä sen kuulukaan. Se on jo kaatunut kerran.") },
+      { id: "hiekka", name: "hiekka", x: 36, y: 114, w: 36, h: 16, at: 76, aty: 127,
+        Katso: () => say("Hienoa hiekkaa. Täydellistä säkkeihin. Ei kysytä, miksi luolassa on hiekkaa."),
+        Poimi: () => say("Kourallinen ei riitä. Tarvitsisin jonkin astian."),
+        "Käytä:pussi": async () => { take("pussi"); give("sakki"); iq("hiekkasakki", 5); await say("Täytän pussin. Hiekkasäkki valmis! Painaa varmaan saman verran kuin idoli."); } },
+      { id: "reliefi", name: "kivireliefi", x: 76, y: 20, w: 50, h: 30, at: 100, aty: 102,
+        Katso: () => (iq("reliefi", 5), say("Muinainen otteluohjelma, hakattu kiveen tuhansiksi vuosiksi.\nJoku on silti siirtänyt kolmea ottelua lyhyellä varoitusajalla.")),
+        Työnnä: () => say("Se ei liiku. Kiveen hakattu ohjelma ei siirry. Tai ei ainakaan pitäisi.") },
+      { id: "kuilu", name: "kuilu", x: 26, y: 81, w: 268, h: 17, at: 160, aty: 102,
+        Katso: () => say("Pohjaton kuilu koko kammion poikki. Tai ainakin syvä. En aio mitata."),
+        Kävele: () => say("En hyppää tuon yli. Olen seikkailija, en urheilija.") },
+      { id: "koukku", name: "koukku", x: 153, y: 6, w: 14, h: 22, at: 160, aty: 102,
+        Katso: () => say("Rautakoukku katossa kuilun yllä. Joku on ajatellut minua."),
+        "Käytä:ruoska": async () => { st.flags.whipHung = true; take("ruoska"); await say("Hop!");
+          for (let i = 0; i < 28; i++) { st.y -= 1; await sleep(28); }
+          st.flags.crossed = true; st.flags.whipHung = false; give("ruoska"); iq("ruoska", 10);
+          await say("Juuri kuten harjoittelin. En harjoitellut."); await say("...Ja tuolla oikealla on kapea reunus. Olisin voinut kävellä."); } },
+      { id: "idoli", name: "kultainen idoli", x: 152, y: 49, w: 16, h: 16, at: 160, aty: 70, hidden: () => st.flags.idol && !st.flags.swapped,
+        Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli kuilun takana. Mouho-osallistumismaksu muodossa, joka hymyilee."),
+        Poimi: () => !st.flags.crossed ? say("En ylety. Kuilu on välissä.") : st.flags.idol ? say("Se on jo minulla.") : say("Liian helppoa. Jalustassa on varmasti ansa. Tarvitsen jotain samanpainoista vaihtoon."),
+        "Käytä:sakki": () => (st.flags.crossed ? grabIdol() : say("En ylety. Kuilu on välissä.")) },
+      { id: "ovi", name: "käytävä basaariin", x: 2, y: 76, w: 18, h: 52, at: 22, aty: 118, exit: true,
+        Katso: () => say("Käytävä takaisin basaariin."), Käytä: () => go("basaari", 160, false, 74), Kävele: () => go("basaari", 160, false, 74) },
+    ],
+  },
+});
+
+// ---------------------------------------------------------------- juoni
+async function leave() {
+  await script(async () => {
+    if (!has("lippu")) return say("Ilman lippua en pääse edes turvatarkastukseen. Postia pitäisi ehkä katsoa.");
+    if (!st.hat) return say("Lähteä Indiana Jones -seikkailulle ilman hattua? En ole barbaari.");
+    // Basaarista ei ole paluuta satamaan: ilman possun rahoja ruoskaa ei saisi, ja peli jumittuisi.
+    if (!st.flags.pig) return say("Lähteä Istanbuliin ilman käteistä? Säästöpossu laiturilla on vielä tyhjentämättä.");
+    await say("Istanbul, täältä tullaan!");
+    await travel(); go("basaari", 40, true);
+    await say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
+  });
+}
+async function toTemple() {
+  await script(async () => {
+    if (!st.flags.map) return say("En tiedä mihin tämä kuja vie. Jossain täällä on varmasti kartta.");
+    if (!st.whip) return say("Luolatemppeliin ilman ruoskaa? Elokuvissa kaikilla on ruoska.");
+    await walkTo(160, 72); go("temppeli", 160, true, 128); if (!st.flags.refMet) await refereeAppears();
+    await say("Hämähäkinseittejä, soihtuja ja kuilu. Juuri kuten kirjeessä luvattiin.");
+  });
+}
+async function grabIdol() {
+  await script(async () => {
+    take("sakki"); iq("idoli", 10); await say("Rauhallisesti... vaihdetaan sulavasti...");
+    st.flags.idol = true; st.flags.swapped = true; give("idoli"); await sleep(600);
+    await say("...", "muu"); await say("Jalusta painuu. Tietysti se painuu.");
+    // Kivenjärkäle vyöryy oviaukosta katsojaa kohti (0 = oviaukko, 1 = ruudun reuna).
+    st.flags.boulder = 0; await say("JUOKSE!");
+    walkTo(22, 118);
+    while (st.x > 28) { await sleep(30); st.flags.boulder = Math.min(1, st.flags.boulder + 0.0075); }
+    st.flags.boulder = null;
+    go("basaari", 160, true, 74); await say("Hengissä. Ja rikas. No, pian rikas.");
+  });
+}
+
+// Kaupanteko haukkumalla, kuten miekkailu Melee Islandilla: oikea vastaus kolmesti.
+const BARGAIN = [
+  { a: "Tuollaisella hatulla et pääse edes Mikkelin torille!", ok: "Ja tuollaisilla hinnoilla et myisi edes Mikkelin torilla.", no: ["Ai.", "Hattu on isoisän!"] },
+  { a: "Äitini tinkii paremmin kuin sinä!", ok: "Ilmeisesti, koska hän ei ole koskaan ostanut sinulta mitään.", no: ["Terveisiä äidillesi.", "Minulla on kumikana väkipyörällä."] },
+  { a: "Sinä maksaisit ennakkoon kenelle tahansa, joka puhuu italiaa!", ok: "Siksi tingin nyt turkiksi, enkä maksa mitään ennakkoon.", no: ["Grazie.", "Tarvitsen tulkin."] },
+  { a: "Sinä et erottaisi döneriä iskenderistä!", ok: "Mutta erotan hyvän kaupan huonosta. Tällä kertaa.", no: ["Molemmat ovat kebabia.", "Saako valkosipulikastikkeella?"] },
+  { a: "Tämä ruoska kuului itse sulttaanille!", ok: "Sitten sulttaani ostaa sen takaisin kalliimmalla.", no: ["Wau.", "Katso takanasi, kolmipäinen kameli!"] },
+];
+async function talk() {
+  await script(async () => {
+    if (!st.flags.merhaba) { st.flags.merhaba = true; await say("Hoş geldiniz! Merhaba, ystäväni! Tervetuloa Mehmetin kojuun, Istanbulin rehellisimpään.", "kauppias"); await say("Teşekkür... ederim? Opettelin sen lentokoneessa."); }
+    while (true) {
+      const opts = []; if (!st.whip) opts.push("Paljonko ruoska maksaa?", "Tingitään ruoskasta!"); if (!st.flags.logo) opts.push("Teettekö logoja?"); if (!st.flags.seura) opts.push("Ostaisitteko jääkiekkoseuran?"); if (!st.flags.kebabQ) opts.push("Missä saa Istanbulin parhaan kebabin?"); if (!st.flags.cupDone) opts.push("Olen entinen NHL-maalivahti."); if (has("idoli")) opts.push("Kiinnostaisiko kultainen idoli?"); opts.push("Ei mitään, näkemiin.");
+      const pick = opts[await choose(opts)]; await say(pick);
+      if (pick.startsWith("Olen entinen NHL")) {
+        await say("Sinä?! Maalivahti? Todista se, ystäväni. Minä vuonna pelasit Stanley Cupin finaalissa?", "kauppias");
+        await say("Tassuttele se kadulle. Basaarissa kaikki maksetaan jaloin.", "kauppias");
+        st.flags.quizT_basaari = Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+        await sleep(1100); await say("Numerot heijastuivat kadun kiviin. Mehmet on valmistautunut tähän."); return; }
+      else if (pick.startsWith("Missä saa")) { st.flags.kebabQ = true; await say("Serkkuni kioskista Galatan sillan alta. Hänellä on myös logofirma. Ja tulkkipalvelu.", "kauppias");
+        await say("Kuulostaa monialaiselta konsernilta."); await say("Çok güzel! Sinä ymmärrät liiketoimintaa.", "kauppias"); }
+      else if (pick.startsWith("Paljonko")) await say("Sinulle, ystäväni, vain 500 liiraa. Ja hattusi.", "kauppias");
+      else if (pick.startsWith("Teettekö")) { st.flags.logo = true; await say("Teen! Idän Ihme ja kebab samassa kuvassa. Vain 50 tonnia.", "kauppias"); await say("Kiitos, olen nähnyt sen jo."); }
+      else if (pick.startsWith("Ostaisitteko")) { st.flags.seura = true; await say("Etsitkö turkkilaisia sijoittajia, ystäväni?\nMinä olen turkkilainen sijoittaja. Vastaus on ei.", "kauppias"); await say("Kannatti kysyä. Viimeksi kysyin Milanossa."); }
+      else if (pick.startsWith("Tingitään")) { if (await bargain()) return; }
+      else if (pick.startsWith("Kiinnostaisiko")) return sellIdol(true);
+      else { await say("Palaa pian, ystäväni! Hinnat nousevat joka minuutti.", "kauppias"); return; }
+    }
+  });
+}
+async function bargain() {
+  await say("Tingitään? Kukaan ei tingi Mehmetin kanssa!", "kauppias");
+  for (const b of BARGAIN) {
+    await say(b.a, "kauppias");
+    const opts = [...b.no, b.ok].sort(() => Math.random() - 0.5);
+    const i = await choose(opts); await say(opts[i]);
+    if (opts[i] !== b.ok) { await say(opts[i].includes("kameli") ? "Mehmet ei käänny. Hän on nähnyt kolmipäisen kamelin. Kahdesti." : "Ha! Palaa kun opit tinkimään.", opts[i].includes("kameli") ? "muu" : "kauppias"); return false; }
+  }
+  await say("...Sinä tingit kuin oma veljeni. Hyvä on! Ruoska sinulle 3,50 eurolla ja napilla.", "kauppias");
+  // Varmistus vanhoille tallennuksille (ennen taksin rahavaatimusta): ruoska annetaan
+  // velaksi, ettei peli jää jumiin basaariin ilman paluuta.
+  if (!has("rahat")) { await say("Ei rahaa? No, tingit kuin veljeni. Maksat kun olet rikas. Mehmet luottaa.", "kauppias"); }
+  else take("rahat");
+  st.whip = true; give("ruoska"); iq("tinkiminen", 10); await say("Ruoska! Nyt minusta puuttuu vain idoli ja kunnollinen tunnari.");
+  await say("Ja kaupan päälle kebab, ystäväni. Kukaan ei lähde Mehmetin kojulta nälkäisenä.", "kauppias"); give("kebab"); return true;
+}
+async function sellIdol(inScript) {
+  const run = async () => {
+    await say("Kultainen idoli! Kappadokiasta! Annan siitä... 500 euroa.", "kauppias");
+    await say("Täsmälleen Mouho-osallistumismaksu. Kauppa! Mouhoon!");
+    take("idoli"); await sleep(400); await ending();
+  };
+  return inScript ? run() : script(run);
+}
+
+
+// Kohde nimellä, ei indeksillä: uusi kohde ruudun alkuun siirsi indeksit kerran.
+const spot = (room, id) => ROOMS[room].spots.find((p) => p.id === id);
+
+// ---------------------------------------------------------------- Raimo Helminen -cameo
+// Onnistuneen Ilves-visan jälkeen: luistelee sisään vasemmalta, onnittelee ja lähtee heti.
+async function skate(to, speed = 2.2) { RAIMO.moving = true; RAIMO.dir = to > RAIMO.x ? 1 : -1; while (Math.abs(RAIMO.x - to) > speed) { RAIMO.x += Math.sign(to - RAIMO.x) * speed; await sleep(30); } RAIMO.x = to; RAIMO.moving = false; }
+async function raimoCameo() {
+  RAIMO.x = -20; st.flags.raimo = true; st.dir = -1; await skate(Math.max(30, st.x - 34));
+  await say("Oikein! Ilves, 1985. Hienosti tassuteltu, Markkanen!", "helminen");
+  await say("Raimo Helminen?!");
+  await say("Pitää mennä. Treenit alkaa.", "helminen");
+  await skate(-30, 3.2); st.flags.raimo = false;
+  await say("...Ja hän oli poissa. Kukaan ei usko tätä Mouhossa.");
+}
+
+// ---------------------------------------------------------------- lattiapiano (satama)
+// Ilves voitti viimeksi Suomen mestaruuden 1985. Koodi kirjautuu pysähtymisistä.
+const NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9: 587, 0: 659 };
+// Lattiavisat: sama mekaniikka kolmessa ruudussa, koodi ja palkinto ruutukohtaisia.
+const QUIZZES = {
+  koti: { code: "1985", done: () => st.flags.unlocked, taunt: "salkkumies",
+    lines: ["Hah! Väärin. Se maksaa 3,50.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."],
+    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("Hmph. 1985. Olet oikea lätkämies. Tässä avain.", "salkkumies"); await say("Klik! Postilaatikon lukko aukesi."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
+      st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); }); } },
+  basaari: { code: "2006", done: () => st.flags.cupDone, taunt: "kauppias",
+    lines: ["Ei, ei, ystäväni. Maalivahti muistaisi.", "Väärä vuosi! Tuollaisella muistilla et pääse edes Galatan sillalle.", "Hmm. Ehkä sinä olit vain katsomossa."],
+    solve() { st.flags.cupDone = true; iq("stanley", 10); script(async () => {
+      await sleep(700); await say("Çok güzel! 2006! Stanley Cupin finaali! Sinä todella olit maalivahti!", "kauppias");
+      st.flags.cupT = Date.now(); [262, 330, 392, 523].forEach((f, n) => setTimeout(() => beep(f, 500, "sine", .05), n * 200)); await sleep(1600);
+      await say("MARK-KA-NEN! MARK-KA-NEN!", "muu"); await sleep(1500);
+      await say("Kesä 2006. Jotkut asiat eivät unohdu. Edes Istanbulissa.");
+      if (!has("kebab")) { await say("Tästä hyvästä kebab on ilmainen, ystäväni. Maalivahdit tarvitsevat proteiinia.", "kauppias"); give("kebab"); } }); } },
+  temppeli: { code: "64", done: () => st.flags.refDone, taunt: "tuomari",
+    lines: ["Väärin. Kaksi minuuttia jäähyä.", "Ei. Tarkista sääntökirja.", "Väärin. Pilli soi, peli seis."],
+    solve() { st.flags.refDone = true; iq("tuomari", 10); script(async () => {
+      await sleep(700); await say("Oikein. 64 ottelua. Saat kulkea.", "tuomari");
+      st.flags.trophyT = Date.now(); [196, 262, 330, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300);
+      [2200, 2200].forEach((f, n) => setTimeout(() => beep(f, 160, "square", .05), n * 220)); await sleep(500);
+      st.flags.refHere = false; st.flags.crossed = true;
+      await say("Tuomari vihelsi ja katosi. Ja kuilun yli on nyt kivipolku.");
+      await say("Muinaiset tiesivät, mitä tekivät. Ainakin otteluohjelmasta."); }); } },
+};
+const entered = {};
+function quizStep(k) {
+  const Q = QUIZZES[st.scene];
+  if (!k || !Q || !st.flags[quizFlag()]) return;
+  lastKey = { k, t: performance.now() }; beep(NOTE[k], 260);
+  if (Q.done()) return;
+  const e = (entered[st.scene] ??= []); e.push(k);
+  if (e.join("") === Q.code) { entered[st.scene] = []; [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 180, "triangle", .08), 200 + n * 140)); Q.solve(); }
+  else if (!e.every((c, n) => c === Q.code[n])) {               // väärä: summeri, ja alusta (ensimmäinen numero aloittaa uuden)
+    setTimeout(() => beep(110, 300, "sawtooth", .05), 280); entered[st.scene] = k === Q.code[0] ? [k] : [];
+    if (!busy) script(() => say(Q.lines[Math.floor(Math.random() * Q.lines.length)], Q.taunt));
+  }
+}
+// Temppelin erotuomari: ilmestyy ensikäynnillä ja haastaa (vaihtoehto ruoskalle).
+async function refereeAppears() {
+  st.flags.refMet = true; st.flags.refHere = true; beep(2200, 200, "square", .05); await sleep(300);
+  await say("Pilli soi kammiossa. Reliefin eteen materialisoituu läpikuultava erotuomari.", "muu");
+  await refereeChallengeLines();
+}
+async function refereeChallengeLines() {
+  await say("Seis! Kukaan ei ylitä kuilua ennen kuin vastaa kysymykseen.", "tuomari");
+  await say("Montako runkosarjaottelua Liigassa pelataan joukkuetta kohden kaudella 2026-27?", "tuomari");
+  await say("Tassuttele vastaus lattiaan. Tai yritä jotain muuta. Kuilu ei välitä.", "tuomari");
+  st.flags.quizT_temppeli ??= Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+}
+function refereeChallenge() { return script(async () => { if (st.flags.refDone) return say("Peli on jo vihelletty.", "tuomari"); await refereeChallengeLines(); }); }
+
+// ---------------------------------------------------------------- salkkumies (satama)
+// Kysyy otteluohjelmasta ja tarjoaa lisärahoitusta. Ei kuulu ratkaisuun: tämä on
+// hahmo, jolle Jussi saa näyttää oppineensa jotain.
+async function salesmanTalk() {
+  await script(async () => {
+    if (!st.flags.metSales) { st.flags.metSales = true;
+      await say("Psst! Markkanen! Onko otteluohjelma jo valmis? Meidän porukka varasi lauantaille saunan.", "salkkumies"); }
+    while (true) {
+      const opts = [];
+      if (!st.flags.unlocked) opts.push("Tiedätkö, missä postilaatikkoni avain on?");
+      if (!st.flags.salesSchedule) opts.push("Otteluohjelma? En ole enää urheilujohtaja.");
+      if (!st.flags.salesMoney) opts.push("Sanoit jotain lisärahoituksesta?");
+      opts.push("Lainaisitko 500 euroa Mouho-osallistumismaksuun?");
+      if (has("kirje") && !st.flags.salesSignor) opts.push("Tunnetko Signor Investimentin?");
+      opts.push("Näkemiin.");
+      const pick = opts[await choose(opts)]; await say(pick);
+      if (pick.startsWith("Tiedätkö, missä")) {
+        await say("Ehkä tiedän. Mutta avain ei irtoa ilmaiseksi.", "salkkumies");
+        await say("Entinen urheilujohtaja muka. Tiedätkö edes, milloin Ilves voitti viimeksi Suomen mestaruuden?", "salkkumies");
+        await say("Tassuttele se vuosi lattiaan. Jos osaat, avain on sinun.", "salkkumies");
+        st.flags.pianoT = Date.now(); [262, 330, 392, 523, 659].forEach((f, n) => setTimeout(() => beep(f, 150, "triangle", .06), n * 110));
+        await sleep(1100); await say("...Lattiaan ilmestyi numeroita. Tämä kaupunki ei lakkaa yllättämästä.");
+        await say("Kuin siinä Tom Hanksin elokuvassa. Tarvitsee vain seistä oikeilla numeroilla oikeassa järjestyksessä."); return; }
+      else if (pick.startsWith("Otteluohjelma")) { st.flags.salesSchedule = true;
+        await say("Ai. No siirtyykö se lauantain peli? Kysyn vain varmuuden vuoksi. Ja sunnuntain. Ja ensi kuun.", "salkkumies");
+        await say("Kaikki ottelut pelataan suunnitellusti. Luulisin. Älä lainaa minua."); }
+      else if (pick.startsWith("Sanoit")) { st.flags.salesMoney = true;
+        await say("Ainutlaatuinen mahdollisuus! Lähetä vain 100 000 euroa tälle tilille, niin kuukauden päästä saat tuplat. Sijoittajat odottavat jo Milanossa.", "salkkumies");
+        const o = ["Kuulostaa tutulta. Liian tutulta.", "Onko teillä tulkki?", "Ei kiitos. Tällä kertaa en maksa ennakkoon."];
+        const k = await choose(o); await say(o[k]);
+        if (k === 0) await say("Tuttu on turvallinen! Sitä paitsi tällä kertaa logossa on kebab.", "salkkumies");
+        else if (k === 1) { iq("tulkki", 5); await say("Tulkki maksaa erikseen. Ensimmäisellä kerralla mukana, toisella ei.", "salkkumies"); }
+        else { iq("ennakko", 10); await say("Harmi. Olit ennen niin... avoin uusille mahdollisuuksille.", "salkkumies"); } }
+      else if (pick.startsWith("Lainaisitko")) {
+        await say("Totta kai! Rahoitusta myönnetään pientä ennakkomaksua vastaan. 3,50 € riittää alkuun.", "salkkumies");
+        iq("laina", 5); await say(has("rahat") ? "Minulla on täsmälleen 3,50 € ja nappi. Ja minä pidän ne." : "Minulla ei ole edes 3,50 euroa. Se on tällä kertaa onni.");
+        if (!has("kortti")) { await say("Ota ainakin käyntikortti. Siltä varalta, että muutat mielesi.", "salkkumies"); give("kortti"); } }
+      else if (pick.startsWith("Tunnetko")) { st.flags.salesSignor = true;
+        await say("Kuka kysyy? Siis... en ole koskaan kuullutkaan. Hieno mies. Luotettava. Mutta en tunne.", "salkkumies"); }
+      else { await say("Soittele! Ja jos kuulet otteluohjelmasta, kerro minullekin.", "salkkumies"); return; }
+    }
+  });
+}
+
+
+// ---------------------------------------------------------------- vihjeet
+// "Vihje"-nappi ja minuutin toimettomuus: seuraava askel tilan mukaan, ensin vihjaten,
+// toisella kerralla suoraan. Kukaan ei jää jumiin (käyttäjä 16.10.).
+const HINTS = () => {
+  const f = st.flags, here = st.scene;
+  if (here === "koti") {
+    if (!f.unlocked && !f.pianoT) return ["Postilaatikko on lukossa. Tuo liituraitamies laiturilla näyttää tietävän jotain.", "Puhu salkkumiehelle ja kysy postilaatikon avaimesta."];
+    if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat laiturissa.", "Kävele laiturin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
+    if (!f.letterTaken) return ["Lukko on auki. Posti odottaa.", "Avaa postilaatikko ja poimi kirje."];
+    if (!has("lippu")) return ["Kirjeessä voi olla muutakin kuin sanoja.", "Katso kirjettä: oikea painike kirjeen kuvaan tavaroissa."];
+    if (!f.pig) return ["Matkat maksavat. Laiturilla on joku, joka säästää puolestani.", "Avaa säästöpossu laiturilla."];
+    if (!st.hat) return ["Seikkailija ilman hattua on pelkkä turisti.", "Poimi fedora naulakosta laiturilta."];
+    return ["Kaikki on valmista. Lentokenttä kutsuu.", "Käytä taksia oikealla."];
+  }
+  if (here === "basaari") {
+    if (has("idoli")) return ["Mehmet ostaa kaiken. Ehkä kultaakin.", "Anna kultainen idoli Mehmetille."];
+    if (!f.map) return ["Seinällä on matto, jossa on outoja kuvioita.", "Katso mattoa vasemmalla seinällä."];
+    if (!f.bag) return ["Jotain ilmaista roikkuu naulassa. Ilmainen on aina epäilyttävää, mutta hyödyllistä.", "Poimi kangaspussi vasemmalta seinältä."];
+    if (!st.whip) return ["Jokainen arkeologi tarvitsee ruoskan. Mehmet myy sellaisen, jos osaan tinkiä.", "Puhu Mehmetille ja valitse \"Tingitään ruoskasta!\". Vastaa piikkiin samalla mitalla."];
+    return ["Kartan mukaan temppeli on idässä.", "Kävele kadun päähän moskeijan alle."];
+  }
+  if (here === "temppeli") {
+    if (st.flags.idol) return ["Ulos ja äkkiä.", "Mene ovesta vasemmalle."];
+    if (!has("sakki") && !f.swapped) return ["Idoli on ansoitettu. Tarvitsen jotain samanpainoista.", "Käytä kangaspussia hiekkaan."];
+    if (!f.crossed) return ["Kuilun yli pääsee kahdella tavalla: ylhäältä tai tietämällä.", "Käytä ruoskaa katon koukkuun, tai vastaa tuomarille: 64 (kävele numeroille 6 ja 4)."];
+    return ["Idoli kuilun takana. Vaihto sulavasti.", "Käytä hiekkasäkkiä idoliin."];
+  }
+  return null;
+};
+let hintLevel = {}, lastHint = "";
+function hint() {
+  if (busy || overlay || !room()) return;
+  const h = HINTS(); if (!h) return;
+  const key = h[1], lvl = lastHint === key ? Math.min(1, (hintLevel[key] ?? 0) + 1) : 0;
+  hintLevel[key] = lvl; lastHint = key;
+  script(() => say(h[lvl]));
+}
+
+// ---------------------------------------------------------------- tavarakuvakkeet (24 x 16)
+ITEMS.kirje.icon = () => { r(3, 3, 18, 11, "#ececec"); r(3, 3, 18, 1, "#fcfcfc"); for (let k = 0; k < 9; k++) { px(3 + k, 4 + k / 2, "#a8a8a8"); px(20 - k, 4 + k / 2, "#a8a8a8"); } disc(12, 9, 2, "#c81c1c"); };
+ITEMS.lippu.icon = () => { r(2, 4, 20, 9, "#3c7cdc"); r(2, 4, 20, 1, "#7cacfc"); r(15, 4, 1, 9, "#fcfcfc"); r(4, 7, 9, 1, "#fcfcfc"); r(4, 9, 6, 1, "#c8dcfc"); r(17, 6, 3, 2, "#fcd41c"); };
+ITEMS.rahat.icon = () => { disc(8, 9, 4, "#e8c81c", "#a8841c"); disc(14, 7, 4, "#d8b81c", "#a8841c"); px(13, 6, "#fcf09c"); disc(19, 11, 2, "#8c5c3c", "#5c3c24"); px(18, 11, "#2c1c10"); px(20, 11, "#2c1c10"); };
+ITEMS.pussi.icon = () => { r(7, 5, 10, 9, "#c8b48c"); r(6, 4, 12, 2, "#e0d0a8"); r(10, 2, 4, 3, "#a8946c"); r(15, 6, 2, 8, "#a8946c"); };
+ITEMS.sakki.icon = () => { disc(12, 10, 5, "#c8b48c", "#a8946c"); r(10, 2, 4, 4, "#a8946c"); px(9, 9, "#e0d0a8"); r(6, 13, 12, 1, "#8c7850"); };
+ITEMS.ruoska.icon = () => { r(3, 10, 5, 3, "#3c2410"); for (let k = 0; k < 14; k++) px(8 + k, 10 - Math.sin(k / 2.2) * 5, "#8c5c2c"); px(21, 6, "#6c4420"); };
+ITEMS.kortti.icon = () => { r(3, 4, 18, 9, "#f4f0e4"); r(3, 4, 18, 1, "#fff"); r(5, 6, 6, 1, "#2c2c3c"); r(5, 8, 10, 1, "#8c8c8c"); r(5, 10, 8, 1, "#8c8c8c"); r(16, 6, 3, 3, "#c8a030"); };
+ITEMS.kebab.icon = () => { r(4, 5, 16, 8, "#e8c88c"); r(4, 5, 16, 1, "#f8e0a8"); r(6, 6, 12, 4, "#8c4c24"); r(7, 6, 3, 1, "#5c9c3c"); r(13, 7, 3, 1, "#c83c2c"); r(10, 8, 4, 1, "#f4f4ec"); r(4, 12, 16, 1, "#c8a46c"); };
+ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c"); r(9, 4, 2, 10, "#fcf06c"); r(13, 4, 2, 10, "#b8941c"); px(10, 7, "#3c2c0c"); px(13, 7, "#3c2c0c"); r(8, 14, 8, 1, "#8c6c1c"); px(15, 2, "#fff"); };
+
+// ---------------------------------------------------------------- käynnistys
+startEngine({
+  titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
+  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); await say("Ja postilaatikkoni on lukossa, eikä avainta löydy. Tuo liituraitamies tietää jotain."); },
+});
+
+</script>
+</body>
+</html>
