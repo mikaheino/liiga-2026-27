@@ -211,7 +211,7 @@ function renderInv() { $inv.replaceChildren(...st.inv.map((k) => { const b = doc
   b.onmouseenter = () => setSentence(k); return b; })); }
 
 // ---------------------------------------------------------------- tallennus
-const SAVE = "mouho-2026-save";
+const SAVE = "mouho-2026-save-v3";   // v3 (17.10.): uusi juoni, vanhat tallennukset eivät sovi
 function saveGame() { if (busy || overlay || !room()) return say("Ei nyt, kesken kaiken.", "muu"); try { localStorage.setItem(SAVE, JSON.stringify({ ...st, path: [] })); } catch { /* yksityinen ikkuna */ } return script(() => say("Peli tallennettu.", "muu")); }
 function loadGame() { let d = null; try { d = JSON.parse(localStorage.getItem(SAVE) ?? "null"); } catch { /* ei tallennusta */ } if (!d) return say("Tallennusta ei löydy.", "muu");
   Object.assign(st, d, { path: [] }); title = false; overlay = null; renderVerbs(); renderInv(); renderIq(); setSentence(); }

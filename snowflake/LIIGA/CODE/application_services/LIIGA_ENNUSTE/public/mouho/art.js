@@ -91,7 +91,7 @@ function drawTitle(t) {
   g.fillStyle = "#1c0c00"; g.fillText("MOUHON SALAISUUS", 162, 30);
   const gr = g.createLinearGradient(0, 10, 0, 30); gr.addColorStop(0, "#fff4b0"); gr.addColorStop(.5, "#fcc81c"); gr.addColorStop(1, "#c8641c");
   g.fillStyle = gr; g.fillText("MOUHON SALAISUUS", 160, 28); g.lineWidth = 1; g.strokeStyle = "#5c2c00"; g.strokeText("MOUHON SALAISUUS", 160, 28);
-  g.font = "10px VT323, monospace"; g.fillStyle = "#1c1c3c"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 161, 39); g.fillStyle = "#fcfcfc"; g.fillText("Jussi Markkanen ja kadonneen Mouho-osallistumismaksun metsästys", 160, 38);
+  g.font = "10px VT323, monospace"; g.fillStyle = "#1c1c3c"; g.fillText("Jussi Markkanen, Mouhon toiminnanjohtaja (melkein)", 161, 39); g.fillStyle = "#fcfcfc"; g.fillText("Jussi Markkanen, Mouhon toiminnanjohtaja (melkein)", 160, 38);
   if (Math.floor(t / 600) % 2) { g.fillStyle = "#1c1c1c"; g.fillText("Klikkaa aloittaaksesi", 161, 133); g.fillStyle = "#fcfc54"; g.fillText("Klikkaa aloittaaksesi", 160, 132); }
   g.textAlign = "left";
 }
@@ -193,14 +193,13 @@ function salesman(x, y, t, talking = false) {
 // Raimo Helminen -cameo: Ilveksen keltavihreä pelipaita, maila kädessä, luistelee
 // sisään onnittelemaan 1985-visasta ja saman tien ulos. Pikseleinä Jussin mittakaavassa.
 function helminen(x, y, t, talking = false, moving = false, dir = 1) {
+  // SaiPan valmentaja: musta takki keltaisin raidoin, mustat housut (ei enää luistimia)
   g.save(); g.translate(x, y); g.scale(dir, 1); g.translate(-x, -y);
-  const st2 = moving ? Math.floor(t / 110) % 2 : 0, mo = talking && Math.floor(t / 110) % 2;
+  const st2 = moving ? Math.floor(t / 110) % 4 : 0, l1 = st2 === 1 ? 2 : st2 === 3 ? -1 : 0;
   shadow(x, y, 7);
-  r(x - 5 + st2, y - 2, 6, 1, "#c8c8d0"); r(x + 1 - st2, y - 2, 6, 1, "#c8c8d0"); r(x - 4 + st2, y - 4, 4, 2, "#1c1c1c"); r(x + 1 - st2, y - 4, 4, 2, "#1c1c1c");
-  r(x - 4, y - 12, 3, 8, "#1c5c2c"); r(x + 1, y - 12, 3, 8, "#1c5c2c"); r(x - 4, y - 8, 8, 1, "#fcd41c");
-  r(x - 6, y - 25, 12, 13, "#fcd41c"); r(x - 6, y - 17, 12, 2, "#1c7c3c"); r(x - 6, y - 25, 12, 1, "#1c7c3c"); r(x - 1, y - 24, 2, 3, "#1c7c3c");
-  r(x - 8, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 17, 2, 1, "#1c7c3c"); r(x + 6, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 15, 2, 2, "#1c1c1c"); r(x + 6, y - 15, 2, 2, "#1c1c1c");
-  for (let k = 0; k < 14; k++) px(x + 7 + k * .5, y - 15 + k, "#8c5c2c"); r(x + 12, y - 1, 5, 1, "#8c5c2c");
+  r(x - 4 + l1, y - 11, 3, 10, "#1c1c22"); r(x + 1 - l1, y - 11, 3, 10, "#24242a"); r(x - 5 + l1, y - 2, 4, 2, "#0c0c10"); r(x + 1 - l1, y - 2, 4, 2, "#0c0c10");
+  r(x - 6, y - 25, 12, 14, "#1c1c22"); r(x - 6, y - 25, 12, 2, "#fcd41c"); r(x - 1, y - 23, 1, 12, "#fcd41c"); r(x + 2, y - 21, 3, 2, "#fcd41c");
+  r(x - 8, y - 24, 2, 10, "#1c1c22"); r(x + 6, y - 24, 2, 10, "#24242a"); r(x - 8, y - 18, 2, 1, "#fcd41c"); r(x + 6, y - 18, 2, 1, "#fcd41c"); r(x - 8, y - 14, 2, 2, "#e8b894"); r(x + 6, y - 14, 2, 2, "#d8a07c");
   r(x - 2, y - 27, 4, 2, "#d89c74");
   g.restore();
   head("raimo", x, y - 25, t, { talking, moving, dir, seedv: 3 });                       // pikselöity pää (pixfaces.js)

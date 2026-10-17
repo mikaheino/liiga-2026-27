@@ -121,7 +121,7 @@ function kouvolaCloud(t) {  // Kouvolan oma harmaa sadepilvi (Kouvolan väripale
 const flightAt = (q) => { const [ax, ay] = MAPP.hki, [bx, by] = MAPP.lpr; return [ax + (bx - ax) * q, ay - 10 + (by - ay) * q - Math.sin(q * Math.PI) * 50]; };
 
 // ---------------------------------------------------------------- Kisapuisto: lehtikasa
-const LAND = [150, 127];
+const LAND = [178, 127];
 function leafPile(x, y, burst = 0) {
   seed = 5; for (let k = 0; k < 90; k++) { const a = rnd() * Math.PI, d = rnd() * 16; const X = x + Math.cos(a) * d * 1.3, Y = y - Math.sin(a) * d * .5;
     px(X, Y, ["#e8a83c", "#c8782c", "#f0c850", "#8c4c1c"][k % 4]); }
