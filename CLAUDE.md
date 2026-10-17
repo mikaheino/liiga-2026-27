@@ -980,7 +980,14 @@ agenttia. Jäädytykset: tagit `app-vN`/`mouho-vN`, peli `releases/mouho/*.html`
 välillä, jäädytetäänkö versio.
 
 **Keskustelu ja peli (16.10.):** jokaisella sivulla on "Kysy agentilta" (`components/Chat.tsx`,
-`/api/chat` -> `SNOWFLAKE.CORTEX.DATA_AGENT_RUN` samalla yhteydellä kuin data, n. 25-30 s/vastaus).
+`/api/chat` striimaa NDJSONia). **Striimi (17.10.):** agentin REST `.../agents/LIIGA_ENNUSTAJA:run`
+(`stream: true`, SSE) -- App Runtimessa sessiotoken (`OAUTH`), paikallisesti `liiga_ci`-avainparin JWT;
+varalla SQL:n `DATA_AGENT_RUN`. Tila näkyy ~2 s:ssa, teksti ~15 s:ssa, valmis ~20-30 s. Vastaus on
+osien lista: **kaikki tekstiosat + taulukot** (`response.table`) näytetään -- aiemmin vain viimeinen
+tekstiosa, jolloin alku ja taulukko katosivat. Jatkokysymykset = agentin `suggested_queries`
+(paikallisesti Clauden JATKO-rivi). Orkestrointimalli on **Sonnet** (käyttäjä 17.10.: halvempi;
+`deploy_agent.py`, `LIIGA_AGENT_MODEL` vaihtaa). ⚠️ App Runtimen OAuth-tokenilla REST-striimi on
+todennettava STAGINGissa; jos se ei aukea, varapolku vastaa ilman striimiä ja loki sanoo `[agent] striimi`.
 `/mouho` = point-and-click-peli Mouho 2026 -turnaukseen (`public/mouho/`, oma moottori
 `engine.js`, grafiikka `art.js`, tarina `game.js`; iframessa). Repo on julkinen, joten
 pelin koodi on kaikkien luettavissa -- käyttäjä valitsi tämän tietoisesti.

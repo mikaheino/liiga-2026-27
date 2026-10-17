@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Turn } from "@/lib/agent";
+import type { Event, Turn } from "@/lib/agent";
 import { loadFixtures, loadHistory, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
 import { modelSaid, scoreboard } from "@/lib/fixtures";
 import { seasonTable, teamPoints } from "@/lib/table";
@@ -48,24 +48,37 @@ Vedonlyönnistä: anna luvut, älä kehota pelaamaan.
 Lopeta joukkueita koskeva vastaus rivillä "Lisää sovelluksessa: /joukkue/<Joukkue>" ja muut sopivalla sivulla (/sarjataulukko, /voittaja, /ottelut, /liike).
 Kirjoita aivan viimeiseksi riviksi kolme lyhyttä jatkokysymystä, joita käyttäjä voisi kysyä seuraavaksi, muodossa "JATKO: kysymys 1 | kysymys 2 | kysymys 3".`;
 
-export async function askLocal(history: Turn[]): Promise<{ text: string; ms: number; suggestions: string[] }> {
+// Striimattuna kuten Snowflaken agentti: stream-json + osittaiset viestit, joten
+// teksti alkaa näkyä heti eikä vasta ~8 s päästä. JATKO-rivi ei näy (selain katkaisee
+// tekstin sen kohdalta), ja se puretaan lopuksi jatkokysymyksiksi.
+export async function askLocal(history: Turn[], emit: (e: Event) => void): Promise<void> {
   const t0 = Date.now();
+  emit({ t: "status", text: "Paikallinen Claude miettii…" });
   const convo = history.slice(-10).map((t) => `${t.role === "user" ? "Käyttäjä" : "Sinä"}: ${t.text}`).join("\n\n");
   const prompt = `TILANNEKUVA\n${await context()}\n\nKESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
-  const out = await new Promise<string>((resolve, reject) => {
+  const result = await new Promise<string>((resolve, reject) => {
     // Ilman työkaluja ja MCP:tä, väliaikaishakemistossa (ei projektin CLAUDE.md:tä), ei istuntohistoriaa.
-    const p = spawn(CLAUDE, ["-p", "--tools", "", "--output-format", "json", "--no-session-persistence", "--strict-mcp-config",
+    const p = spawn(CLAUDE, ["-p", "--tools", "", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+      "--no-session-persistence", "--strict-mcp-config",
       "--model", process.env.LIIGA_LOCAL_MODEL ?? "sonnet", "--append-system-prompt", SYSTEM], { cwd: os.tmpdir() });
-    let o = "", e = "";
-    p.stdout.on("data", (b) => { o += b; }); p.stderr.on("data", (b) => { e += b; });
+    let buf = "", e = "", final: string | null = null;
+    p.stdout.on("data", (b) => {
+      buf += b;
+      for (let i; (i = buf.indexOf("\n")) >= 0;) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let j: { type?: string; event?: { type?: string; delta?: { type?: string; text?: string } }; result?: string; is_error?: boolean };
+        try { j = JSON.parse(line); } catch { continue; }
+        if (j.type === "stream_event" && j.event?.type === "content_block_delta" && j.event.delta?.type === "text_delta") emit({ t: "delta", text: j.event.delta.text ?? "" });
+        else if (j.type === "result") { if (j.is_error || !j.result) return reject(new Error(j.result || "Paikallinen Claude ei vastannut.")); final = j.result; }
+      }
+    });
+    p.stderr.on("data", (b) => { e += b; });
     p.on("error", (err) => reject(new Error(`Paikallista Claudea ei löytynyt (${err.message}). Asenna Claude Code tai aseta CLAUDE_BIN.`)));
-    p.on("close", (code) => (code === 0 ? resolve(o) : reject(new Error(e.trim().split("\n").pop() || `claude päättyi koodiin ${code}`))));
+    p.on("close", (code) => (final != null ? resolve(final) : reject(new Error(e.trim().split("\n").pop() || `claude päättyi koodiin ${code}`))));
     p.stdin.end(prompt);
   });
-  const j = JSON.parse(out) as { result?: string; is_error?: boolean };
-  if (j.is_error || !j.result) throw new Error(j.result || "Paikallinen Claude ei vastannut.");
   // Jatkokysymykset viimeiseltä JATKO-riviltä, kuten Snowflaken agentin suggested_queries.
-  const m = j.result.match(/\n?\s*JATKO:\s*(.+)\s*$/);
+  const m = result.match(/\n?\s*JATKO:\s*(.+)\s*$/);
   const suggestions = m ? m[1].split("|").map((q) => q.trim()).filter(Boolean).slice(0, 3) : [];
-  return { text: m ? j.result.slice(0, m.index).trimEnd() : j.result, ms: Date.now() - t0, suggestions };
+  emit({ t: "done", text: m ? result.slice(0, m.index).trimEnd() : result, ms: Date.now() - t0, suggestions });
 }

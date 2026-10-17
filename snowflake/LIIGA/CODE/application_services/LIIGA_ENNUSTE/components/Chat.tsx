@@ -26,23 +26,47 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
   const [now, setNow] = useState(0);
+  const [live, setLive] = useState("");       // striimattava vastaus ennen valmista
+  const [status, setStatus] = useState("");   // mitä agentti tekee juuri nyt
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setTurns(load()); }, []);
   useEffect(() => { save(turns); end.current?.scrollIntoView({ block: "end" }); }, [turns, open]);
+  useEffect(() => { if (live) end.current?.scrollIntoView({ block: "end" }); }, [live]);
   useEffect(() => { if (busy == null) return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [busy]);
 
+  // Vastaus striimataan (NDJSON): tila ja teksti päivittyvät sitä mukaa kuin agentti etenee.
   async function send(text: string) {
     const q = text.trim(); if (!q || busy != null) return;
     const history = [...turns.filter((t) => !t.error), { role: "user" as const, text: q }];
     setTurns([...turns, { role: "user", text: q }]); setDraft(""); setBusy(Date.now()); setNow(Date.now());
+    setLive(""); setStatus("Yhdistetään…");
+    let done: Turn | null = null;
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ history: history.map(({ role, text }) => ({ role, text })) }) });
-      const j = await res.json();
-      setTurns((t) => [...t, j.error ? { role: "assistant", text: `Agentti ei vastannut: ${j.error}`, error: true } : { role: "assistant", text: j.text, ms: j.ms, suggestions: j.suggestions }]);
+      if (!res.ok || !res.body) { const j = await res.json().catch(() => ({})); throw new Error(j.error ?? `HTTP ${res.status}`); }
+      const reader = res.body.getReader(), dec = new TextDecoder();
+      let buf = "", acc = "";
+      for (;;) {
+        const { value, done: end } = await reader.read();
+        if (end) break;
+        buf += dec.decode(value, { stream: true });
+        for (let i; (i = buf.indexOf("\n")) >= 0;) {
+          const line = buf.slice(0, i); buf = buf.slice(i + 1);
+          if (!line.trim()) continue;
+          const e = JSON.parse(line);
+          if (e.t === "status") setStatus(e.text);
+          else if (e.t === "delta") { acc += e.text; setLive(acc.split(/\n?\s*JATKO:/)[0]); }
+          else if (e.t === "done") done = { role: "assistant", text: e.text, ms: e.ms, suggestions: e.suggestions };
+          else if (e.t === "error") done = { role: "assistant", text: `Agentti ei vastannut: ${e.text}`, error: true };
+        }
+      }
+      if (!done) done = acc ? { role: "assistant", text: acc, ms: Date.now() - (busy ?? Date.now()) } : { role: "assistant", text: "Agentti ei vastannut.", error: true };
     } catch (e) {
-      setTurns((t) => [...t, { role: "assistant", text: `Yhteys katkesi: ${(e as Error).message}`, error: true }]);
-    } finally { setBusy(null); }
+      done = { role: "assistant", text: `Yhteys katkesi: ${(e as Error).message}`, error: true };
+    } finally {
+      setTurns((t) => [...t, done!]); setBusy(null); setLive(""); setStatus("");
+    }
   }
 
   if (path.startsWith("/mouho")) return null;       // peli käyttää koko ruudun, nappi peittäisi sen
@@ -75,10 +99,13 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
                 {turns.at(-1)!.suggestions!.map((s) => <button key={s} className="chat-q" onClick={() => send(s)}>▸ {s}</button>)}
               </div>
             ) : null}
+            {busy != null && live && (
+              <div className="msg assistant streaming"><div dangerouslySetInnerHTML={{ __html: md(live) }} /></div>
+            )}
             {busy != null && (
               <div className="msg assistant thinking">
                 <div className="loading-rink small"><b className="puck" /></div>
-                <span>Agentti miettii… {Math.max(0, Math.round((now - busy) / 1000))} s</span>
+                <span>{status || "Agentti miettii…"} {Math.max(0, Math.round((now - busy) / 1000))} s</span>
               </div>
             )}
             <div ref={end} />

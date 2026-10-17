@@ -155,8 +155,11 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
     s = {
-        # "auto" valitsee Opuksen; LIIGA_AGENT_MODEL kokeilee nopeampaa mallia (mitattu, ks. optimointiloki).
-        "models": {"orchestration": os.environ.get("LIIGA_AGENT_MODEL", "auto")},
+        # Sonnet (17.10., käyttäjän päätös: halvempi ja nopeampi). "auto" valitsi Opuksen:
+        # 34-37 s vs. Sonnet 22-31 s samoilla kysymyksillä, ja Sonnet läpäisi laatuportin
+        # (oikeellisuus 0,95, työkalu 1,00, suomi 0,97, johdonmukaisuus 0,91; docs/agent_evals.md).
+        # LIIGA_AGENT_MODEL vaihtaa mallin kokeilua varten.
+        "models": {"orchestration": os.environ.get("LIIGA_AGENT_MODEL", "claude-sonnet-5-5")},
         "orchestration": {"budget": {"seconds": 300, "tokens": 20000}},
         "instructions": {
             "orchestration": orch,
