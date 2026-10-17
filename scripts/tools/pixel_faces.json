@@ -1,5 +1,5 @@
 {
-  "_ohje": "python scripts/tools/pixel_face.py --all [--src-dir ../mouho_2026/mouho_concept]. Kuvat eivät ole repossa; koordinaatit ovat kunkin kuvan pikseleitä (saarni: kuva pienennetty 1600 px leveäksi). paint = monikulmiot jotka maalataan kuvaan ennen pikselöintiä (Jussin pelipaidan mainokset pois).",
+  "_ohje": "python scripts/tools/pixel_face.py --all [--src-dir ../mouho_2026/mouho_concept]. Kuvat eivät ole repossa; koordinaatit ovat kunkin kuvan pikseleitä (saarni: kuva pienennetty 1600 px leveäksi). paint = monikulmiot jotka maalataan kuvaan ennen pikselöintiä (Jussin pelipaidan mainokset pois). board = valmis pikselimuotokuva (Mouhon hallitus): vain tausta pois ja pienennys, ei leukaleikkausta.",
   "jussi": {
     "src": "jussi_markkanen_3.jpg",
     "box": [
@@ -196,5 +196,41 @@
     "tol": 0,
     "iris": "none",
     "poly": "100,150 106,124 126,102 160,90 195,64 215,42 240,28 270,28 310,50 340,90 365,130 375,170 365,215 345,250 320,262 270,264 225,258 205,235 198,180 196,152 150,148"
+  },
+  "hallitus_mikko": {
+    "src": "tuomarit.png",
+    "box": [
+      160,
+      130,
+      425,
+      428
+    ],
+    "board": true,
+    "bg": "sample",
+    "tol": 14
+  },
+  "hallitus_ilkka": {
+    "src": "tuomarit.png",
+    "box": [
+      458,
+      136,
+      742,
+      396
+    ],
+    "board": true,
+    "bg": "sample",
+    "tol": 14
+  },
+  "hallitus_mika": {
+    "src": "tuomarit.png",
+    "box": [
+      764,
+      144,
+      1046,
+      372
+    ],
+    "board": true,
+    "bg": "sample",
+    "tol": 14
   }
 }

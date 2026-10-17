@@ -162,6 +162,17 @@ def write(data: dict) -> None:
 
 
 def from_config(name: str, c: dict, src_dir: Path) -> dict:
+    if c.get("board"):      # valmis pikselitaide: taustan poisto ja pienennys 40 px leveäksi
+        bx = c["box"]
+        w = 40
+        h = round((bx[3] - bx[1]) * w / (bx[2] - bx[0]))
+        out = build(src_dir / c["src"], tuple(bx), bx[3] + 400, c.get("colors", 24), (0, 1e6), [(0, 0), (0, 0)], (0, 0, 1),
+                    None, c.get("bg", "sample"), c.get("tol", 14), False, 1.0, None, {"bust": (w, h)})
+        for v in out.values():
+            v.pop("iris", None)
+            v.pop("eyes", None)
+            v.pop("mouth", None)
+        return out
     poly = [tuple(float(v) for v in p.split(",")) for p in c["poly"].split()] if c.get("poly") else None
     out = build(src_dir / c["src"], tuple(c["box"]), c["chin"], c.get("colors", 24), tuple(c["jaw"]), [tuple(e) for e in c["eye"]],
                 tuple(c["mouth"]), poly, c.get("bg", "grey"), c.get("tol", 45), c.get("hair_fix", False), c.get("bright", 1.0), c.get("width"),

@@ -72,10 +72,15 @@ function mouhoInBg() {
   // ohjaimet sohvalla
   for (const x of [96, 150, 204]) { r(x, 105, 8, 3, "#ececec"); px(x + 1, 106, "#3c7cfc"); px(x + 6, 106, "#c81c1c"); }
 }
-function boardTable(t) {      // hallitus pöydän takana oikealla
-  host(262, 120, t, "#2c7c4c"); host(284, 120, t, "#7c2c6c"); host(304, 120, t, "#3c3c7c");
-  r(250, 112, 70, 12, "#5c4632"); r(250, 112, 70, 2, "#7c6448"); r(254, 124, 3, 10, "#3c2c20"); r(314, 124, 3, 10, "#3c2c20");
-  r(266, 114, 38, 7, "#f4f0e4"); text3("HALLITUS", 268, 115, "#2c2c3c");
+// Mouhon hallitus: isäntien Mikon, Ilkan ja Mikan omat pikselimuotokuvat (käyttäjän asset
+// tuomarit.png, pikselöity pixel_face.py:llä), pöydän takana oikealla.
+function boardTable(t) {
+  [["hallitus_mikko", 246], ["hallitus_ilkka", 276], ["hallitus_mika", 305]].forEach(([k, x], i) => {
+    const img = faceCache[`bust|${k}`] ??= renderPix(PIXFACES[k].bust, {}), w = img.width / PXS * 1.45, h = img.height / PXS * 1.45;
+    const bob = Math.round(Math.sin(t / 600 + i * 2) * .5);
+    g.imageSmoothingEnabled = false; g.drawImage(img, x - w / 2, 114 - h + bob, w, h); });
+  r(230, 112, 90, 12, "#5c4632"); r(230, 112, 90, 2, "#7c6448"); r(234, 124, 3, 10, "#3c2c20"); r(314, 124, 3, 10, "#3c2c20");
+  r(256, 114, 38, 7, "#f4f0e4"); text3("HALLITUS", 258, 115, "#2c2c3c");
 }
 
 // ---------------------------------------------------------------- loppu
@@ -96,8 +101,8 @@ async function ending() {
   let flipT = null, kebabOn = false, trophyOn = false, whistleT = null;
   overlay = (t) => {
     g.drawImage(paintBg("mouhoIn", mouhoInBg), 0, 0); rinkTV(t); boardTable(t);
-    if (kebabOn) { r(200, 92, 34, 10, "#8c5c2c"); r(200, 92, 34, 2, "#c81c1c"); r(214, 76, 4, 16, "#c8a46c"); disc(216, 80, 5, "#9c5c2c", "#6c3c1c"); text3("KEBAB", 204, 95, "#fcf0d8"); }
-    if (trophyOn) { r(232, 94, 14, 4, "#5c3c24"); r(235, 80, 8, 14, "#e8c81c"); r(236, 78, 6, 3, "#e8c81c"); px(237, 83, "#3c2c0c"); px(240, 83, "#3c2c0c"); glow(239, 86, 14, "255,220,100", .35); }
+    if (kebabOn) { r(184, 92, 36, 10, "#8c5c2c"); r(184, 92, 36, 2, "#c81c1c"); r(192, 76, 4, 16, "#c8a46c"); disc(194, 80, 5, "#9c5c2c", "#6c3c1c"); text3("KEBAB", 188, 95, "#fcf0d8"); }
+    if (trophyOn) { r(205, 88, 12, 4, "#5c3c24"); r(207, 75, 8, 13, "#e8c81c"); r(208, 73, 6, 3, "#e8c81c"); r(207, 75, 2, 13, "#fcf06c"); px(209, 79, "#3c2c0c"); px(212, 79, "#3c2c0c"); glow(211, 81, 14, "255,220,100", .35); }
     const ordered = [...crowd].sort((a, b) => a.ty - b.ty);
     for (const c of ordered) { c.x += (c.tx - c.x) * .04; const mv = Math.abs(c.tx - c.x) > 1;
       if (c.who === "saarni" || c.who === "maskotti") person(c.who, c.x, c.ty, t, { moving: mv, sc: .85 });
