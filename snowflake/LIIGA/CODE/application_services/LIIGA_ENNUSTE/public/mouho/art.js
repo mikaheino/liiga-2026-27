@@ -9,7 +9,7 @@ function jussi(x, y, dir, frame, st, sc = 1, back = false) {
   g.save(); g.translate(x | 0, y | 0); g.scale(dir < 0 ? -sc : sc, sc);
   const p = (dx, dy, w, h, c) => r(dx, dy, w, h, c);          // origo: jalkojen keskikohta
   const step = frame % 4, l1 = step === 1 ? 2 : step === 3 ? -1 : 0, l2 = -l1;
-  const SK = "#f0b890", SKD = "#d89870", HR = "#e8c870", HRL = "#f8e4a0", HRD = "#b8944c";
+  const SK = "#f0b890", SKD = "#d89870";
   // jalat ja saappaat
   p(-4 + l1, -10, 3, 9, "#4c3c24"); p(1 + l2, -10, 3, 9, "#3c2c1c");
   p(-5 + l1, -2, 4, 2, "#201408"); p(1 + l2, -2, 4, 2, "#201408");
@@ -18,34 +18,10 @@ function jussi(x, y, dir, frame, st, sc = 1, back = false) {
   p(-3, -22, 6, 2, "#fcd41c"); p(-1, -21, 2, 2, "#fcd41c");
   p(-7, -20, 2, 8, "#c8a460"); p(5, -20, 2, 8, "#b8944c"); p(-7, -13, 2, 2, SK); p(5, -13, 2, 2, SKD);
   if (st.whip) { p(3, -15, 3, 3, "#6c4420"); p(4, -14, 1, 1, "#3c2410"); }
-  // kaula
+  // kaula ja bobblehead-pää (faces.js): tunnistettava Jussi, keinuu kävellessä
   p(-2, -23, 4, 2, SKD);
-  // pää: leveä, vahva leuka
-  p(-6, -36, 12, 13, SK); p(-7, -33, 1, 6, SK); p(6, -33, 1, 6, SK);           // posket
-  p(-5, -24, 10, 1, SKD); p(-4, -23, 8, 1, SKD);                                 // leuka
-  p(-8, -31, 1, 3, SKD); p(7, -31, 1, 3, SKD);                                   // korvat
-  if (back) {                                  // poispäin kävellessä: niska ja takaraivo
-    p(-6, -36, 12, 10, "#e8c870"); p(-7, -34, 1, 6, "#e8c870"); p(6, -34, 1, 6, "#e8c870"); p(-5, -26, 10, 2, "#d0a860"); p(-2, -24, 4, 1, SKD);
-    p(-4, -35, 3, 1, "#f8e4a0"); p(1, -33, 3, 1, "#b8944c"); p(-8, -31, 1, 3, SKD); p(7, -31, 1, 3, SKD);
-    if (st.hat) { p(-9, -36, 18, 2, "#6c4c2c"); p(-6, -41, 12, 5, "#7c5c34"); p(-6, -37, 12, 1, "#3c2414"); }
-    g.restore(); return;
-  }
-  // silmät: valkoinen + sininen, kulmat
-  p(-4, -31, 3, 2, "#fcfcfc"); p(1, -31, 3, 2, "#fcfcfc"); p(-3, -31, 2, 2, "#3c7cc8"); p(2, -31, 2, 2, "#3c7cc8");
-  p(-4, -33, 3, 1, HRD); p(1, -33, 3, 1, HRD);
-  p(0, -29, 1, 2, SKD);                                                           // nenä
-  // leveä hymy hampaineen -- puhuessa suu aukeaa ja sulkeutuu
-  if (st.talk ?? (speaking === "jussi" && Math.floor(performance.now() / 110) % 2)) { p(-3, -28, 6, 3, "#5c1c14"); p(-2, -28, 4, 1, "#fcfcfc"); p(-2, -26, 4, 1, "#c84c4c"); }
-  else { p(-4, -26, 8, 1, "#8c3c2c"); p(-3, -27, 6, 1, "#fcfcfc"); p(-4, -27, 1, 1, "#8c3c2c"); p(3, -27, 1, 1, "#8c3c2c"); }
-  p(-5, -28, 1, 1, SKD); p(4, -28, 1, 1, SKD);                                    // hymykuopat
-  // hiukset: lyhyet, vaaleat, sivulle harjatut
-  if (st.hat) {
-    p(-7, -35, 2, 4, HR); p(5, -35, 2, 3, HR);                                    // näkyy hatun alta
-    p(-9, -36, 18, 2, "#6c4c2c"); p(-6, -41, 12, 5, "#7c5c34"); p(-6, -37, 12, 1, "#3c2414"); p(-1, -41, 2, 1, "#5c3c1c");
-  } else {
-    p(-7, -38, 14, 3, HR); p(-6, -39, 11, 1, HR); p(-7, -35, 2, 4, HR); p(5, -35, 2, 3, HR);
-    p(-5, -39, 4, 1, HRL); p(-2, -38, 6, 1, HRL); p(2, -37, 4, 1, HRD); p(-7, -36, 3, 1, HRD);
-  }
+  head("jussi", 0, -21, performance.now(), { talking: st.talk ?? speaking === "jussi", moving: frame !== 0, back });
+  if (st.hat) { p(-13, -40, 26, 2, "#6c4c2c"); p(-12, -40, 24, 1, "#8c6c44"); p(-8, -48, 16, 8, "#7c5c34"); p(-8, -42, 16, 2, "#3c2414"); p(-2, -48, 4, 1, "#5c3c1c"); p(-8, -48, 2, 6, "#94744c"); }
   g.restore();
 }
 // ================================================================ RUUTUJEN TAITEET
