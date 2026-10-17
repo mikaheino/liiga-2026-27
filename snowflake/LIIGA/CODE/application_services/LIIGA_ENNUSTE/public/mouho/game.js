@@ -73,7 +73,7 @@ Object.assign(ROOMS, {
         "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(),
         Katso: () => say("SaiPan toimiston postilaatikko. Postini tulee yhä tänne, vaikka lähdin keväällä 2023.\nSiinä on postiluukku. Toimisto on tuolla keltaisen oven takana.") },
       { id: "hattu", name: "hattu", x: 199, y: 61, w: 15, h: 10, at: 200, aty: 99, hidden: () => st.hat,
-        Katso: () => say("Vanha fedora pysäköintiautomaatin päällä. Joku on maksanut pysäköinnin ja unohtanut hattunsa. Tai jättänyt sen minulle."), Poimi: async () => { st.hat = true; await say("Sopii kuin valettu. Nyt näytän kansainväliseltä toiminnanjohtajalta."); } },
+        Katso: () => say("Vanha fedora pysäköintiautomaatin päällä. Joku on maksanut pysäköinnin ja unohtanut hattunsa. Tai jättänyt sen minulle."), Poimi: async () => { st.hat = true; await say(st.flags.adRead ? "Sopii kuin valettu. Nyt näytän kansainväliseltä toiminnanjohtajalta." : "Sopii kuin valettu. Nyt näytän mieheltä, jolla on suunnitelma. Vielä puuttuu vain suunnitelma."); } },
       { id: "possu", name: "säästöpossu", x: 144, y: 112, w: 15, h: 10, at: 150, aty: 124,
         Katso: () => say("Säästöpossu pysäköintikiven päällä. Toimiston läksiäislahja. Sen ilme kertoo kaiken."),
         Avaa: async () => { if (st.flags.pig) return say("Possu on tyhjä. Kuten minäkin, sisältä."); st.flags.pig = true; give("rahat"); await say("3,50 € ja nappi. Matkakassa. Kansainvälinen ura alkaa pienestä."); },
@@ -83,7 +83,7 @@ Object.assign(ROOMS, {
         Avaa: () => say("Lukossa. Pelaajakaupoissa ei häiritä."), Puhu: () => say("Koputan. Sisältä kuuluu: \"Ja tekstitv:stä löytyi vielä yksi!\"\nEn keskeytä.") },
       { id: "taksi", name: "taksi lentokentälle", x: 242, y: 88, w: 78, h: 46, at: 234, aty: 130,
         Katso: () => say("Taksi Lappeenrannan lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
-        Käytä: () => leave(), Avaa: () => leave(), Puhu: () => say("Kuljettaja: \"Lentokentälle? Taas Milanoon? Ai, Istanbuliin. No, lippu ensin.\"", "muu") },
+        Käytä: () => leave(), Avaa: () => leave(), Puhu: () => say(has("lippu") ? "Kuljettaja: \"Lentokentälle? Taas Milanoon? Ai, Istanbuliin. Hyppää kyytiin.\"" : "Kuljettaja: \"Lentokentälle? Minne sitten? Kun tiedät, tule takaisin. Mittari ei käy vielä.\"", "muu") },
     ],
   },
   // Basaari: katu kapenee kohti moskeijaa; Mehmet tiskinsä takana oikealla.
@@ -280,7 +280,10 @@ async function callMyrra() {
   if (n === 0) { st.flags.pyramid = true; take("ilmoitus"); give("kaavio"); iq("pyramidi", 5);
     await say("Piirrän ilmoituksen taakse. Huipulle minä. Alle kaksi. Niiden alle neljä. Ja niin edelleen.");
     await say("Pyramidi! Mouhon toiminnanjohtaja Markkanen. Kuulostaa jo paremmalta kuin urheilujohtaja.");
-    if (st.flags.billReturned) { await say("Ja hetkinen... ne kaksi peukkua toimiston ikkunassa!"); await recruitSaarni(); } }
+    if (st.flags.billReturned && !st.flags.recruits) { await say("Ja hetkinen... ne kaksi peukkua toimiston ikkunassa! Kirjoitan heille kutsun postiluukkuun.");
+      st.flags.thumbT = Date.now(); beep(523, 120, "triangle", .05); setTimeout(() => beep(784, 200, "triangle", .05), 140);
+      await sleep(500); await say("Ikkunasta nousee taas kaksi peukkua.", "muu"); await recruitSaarni(); }
+    else if (st.flags.recruits) await say("Herra Saarni ja maskotti ovat jo mukana. Merkitsen heidät huipun alle."); }
 }
 
 // ---------------------------------------------------------------- Kisapuisto: seteli, ilmoitus, taustakohtaus
@@ -319,18 +322,21 @@ async function standOnBox() {
 }
 // Palautus sitoo setelin juoneen: lapussa mainos Mouhosta, ikkunasta kaksi peukkua -- Jussin
 // mielestä pyramidin kaksi ensimmäistä jäsentä (Saarni ja maskotti). He tulevat loppuun.
+// Jussi tietää Mouhosta vasta ilmoitustaulun jälkeen (käyttäjä 17.10.: logiikkavirhe), joten
+// P.S. ja liittymistulkinta vain kun ilmoitus on luettu; muuten peukut ovat pelkkä kiitos.
 async function returnBill() {
   take("seteli"); st.flags.billReturned = true; iq("rehellisyys", 10);
-  await say("Kirjoitan lapun: \"Herra Saarnille. Putosi parkkipaikalle. -- J.M.\nP.S. Mouho hakee jäseniä!\"\nJa postiluukusta sisään.");
+  const ps = st.flags.adRead ? "\nP.S. Mouho hakee jäseniä!" : "";
+  await say(`Kirjoitan lapun: "Herra Saarnille. Putosi parkkipaikalle. -- J.M.${ps}"\nJa postiluukusta sisään.`);
   st.flags.thumbT = Date.now(); beep(523, 120, "triangle", .05); setTimeout(() => beep(784, 200, "triangle", .05), 140);
   await sleep(500); await say("Toimiston ikkunasta nousee kaksi peukkua. Iso valkoinen ja pieni liituraitainen.", "muu");
-  if (st.flags.pyramid) await recruitSaarni();
-  else await say("Kaksi peukkua... kaksi kannattajaa. Pitää muistaa tämä, kun minulla on suunnitelma.");
+  if (st.flags.adRead) await recruitSaarni();
+  else await say("Kaksi peukkua. Mukavaa, että joku vielä peukuttaa minua. Tänään se ei ole itsestäänselvyys.");
 }
 async function recruitSaarni() {
   st.flags.recruits = Math.max(st.flags.recruits ?? 0, 2); iq("ensimmaiset", 5);
   await say("Kaksi peukkua! Herra Saarni ja maskotti liittyivät Mouhoon. Pyramidin kaksi ensimmäistä jäsentä!");
-  await say("Merkitsen heidät kaavioon. Jokainen tuo kaksi uutta. Tämä toimii jo.");
+  await say(st.flags.pyramid ? "Merkitsen heidät kaavioon. Jokainen tuo kaksi uutta. Tämä toimii jo." : "Merkitsen heidät muistiin. Kun minulla on suunnitelma, he ovat ensimmäisinä siinä.");
 }
 async function salesmanBill() {
   await say("Ah, seteli! Annahan se tänne, välitän sen eteenpäin. Ammattilaisena.", "salkkumies");
@@ -460,7 +466,7 @@ async function salesmanTalk() {
       const opts = [];
       if (st.flags.pyramid && !st.flags.unlocked) opts.push("Mitä sijoittajat haluavat?");
       if (!st.flags.salesSchedule) opts.push("Otteluohjelma? En ole enää urheilujohtaja.");
-      if (!st.flags.salesFree) opts.push("Mouho on muuten ilmainen. Kenellekään ei makseta mitään.");
+      if (st.flags.adRead && !st.flags.salesFree) opts.push("Mouho on muuten ilmainen. Kenellekään ei makseta mitään.");
       if (st.flags.billCaught && !st.flags.billReturned) opts.push("Löysin viisikymppisen. Se ei ole minun.");
       opts.push("Näkemiin.");
       const pick = opts[await choose(opts)]; await say(pick);
