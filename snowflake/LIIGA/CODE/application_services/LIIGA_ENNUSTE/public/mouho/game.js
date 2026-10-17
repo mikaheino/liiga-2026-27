@@ -29,7 +29,7 @@ Object.assign(ROOMS, {
              RAIMO],
     draw: (t) => { kisaDraw(t); satamaPiano(t); ghostLynx(t); },
     onStop: (x, y) => quizStep(keyAt(x, y)),
-    props: [{ y: 128, draw: kisaPoster }, { y: 104, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 121, draw: kisaPig }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi }],
+    props: [{ y: 127, draw: () => st.flags.leafPile && leafPile(LAND[0], LAND[1]) }, { y: 128, draw: kisaPoster }, { y: 104, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 121, draw: kisaPig }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi }],
     spots: [
       { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
         Katso: () => say("Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Seisoo SaiPan hallin parkkipaikalla kuin olisi odottanut minua."),
@@ -419,9 +419,9 @@ startEngine({
   titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
   intro: async () => {
     give("puhelin");
-    await say("Lappeenranta, lokakuu. Kisapuisto, SaiPan kotihalli.");
-    await say("Liiga kiitti tänä aamuna yhteistyöstä. Pahvilaatikko, kahvikuppi ja nimikyltti \"Urheilujohtaja\".\nKädenpuristus oli lämmin. Ovi sulkeutui vielä lämpimämmin.");
-    await say("Joten tulin sinne, mistä kaikki alkoi. Täällä minut sentään vielä tunnetaan.");
+    await prologue();
+    await say("Lappeenranta, lokakuu. Kisapuisto, SaiPan kotihalli.", "muu");
+    await say("Lensin sinne, mistä kaikki alkoi. Täällä minut sentään vielä tunnetaan.");
     await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy.");
     await say("Ja vanha postilaatikkoni hallin edessä on lukossa. Tuo liituraitamies tietää jotain."); },
 });
