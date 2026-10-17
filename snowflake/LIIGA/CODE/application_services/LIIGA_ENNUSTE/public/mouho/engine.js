@@ -14,6 +14,10 @@
 "use strict";
 const W = 320, H = 136;
 const cv = document.getElementById("c"), main = cv.getContext("2d");
+// Tuplatarkkuus (17.10.): maailma on yhä 320 x 136 (kentät, pulmat, kävelyalueet), mutta kangas
+// on 640 x 272. Taustat skaalautuvat terävinä 2x, hahmojen päät piirretään puoleen kokoon
+// omalla tarkkuudellaan (faces.js) -- tarkat hahmot vanhan maailman päällä.
+const PXS = cv.width / 320; main.setTransform(PXS, 0, 0, PXS, 0, 0); main.imageSmoothingEnabled = false;
 let g = main;                         // piirtokohde: pääcanvas tai taustan välimuisti
 const $say = document.getElementById("say"), $sent = document.getElementById("sentence");
 const $verbs = document.getElementById("verbs"), $inv = document.getElementById("inv"), $dlg = document.getElementById("dialog");

@@ -14,11 +14,11 @@ import json
 from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/public/mouho/pixfaces.js"
-SIZES = {"world": (20, 25), "portrait": (60, 75)}
+SIZES = {"world": (40, 50), "portrait": (80, 100)}   # world piirretään puoleen kokoon 2x-kankaalle
 
 
 def flat(im: Image.Image) -> list[int]:
@@ -29,31 +29,43 @@ def hexc(rgb: list[int]) -> str:
     return "#" + "".join(f"{c:02x}" for c in rgb)
 
 
-def mask(im: Image.Image, chin: int, cx: float, half: float) -> Image.Image:
-    """Tausta = vähäkylläinen harmaa, joka on yhteydessä kuvan reunaan; paita = leuan alla."""
+def mask(im: Image.Image, chin: int, cx: float, half: float, poly: list[tuple[float, float]] | None, bg: str, tol: float) -> Image.Image:
+    """Pään maski. Tausta = reunasta (tai monikulmion ulkopuolelta) alkava yhtenäinen alue
+    taustan näköisiä pikseleitä: bg "grey" = vähäkylläinen harmaa, "sample" = lähellä reunan
+    mediaaniväriä (tol). Monikulmio rajaa lisäksi pään ääriviivaan; leuan alta vain leuan kaari."""
     w, h = im.size
     px = im.load()
+    inside = Image.new("L", (w, h), 255)
+    if poly:
+        inside = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(inside).polygon(poly, fill=255)
+    ins = inside.load()
+    edge = [px[x, y] for x in range(0, w, 3) for y in (0, h - 1)] + [px[x, y] for y in range(0, h, 3) for x in (0, w - 1)]
+    ref = tuple(sorted(c[k] for c in edge)[len(edge) // 2] for k in range(3))
 
-    def grey(x: int, y: int) -> bool:
+    def like(x: int, y: int) -> bool:
         r, g, b = px[x, y]
-        return max(r, g, b) - min(r, g, b) < 40
-    bg = [[False] * w for _ in range(h)]
-    q: deque[tuple[int, int]] = deque((x, 0) for x in range(w))
-    for y in range(h):
-        q.extend([(0, y), (w - 1, y)])
+        if bg == "grey":
+            return max(r, g, b) - min(r, g, b) < 40
+        return (r - ref[0]) ** 2 + (g - ref[1]) ** 2 + (b - ref[2]) ** 2 < tol * tol
+    out = [[not ins[x, y] for x in range(w)] for y in range(h)]
+    q: deque[tuple[int, int]] = deque((x, y) for y in range(h) for x in range(w) if out[y][x] or x in (0, w - 1) or y in (0, h - 1))
+    seen = [[False] * w for _ in range(h)]
     while q:
         x, y = q.popleft()
-        if not (0 <= x < w and 0 <= y < h) or bg[y][x] or not grey(x, y):
+        if not (0 <= x < w and 0 <= y < h) or seen[y][x]:
             continue
-        bg[y][x] = True
+        seen[y][x] = True
+        if not (out[y][x] or like(x, y)):
+            continue
+        out[y][x] = True
         q.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
     m = Image.new("L", (w, h), 0)
     mp = m.load()
     for y in range(h):
         for x in range(w):
-            # leuan kaari: leuan alla vain leuan levyinen alue (pelipaita ja kaulus pois)
             k = (y - (chin - 90)) / 90
-            if bg[y][x] or y > chin or (k > 0 and abs(x - cx) > half * (1 - .62 * k * k)):
+            if out[y][x] or y > chin or (k > 0 and abs(x - cx) > half * (1 - .62 * k * k)):
                 continue
             mp[x, y] = 255
     return m
@@ -69,18 +81,21 @@ def hair_color(im: Image.Image, m: Image.Image, top: float) -> tuple[int, int, i
 
 
 def build(src: Path, box: tuple[int, int, int, int], chin: int, colors: int, jaw: tuple[float, float],
-          eyes: list[tuple[int, int]], mouth: tuple[int, int, int]) -> dict:
+          eyes: list[tuple[int, int]], mouth: tuple[int, int, int], poly: list[tuple[float, float]] | None = None,
+          bg: str = "grey", tol: float = 45, hair_fix: bool = False, bright: float = 1.0) -> dict:
     im = Image.open(src).convert("RGB").crop(box)
-    m = mask(im, chin - box[1], jaw[0] - box[0], jaw[1])
+    loc = [(x - box[0], y - box[1]) for x, y in poly] if poly else None
+    m = mask(im, chin - box[1], jaw[0] - box[0], jaw[1], loc, bg, tol)
     # taustan harmaa ohuiden hiusten läpi: yläosan harmaat maskin pikselit tukan väriksi
     hair = hair_color(im, m, (chin - box[1]) * .35)
     ip, mp = im.load(), m.load()
-    for y in range(int((chin - box[1]) * .5)):
+    for y in range(int((chin - box[1]) * .5) if hair_fix else 0):
         for x in range(im.width):
             r, g, b = ip[x, y]
             if mp[x, y] and max(r, g, b) - min(r, g, b) < 42:
                 ip[x, y] = hair
     # pikselitaiteen kirkkaus: kylläisyys ja kontrasti ylös, terävöitys ennen pienennystä
+    im = ImageEnhance.Brightness(im).enhance(bright)
     im = ImageEnhance.Color(im).enhance(1.12)
     im = ImageEnhance.Contrast(im).enhance(1.1)
     im = im.filter(ImageFilter.UnsharpMask(radius=3, percent=120, threshold=2))
@@ -125,12 +140,25 @@ def main() -> None:
     ap.add_argument("--jaw", type=float, nargs=2, required=True, help="leuan keskikohta x ja puolileveys kuvan pikseleinä")
     ap.add_argument("--eye", type=int, nargs=2, action="append", required=True, help="silmän (iiriksen) keskikohta, kahdesti")
     ap.add_argument("--mouth", type=int, nargs=3, required=True, help="suun keskikohta x y ja leveys")
+    ap.add_argument("--poly", help="pään ääriviiva kuvan pikseleinä: 'x,y x,y ...'")
+    ap.add_argument("--bg", choices=["grey", "sample"], default="grey", help="taustan tunnistus")
+    ap.add_argument("--tol", type=float, default=45, help="sample: etäisyys reunan mediaanivärista")
+    ap.add_argument("--hair-fix", action="store_true", help="värjää taustan harmaan ohuessa vaaleassa tukassa (vain vaalea tukka)")
+    ap.add_argument("--iris", default="#4c84c8", help="iiriksen väri tai 'none'")
+    ap.add_argument("--bright", type=float, default=1.0, help="kirkkauskerroin (tumma kuva)")
     a = ap.parse_args()
     data = {}
     if OUT.exists():
         txt = OUT.read_text(encoding="utf-8")
         data = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
-    data[a.name] = build(a.src, tuple(a.box), a.chin, a.colors, tuple(a.jaw), [tuple(e) for e in a.eye], tuple(a.mouth))
+    poly = [tuple(float(v) for v in p.split(",")) for p in a.poly.split()] if a.poly else None
+    data[a.name] = build(a.src, tuple(a.box), a.chin, a.colors, tuple(a.jaw), [tuple(e) for e in a.eye], tuple(a.mouth),
+                         poly, a.bg, a.tol, a.hair_fix, a.bright)
+    for v in data[a.name].values():
+        if a.iris == "none":
+            v.pop("iris", None)
+        else:
+            v["irisC"] = a.iris
     OUT.write_text(
         "// Mouhon salaisuus -- valokuvista pikselöidyt päät (scripts/tools/pixel_face.py).\n"
         "// Generoitu tiedosto: älä muokkaa käsin. Valokuvia ei ole repossa.\n"

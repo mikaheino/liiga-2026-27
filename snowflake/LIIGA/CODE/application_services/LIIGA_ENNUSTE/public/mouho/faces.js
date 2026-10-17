@@ -10,7 +10,7 @@
 "use strict";
 
 const FACE_W = 100, FACE_H = 120, SS = 4;
-const HEAD = { world: [20, 25], portrait: [60, 75] };
+const HEAD = { world: [40, 50], portrait: [80, 100] };   // world piirretään puoleen kokoon (2x kangas)
 
 // Muodot: e = ellipsi [cx, cy, rx, ry], p = monikulmio, l = viiva [pisteet], s = ellipsin kaari
 // (lasit). d = ditheröity toinen väri (sparse: 25 % eikä 50 %). on: "talk" | "still" | "blink" | "open" rajaa muodon variaatioon.
@@ -209,7 +209,7 @@ function renderPix(P, v) {
   }
   // puhe ja räpsäys: suu (P.mouth) ja silmät (P.eyes) kohdistetaan pikseliruudukkoon
   const put = (x, y, c) => { const q = (y + 1) * (w + 2) + x + 1; if (solid[q]) d.set([...hex(c), 255], q * 4); };
-  if (P.iris && !v.blink) for (const [ix, iy] of P.iris) { put(ix, iy, P.irisC ?? "#4c84c8"); if (w > 40) { put(ix - 1, iy, P.irisC ?? "#4c84c8"); put(ix, iy - 1, "#1c2c3c"); } }
+  if (P.iris && !v.blink) for (const [ix, iy] of P.iris) { const c = P.irisC ?? "#4c84c8"; put(ix, iy, c); put(ix - 1, iy, c); if (w >= 80) { put(ix, iy - 1, c); put(ix - 1, iy - 1, "#1c2c3c"); } }
   if (v.talk && P.mouth) { const [mx, my, mw] = P.mouth; for (let k = 0; k < mw; k++) { put(mx + k, my, "#4c1410"); if (k > 0 && k < mw - 1) put(mx + k, my + 1, "#4c1410"); } }
   if (v.blink && P.eyes) for (const [ex, ey, ew] of P.eyes) for (let k = 0; k < ew; k++) { put(ex + k, ey, P.lid ?? "#c88c70"); put(ex + k, ey - 1, P.lid ?? "#c88c70"); }
   const [orr, og, ob] = hex(P.outline ?? "#3c2414");
@@ -235,7 +235,8 @@ function head(name, x, y, t, { talking = false, moving = false, dir = 1, size = 
   const bob = moving ? Math.round(Math.sin(t / 95) * 1) : talking ? Math.round(Math.sin(t / 140) * .6) : 0;
   const sway = moving ? Math.round(Math.sin(t / 190)) : 0;
   g.save(); g.imageSmoothingEnabled = false; g.translate(Math.round(x) + sway, Math.round(y) + bob); if (dir < 0) g.scale(-1, 1);
-  g.drawImage(img, -Math.round(img.width / 2), -img.height + 2); g.restore();
+  const k = size === "world" ? 1 / PXS : 1;   // tuplatarkka pää maailman pikseleissä
+  g.drawImage(img, -img.width * k / 2, -img.height * k + 2, img.width * k, img.height * k); g.restore();
 }
 
 // --- vartalot -------------------------------------------------------------------

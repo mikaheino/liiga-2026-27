@@ -202,9 +202,6 @@ function helminen(x, y, t, talking = false, moving = false, dir = 1) {
   r(x - 8, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 17, 2, 1, "#1c7c3c"); r(x + 6, y - 24, 2, 9, "#fcd41c"); r(x - 8, y - 15, 2, 2, "#1c1c1c"); r(x + 6, y - 15, 2, 2, "#1c1c1c");
   for (let k = 0; k < 14; k++) px(x + 7 + k * .5, y - 15 + k, "#8c5c2c"); r(x + 12, y - 1, 5, 1, "#8c5c2c");
   r(x - 2, y - 27, 4, 2, "#d89c74");
-  r(x - 5, y - 37, 10, 10, "#ecbc94"); r(x + 3, y - 36, 2, 8, "#d8a07c");
-  r(x - 5, y - 39, 10, 3, "#5c3c24"); r(x - 6, y - 38, 2, 5, "#5c3c24");
-  px(x - 2, y - 33, "#1c1c1c"); px(x + 2, y - 33, "#1c1c1c"); r(x - 3, y - 35, 2, 1, "#5c3c24"); r(x + 1, y - 35, 2, 1, "#5c3c24");
-  if (mo) r(x - 2, y - 30, 4, 2, "#5c1c14"); else { r(x - 3, y - 30, 6, 1, "#fcfcfc"); r(x - 3, y - 29, 6, 1, "#a86048"); }
   g.restore();
+  head("raimo", x, y - 25, t, { talking, moving, dir, seedv: 3 });                       // pikselöity pää (pixfaces.js)
 }
