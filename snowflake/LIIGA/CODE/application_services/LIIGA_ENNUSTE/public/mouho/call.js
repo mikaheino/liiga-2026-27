@@ -14,84 +14,129 @@ const ease = (k) => 1 - Math.pow(1 - Math.max(0, Math.min(1, k)), 3);
 const PW = 300, PH = 188;
 function hiCanvas(fn) { const c = document.createElement("canvas"); c.width = PW; c.height = PH; const prev = g; g = c.getContext("2d"); seed = 11; fn(); g = prev; return c; }
 
-// Kisapuiston sisäänkäynti illalla lähempää: katos ja kyltti, lämmin aula, märkä asfaltti.
+// Kisapuiston sisäänkäynti illalla, huipputarkka (17.10.: puhelun ajaksi grafiikkataso nousee
+// valtavasti -- koominen vertailu pelin matalaan tasoon).
 function kisaPanel() {
-  vgrad(0, 0, PW, 64, ["#181a3c", "#2a2654", "#4a3066", "#7c4064", "#b45c5c", "#e0904e"]);
-  for (let i = 0; i < 26; i++) { const x = (rnd() * PW) | 0, y = 4 + ((rnd() * 40) | 0), w = 6 + ((rnd() * 26) | 0); r(x, y, w, 1, y > 26 ? "#5c3456" : "#3a2c58"); r(x + 2, y + 1, w - 4, 1, y > 26 ? "#f0a070" : "#c8607c"); }
-  for (let x = -4; x < PW; x += 5 + ((rnd() * 6) | 0)) { const h = 14 + ((rnd() * 20) | 0); r(x + 3, 70 - h, 2, h, "#1a1626"); for (let j = 0; j < h; j += 3) r(x + 3 - Math.min(5, j / 3), 70 - h + j, 2 + Math.min(10, j / 1.5), 3, "#1c2230"); }
-  for (const [x, y] of [[30, 40], [250, 36], [140, 46]]) for (let k = 0; k < 90; k++) { const a = rnd() * 6.3, d = rnd() * 12; px(x + Math.cos(a) * d * 1.3, y + Math.sin(a) * d, rnd() > .5 ? "#e8b848" : "#c8902c"); }
-  // harmaa aaltopeltiseinä ja keltainen lohko vasemmalla
-  r(0, 34, PW, 76, "#7c7a92"); for (let x = 0; x < PW; x += 4) r(x, 34, 1, 76, "#6c6a84"); r(0, 34, PW, 2, "#a4a2bc");
-  r(0, 8, 62, 102, "#d8a42c"); for (let x = 2; x < 62; x += 4) r(x, 8, 1, 102, "#c8962a"); r(0, 8, 62, 2, "#f8d060"); r(61, 8, 2, 102, "#9c7424"); dither(0, 80, 62, 30, "#d8a42c", "#b4842c", .4);
-  r(10, 30, 44, 34, "#f4dc5c"); text3("SAIPA", 14, 34, "#3c2c10", 2); text3("1948", 18, 48, "#3c2c10", 2);
-  // katos ja kyltti
-  r(0, 102, PW, 22, "#22202c"); r(0, 102, PW, 2, "#46445a"); r(0, 122, PW, 2, "#14121a");
-  fillPoly([[0, 104], [14, 104], [8, 122], [0, 122]], "#e8b83c"); fillPoly([[286, 104], [300, 104], [300, 122], [292, 122]], "#e8b83c");
-  const sign = "TERVETULOA KISAPUISTOON"; text3(sign, 150 - text3w(sign, 2) / 2, 108, "#f4f0e0", 2);
-  // aula: lasiovet, kattovalot, ihmisiä
-  r(0, 124, PW, 46, "#3a3448"); for (let x = 6; x < PW - 4; x += 36) { r(x, 128, 32, 40, "#f0c87c"); vgrad(x, 128, 32, 40, ["#fce8b0", "#f0c87c", "#d8a860"]); r(x + 15, 128, 2, 40, "#8c6c3c"); r(x, 146, 32, 1, "#c8a060"); }
-  for (const x of [40, 120, 170, 236]) { r(x, 146, 6, 20, "#3c2c24"); disc(x + 3, 142, 3, "#3c2c24"); }
-  for (const x of [26, 262]) r(x, 124, 4, 48, "#9c9cac");
-  // märkä asfaltti, aulan heijastukset, reunakivi
-  vgrad(0, 170, PW, 18, ["#2e2a42", "#1a1926"]); r(0, 170, PW, 1, "#5c5870");
-  for (let x = 6; x < PW; x += 36) for (let y = 172; y < PH; y += 2) if (bay(x, y) < .6) r(x + 4 + ((y * 7) % 5), y, 20 - (y - 172), 1, "rgba(240,200,124,.35)");
-  // Jussin pahvilaatikko maassa vasemmalla
-  r(14, 160, 40, 26, "#b8925c"); r(14, 160, 40, 2, "#d8b27c"); r(34, 160, 1, 26, "#8c6c3c"); r(20, 152, 8, 9, "#f4f4ec"); r(20, 152, 8, 2, "#c81c1c"); r(36, 150, 14, 8, "#c8a030"); text3("LIIGA", 22, 172, "#2c2c3c");
+  vgrad(0, 0, PW, 70, ["#141634", "#1e1e46", "#2e2658", "#4c3068", "#7a3c66", "#a8505e", "#d07052", "#eca058"]);
+  for (let i = 0; i < 60; i++) { const x = (rnd() * PW) | 0, y = (rnd() * 22) | 0; px(x, y, rnd() > .8 ? "#ffffff" : "#8c8cc8"); }
+  for (let i = 0; i < 46; i++) { const x = (rnd() * PW) | 0, y = 6 + ((rnd() * 46) | 0), w = 4 + ((rnd() * 30) | 0), lo = y > 30;
+    r(x, y, w, 1, lo ? "#6a3a5c" : "#3a2c5c"); r(x + 1, y + 1, w - 2, 1, lo ? "#f4a874" : "#d0687c"); if (lo && w > 14) r(x + 4, y + 2, w - 8, 1, "#fcd08c"); }
+  // metsän reuna: männyt ja ruskakoivut, oksat pikseleinä
+  for (let x = -6; x < PW + 6; x += 4 + ((rnd() * 7) | 0)) { const h = 18 + ((rnd() * 26) | 0), y0 = 74 - h;
+    r(x + 4, y0, 2, h, "#18141e"); for (let j = 0; j < h; j += 2) { const w2 = 2 + Math.min(12, j / 1.6); r(x + 5 - w2 / 2, y0 + j, w2, 2, j % 4 ? "#1a2030" : "#222a3a"); } }
+  for (const [x, y] of [[24, 42], [96, 50], [262, 38], [190, 48]]) { for (let k = 0; k < 160; k++) { const a = rnd() * 6.3, d = Math.sqrt(rnd()) * 14; const X = x + Math.cos(a) * d * 1.4, Y = y + Math.sin(a) * d;
+    px(X, Y, bay(X | 0, Y | 0) < .25 ? "#7c4c1c" : rnd() > .45 ? "#f0bc48" : "#c88c2c"); } r(x, y + 10, 2, 30, "#e8e4dc"); px(x, y + 16, "#2c2c2c"); px(x + 1, y + 24, "#2c2c2c"); }
+  // halli: aaltopelti varjostuksella, keltainen SaiPa-lohko kylttineen
+  vgrad(0, 34, PW, 76, ["#8c8aa4", "#7c7a94", "#6c6a84"]); for (let x = 0; x < PW; x += 4) { r(x, 34, 1, 76, "#62607a"); r(x + 1, 34, 1, 76, "#8e8ca6"); }
+  r(0, 34, PW, 2, "#b4b2cc"); for (let x = 70; x < PW; x += 46) { r(x, 50, 18, 12, "#3a3850"); r(x + 1, 51, 16, 10, "#ffd890"); r(x + 1, 51, 16, 2, "#fff0c0"); r(x + 9, 51, 1, 10, "#c8a060"); }
+  r(0, 6, 64, 104, "#dca82e"); for (let x = 1; x < 64; x += 4) { r(x, 6, 1, 104, "#c8962a"); r(x + 1, 6, 1, 104, "#ecbc44"); } r(0, 6, 64, 2, "#fcdc70"); r(62, 6, 2, 104, "#9c7424"); dither(0, 86, 64, 24, "#dca82e", "#b4842c", .45);
+  r(8, 24, 48, 40, "#1c1c1c"); r(10, 26, 44, 36, "#f8d838"); text3("SAIPA", 13, 30, "#1c1c1c", 2); text3("1948", 17, 44, "#1c1c1c", 2); r(12, 58, 40, 2, "#1c1c1c");
+  // katos: kyltti, valonauha, putket
+  r(0, 100, PW, 24, "#1e1c28"); r(0, 100, PW, 2, "#4a4860"); r(0, 122, PW, 2, "#100e16"); r(0, 102, PW, 1, "#2c2a3a");
+  fillPoly([[0, 103], [16, 103], [10, 121], [0, 121]], "#ecbc3c"); fillPoly([[284, 103], [300, 103], [300, 121], [290, 121]], "#ecbc3c");
+  const sign = "TERVETULOA KISAPUISTOON"; text3(sign, 151 - text3w(sign, 2) / 2, 109, "#3a3428", 2); text3(sign, 150 - text3w(sign, 2) / 2, 108, "#fcf8ec", 2);
+  for (let x = 20; x < 290; x += 26) { r(x, 123, 10, 2, "#fff4d0"); }
+  // aula: lasiseinä, lipunmyynti, julisteet, ihmiset, kattovalot
+  r(0, 124, PW, 48, "#2c2838");
+  for (let x = 4; x < PW - 4; x += 38) { vgrad(x, 127, 34, 42, ["#fff0c4", "#f4cc84", "#e0ac64", "#c8904c"]); r(x + 16, 127, 2, 42, "#7c5c34"); r(x, 145, 34, 1, "#b88c50"); r(x, 127, 34, 1, "#fff8e0"); }
+  r(118, 130, 30, 12, "#2c2838"); r(120, 132, 26, 8, "#fce8b0"); text3("LIPUT", 122, 133, "#5c3c14");
+  for (const [x, c1, c2] of [[46, "#c81c1c", "#fcd41c"], [196, "#1c1c1c", "#fcd41c"]]) { r(x, 128, 16, 22, "#f4f4ec"); r(x + 1, 129, 14, 8, c1); r(x + 1, 138, 14, 3, c2); text3("LA", x + 2, 143, "#2c2c2c"); }
+  for (const [x, c] of [[30, "#3c2c24"], [92, "#4c2c3c"], [158, "#2c3c4c"], [176, "#3c2c24"], [242, "#2c2c2c"]]) { r(x, 148, 7, 20, c); disc(x + 3, 144, 3, "#e8b894"); r(x + 1, 140, 5, 2, c); r(x - 1, 152, 2, 10, c); }
+  for (const x of [26, 264]) { r(x, 124, 5, 48, "#a4a4b4"); r(x, 124, 1, 48, "#d0d0dc"); }
+  // märkä asfaltti: aulan ja taivaan heijastukset, reunakivi, lätäkkö
+  vgrad(0, 170, PW, 18, ["#3a3450", "#24223a", "#18172a"]); r(0, 170, PW, 1, "#6c6884"); r(0, 171, PW, 1, "#4a4660");
+  for (let x = 4; x < PW; x += 38) for (let y = 173; y < PH; y++) if (bay(x + y, y) < .55 - (y - 173) * .03) r(x + 6 + ((y * 5) % 7), y, 18 - (y - 173), 1, "rgba(244,204,132,.4)");
+  g.fillStyle = "rgba(160,150,200,.18)"; g.beginPath(); g.ellipse(70, 182, 40, 4, 0, 0, 7); g.fill();
+  // pyörä telineessä vasemmalla
+  for (const x of [70, 90]) { g.strokeStyle = "#1c1c24"; g.lineWidth = 2; g.beginPath(); g.arc(x, 176, 7, 0, 7); g.stroke(); } lineC(70, 176, 80, 166, "#c81c1c", 2); lineC(80, 166, 90, 176, "#c81c1c", 2); lineC(80, 166, 84, 160, "#1c1c24", 2);
+  // Jussin pahvilaatikko etualalla
+  r(10, 156, 44, 30, "#b8925c"); r(10, 156, 44, 2, "#dcb680"); r(31, 156, 2, 30, "#8c6c3c"); dither(10, 176, 44, 10, "#b8925c", "#9c7848", .4);
+  r(16, 147, 9, 10, "#f4f4ec"); r(16, 147, 9, 2, "#c81c1c"); r(34, 146, 16, 10, "#c8a030"); r(36, 148, 12, 2, "#3c2c10"); text3("LIIGA", 18, 168, "#2c2c3c");
 }
-// Myrrän valmentajakoppi lähempää: kello, taktiikkataulu, kaapit pelipaitoineen, mailat,
-// hylly jolla hopeamitali ja joukkuekuva, pöytälamppu, puoliksi pakattu laatikko.
+// Myrrän toimisto KooKoon hallissa (17.10.: "selkeästi KooKoon hallin näköinen, ja koomisesti
+// ikkuna Kouvolaan, joka on harmaa"). Ikkunan maisema on maalattu VAIN "Kouvolan väripaletin"
+// kuudella harmaalla (#3A3938 #4E4D4E #626264 #262422 #9899A1 #79797D) -- myös aurinko.
+const KOUVOLA = ["#9899A1", "#79797D", "#626264", "#4E4D4E", "#3A3938", "#262422"];
+function kookooShield(cx, cy, s) {
+  const P = (pts, c) => fillPoly(pts.map(([x, y]) => [cx + x * s, cy + y * s]), c);
+  const shield = [[-20, -22], [-6, -24], [0, -27], [6, -24], [20, -22], [20, 4], [12, 16], [0, 24], [-12, 16], [-20, 4]];
+  P(shield.map(([x, y]) => [x * 1.12, y * 1.12]), "#0c0c0c"); P(shield.map(([x, y]) => [x * 1.04, y * 1.04]), "#ec7a2c"); P(shield, "#141414");
+  P([[-24, 0], [24, -14], [24, -6], [-24, 8]], "#ec7a2c"); P([[-24, 2], [24, -12], [24, -8], [-24, 6]], "#ffffff");
+  g.save(); g.translate(cx, cy - 2 * s); g.rotate(-.28); g.font = `bold italic ${Math.round(11 * s)}px Arial, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.lineWidth = 3 * s; g.strokeStyle = "#ec7a2c"; g.strokeText("KooKoo", 0, 0); g.fillStyle = "#ffffff"; g.fillText("KooKoo", 0, 0); g.restore(); g.textAlign = "left"; g.textBaseline = "alphabetic";
+}
 function coachPanel() {
-  vgrad(0, 0, PW, 120, ["#262838", "#2e3046", "#2a2c3e"]); r(0, 120, PW, 68, "#4c3424"); for (let x = 0; x < PW; x += 16) r(x, 120, 1, 68, "#3c281c"); r(0, 118, PW, 3, "#6c4c34");
-  // kaapit vasemmalla, roikkuva pelipaita
-  for (let k = 0; k < 3; k++) { const x = 4 + k * 34; r(x, 10, 32, 108, "#5c6274"); r(x, 10, 32, 2, "#7c8294"); r(x + 2, 14, 28, 10, "#4c5264"); for (let j = 0; j < 4; j++) r(x + 6, 16 + j * 2, 20, 1, "#3c4252"); r(x + 27, 60, 2, 12, "#9ca2b4"); }
-  fillPoly([[44, 40], [62, 34], [80, 40], [86, 54], [76, 56], [76, 92], [48, 92], [48, 56], [38, 54]], "#e8782c"); r(48, 70, 28, 3, "#1c1c24"); text3("5", 58, 46, "#1c1c24", 2);
-  // kello
-  disc(130, 22, 11, "#f4f0e4", "#3c3c44"); lineC(130, 22, 130, 15, "#1c1c24"); lineC(130, 22, 135, 24, "#1c1c24"); px(130, 22, "#c81c1c");
-  // taktiikkataulu
-  r(150, 10, 140, 78, "#9c9ca4"); r(153, 13, 134, 72, "#f4f4f0"); g.strokeStyle = "#e0a0a0"; g.lineWidth = 1; g.strokeRect(160.5, 18.5, 120, 62); r(220, 18, 1, 62, "#e0a0a0"); g.beginPath(); g.arc(220.5, 49.5, 10, 0, 7); g.stroke();
-  for (const [x, y] of [[176, 30], [196, 66], [252, 36], [268, 62]]) { lineC(x - 3, y - 3, x + 3, y + 3, "#c81c1c", 2); lineC(x + 3, y - 3, x - 3, y + 3, "#c81c1c", 2); }
-  for (const [x, y] of [[186, 48], [238, 28], [260, 50]]) { g.strokeStyle = "#1c3c9c"; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 4, 0, 7); g.stroke(); }
-  lineC(178, 34, 232, 44, "#1c3c9c", 1.5); lineC(232, 44, 248, 30, "#1c3c9c", 1.5); lineC(198, 62, 256, 40, "#c81c1c", 1.5); r(240, 86, 30, 3, "#5c5c64");
-  // hylly: hopeamitali, joukkuekuva
-  r(150, 98, 90, 4, "#6c4c2c"); r(156, 74, 1, 14, "#c8c8d0"); disc(156, 92, 6, "#d8d8e0", "#9c9ca8"); px(154, 90, "#ffffff"); r(170, 82, 26, 16, "#3c2c1c"); r(172, 84, 22, 12, "#8ca0b4"); for (let k = 0; k < 5; k++) disc(175 + k * 4, 92, 1, "#e8c0a0");
-  r(206, 88, 10, 10, "#e8e4dc"); r(216, 90, 2, 5, "#e8e4dc");
-  // pöytälamppu
-  r(256, 112, 24, 3, "#3c3c44"); r(266, 90, 2, 22, "#3c3c44"); fillPoly([[256, 84], [276, 84], [282, 94], [250, 94]], "#c87c2c");
-  // mailat nojaamassa
-  for (const x of [118, 128]) { lineC(x, 60, x + 6, 150, "#c8a46c", 3); r(x + 4, 148, 12, 4, "#1c1c24"); }
-  // pahvilaatikko edessä oikealla: pilli, kahvikuppi, taktiikkalevy, oranssi pyyhe
-  r(196, 140, 90, 48, "#b8925c"); r(196, 140, 90, 3, "#d8b27c"); r(240, 140, 2, 48, "#8c6c3c");
-  fillPoly([[196, 140], [186, 126], [222, 126], [230, 140]], "#c8a26c"); fillPoly([[286, 140], [296, 126], [258, 126], [250, 140]], "#a8824c");
-  r(204, 124, 30, 18, "#1c1c24"); r(206, 126, 26, 14, "#f0f0ec"); r(240, 122, 10, 16, "#e8e4dc"); r(240, 122, 10, 2, "#c81c1c"); r(256, 128, 22, 6, "#e8782c"); disc(274, 124, 3, "#c8c8d0");
+  // seinä: hiilenharmaa, KooKoon oranssi-musta raita, kattovalaisimet
+  vgrad(0, 0, PW, 132, ["#24242a", "#2c2c34", "#26262c"]); dither(0, 0, PW, 132, "#2a2a32", "#26262c", .15);
+  r(0, 104, PW, 10, "#ec7a2c"); r(0, 114, PW, 4, "#0c0c0c"); r(0, 102, PW, 2, "#0c0c0c"); r(0, 104, PW, 1, "#ffa060");
+  for (const x of [40, 200]) { r(x, 0, 60, 4, "#d8dce4"); r(x + 2, 4, 56, 1, "#9ca0a8"); }
+  // ikkuna Kouvolaan
+  const wx = 178, wy = 12, ww = 112, wh = 84;
+  r(wx - 5, wy - 5, ww + 10, wh + 10, "#0c0c0c"); r(wx - 3, wy - 3, ww + 6, wh + 6, "#ec7a2c");
+  vgrad(wx, wy, ww, wh, [KOUVOLA[0], KOUVOLA[0], KOUVOLA[1]]);
+  disc(wx + 92, wy + 16, 8, KOUVOLA[1], KOUVOLA[2]);                                   // harmaa aurinko
+  for (let i = 0; i < 6; i++) r(wx + 6 + i * 18, wy + 10 + (i % 3) * 4, 12 + (i % 4) * 4, 1, KOUVOLA[1]);
+  for (const [x, w, h, c] of [[2, 20, 58, 2], [24, 26, 66, 3], [52, 16, 44, 2], [70, 22, 72, 3], [94, 16, 52, 2]]) {
+    const top = wy + wh - h; r(wx + x, top, w, h, KOUVOLA[c]); r(wx + x, top, w, 2, KOUVOLA[c - 1]); r(wx + x + w - 3, top, 3, h, KOUVOLA[c + 1]);
+    for (let yy = top + 5; yy < wy + wh - 12; yy += 5) for (let xx = wx + x + 3; xx < wx + x + w - 4; xx += 4) r(xx, yy, 2, 2, KOUVOLA[5]);
+    r(wx + x + 4, top - 4, 3, 4, KOUVOLA[c + 1]); }
+  r(wx, wy + wh - 12, ww, 12, KOUVOLA[1]); dither(wx, wy + wh - 12, ww, 12, KOUVOLA[1], KOUVOLA[0], .35);   // harmaa lumi
+  for (const x of [16, 46, 86, 104]) { lineC(wx + x, wy + wh - 10, wx + x, wy + wh - 30, KOUVOLA[5]); lineC(wx + x, wy + wh - 22, wx + x - 5, wy + wh - 30, KOUVOLA[5]); lineC(wx + x, wy + wh - 24, wx + x + 4, wy + wh - 31, KOUVOLA[5]); }
+  for (const [x, y] of [[40, 22], [48, 18], [96, 26]]) { px(wx + x, wy + y, KOUVOLA[5]); px(wx + x - 1, wy + y - 1, KOUVOLA[5]); px(wx + x + 1, wy + y - 1, KOUVOLA[5]); }
+  r(wx + ww / 2 - 1, wy, 2, wh, "#0c0c0c"); r(wx, wy + 34, ww, 2, "#0c0c0c");
+  r(wx + 6, wy + 4, 34, 9, "#fce870"); text3("KOUVOLA", wx + 8, wy + 6, "#3c3c3c");          // post-it ikkunassa
+  r(wx - 6, wy + wh + 4, ww + 12, 5, "#3c3c44"); r(wx + 96, wy + wh - 4, 10, 8, "#7c5c3c"); for (let k = 0; k < 6; k++) lineC(wx + 101, wy + wh - 4, wx + 96 + k * 2, wy + wh - 12 - (k % 3) * 2, KOUVOLA[2]);   // harmaa kuollut kukka
+  // KooKoo-logo seinällä, hopeamitali ja kehystetty kuva
+  kookooShield(38, 40, 1.1);
+  r(16, 72, 1, 12, "#ec7a2c"); r(10, 70, 13, 2, "#ec7a2c"); disc(16, 88, 6, "#dcdce4", "#9c9ca8"); px(14, 86, "#ffffff"); text3("2", 15, 86, "#7c7c84");
+  r(28, 70, 30, 22, "#7c5c3c"); r(30, 72, 26, 18, "#8ca0b4"); for (let k = 0; k < 6; k++) disc(33 + k * 4, 84, 1, k % 2 ? "#ec7a2c" : "#e8c0a0"); text3("HOPEA", 32, 74, "#f4f4f4");
+  // naulakko: oranssi kaulaliina ja takki
+  r(4, 120, 2, 10, "#9c9ca8"); fillPoly([[0, 122], [8, 122], [12, 160], [-2, 160]], "#ec7a2c"); for (let y = 126; y < 160; y += 6) r(0, y, 11, 2, "#0c0c0c");
+  // lattia, pöytä, läppäri jossa sarjataulukko
+  vgrad(0, 132, PW, 56, ["#3c3c44", "#2c2c34", "#24242a"]); for (let x = 0; x < PW; x += 30) r(x, 132, 1, 56, "#34343c");
+  r(150, 138, 150, 6, "#5c4632"); r(150, 144, 150, 4, "#3c2c20"); r(156, 148, 6, 40, "#3c2c20"); r(290, 148, 6, 40, "#3c2c20");
+  r(176, 116, 50, 22, "#1c1c22"); r(178, 118, 46, 18, "#d8e0ec"); for (let k = 0; k < 4; k++) { r(180, 120 + k * 4, 30, 1, "#5c6c84"); r(214, 120 + k * 4, 8, 1, k === 3 ? "#c81c1c" : "#5c6c84"); } r(172, 136, 58, 3, "#3c3c44");
+  r(238, 128, 10, 11, "#f4f0e4"); r(238, 128, 10, 3, "#ec7a2c"); r(248, 130, 3, 6, "#f4f0e4");
+  for (let k = 0; k < 4; k++) r(256 + k * 2, 134 - k, 24, 4, k % 2 ? "#f4f4ec" : "#e4e4dc");
+  // pahvilaatikko lattialla oikealla edessä
+  r(210, 152, 84, 36, "#b8925c"); r(210, 152, 84, 3, "#dcb680"); r(251, 152, 2, 36, "#8c6c3c"); dither(210, 176, 84, 12, "#b8925c", "#9c7848", .4);
+  fillPoly([[210, 152], [200, 140], [236, 140], [244, 152]], "#c8a26c"); fillPoly([[294, 152], [300, 140], [268, 140], [260, 152]], "#a8824c");
+  r(218, 136, 30, 18, "#1c1c24"); r(220, 138, 26, 14, "#f0f0ec"); r(232, 140, 1, 10, "#e0a0a0"); r(256, 138, 26, 6, "#ec7a2c"); r(256, 140, 26, 1, "#0c0c0c"); disc(286, 136, 3, "#c8c8d0");
+  text3("KAMAT", 226, 166, "#5c3c1c");
 }
 let panelCache = {};
-// Rintakuva (laitepikseleissä): hartiat ja asu muotokuvan alle.
-function bust(who, cx, top) {
-  if (who === "myrra") {
-    fillPoly([[cx - 46, PH], [cx - 38, top + 14], [cx - 12, top], [cx + 12, top], [cx + 38, top + 14], [cx + 46, PH]], "#1c1c22");
-    fillPoly([[cx - 14, top], [cx + 14, top], [cx + 8, PH], [cx - 8, PH]], "#141418");
-    fillPoly([[cx - 16, top], [cx - 4, top], [cx - 8, top + 14]], "#f4f4f4"); fillPoly([[cx + 16, top], [cx + 4, top], [cx + 8, top + 14]], "#f4f4f4");
-    lineC(cx - 20, top + 8, cx - 10, PH, "#34343c", 2); lineC(cx + 20, top + 8, cx + 10, PH, "#34343c", 2); return; }
-  fillPoly([[cx - 46, PH], [cx - 38, top + 14], [cx - 12, top], [cx + 12, top], [cx + 38, top + 14], [cx + 46, PH]], "#c8a460");
-  fillPoly([[cx + 16, top + 6], [cx + 38, top + 14], [cx + 46, PH], [cx + 24, PH]], "#b8944c");
-  r(cx - 14, top - 2, 28, 6, "#fcd41c"); r(cx - 1, top + 4, 2, PH - top, "#a88440"); for (let y = top + 14; y < PH; y += 12) r(cx + 3, y, 2, 2, "#5c3c1c");
-}
-// Käsi ja kännykkä korvalla (side: -1 vasen, 1 oikea), laitepikseleissä.
-function phoneHand(cx, cy, side, t, ringing) {
-  const sh = ringing ? Math.round(Math.sin(t / 25) * 2) : 0, x = cx + side * 30 + sh;
-  r(x - 5, cy - 16, 11, 24, "#1c1c24"); r(x - 3, cy - 14, 7, 18, ringing && (t / 120 | 0) % 2 ? "#9cf0fc" : "#3c5c7c");
-  disc(x, cy + 10, 7, "#f0bc9c", "#c88c70"); r(x - 4 - side * 4, cy + 12, 9, 14, "#f0bc9c");
+// Käsi ja kännykkä: hiha olkapäästä kyynärpään kautta korvalle, käsi pitelee puhelinta.
+function phoneArm(sx, sy, ex, ey, hx, hy, sleeve, sleeveD, cuff, t, ringing) {
+  const limb = (x0, y0, x1, y1, w, c) => { const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * w / 2, ny = dx / L * w / 2;
+    fillPoly([[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]], c); };
+  limb(sx, sy, ex, ey, 22, sleeveD); limb(sx, sy, ex, ey, 18, sleeve); disc(ex, ey, 10, sleeve);
+  limb(ex, ey, hx, hy + 8, 18, sleeveD); limb(ex, ey, hx, hy + 8, 15, sleeve);
+  if (cuff) limb(hx + (ex - hx) * .12, hy + 8 + (ey - hy - 8) * .12, hx, hy + 8, 15, cuff);
+  const sh = ringing ? Math.round(Math.sin(t / 25) * 2) : 0;
+  r(hx - 5 + sh, hy - 16, 11, 26, "#141418"); r(hx - 3 + sh, hy - 14, 7, 20, ringing && (t / 120 | 0) % 2 ? "#9cf0fc" : "#2c4c6c"); px(hx + sh, hy - 15, "#5c5c6c");
+  g.fillStyle = "#f0bc9c"; g.beginPath(); g.ellipse(hx + sh, hy + 4, 8, 10, 0, 0, 7); g.fill();
+  for (let k = 0; k < 3; k++) r(hx - 7 + sh, hy - 6 + k * 5, 14, 1, "#c88c70");
+  g.fillStyle = "#d89c7c"; g.beginPath(); g.ellipse(hx + 2 + sh, hy + 8, 4, 5, 0, 0, 7); g.fill();
 }
 function panelDraw(P, off, who, t, bgFn, ringing) {
   const x = P.x + off, { y, w, h } = P;
-  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.scale(.5, .5);
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.scale(.5, .5); g.imageSmoothingEnabled = false;
   g.drawImage(panelCache[who] ??= hiCanvas(bgFn), 0, 0);
-  if (who === "myrra") glow(266, 98, 40, "255,190,110", .25); else glow(150, 150, 70, "255,200,120", .12);
-  const cx = who === "myrra" ? 84 : 220, talk = speaking === who && Math.floor(t / 110) % 2 === 1, blink = (t + (who === "myrra" ? 1700 : 0)) % 3700 < 130;
-  const img = faceImg(who, "portrait", { talk, blink }), bob = speaking === who ? Math.round(Math.sin(t / 140)) : 0, top = PH - 70;
-  bust(who, cx, top + 4);
-  g.imageSmoothingEnabled = false; g.drawImage(img, Math.round(cx - img.width / 2), top - img.height + 14 + bob);
-  phoneHand(cx, top - 32 + bob, who === "myrra" ? -1 : 1, t, ringing);
+  if (who === "myrra") {                            // tihkusade Kouvolan ikkunassa (harmaata, tietysti)
+    g.save(); g.beginPath(); g.rect(178, 12, 112, 84); g.clip();
+    for (let i = 0; i < 32; i++) { const rx = 178 + ((i * 37 + t / 9) % 112), ry = 12 + ((i * 53 + t / 4) % 84); r(rx, ry, 1, 4, "rgba(98,98,100,.7)"); }
+    g.restore();
+  } else glow(150, 150, 80, "255,200,120", .12);
+  const talk = speaking === who && Math.floor(t / 110) % 2 === 1, blink = (t + (who === "myrra" ? 1700 : 0)) % 3700 < 130, bob = speaking === who ? Math.round(Math.sin(t / 140)) : 0;
+  const B = PIXFACES[who].bust, bimg = faceCache[`bust|${who}`] ??= renderPix(B, {}), face = faceImg(who, "portrait", { talk, blink });
+  const bx = who === "myrra" ? 52 : 168, by = PH - bimg.height + 2;
+  if (who === "jussi") {                           // kuva on kapea: pelipaita jatkuu hartioihin
+    fillPoly([[bx + 10, by + 76], [bx - 30, by + 92], [bx - 40, PH], [bx + 20, PH]], "#f8d838"); fillPoly([[bx + 66, by + 76], [bx + 110, by + 92], [bx + 120, PH], [bx + 56, PH]], "#e8c428");
+    fillPoly([[bx - 30, by + 92], [bx - 18, by + 88], [bx - 26, PH], [bx - 40, PH]], "#d8b420");
+  }
+  g.drawImage(bimg, bx, by + bob); g.drawImage(face, bx + B.head_at[0], by + B.head_at[1] + bob);
+  if (who === "myrra") phoneArm(bx + 22, by + 120, bx + 2, by + 150, bx + B.head_at[0] + 8, by + B.head_at[1] + 54 + bob, "#1c1c22", "#0c0c10", "#f4f4f4", t, ringing);
+  else phoneArm(bx + 96, by + 98, bx + 108, PH - 4, bx + B.head_at[0] + 62, by + B.head_at[1] + 54 + bob, "#f8d838", "#c8a418", null, t, ringing);
   g.restore();
   g.strokeStyle = "#0c0a10"; g.lineWidth = 3; g.strokeRect(x - 1, y - 1, w + 2, h + 2); g.strokeStyle = "#fcf0c8"; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, w - 1, h - 1);
 }
@@ -117,13 +162,13 @@ async function phoneCall(lines, { incoming = false } = {}) {
       g.font = "bold 16px VT323, monospace"; g.textAlign = "center"; g.lineWidth = 3; g.strokeStyle = "#0c0a10"; g.strokeText(incoming ? "RIIIING!" : "TUUT... TUUT...", 0, 0);
       g.fillStyle = "#fcd41c"; g.fillText(incoming ? "RIIIING!" : "TUUT... TUUT...", 0, 0); g.restore(); g.textAlign = "left";
     }
-    if (bulbT) bulb(PANEL.L.x + 128 + slide(-1), PANEL.L.y + 14, t, performance.now() - bulbT);   // rAF:n t ja performance.now() voivat erota
+    if (bulbT) bulb(PANEL.L.x + 76 + slide(-1), PANEL.L.y + 26, t, performance.now() - bulbT);   // rAF:n t ja performance.now() voivat erota
     if (state === "out" && now - stT < 300) { g.font = "bold 14px VT323, monospace"; g.textAlign = "center"; g.fillStyle = "#fcfcfc"; g.fillText("KLIK.", 160, 24); g.textAlign = "left"; }
   };
   // soittoääni: kaksi sointia (lähtevä: pitkät tuuttaukset)
   for (let k = 0; k < 2; k++) { if (incoming) { [880, 1040, 880, 1040].forEach((f, n) => setTimeout(() => beep(f, 70, "square", .04), k * 600 + n * 75)); } else setTimeout(() => beep(425, 420, "sine", .05), k * 650); }
   await sleep(1300); state = "talk"; stT = performance.now();
-  callSpk = { jussi: { x: PANEL.L.x + 110, y: PANEL.L.y + 2, c: "#c8a460" }, myrra: { x: PANEL.R.x + 42, y: PANEL.R.y + 2, c: "#9c9690" } };
+  callSpk = { jussi: { x: PANEL.L.x + 104, y: PANEL.L.y + 2, c: "#f8d838" }, myrra: { x: PANEL.R.x + 62, y: PANEL.R.y + 2, c: "#ec7a2c" } };
   try {
     for (const l of lines) {
       if (l.bulb) { bulbT = performance.now(); [523, 659, 784, 1047].forEach((f, n) => setTimeout(() => beep(f, 160, "triangle", .06), n * 90)); await sleep(500); continue; }
