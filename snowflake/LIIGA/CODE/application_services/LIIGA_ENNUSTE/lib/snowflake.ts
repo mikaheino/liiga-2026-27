@@ -48,20 +48,37 @@ function options(): snowflake.ConnectionOptions {
   };
 }
 
-export async function query<T extends Row = Row>(sql: string, binds: snowflake.Binds = []): Promise<T[]> {
-  snowflake.configure({ logLevel: "ERROR" });
-  pool ??= snowflake.createPool(options(), { max: 8, min: 1 });
-  const t0 = Date.now();
-  const out = await pool.use(
+// Yhteyspooli: yön yli seisonut yhteys katkeaa (Snowflaken istunto vanhenee), ja
+// pooli antoi sen silti uudelleen käyttöön -> "Unable to perform operation using
+// terminated connection" (17.10.). Siksi: testOnBorrow tarkistaa yhteyden ennen
+// lainaa, käyttämättömät poistetaan 10 min jälkeen, ja katkenneen yhteyden virheestä
+// pooli puretaan ja kysely yritetään kerran uudelleen tuoreella yhteydellä.
+function getPool() {
+  pool ??= snowflake.createPool(options(), { max: 8, min: 0, testOnBorrow: true, evictionRunIntervalMillis: 60_000, idleTimeoutMillis: 600_000 });
+  return pool;
+}
+const DEAD = /terminated connection|not connected|session.*(expired|no longer exists)|network error/i;
+async function run<T>(sql: string, binds: snowflake.Binds): Promise<T[]> {
+  return getPool().use(
     (conn) =>
       new Promise<T[]>((resolve, reject) =>
-        conn.execute({
-          sqlText: sql,
-          binds,
-          complete: (err, _stmt, rows) => (err ? reject(err) : resolve((rows ?? []) as T[])),
-        }),
+        conn.execute({ sqlText: sql, binds, complete: (err, _stmt, rows) => (err ? reject(err) : resolve((rows ?? []) as T[])) }),
       ),
   );
+}
+
+export async function query<T extends Row = Row>(sql: string, binds: snowflake.Binds = []): Promise<T[]> {
+  snowflake.configure({ logLevel: "ERROR" });
+  const t0 = Date.now();
+  let out: T[];
+  try {
+    out = await run<T>(sql, binds);
+  } catch (e) {
+    if (!DEAD.test(String((e as Error).message))) throw e;
+    const old = pool; pool = null;
+    old?.drain().then(() => old.clear()).catch(() => {});
+    out = await run<T>(sql, binds);
+  }
   // Hitaat kyselyt lokiin: sivu odottaa hitainta (16.10.: "mitään ei tapahdu").
   const ms = Date.now() - t0;
   if (ms > 300) console.log(`[sql] ${ms} ms  ${sql.replace(/\s+/g, " ").trim().slice(0, 90)}`);
