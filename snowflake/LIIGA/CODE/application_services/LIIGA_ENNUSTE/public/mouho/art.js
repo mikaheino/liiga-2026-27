@@ -196,7 +196,7 @@ async function ending() {
   $game.classList.add("talking");
 }
 
-// Salkkumies (satama): liituraitapuku, aurinkolasit yölläkin, kultaketju, salkku.
+// Salkkumies (Kisapuisto): liituraitapuku, aurinkolasit yölläkin, kultaketju, salkku.
 // Pikseleinä samalla mittakaavalla kuin Jussi ja Mehmet.
 function salesman(x, y, t, talking = false) {
   const sw = Math.sin(t / 700) > 0 ? 0 : 1, arm = talking ? Math.round(Math.sin(t / 140) * 2) : 0, mo = talking && Math.floor(t / 110) % 2;

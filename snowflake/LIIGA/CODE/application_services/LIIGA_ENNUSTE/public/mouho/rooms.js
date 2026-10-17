@@ -10,69 +10,165 @@ function fillPoly(pts, c) { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y],
 function lineC(x0, y0, x1, y1, c, w = 1) { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(x0 + .5, y0 + .5); g.lineTo(x1 + .5, y1 + .5); g.stroke(); }
 const lerp = (a, b, k) => a + (b - a) * k;
 
-// =============================================================== SATAMA
-// Laituri kulkee syvälle järvelle; lähimpänä ranta, oikealla taksi.
-const PIER = { yF: 70, xF0: 142, xF1: 178, yN: 122, xN0: 70, xN1: 250 };
-const pierX = (y) => { const k = (y - PIER.yF) / (PIER.yN - PIER.yF); return [lerp(PIER.xF0, PIER.xN0, k), lerp(PIER.xF1, PIER.xN1, k)]; };
-const SAT_STARS = starfield(90, 56, 5);
-function satamaBg() {
-  vgrad(0, 0, W, 62, ["#04041a", "#07072a", "#0c0c3c", "#141452", "#1c1c66", "#26267a"]);
-  for (const [x, y, b] of SAT_STARS) px(x, y, b > .85 ? "#fcfcfc" : b > .5 ? "#a0a0e0" : "#5858a8");
-  for (let j = -16; j <= 16; j++) for (let i = -16; i <= 16; i++) { const d = Math.hypot(i, j); if (d > 9 && d < 16 && bay(280 + i, 20 + j) < (16 - d) / 14) px(280 + i, 20 + j, "#3c3ca0"); }
-  disc(280, 20, 9, "#f6f2c0", "#dcd8a0"); disc(277, 17, 2, "#e4e0a8"); disc(284, 23, 1, "#e4e0a8");
-  // kaukainen ranta: matalat kuuset ja pieni venevaja vastarannalla
-  seed = 13; r(0, 58, W, 5, "#050920"); for (let x = -4; x < W; x += 3 + ((rnd() * 4) | 0)) { const h = 3 + ((rnd() * 7) | 0); tri(x, 63 - h, 5, h, "#050920"); }
-  r(36, 50, 22, 10, "#1c120c"); tri(33, 44, 28, 7, "#2c120c"); r(48, 53, 5, 4, "#ffd76a"); px(84, 60, "#fcd45c"); px(214, 61, "#fcd45c");
-  // vesi: tummuu katsojaa kohti
-  vgrad(0, 63, W, 61, ["#0a1440", "#0c1848", "#0a143c", "#08102f", "#060c26", "#050a20"]);
-  dither(0, 63, W, 2, "#0a1440", "#040818", .6);
-  // laituri perspektiivissä: poikkilaudat tihenevät kauemmas, saumat kohti katoamispistettä
-  const N = 12;
-  for (let k = 0; k < N; k++) {
-    const y0 = PIER.yF + (PIER.yN - PIER.yF) * Math.pow(k / N, 1.6), y1 = PIER.yF + (PIER.yN - PIER.yF) * Math.pow((k + 1) / N, 1.6);
-    for (let y = Math.floor(y0); y < Math.ceil(y1); y++) { const [a, b] = pierX(y); r(a, y, b - a, 1, k % 2 ? "#4c3018" : "#5a3a1e"); }
-    const [a, b] = pierX(Math.floor(y0)); r(a, Math.floor(y0), b - a, 1, "#6c4a28");
-  }
-  for (let i = 1; i < 8; i++) lineC(lerp(PIER.xF0, PIER.xF1, i / 8), PIER.yF, lerp(PIER.xN0, PIER.xN1, i / 8), PIER.yN, "rgba(30,16,6,.55)");
-  for (let y = PIER.yF; y < PIER.yN; y++) { const [a, b] = pierX(y); px(a - 1, y, "#2c1a0c"); px(b, y, "#2c1a0c"); }
-  // laiturin pylväät veteen, isommat lähellä
-  for (const k of [.15, .4, .7, 1]) { const y = lerp(PIER.yF, PIER.yN, k), [a, b] = pierX(y), h = 3 + k * 9, w = 1 + k * 3; r(a - w, y - 1, w, h, "#24160a"); r(b, y - 1, w, h, "#24160a"); }
-  // lyhtypylväs laiturin päässä
-  r(181, 46, 1, 25, "#1c1c26"); r(178, 44, 7, 3, "#2c2c38"); r(179, 47, 5, 1, "#fce88c");
-  // ranta (lähin taso): sora ja reunakivi
-  noise(0, 122, W, 14, "#2e2a28", ["#3c3632", "#24201e", "#46403a"], .35); r(0, 122, W, 1, "#5c5650"); r(0, 123, W, 1, "#1c1816");
+// =============================================================== KISAPUISTO
+// Lappeenrannan Kisapuisto lokakuun iltana (17.10., mouho_concept-kuvien tunnelma):
+// auringonlasku pikselipilvin, keltainen ja harmaa halli, "TERVETULOA KISAPUISTOON"
+// -katos, lämpimät ikkunat, märkä parkkipaikka heijastuksineen, männyt ja keltaiset
+// koivut, Kaukaan piippu taustalla. Kaikki piirretään koodilla; kuvat olivat vain mallina.
+
+// 3x5-pikselifontti kylttejä varten (selainfontti ei ehkä ole ladattu kun tausta välimuistitetaan).
+const FONT3 = {
+  A: "010101111101101", B: "110101110101110", C: "011100100100011", D: "110101101101110", E: "111100110100111", F: "111100110100100",
+  G: "011100101101011", H: "101101111101101", I: "111010010010111", J: "001001001101010", K: "101101110101101", L: "100100100100111",
+  M: "101111111101101", N: "110101101101101", O: "010101101101010", P: "110101110100100", R: "110101110101101", S: "011100010001110",
+  T: "111010010010010", U: "101101101101111", V: "101101101101010", Y: "101101010010010", "Ä": "101010101111101", "Ö": "101010101101010",
+  "0": "111101101101111", "1": "010110010010111", "2": "110001010100111", "6": "011100111101111", " ": "000000000000000", "-": "000000111000000", ".": "000000000000010",
+};
+function text3(s, x, y, c, sc = 1) {
+  for (const ch of s) { const gl = FONT3[ch] ?? FONT3[" "];
+    for (let k = 0; k < 15; k++) if (gl[k] === "1") r(x + (k % 3) * sc, y + Math.floor(k / 3) * sc, sc, sc, c);
+    x += 4 * sc; }
 }
-function satamaDraw(t) {
-  g.drawImage(paintBg("satama", satamaBg), 0, 0);
-  // kuun heijastus ja vesiväreet (ei laiturin päälle)
-  for (let y = 66; y < 120; y += 2) { const k = (y - 66) / 54, w = (5 + k * 6) + Math.sin(t / 220 + y) * 2; r(280 - w / 2 + Math.sin(t / 340 + y * .8) * 2, y, w, 1, k < .35 ? "#e8e4a8" : k < .7 ? "#9c9a7c" : "#5c5c5c"); }
-  for (let i = 0; i < 26; i++) { const y = 65 + ((i * 7) % 56), x = (i * 47 + t / (22 + (i % 4) * 8)) % (W + 20) - 10, [a, b] = y < PIER.yN ? pierX(y) : [0, 0];
-    if (x + 6 < a - 2 || x > b + 2) r(x, y, 2 + (i % 4) * (1 + (y - 65) / 30), 1, i % 3 ? "#1c3478" : "#2c4c9c"); }
-  // soutuvene vasemmalla
-  const by = 96 + Math.sin(t / 650) * 1, bx = 34 + Math.sin(t / 1300) * 2;
-  r(bx - 12, by, 24, 3, "#6a3c1c"); r(bx - 10, by + 3, 20, 2, "#4a2810"); r(bx - 12, by, 24, 1, "#9c6c3c"); r(bx + 5, by - 3, 1, 8, "#8c5c2c"); r(bx - 12, by + 5, 24, 1, "#0c1c4c");
-  glow(181, 47, 22, "255,230,150", .26 + .03 * Math.sin(t / 130)); glow(160, 74, 18, "255,220,140", .07);
+const text3w = (s, sc = 1) => s.length * 4 * sc - sc;
+
+// Parkkipaikan perspektiivi: pakopiste hallin oven kohdalla, horisontti hallin juurella.
+const VPK = [160, 52], BASE = 79;
+const lotX = (y) => { const k = (y - 98) / 18; return [lerp(70, 56, k), lerp(236, 246, k)]; };
+// Pilvijuovat: art_style_3:n tapaan vaakaviivoja, alapinta valaistu auringonlaskusta.
+const CLOUDS = (() => { seed = 41; const out = [];
+  for (const [cx, cy, n, w] of [[60, 14, 26, 70], [190, 9, 34, 110], [270, 24, 22, 60], [120, 30, 18, 80], [30, 34, 14, 50], [230, 38, 16, 70]])
+    for (let i = 0; i < n; i++) out.push([cx + (rnd() - .5) * w, cy + (rnd() - .5) * 7, 3 + rnd() * 14]);
+  return out; })();
+function kisaBg() {
+  // taivas: yö ylhäällä, auringonlasku puiden takana oikealla
+  vgrad(0, 0, W, 60, ["#10122c", "#181a3c", "#232250", "#33285e", "#4a3066", "#6a3a68", "#924a62", "#bc6258", "#dc8650", "#eca85a"]);
+  seed = 5; for (let i = 0; i < 40; i++) { const x = (rnd() * W) | 0, y = (rnd() * 18) | 0; px(x, y, rnd() > .7 ? "#e8e8fc" : "#8c8cc8"); }
+  for (const [x, y, w] of CLOUDS) {
+    const lit = y > 20 ? "#f0a070" : "#c8607c", body = y > 20 ? "#5a3456" : "#3a2c58";
+    r(x, y, w, 1, body); r(x + 1, y + 1, w - 2, 1, lit); if (w > 10) r(x + w * .3, y - 1, w * .4, 1, body);
+  }
+  // aurinko juuri laskenut: hehku puiden takana
+  for (let j = -18; j <= 0; j++) for (let i = -40; i <= 40; i++) { const d = Math.hypot(i / 2.2, j); if (d < 18 && bay(250 + i, 58 + j) < (18 - d) / 22) px(250 + i, 58 + j, "#f8c870"); }
+  // Kaukaan tehdas ja piippu vasemmalla kaukana (kisapuisto_4), höyry ja punainen lentoestevalo
+  r(4, 44, 34, 16, "#2c2440"); r(10, 40, 12, 4, "#2c2440"); r(26, 14, 4, 46, "#342a48"); r(25, 13, 6, 2, "#40345a");
+  for (let k = 0; k < 6; k++) disc(30 + k * 5, 10 - k * 1.5, 3 + k, k < 3 ? "#8c7c9c" : "#6c5c84");
+  for (const [x, y] of [[8, 47], [14, 47], [20, 50], [32, 47]]) r(x, y, 2, 1, "#f0c070");
+  // metsä: männyt (tumma) ja koivut (keltainen ruska), vaihteleva latvarivi
+  seed = 23;
+  for (let x = -6; x < W + 6; x += 3 + ((rnd() * 5) | 0)) { const h = 10 + ((rnd() * 16) | 0), y = 62 - h;
+    r(x + 2, y + 4, 1, h, "#1a1626"); for (let j = 0; j < h - 2; j += 2) r(x + 2 - Math.min(3, j / 4), y + j, 1 + Math.min(6, j / 2), 2, j % 4 ? "#1c2230" : "#222a38"); }
+  for (const [x, y, s] of [[44, 46, 7], [92, 44, 6], [276, 44, 8], [300, 48, 6], [140, 48, 5]]) {
+    for (let k = 0; k < 40; k++) { const a = rnd() * 6.3, d = rnd() * s; px(x + Math.cos(a) * d * 1.2, y + Math.sin(a) * d, rnd() > .5 ? "#c8902c" : rnd() > .5 ? "#e8b848" : "#8c5c24"); }
+    r(x, y + s - 2, 1, 14, "#d8d0c8"); px(x, y + s + 3, "#2c2c2c"); }
+  r(0, 62, W, BASE - 62, "#161a26"); dither(0, 62, W, 4, "#1c2230", "#161a26", .5);
+  // --- halli: keltainen lohko vasemmalla, harmaa pääsali harjakattoineen, valkoinen matala osa edessä
+  // pääsali (aaltopelti, hämärän violetti)
+  fillPoly([[104, 40], [178, 24], [264, 40], [264, BASE], [104, BASE]], "#7c7a92");
+  fillPoly([[178, 24], [264, 40], [264, 44], [178, 28]], "#5c5a74"); lineC(104, 40, 178, 24, "#a4a2bc"); lineC(178, 24, 264, 40, "#46445c");
+  for (let x = 106; x < 264; x += 3) { const top = x < 178 ? 40 - (x - 104) * 16 / 74 : 24 + (x - 178) * 16 / 86; r(x, top + 2, 1, BASE - top - 2, x > 178 ? "#686680" : "#706e88"); }
+  r(176, 18, 1, 8, "#3c3a4c"); px(176, 17, "#fc4c3c");                                       // antenni
+  r(160, 50, 18, 12, "#34324a"); r(162, 52, 14, 8, "#ffd890"); r(162, 52, 14, 1, "#fff0c0");  // ylempi ikkuna (toimisto)
+  // keltainen lohko: ylhäällä valossa, alhaalla varjossa
+  r(50, 28, 58, BASE - 28, "#d8a42c"); vgrad(50, 28, 58, 14, ["#e8b83c", "#d8a42c"]); dither(50, 62, 58, BASE - 62, "#d8a42c", "#b4842c", .45);
+  for (let x = 52; x < 108; x += 3) r(x, 30, 1, BASE - 30, "#c8962a"); r(50, 28, 58, 1, "#f8d060"); r(107, 28, 1, BASE - 28, "#9c7424");
+  r(48, 26, 62, 2, "#3c3448"); r(70, 20, 10, 6, "#4c4458"); r(72, 18, 6, 2, "#5c546c");      // katto ja ilmanvaihto
+  // mainostaulu keltaisessa seinässä: maalivahti ja teksti
+  r(56, 40, 46, 22, "#f4dc5c"); r(56, 40, 46, 1, "#fcf09c"); r(56, 61, 46, 1, "#b8942c");
+  text3("TERVETULOA", 58, 43, "#3c2c10"); text3("PELIIN", 58, 50, "#3c2c10");
+  r(88, 44, 8, 14, "#8c3c2c"); disc(92, 43, 3, "#e8c09c"); r(87, 56, 10, 3, "#6c2c1c"); r(89, 47, 6, 1, "#fcd41c");
+  // valkoinen matala osa, ovet ja ikkunat
+  r(108, 62, 156, BASE - 62, "#c4c0d4"); r(108, 62, 156, 1, "#e0dcec"); dither(108, 72, 156, BASE - 72, "#c4c0d4", "#aca8c0", .4);
+  for (const x of [214, 228, 242]) { r(x, 66, 9, 6, "#4c4864"); r(x + 1, 67, 7, 4, "#ffd890"); }
+  r(222, 64, 6, 15, "#d8a42c"); r(223, 66, 4, 13, "#9c7c2c"); px(226, 72, "#fcf09c");          // keltainen huoltovovi
+  // sisäänkäynnin katos ja kyltti "TERVETULOA KISAPUISTOON" (kisapuisto_1)
+  r(106, 54, 108, 9, "#22202c"); r(106, 54, 108, 1, "#46445a"); r(106, 62, 108, 1, "#14121a");
+  fillPoly([[106, 54], [112, 54], [109, 62], [106, 62]], "#e8b83c"); fillPoly([[208, 54], [214, 54], [214, 62], [211, 62]], "#e8b83c");
+  const sign = "TERVETULOA KISAPUISTOON"; text3(sign, 160 - text3w(sign) / 2, 56, "#f4f0e0");
+  for (const x of [116, 150, 170, 200]) r(x, 63, 2, BASE - 63, "#9c9cac");
+  // lasiovet ja aulan lämmin valo katoksen alla
+  r(124, 64, 70, BASE - 64, "#3a3448"); for (let x = 126; x < 192; x += 11) { r(x, 65, 9, BASE - 66, "#f0c87c"); r(x, 65, 9, 2, "#fce8b0"); r(x + 4, 65, 1, BASE - 66, "#8c6c3c"); }
+  for (const x of [132, 154, 176]) { r(x, 70, 3, 6, "#3c2c24"); disc(x + 1, 68, 1, "#3c2c24"); }        // ihmisiä aulassa
+  // pyöräteline ja sininen jätelava vasemmalla (kisapuisto_4)
+  r(30, 70, 18, 9, "#2c5cbc"); r(30, 70, 18, 1, "#5c8cec"); r(30, 78, 18, 1, "#1c3c8c"); text3("EP", 34, 72, "#bcd4fc");
+  for (const x of [92, 98]) { disc(x, 77, 2, "#4a4658", "#2c2c34"); disc(x + 4, 77, 2, "#4a4658", "#2c2c34"); lineC(x, 77, x + 2, 74, "#3c3c4c"); lineC(x + 2, 74, x + 4, 77, "#3c3c4c"); }
+  // --- parkkipaikka: märkä asfaltti heijastaa taivasta kaukana, tummuu lähellä
+  vgrad(0, BASE, W, H - BASE, ["#3a3450", "#2e2a42", "#262436", "#201e2e", "#1a1926", "#161520", "#13121c"]);
+  seed = 61; for (let j = BASE; j < H; j++) for (let i = 0; i < W; i++) if (rnd() < .05) px(i, j, rnd() > .5 ? "#2c2a3c" : "#121019");
+  r(0, BASE, W, 1, "#4c4860"); r(0, BASE + 1, W, 1, "#2a2638");                                       // reunakivi
+  // ruutuviivat kohti pakopistettä: kaukainen rivi hallin edessä ja lähirivi alhaalla
+  for (let i = -6; i <= 6; i++) { const xb = 160 + i * 34; lineC(lerp(VPK[0], xb, (82 - VPK[1]) / (96 - VPK[1])), 82, xb, 96, "rgba(220,220,230,.28)"); }
+  r(10, 96, 300, 1, "rgba(220,220,230,.22)");
+  for (let i = -5; i <= 5; i++) { const xb = 160 + i * 64; lineC(lerp(VPK[0], xb, (122 - VPK[1]) / (H - VPK[1])), 122, xb, H, "rgba(220,220,230,.18)"); }
+  // pysäköidyt autot hallin edessä (kaukana)
+  for (const [x, c] of [[36, "#5c6c7c"], [70, "#8c3c3c"], [232, "#3c4c5c"], [268, "#b8b4ac"]]) {
+    r(x, 84, 22, 6, c); r(x + 4, 80, 13, 5, c); r(x + 5, 81, 5, 3, "#9cb4d8"); r(x + 11, 81, 5, 3, "#7c94b8"); r(x, 84, 22, 1, "rgba(255,255,255,.25)");
+    disc(x + 4, 90, 2, "#101014"); disc(x + 18, 90, 2, "#101014"); r(x, 91, 22, 2, "rgba(0,0,0,.35)"); }
+  // nurmikaistale ja lehtiä vasemmalla edessä
+  vgrad(0, 126, 64, 10, ["#2c3c24", "#22301c"]); seed = 77; for (let k = 0; k < 60; k++) px(rnd() * 70, 124 + rnd() * 12, ["#c8782c", "#e8a83c", "#8c4c1c", "#3c4c2c"][(rnd() * 4) | 0]);
+  r(0, 125, 66, 1, "#5c5c68"); fillPoly([[66, 125], [74, 136], [72, 136], [64, 126]], "#4c4c58");
+  // koivu vasemmalla edessä: valkoinen runko mustin juovin, keltainen latvus kehyksenä
+  r(4, 16, 4, 112, "#e8e4dc"); r(7, 16, 1, 112, "#b8b4ac"); for (let y = 22; y < 126; y += 7 + (y % 5)) r(4 + (y % 3), y, 2, 1, "#2c2c2c");
+  lineC(6, 40, 22, 26, "#d8d4cc", 2); lineC(6, 60, -4, 48, "#d8d4cc", 2);
+  seed = 91; for (let k = 0; k < 420; k++) { const a = rnd() * 6.3, d = Math.sqrt(rnd()) * 20, x = 12 + Math.cos(a) * d * 1.4, y = 16 + Math.sin(a) * d;
+    px(x, y, bay(x | 0, y | 0) < .3 ? "#8c5c1c" : rnd() > .4 ? "#e8b440" : "#f8d868"); }
+}
+const LEAVES = Array.from({ length: 9 }, (_, i) => ({ x: (i * 53) % W, s: .3 + (i % 3) * .15, ph: i * 1.7 }));
+function kisaDraw(t) {
+  g.drawImage(paintBg("kisapuisto", kisaBg), 0, 0);
+  // lyhtypylväät: kaukainen oikealla, valokeila ja heijastus märässä asfaltissa
+  for (const [x, y0, h] of [[24, 84, 34], [286, 88, 40]]) {
+    r(x, y0 - h, 1, h, "#2c2a38"); r(x - 3, y0 - h - 1, 7, 2, "#3c3a4c"); r(x - 2, y0 - h + 1, 5, 1, "#fff0b0");
+    glow(x, y0 - h + 2, 26, "255,214,140", .3 + .03 * Math.sin(t / 140 + x));
+    g.fillStyle = "rgba(255,214,140,.07)"; g.beginPath(); g.moveTo(x - 2, y0 - h + 2); g.lineTo(x - 14, y0 + 2); g.lineTo(x + 15, y0 + 2); g.lineTo(x + 3, y0 - h + 2); g.fill();
+    for (let y = y0 + 3; y < Math.min(H, y0 + 30); y += 2) { const w = 2 + Math.sin(t / 200 + y) * 1.5; r(x - w / 2 + Math.sin(t / 300 + y * .7), y, w, 1, `rgba(255,214,140,${.32 - (y - y0) / 110})`); }
+  }
+  // aulan valo kaatuu asfaltille ja heijastuu ovien alle
+  glow(158, 82, 46, "255,200,120", .16);
+  for (let y = 82; y < 112; y += 2) { const k = (y - 82) / 30, w = 60 - k * 30; r(158 - w / 2 + Math.sin(t / 260 + y) * 2, y, w, 1, `rgba(255,210,140,${.12 * (1 - k)})`); }
+  // kyltin yksi kirjain lepattaa kuin vanhassa loisteputkessa
+  if (Math.sin(t / 97) + Math.sin(t / 41) > 1.6) r(152, 56, 3, 5, "#22202c");
+  // tehtaan lentoestevalo ja höyry liikkuu
+  if ((t / 900 | 0) % 2) { px(28, 12, "#fc3c2c"); glow(28, 12, 4, "255,60,40", .5); }
+  // putoavat koivunlehdet
+  for (const L of LEAVES) { const y = ((t / 40) * L.s + L.ph * 30) % 150 - 10, x = L.x + Math.sin(t / 600 + L.ph) * 8; px(x, y, L.ph % 2 > 1 ? "#e8b440" : "#c8782c"); }
+  glow(250, 58, 50, "255,170,90", .08);
 }
 // syvyysjärjestetyt esineet (game.js props)
-function satamaPoster() { r(22, 92, 2, 36, "#3a2410"); r(46, 92, 2, 36, "#3a2410"); r(16, 84, 38, 30, "#2c1c0e"); r(18, 86, 34, 26, "#ece0bc");
-  dither(18, 104, 34, 8, "#ece0bc", "#d8c8a0", .3); r(20, 88, 30, 6, "#c81c1c"); r(21, 89, 28, 1, "#fc5c3c");
-  for (let k = 0; k < 4; k++) r(21, 96 + k * 2, 14 + (k * 5) % 12, 1, "#6c6c6c"); r(20, 105, 30, 5, "#2c7c2c"); r(22, 106, 26, 1, "#5cbc5c"); shadow(35, 128, 18); }
-function satamaPostbox() { const open = st.flags.boxOpen; r(98, 92, 2, 12, "#4c4c4c"); shadow(99, 104, 5);
-  r(93, 85, 12, 7, "#2c4cc8"); r(93, 85, 12, 1, "#5c7cfc"); r(93, 91, 12, 1, "#1c2c8c"); r(104, 86, 1, 4, "#c81c1c"); r(105, 86, 2, 2, "#c81c1c");
-  if (open) { r(93, 82, 12, 2, "#3c5cdc"); r(94, 86, 10, 4, "#08081c"); if (!st.flags.letterTaken) { r(96, 87, 6, 2, "#f4f4f4"); px(98, 87, "#c81c1c"); } } else r(97, 88, 3, 1, "#08081c"); }
-function satamaRack() { r(206, 70, 1, 26, "#4a2e16"); r(203, 95, 7, 1, "#3a2410"); r(203, 70, 7, 1, "#4a2e16"); shadow(206, 96, 4);
-  if (!st.hat) { r(201, 68, 11, 1, "#5c3c1c"); r(203, 64, 7, 4, "#7c5c34"); r(203, 66, 7, 1, "#2c1808"); } }
-function satamaPig() { g.save(); g.translate(0, 7); shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
+function kisaPoster() { // Kisapuiston ilmoitustaulu, Mouho-juliste päällimmäisenä
+  shadow(35, 128, 18); r(20, 92, 2, 36, "#2c2a38"); r(48, 92, 2, 36, "#2c2a38");
+  r(14, 82, 42, 32, "#3c3a4c"); r(15, 83, 40, 30, "#8c7c5c"); dither(15, 83, 40, 30, "#8c7c5c", "#7c6c4c", .3);
+  r(17, 85, 10, 12, "#e8e4d8"); r(18, 87, 8, 1, "#8c8c8c"); r(18, 89, 6, 1, "#8c8c8c");            // vanha ottelulappu
+  r(44, 86, 9, 8, "#fce870"); r(45, 88, 6, 1, "#8c7c2c");                                        // keltainen post-it
+  r(24, 89, 26, 22, "#1c1c2c"); r(25, 90, 24, 20, "#ece0bc"); r(26, 91, 22, 5, "#c81c1c"); text3("MOUHO", 27, 91, "#fce8c8");
+  for (let k = 0; k < 3; k++) r(27, 98 + k * 2, 12 + (k * 5) % 8, 1, "#6c6c6c"); r(26, 105, 22, 4, "#2c7c2c"); text3("2026", 29, 105, "#d8f4c8");
+  r(35, 89, 2, 1, "#c8c8c8"); }
+function kisaPostbox() { // SaiPan toimiston postilaatikko: posti tulee yhä tänne
+  const open = st.flags.boxOpen; r(98, 92, 2, 12, "#3c3c48"); shadow(99, 104, 5);
+  r(93, 84, 12, 8, "#e8b83c"); r(93, 84, 12, 1, "#fcd870"); r(93, 91, 12, 1, "#a07c24"); r(104, 85, 1, 4, "#c81c1c"); r(105, 85, 2, 2, "#c81c1c");
+  if (open) { r(93, 81, 12, 2, "#f0c450"); r(94, 85, 10, 5, "#14121a"); if (!st.flags.letterTaken) { r(96, 86, 6, 2, "#f4f4f4"); px(98, 86, "#c81c1c"); } }
+  else { r(96, 88, 6, 1, "#3c2c10"); text3("SP", 95, 85, "#6c4c14"); } }
+function kisaRack() { // pysäköintiautomaatti, fedora päällä
+  shadow(206, 96, 5); r(203, 80, 7, 16, "#5c6070"); r(203, 80, 7, 1, "#8c90a0"); r(204, 82, 5, 3, "#9cd0fc"); r(205, 87, 3, 1, "#1c1c24"); r(202, 95, 9, 1, "#2c2c34");
+  r(201, 76, 2, 3, "#2c64c8"); text3("P", 199, 70, "#2c64c8");
+  if (!st.hat) { r(200, 79, 13, 1, "#5c3c1c"); r(202, 75, 9, 4, "#7c5c34"); r(202, 77, 9, 1, "#2c1808"); px(206, 75, "#9c7c4c"); } }
+function kisaPig() { g.save(); g.translate(0, 7);
+  r(140, 113, 22, 2, "#6c6c78"); r(140, 115, 22, 1, "#3c3c48");                                  // betoninen pysäköintiste
+  shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
   px(148, 114, "#d87c94"); px(154, 114, "#d87c94"); r(149, 108, 3, 1, "#3c1c24"); px(154, 109, "#000"); g.restore(); }
-function satamaBollard() { shadow(238, 120, 6); r(234, 110, 7, 10, "#24242c"); r(233, 108, 9, 3, "#3c3c48"); r(235, 111, 2, 8, "#3c3c48");
-  g.fillStyle = "#c8b48c"; g.beginPath(); g.ellipse(246, 119, 6, 2, 0, 0, 7); g.fill(); g.fillStyle = "#a8946c"; g.beginPath(); g.ellipse(246, 119, 3, 1, 0, 0, 7); g.fill(); }
-function satamaTaxi() { shadow(282, 134, 40);
+function kisaBox() { // Jussin pahvilaatikko Liigan toimistolta (piirretty x 229-255, siirretty pianon alle)
+  g.save(); g.translate(-138, 9); shadow(242, 121, 9); r(233, 110, 18, 11, "#b8925c"); r(233, 110, 18, 1, "#d8b27c"); r(242, 110, 1, 11, "#8c6c3c");
+  fillPoly([[233, 110], [229, 106], [238, 106], [241, 110]], "#c8a26c"); fillPoly([[251, 110], [255, 106], [247, 106], [244, 110]], "#a8824c");
+  r(236, 103, 4, 5, "#f4f4ec"); r(236, 103, 4, 1, "#c81c1c");                                     // kahvikuppi
+  r(244, 102, 7, 4, "#c8a030"); r(245, 103, 5, 1, "#3c2c10");                                    // nimikyltti
+  r(235, 113, 12, 3, "#f4f0e4"); text3("LIIGA", 235, 113, "#2c2c3c"); g.restore(); }
+function kisaTaxi() { shadow(282, 134, 40);
   r(242, 108, 78, 22, "#e8c81c"); r(242, 122, 78, 8, "#c8a414"); r(242, 108, 78, 1, "#fce870"); r(256, 96, 50, 13, "#e8c81c"); r(257, 95, 48, 1, "#fce870");
-  r(260, 98, 19, 9, "#4c7cd0"); r(283, 98, 20, 9, "#4c7cd0"); r(261, 99, 4, 1, "#a8c8fc"); r(284, 99, 4, 1, "#a8c8fc");
-  r(272, 90, 18, 5, "#202020"); for (const xx of [274, 278, 282, 286]) px(xx, 92, "#fcd41c");
+  r(260, 98, 19, 9, "#4c6ca0"); r(283, 98, 20, 9, "#4c6ca0"); r(261, 99, 4, 1, "#c8d8fc"); r(284, 99, 4, 1, "#c8d8fc"); r(264, 101, 6, 4, "#2c2c3c");
+  r(272, 90, 18, 5, "#202020"); r(273, 91, 16, 3, "#fcd41c"); text3("TAKSI", 271, 90, "#202020");
   r(281, 109, 1, 16, "#a88c10"); r(242, 115, 78, 1, "#202020"); for (let x = 244; x < 320; x += 4) px(x, 115, "#e8e8e8");
   disc(258, 130, 7, "#141414", "#2c2c2c"); disc(306, 130, 7, "#141414", "#2c2c2c"); disc(258, 130, 3, "#8c8c8c"); disc(306, 130, 3, "#8c8c8c");
-  r(242, 111, 3, 4, "#c81c1c"); }
+  r(242, 111, 3, 4, "#fc3c1c"); glow(243, 113, 10, "255,60,40", .35); r(316, 112, 4, 3, "#fff4c8"); glow(318, 113, 18, "255,240,180", .3);
+  g.fillStyle = "rgba(232,200,28,.18)"; g.fillRect(244, 131, 74, 5); }
 
 // =============================================================== BASAARI
 // Katu kapenee kohti moskeijaa; kojut molemmin puolin, Mehmetin tiski oikealla.
@@ -208,15 +304,15 @@ function temppeliPost(t) {
   flame(36, 48, t); flame(282, 48, t); glow(37, 42, 34, "255,130,40", .28); glow(283, 42, 34, "255,130,40", .28);
 }
 
-// =============================================================== LATTIAPIANO (satama)
-// Tom Hanksin "Big" -elokuvan jättipiano heijastettuna laiturin kanteen 3D-perspektiivissä
-// (16.10.): kymmenen valokosketinta laiturin poikki keskisyvyydellä, saumat seuraavat
-// laiturin pakopistettä ja numerot litistyvät lattian kulmaan. Koodi 1-9-8-5.
+// =============================================================== LATTIAPIANO (Kisapuisto)
+// Tom Hanksin "Big" -elokuvan jättipiano heijastettuna maahan 3D-perspektiivissä
+// (16.10.): kymmenen valokosketinta keskisyvyydellä, saumat seuraavat pakopistettä ja
+// numerot litistyvät lattian kulmaan. Kisapuistossa parkkipaikan asfaltille. Koodi 1-9-8-5.
 // Sama heijastettu numeropiano jokaisessa ruudussa: ruudun oma lattiakaista ja sen reunat.
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 const streetX = (y) => { const k = (y - 72) / 64; return [lerp(142, 20, k) + 4, Math.min(204, lerp(178, 300, k))]; };
 const templeX = (y) => { const k = (y - 100) / 36; return [lerp(24, 2, k) + 8, lerp(296, 318, k) - 8]; };
-const QUIZ_AREA = { koti: { y0: 98, y1: 116, edges: pierX }, basaari: { y0: 100, y1: 116, edges: streetX }, temppeli: { y0: 103, y1: 117, edges: templeX } };
+const QUIZ_AREA = { koti: { y0: 98, y1: 116, edges: lotX }, basaari: { y0: 100, y1: 116, edges: streetX }, temppeli: { y0: 103, y1: 117, edges: templeX } };
 const quizFlag = (scene = st.scene) => (scene === "koti" ? "pianoT" : `quizT_${scene}`);
 function keyAt(x, y) {
   const A = QUIZ_AREA[st.scene]; if (!A || y < A.y0 || y > A.y1) return null;
@@ -246,7 +342,7 @@ function satamaPiano(t) {
   g.globalCompositeOperation = "source-over"; g.textAlign = "left"; g.textBaseline = "alphabetic";
 }
 
-// Haamuilves (16.10.): oikean 1985-vastauksen jälkeen laiturin kanteen heijastuu hetkeksi
+// Haamuilves (16.10.): oikean 1985-vastauksen jälkeen maahan heijastuu hetkeksi
 // aavemainen ilveksen pää. Oma piirros (tupsukorvat, poskiparta, vinot silmät), ei seuran
 // logo. Kesto ~3,2 s: häivähtää esiin, hehkuu, sammuu.
 function ghostLynx(t) {

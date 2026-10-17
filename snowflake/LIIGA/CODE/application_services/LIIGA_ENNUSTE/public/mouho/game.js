@@ -1,6 +1,6 @@
 // Mouhon salaisuus -- sisältö: esineet, ruudut ja tarina Mouho-moottorille.
 "use strict";
-// Raimo Helminen -cameon hahmo (määritelty ennen ruutuja, koska satama viittaa siihen).
+// Raimo Helminen -cameon hahmo (määritelty ennen ruutuja, koska Kisapuisto viittaa siihen).
 const RAIMO = { id: "helminen", x: -20, y: 127, h: 46, color: "#b4fc5c", moving: false, dir: 1, hidden: () => !st.flags.raimo,
   draw(t, talking) { helminen(this.x, this.y, t, talking, this.moving, this.dir); } };
 Object.assign(ITEMS, {
@@ -17,39 +17,44 @@ Object.assign(ITEMS, {
 
 // ---------------------------------------------------------------- ruudut
 Object.assign(ROOMS, {
-  // Satama: laituri syvälle järvelle, ranta lähimpänä (rooms.js). Kävelyalue = ranta + laituri.
+  // Kisapuisto (17.10.): Jussi vierailee SaiPan kotihallilla heti Liigasta saatujen potkujen
+  // jälkeen. Parkkipaikka ulottuu hallin juurelle (rooms.js); taksi oikealla. Tunniste
+  // "koti" ja liput pysyvät satama-ajoilta, jotta tallennukset ja vihjeet toimivat.
   koti: {
-    title: "Satama, Lappeenranta", scale: [72, 136, 0.38, 1.06], start: 128,
-    walk: [[[0, 123], [238, 123], [238, 136], [0, 136]], [[72, 124], [248, 124], [178, 72], [142, 72]]],
+    title: "Kisapuisto, Lappeenranta", scale: [80, 136, 0.46, 1.06], start: 128,
+    walk: [[[0, 123], [240, 123], [240, 136], [0, 136]], [[60, 86], [236, 86], [240, 124], [56, 124]]],
     actors: [{ id: "salkkumies", x: 184, y: 92, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(184, 92, t, talking) },
              RAIMO],
-    draw: (t) => { satamaDraw(t); satamaPiano(t); ghostLynx(t); },
+    draw: (t) => { kisaDraw(t); satamaPiano(t); ghostLynx(t); },
     onStop: (x, y) => quizStep(keyAt(x, y)),
-    props: [{ y: 128, draw: satamaPoster }, { y: 104, draw: satamaPostbox }, { y: 96, draw: satamaRack }, { y: 121, draw: satamaPig }, { y: 120, draw: satamaBollard }, { y: 134, draw: satamaTaxi }],
+    props: [{ y: 128, draw: kisaPoster }, { y: 104, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 121, draw: kisaPig }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi }],
     spots: [
       { id: "salkkumies", name: "salkkumies", actor: true, x: 177, y: 62, w: 16, h: 30, at: 172, aty: 96,
-        Katso: () => say("Liituraitapuku, aurinkolasit keskellä yötä ja salkku. Joko kohta taitava liikemies tai sitten hyvin pimeässä kävelevä."),
+        Katso: () => say("Liituraitapuku, aurinkolasit iltahämärässä ja salkku. Seisoo SaiPan hallin parkkipaikalla kuin olisi odottanut minua."),
         Puhu: () => salesmanTalk(), Anna: (it) => it === "rahat" ? say("En anna. Tällä kertaa en maksa ennakkoon kenellekään.") : say("Salkkumies: \"Otan vastaan vain tilisiirtoja, kiitos.\"", "salkkumies") },
-      { id: "pollari", name: "pollari", x: 232, y: 106, w: 20, h: 16, at: 226, aty: 125,
-        Katso: () => say("Pollari ja köysikieppi. Köysi ei ole sidottu mihinkään. Vähän kuin sijoitussuunnitelmani."), Vedä: () => say("Köysi ei johda mihinkään. Tarkistin.") },
+      { id: "pollari", name: "pahvilaatikko", x: 91, y: 109, w: 26, h: 22, at: 122, aty: 128,
+        Katso: () => say("Tavarani Liigan toimistolta. Kahvikuppi, nimikyltti \"Urheilujohtaja\" ja otteluohjelma, jossa on enemmän post-it-lappuja kuin otteluita."),
+        Avaa: () => say("Nimikyltti. Urheilujohtaja. Ääneen sanottuna se kuulostaa jo menneeltä ajalta."),
+        Poimi: () => say("Jätän sen tähän hetkeksi. Kantaa ehtii myöhemminkin. Koko loppuelämän, oikeastaan."),
+        Vedä: () => say("Vedän laatikkoa lähemmäs. Se on ainoa asia, joka seuraa minua tänään vapaaehtoisesti.") },
       { id: "juliste", name: "juliste", x: 16, y: 84, w: 38, h: 30, at: 58, aty: 129,
-        Katso: () => (iq("juliste", 2), say("MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nMouho-osallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
+        Katso: () => (iq("juliste", 2), say("Kisapuiston ilmoitustaulu. Päällimmäisenä: MOUHO 2026. 2v2 NHL-turnaus, PS5. 22.5., Kaivokatu 10, Helsinki.\nMouho-osallistumismaksu on kirjoitettu niin pienellä, ettei sitä saa selvää.\nVarmaan 500 euroa. Tällaiset maksavat aina 500 euroa.")), Poimi: () => say("Jos otan julisteen, kukaan muu ei tiedä turnauksesta. Houkuttelevaa, mutta ei.") },
       { id: "piano", name: "lattiapiano", floor: true, hidden: () => !st.flags.pianoT, x: 80, y: 98, w: 160, h: 18, at: 160, aty: 108,
-        Katso: () => say("Laiturin kanteen heijastettu jättipiano, numerot 1-9 ja 0. Kuin siinä Tom Hanksin elokuvassa.\nPitää vain seistä oikeilla numeroilla oikeassa järjestyksessä."),
+        Katso: () => say("Parkkipaikan asfalttiin heijastettu jättipiano, numerot 1-9 ja 0. Kuin siinä Tom Hanksin elokuvassa.\nPitää vain seistä oikeilla numeroilla oikeassa järjestyksessä."),
         Työnnä: () => say("Painan jalalla. Pianoja soitetaan tässä kaupungissa jaloin.") },
       { id: "laatikko", name: "postilaatikko", x: 91, y: 80, w: 16, h: 24, at: 104, aty: 108,
         Avaa: async () => { if (!st.flags.unlocked) return say("Lukossa, ja avain on hukassa. Tuo liituraitamies katselee laatikkoa vähän liian tietäväisesti."); if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say(st.flags.letterTaken ? "Tyhjä." : "Laatikossa on kirje!"); },
         Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
         Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje! Joku muistaa minut."); },
-        Katso: () => say("Postilaatikko laiturilla. Yleensä täynnä laskuja, mutta tänään se näyttää toiveikkaalta.") },
+        Katso: () => say("SaiPan toimiston vanha postilaatikko. Postini tulee yhä tänne, vaikka lähdin keväällä 2023.\nYleensä täynnä laskuja, mutta tänään se näyttää toiveikkaalta.") },
       { id: "hattu", name: "hattu", x: 199, y: 61, w: 15, h: 10, at: 200, aty: 99, hidden: () => st.hat,
-        Katso: () => say("Vanha fedora naulakossa. Isoisän. Tai jonkun, joka näytti isoisältä."), Poimi: async () => { st.hat = true; await say("Sopii kuin valettu. Nyt näytän seikkailijalta."); } },
+        Katso: () => say("Vanha fedora pysäköintiautomaatin päällä. Joku on maksanut pysäköinnin ja unohtanut hattunsa. Tai jättänyt sen minulle."), Poimi: async () => { st.hat = true; await say("Sopii kuin valettu. Nyt näytän seikkailijalta."); } },
       { id: "possu", name: "säästöpossu", x: 144, y: 112, w: 15, h: 10, at: 150, aty: 124,
-        Katso: () => say("Säästöpossu laiturilla. Sen ilme kertoo kaiken."),
+        Katso: () => say("Säästöpossu pysäköintikiven päällä. Toimiston läksiäislahja. Sen ilme kertoo kaiken."),
         Avaa: async () => { if (st.flags.pig) return say("Possu on tyhjä. Kuten minäkin, sisältä."); st.flags.pig = true; give("rahat"); await say("3,50 € ja nappi. Ei riitä edes Mouho-osallistumismaksun postimerkkiin."); },
         Poimi: () => spot("koti", "possu").Avaa(), Käytä: () => spot("koti", "possu").Avaa() },
       { id: "taksi", name: "taksi lentokentälle", x: 242, y: 88, w: 78, h: 46, at: 234, aty: 130,
-        Katso: () => say("Taksi lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
+        Katso: () => say("Taksi Lappeenrannan lentokentälle. Kuljettaja lukee Liigan otteluohjelmaa. Hän näyttää huolestuneelta."),
         Käytä: () => leave(), Avaa: () => leave(), Puhu: () => say("Kuljettaja: \"Lentokentälle? Taas Milanoon? Ai, Istanbuliin. No, lippu ensin.\"", "muu") },
     ],
   },
@@ -136,8 +141,8 @@ async function leave() {
   await script(async () => {
     if (!has("lippu")) return say("Ilman lippua en pääse edes turvatarkastukseen. Postia pitäisi ehkä katsoa.");
     if (!st.hat) return say("Lähteä Indiana Jones -seikkailulle ilman hattua? En ole barbaari.");
-    // Basaarista ei ole paluuta satamaan: ilman possun rahoja ruoskaa ei saisi, ja peli jumittuisi.
-    if (!st.flags.pig) return say("Lähteä Istanbuliin ilman käteistä? Säästöpossu laiturilla on vielä tyhjentämättä.");
+    // Basaarista ei ole paluuta Kisapuistoon: ilman possun rahoja ruoskaa ei saisi, ja peli jumittuisi.
+    if (!st.flags.pig) return say("Lähteä Istanbuliin ilman käteistä? Säästöpossu parkkipaikalla on vielä tyhjentämättä.");
     await say("Istanbul, täältä tullaan!");
     await travel(); go("basaari", 40, true);
     await say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä myydään kaikkea. Ehkä jopa Mouho-osallistumismaksuja.");
@@ -236,7 +241,7 @@ async function raimoCameo() {
   await say("...Ja hän oli poissa. Kukaan ei usko tätä Mouhossa.");
 }
 
-// ---------------------------------------------------------------- lattiapiano (satama)
+// ---------------------------------------------------------------- lattiapiano (Kisapuisto)
 // Ilves voitti viimeksi Suomen mestaruuden 1985. Koodi kirjautuu pysähtymisistä.
 const NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9: 587, 0: 659 };
 // Lattiavisat: sama mekaniikka kolmessa ruudussa, koodi ja palkinto ruutukohtaisia.
@@ -290,7 +295,7 @@ async function refereeChallengeLines() {
 }
 function refereeChallenge() { return script(async () => { if (st.flags.refDone) return say("Peli on jo vihelletty.", "tuomari"); await refereeChallengeLines(); }); }
 
-// ---------------------------------------------------------------- salkkumies (satama)
+// ---------------------------------------------------------------- salkkumies (Kisapuisto)
 // Kysyy otteluohjelmasta ja tarjoaa lisärahoitusta. Ei kuulu ratkaisuun: tämä on
 // hahmo, jolle Jussi saa näyttää oppineensa jotain.
 async function salesmanTalk() {
@@ -341,12 +346,12 @@ async function salesmanTalk() {
 const HINTS = () => {
   const f = st.flags, here = st.scene;
   if (here === "koti") {
-    if (!f.unlocked && !f.pianoT) return ["Postilaatikko on lukossa. Tuo liituraitamies laiturilla näyttää tietävän jotain.", "Puhu salkkumiehelle ja kysy postilaatikon avaimesta."];
-    if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat laiturissa.", "Kävele laiturin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
+    if (!f.unlocked && !f.pianoT) return ["Postilaatikko on lukossa. Tuo liituraitamies parkkipaikalla näyttää tietävän jotain.", "Puhu salkkumiehelle ja kysy postilaatikon avaimesta."];
+    if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat asfaltissa.", "Kävele asfaltin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
     if (!f.letterTaken) return ["Lukko on auki. Posti odottaa.", "Avaa postilaatikko ja poimi kirje."];
     if (!has("lippu")) return ["Kirjeessä voi olla muutakin kuin sanoja.", "Katso kirjettä: oikea painike kirjeen kuvaan tavaroissa."];
-    if (!f.pig) return ["Matkat maksavat. Laiturilla on joku, joka säästää puolestani.", "Avaa säästöpossu laiturilla."];
-    if (!st.hat) return ["Seikkailija ilman hattua on pelkkä turisti.", "Poimi fedora naulakosta laiturilta."];
+    if (!f.pig) return ["Matkat maksavat. Parkkipaikalla on joku, joka säästää puolestani.", "Avaa säästöpossu pysäköintikiven päällä."];
+    if (!st.hat) return ["Seikkailija ilman hattua on pelkkä turisti.", "Poimi fedora pysäköintiautomaatin päältä."];
     return ["Kaikki on valmista. Lentokenttä kutsuu.", "Käytä taksia oikealla."];
   }
   if (here === "basaari") {
@@ -387,5 +392,10 @@ ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c");
 // ---------------------------------------------------------------- käynnistys
 startEngine({
   titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
-  intro: async () => { await say("Syvällä Etelä-Karjalassa, Saimaan rannalla..."); await say("Entisellä urheilujohtajalla on yhtäkkiä paljon vapaa-aikaa."); await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy."); await say("Ja postilaatikkoni on lukossa, eikä avainta löydy. Tuo liituraitamies tietää jotain."); },
+  intro: async () => {
+    await say("Lappeenranta, lokakuu. Kisapuisto, SaiPan kotihalli.");
+    await say("Liiga kiitti tänä aamuna yhteistyöstä. Pahvilaatikko, kahvikuppi ja nimikyltti \"Urheilujohtaja\".\nKädenpuristus oli lämmin. Ovi sulkeutui vielä lämpimämmin.");
+    await say("Joten tulin sinne, mistä kaikki alkoi. Täällä minut sentään vielä tunnetaan.");
+    await say("Mouho 2026 lähestyy, ja minulta puuttuu Mouho-osallistumismaksu.\nJonkun täytyy tietää, mistä 500 euroa löytyy.");
+    await say("Ja vanha postilaatikkoni hallin edessä on lukossa. Tuo liituraitamies tietää jotain."); },
 });
