@@ -90,16 +90,25 @@ async function ending() {
   st.scene = "loppu"; $game.classList.add("cut"); $sent.textContent = "";
   await travel("ist", "hki");
   const f = st.flags;
+  st.inv = ["puhelin"]; renderInv();     // idoli, kebab ja sopimus ovat nyt pöydällä ja hallituksella (sokkotesti 2)
   // 1. ulkokuva
   let jx = -10; const T0 = performance.now();
   overlay = (t) => { jx = Math.min(232, -10 + (performance.now() - T0) / 1000 * 34); kaivokatuDraw(t, jx, true); };
+  callSpk = { get jussi() { return { x: Math.max(30, jx), y: 72, c: "#c8a460" }; } };   // kupla kävelevän Jussin päälle
   await say("Helsinki, toukokuu. Kaivokatu 10, rautatieasemaa vastapäätä.", "muu");
-  await say("Neljäs kerros. Mouho-ilta ja toiminnanjohtajan haastattelut. Jäsenet, tarjoilu, turnaus: kaikki hoidettu.");
+  await say("Mouho-ilta ja toiminnanjohtajan haastattelut. Jäsenet, tarjoilu, turnaus: kaikki hoidettu.");
   await say("Ja kutsuin kaikki jäseneni paikalle. Hallitus näkee omin silmin, mitä proaktiivisuus saa aikaan.");
   while (jx < 232) await sleep(100);
   // 2. sisätila
   const crowd = [];
-  const arrive = (list) => list.forEach((c) => { const i = crowd.length, row = i < 7 ? 0 : 1; crowd.push(Object.assign(c, { x: 12, y: 112 + row * 12, tx: 30 + (i % 7) * 15 + row * 7, ty: 112 + row * 12 })); });
+  // Nimetyt hahmot omille paikoilleen eturiviin, basaarin väki taakse (sokkotesti 2: hahmot
+  // pinoutuivat päällekkäin).
+  const SLOT = { maskotti: [22, 124], saarni: [46, 124], mehmet: [72, 124], salkkumies: [96, 124], tuomari: [154, 122] };
+  let back = 0;
+  const arrive = (list) => list.forEach((c) => { const [tx, ty] = SLOT[c.who] ?? [14 + (back++) * 13, 110]; crowd.push(Object.assign(c, { x: 8, y: ty, tx, ty })); });
+  // Puhekuplat loppukohtauksen hahmoille: ilman huonetta say() näyttäisi ne kertojan laatikossa.
+  const head = (who, dy) => { const c = crowd.find((k) => k.who === who); return c ? { x: c.x, y: c.ty - dy, c: "#fcfcf4" } : null; };
+  const endSpk = { jussi: { x: 176, y: 78, c: "#c8a460" }, get kauppias() { return head("mehmet", 40); }, get saarni() { return head("saarni", 40); }, get tuomari() { return head("tuomari", 42); } };
   let flipT = null, kebabOn = false, trophyOn = false, whistleT = null;
   overlay = (t) => {
     g.drawImage(paintBg("mouhoIn", mouhoInBg), 0, 0); rinkTV(t); boardTable(t);
@@ -135,23 +144,24 @@ async function ending() {
     g.restore();
     if (whistleT && performance.now() - whistleT < 900) { g.font = "bold 10px VT323, monospace"; g.fillStyle = "#fcfcfc"; g.fillText("PRIIIT!", 60, 70); }
   };
+  callSpk = endSpk;
   await say("Neljäs kerros. Mouhon hallitus istuu pöydän takana.", "muu");
   await say("Hallitus: \"Toiminnanjohtajan haastattelu. Hakija Markkanen, olkaa hyvä.\"", "muu");
   await say("Ennen kuin aloitetaan: haluan esitellä, mitä olen jo tehnyt Mouhon hyväksi.");
   // 3. jäsenet saapuvat ryhmä kerrallaan, kukin oman syynsä kanssa
   beep(140, 120, "square", .05); arrive([{ who: "maskotti" }, { who: "saarni" }]); await sleep(1600);
-  await say("Lappusi sanoi, että Mouho hakee jäseniä. Täällä ollaan. Maskotti otti pelaajakorttinsa mukaan.", "muu");
+  await say("Lappusi sanoi, että Mouho hakee jäseniä. Täällä ollaan. Maskotti otti pelaajakorttinsa mukaan.", "saarni");
   beep(140, 120, "square", .05); arrive([{ who: "mehmet" }, { who: "salkkumies" }]);
   if (f.bazaar) arrive(Array.from({ length: 6 }, (_, i) => ({ who: "basaari", c: ["#3c1c24", "#2c1c34", "#4c2c1c"][i % 3], fez: i % 2 === 0 })));
   await sleep(1800);
   await say("Mouho Global Partners saapuu! Ja koko basaari. Kebabit lämpiminä, ystäväni!", "muu");
-  if (f.refRecruited) { beep(2200, 160, "square", .04); arrive([{ who: "tuomari" }]); await sleep(1500); await say("Haamutuomari leijuu sisään. \"Pilli on mukana.\"", "muu"); }
+  if (f.refRecruited) { beep(2200, 160, "square", .04); arrive([{ who: "tuomari" }]); await sleep(1500); await say("Haamutuomari leijuu sisään.", "muu"); await say("Pilli on mukana.", "tuomari"); }
   await say(`Huoneessa on nyt ${f.recruits ?? 0} jäsentä. Ja kaikki katsovat Jussia.`, "muu");
   // 4. pyramidin lupaus lunastetaan
   await say("\"No, toiminnanjohtaja? Jokainen meistä toi kaksi uutta. Mitä me saamme?\"", "muu");
   await say("Te saatte... tuota... saatte...");
   await say("Hetkinen. Soitan Joukolle.");
-  f.myrra3 = true; await phoneCall(MYRRA_CALLS[3]);
+  f.myrra3 = true; await phoneCall(MYRRA_CALLS[3]); callSpk = endSpk;
   await say("Anna ihmisten pelata... Ja jos pyramidin kääntää ylösalaisin...");
   flipT = performance.now(); beep(330, 200, "triangle", .06); setTimeout(() => beep(523, 300, "triangle", .06), 260); await sleep(1600);
   await say("Ylösalaisin käännetty pyramidi on TURNAUSKAAVIO.", "muu");
@@ -168,7 +178,7 @@ async function ending() {
   await say("...Ensimmäinen sivu oli liimautunut kiinni.");
   await say("Hallitus: \"Brändiä ei voi myydä, jos se ei ole sinun. Et ole vielä edes toiminnanjohtaja.\"", "muu");
   await say("Myit brändin, jota et omistanut? ...Ystäväni, sinä olet oikea basaarin mies!", "kauppias");
-  await say("Pidä brändi. Mouho Global saa tämän illan. Ja kebabien jälkikäteen maksu? Mouho on ilmainen. Sinähän sen minulle kerroit.", "kauppias");
+  await say("Pidä brändisi. Meille riittää tämä ilta ja hyvä tarina. Ja kebabien jälkikäteen maksu? Mouho on ilmainen. Sinähän sen minulle kerroit.", "kauppias");
   await say("Hallitus: \"Ennätysmäärä jäseniä, tarjoilu, kiertopalkinto ja kansainvälinen kumppani, joka ei peri mitään. Olet palkattu, toiminnanjohtaja.\"", "muu");
   await say("Juuri kuten suunnittelin. Tai melkein.");
   [880, 1040, 880, 1040].forEach((fq, n) => setTimeout(() => beep(fq, 70, "square", .04), n * 75)); await sleep(600);
@@ -176,6 +186,7 @@ async function ending() {
   await say(`Liiga: "Markkanen? Mouho-illan uutinen kiertää jo: turkkilaiset sijoittajat, ${f.recruits ?? 0} jäsentä ja haamutuomari. Miten sait turkkilaiset kiinnostumaan jääkiekosta?"`, "muu");
   await say("Pidin sen yksinkertaisena.");
   await say(`Mouho-IQ: ${iqTotal()} / ${IQ_MAX}. ${iqTotal() >= IQ_MAX ? "Täydet pisteet. Mouhoness saavutettu." : "Löytyikö kaikki? Kokeile uudestaan."}`, "muu");
+  callSpk = null;
   $say.innerHTML = '<div class="line" style="left:50%;bottom:76%;color:#fcfc54">MOUHO 2026 · 22.5. klo 17<br>Kaivokatu 10, 4. krs, Helsinki</div>';
   $game.classList.remove("cut");
   $dlg.replaceChildren(Object.assign(document.createElement("button"), { textContent: "Pelaa uudestaan", onclick: () => location.reload() }));
@@ -191,10 +202,10 @@ function mouho2027Form() {
   box.innerHTML = `
     <h2>Mouho 2027</h2>
     <p>Toiminnanjohtaja Markkanen kutsuu sinut: 2v2 NHL, PS5. Ilmainen, kuten aina.</p>
-    <label>Nimi <input name="nimi" required minlength="2" maxlength="80" autocomplete="name"></label>
-    <label>Sähköposti <input name="email" type="email" required maxlength="120" autocomplete="email"></label>
-    <label>Pelikaveri (2v2, valinnainen) <input name="pari" maxlength="80"></label>
-    <label>PSN-nimi (valinnainen) <input name="psn" maxlength="40"></label>
+    <label>Nimi <input name="nimi" required minlength="2" maxlength="80" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
+    <label>Sähköposti <input name="email" type="email" required maxlength="120" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
+    <label>Pelikaveri (2v2, valinnainen) <input name="pari" maxlength="80" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
+    <label>PSN-nimi (valinnainen) <input name="psn" maxlength="40" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
     <small>Tietoja käytetään vain Mouho 2027 -ilmoittautumiseen.</small>
     <div class="row"><button type="submit">Ilmoittaudu</button><button type="button" data-close>Ei nyt</button></div>
     <p class="msg" role="status"></p>`;
@@ -211,5 +222,5 @@ function mouho2027Form() {
       box.querySelector("button").onclick = () => box.remove(); beep(523, 150, "triangle", .05); setTimeout(() => beep(784, 250, "triangle", .05), 160);
     } catch (err) { msg.textContent = `Ilmoittautuminen ei onnistunut: ${err.message}`; box.querySelector("[type=submit]").disabled = false; }
   };
-  document.getElementById("stage").append(box); box.querySelector("input").focus();
+  document.getElementById("stage").append(box);   // ei automaattista fokusta: salasanaohjelma avautui kentän päälle
 }

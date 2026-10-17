@@ -143,11 +143,13 @@ function kisaPoster() { // Kisapuiston ilmoitustaulu, Mouho-juliste päällimmä
   r(24, 89, 26, 22, "#1c1c2c"); r(25, 90, 24, 20, "#ece0bc"); r(26, 91, 22, 5, "#c81c1c"); text3("MOUHO", 27, 91, "#fce8c8");
   for (let k = 0; k < 3; k++) r(27, 98 + k * 2, 12 + (k * 5) % 8, 1, "#6c6c6c"); r(26, 105, 22, 4, "#2c7c2c"); text3("2026", 29, 105, "#d8f4c8");
   r(35, 89, 2, 1, "#c8c8c8"); }
-function kisaPostbox() { // SaiPan toimiston postilaatikko: posti tulee yhä tänne
-  const open = st.flags.boxOpen; r(98, 92, 2, 12, "#3c3c48"); shadow(99, 104, 5);
-  r(93, 84, 12, 8, "#e8b83c"); r(93, 84, 12, 1, "#fcd870"); r(93, 91, 12, 1, "#a07c24"); r(104, 85, 1, 4, "#c81c1c"); r(105, 85, 2, 2, "#c81c1c");
-  if (open) { r(93, 81, 12, 2, "#f0c450"); r(94, 85, 10, 5, "#14121a"); if (!st.flags.letterTaken) { r(96, 86, 6, 2, "#f4f4f4"); px(98, 86, "#c81c1c"); } }
-  else { r(96, 88, 6, 1, "#3c2c10"); text3("SP", 95, 85, "#6c4c14"); } }
+// SaiPan toimiston postilaatikko seinällä keltaisen oven vieressä (sokkotesti 2, 17.10.:
+// pelaaja yritti palauttaa setelin ovelle -- laatikon kuuluu olla siinä, mistä sitä etsitään).
+function kisaPostbox() {
+  const open = st.flags.boxOpen;
+  r(229, 71, 9, 8, "#2c2c34"); r(229, 71, 8, 7, "#e8b83c"); r(229, 71, 8, 1, "#fcd870"); r(229, 77, 8, 1, "#a07c24");
+  if (open) { r(229, 69, 8, 2, "#f0c450"); r(230, 72, 6, 4, "#14121a"); if (!st.flags.letterTaken) { r(231, 73, 4, 2, "#f4f4f4"); px(233, 73, "#c81c1c"); } }
+  else { r(230, 73, 6, 1, "#3c2c10"); px(237, 72, "#c81c1c"); px(237, 73, "#c81c1c"); } }
 function kisaRack() { // pysäköintiautomaatti
   shadow(206, 96, 5); r(203, 80, 7, 16, "#5c6070"); r(203, 80, 7, 1, "#8c90a0"); r(204, 82, 5, 3, "#9cd0fc"); r(205, 87, 3, 1, "#1c1c24"); r(202, 95, 9, 1, "#2c2c34");
   r(201, 76, 2, 3, "#2c64c8"); text3("P", 199, 70, "#2c64c8");
@@ -261,6 +263,15 @@ function basaariCounter() { fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]
   for (const x of [244, 249, 254]) { r(x, 89, 3, 4, "#c84c1c"); r(x, 89, 3, 1, "#fce0b0"); } shadow(257, 114, 42); }
 function basaariSpices() { for (const [x, c, hi] of [[70, "#c83c1c", "#fc6c3c"], [84, "#e8b41c", "#fce06c"], [98, "#5c8c2c", "#8cbc4c"]]) {
   r(x, 92, 12, 9, "#c8b080"); r(x - 1, 90, 14, 3, "#dcc490"); tri(x + 1, 85, 10, 6, c); px(x + 5, 85, hi); px(x + 3, 88, hi); } shadow(90, 101, 18); }
+// Mehmetin nahkapussit kojun katosta (sokkotesti 2: Jussi puhui pusseista, joita ei näkynyt).
+function basaariBags() { lineC(274, 64, 296, 64, "#5c3c1c");
+  for (const [x, h] of [[278, 14], [285, 18], [292, 12]]) { lineC(x, 64, x, 64 + h - 8, "#3c2c1c");
+    disc(x, 64 + h - 4, 4, "#8c5428", "#6c3c1c"); r(x - 2, 64 + h - 9, 4, 2, "#7c4824"); px(x - 1, 64 + h - 5, "#b07440"); r(x - 3, 64 + h - 7, 6, 1, "#e8c81c"); } }
+// Tinkimistä kuunteleva väki etualalla (sokkotesti 2: "koko basaari kokoontuu", mutta ketään ei näkynyt).
+function basaariCrowd(t) {
+  const C = ["#3c1c24", "#2c1c34", "#4c2c1c", "#1c2c3c", "#5c3c24", "#2c3c2c"];
+  for (let i = 0; i < 8; i++) { const x = 104 + i * 24 + (i % 2) * 8, y = 150 + (i % 2) * 4;   // selät katsojaan päin, pää ja hartiat näkyvissä
+    g.save(); g.translate(x, y); g.scale(1.8, 1.8); figure(0, 0, C[i % 6], i % 3 === 0, t, Math.sin(t / 260 + i) * 1.2); g.restore(); } }
 function basaariAmphora() { shadow(38, 131, 8); disc(38, 122, 8, "#b85c2c", "#8c3c1c"); r(35, 110, 7, 5, "#a84c24"); r(34, 109, 9, 2, "#c86c3c");
   r(32, 117, 2, 5, "#8c3c1c"); r(42, 117, 2, 5, "#8c3c1c"); px(34, 119, "#e88c5c"); px(35, 118, "#e88c5c"); r(31, 123, 14, 1, "#e8c81c"); }
 
@@ -307,7 +318,8 @@ function temppeliDraw(t) {
   if (st.flags.whipHung) r(160, 25, 1, 46, "#6c4420");
   if (st.flags.crossed) { fillPoly([[196, CHASM.y0], [209, CHASM.y0], [210, CHASM.y1], [195, CHASM.y1]], "#4a3420"); r(196, CHASM.y0, 13, 1, "#6c4c30"); }
 }
-function temppeliSand() { for (let j = 0; j < 12; j++) { const w = Math.round(32 * Math.pow((j + 1) / 12, .55)), y = 117 + j; for (let i = 0; i < w; i++) { const x = 54 - w / 2 + i; px(x, y, bay(x, y) < j / 12 ? "#b08c48" : bay(x, y) < .7 ? "#d8b46c" : "#c8a45c"); } } px(53, 117, "#f0d090"); }
+function temppeliSand() { const n = st.flags.sandUsed ? 7 : 12, top = 129 - n;          // pussin täytön jälkeen kasa madaltuu
+  for (let j = 0; j < n; j++) { const w = Math.round(32 * Math.pow((j + 1 + 12 - n) / 12, .55)), y = top + j; for (let i = 0; i < w; i++) { const x = 54 - w / 2 + i; px(x, y, bay(x, y) < j / 12 ? "#b08c48" : bay(x, y) < .7 ? "#d8b46c" : "#c8a45c"); } } px(53, top, "#f0d090"); }
 function temppeliPillar() { shadow(252, 131, 16); r(236, 121, 32, 10, "#6c5a46"); r(236, 121, 32, 2, "#86704e"); r(236, 129, 32, 2, "#4c3c2c"); r(266, 121, 3, 10, "#5a4a38");
   r(245, 122, 1, 7, "#3c2c1c"); r(254, 123, 1, 6, "#3c2c1c"); disc(236, 126, 5, "#5a4a38"); }
 function temppeliPedestal() { r(154, 64, 12, 12, "#7c6c5c"); r(163, 64, 3, 12, "#5c4c3c"); r(152, 62, 16, 3, "#9c8c7c"); r(152, 62, 16, 1, "#b4a494");

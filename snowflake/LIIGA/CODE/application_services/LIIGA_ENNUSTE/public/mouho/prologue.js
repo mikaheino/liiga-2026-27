@@ -176,6 +176,9 @@ async function prologue() {
     overlay = (t) => {
       const k = (performance.now() - T0) / 1000;
       room().draw(t);
+      // Ruudun esineet (taksi, ilmoitustaulu, postilaatikko) jo laskeutuessa, ettei näkymä
+      // vaihdu kesken alkurepliikin (sokkotesti 2). Lehtikasa ja laatikko putoavat itse.
+      for (const p of room().props.slice(1).filter((p) => p.draw !== kisaBox).sort((a, b) => a.y - b.y)) p.draw(t);
       leafPile(LAND[0], LAND[1], k > tJ && k < tJ + .7 ? (k - tJ) / .7 : 0);
       if (k >= tJ) jussi(LAND[0], LAND[1] + 2, 1, 0, { hat: false, whip: false }, depth(LAND[1])); else tumbleJussi(LAND[0], jF(k), k * 10, depth(LAND[1]));
       const by = bF(k); if (by != null) tumbleBox(LAND[0] - 26, by - 6, k >= tB ? 0 : (k - tJ) * 8, 1.2);
@@ -233,8 +236,11 @@ function plane(x, y, ang) {
   r(-7, -1, 14, 3, "#f4f4f4"); r(-7, 1, 14, 1, "#9c9cac"); r(5, -1, 3, 2, "#9cc4ec"); fillPoly([[-2, -1], [2, -1], [-1, -7], [-4, -7]], "#d8d8e0"); fillPoly([[-2, 2], [2, 2], [-1, 8], [-4, 8]], "#c8c8d0");
   fillPoly([[-7, -1], [-5, -1], [-7, -5]], "#c81c1c"); g.restore();
 }
+const flown = new Set();
 async function travel(from = "lpr", to = "ist") {
-  const A = EUP[from], B = EUP[to], start = performance.now(), dur = 4200;
+  // Toistuva väli (basaari <-> luola) lennetään lyhyemmin (sokkotesti 2: 12 s joka kerta puuduttaa).
+  const leg = [from, to].sort().join("-"), again = flown.has(leg); flown.add(leg);
+  const A = EUP[from], B = EUP[to], start = performance.now(), dur = again ? 1800 : 4200;
   const at = (q) => [A[0] + (B[0] - A[0]) * q + Math.sin(q * Math.PI) * 26, A[1] + (B[1] - A[1]) * q - Math.sin(q * Math.PI) * 6];
   overlay = () => {
     const k = Math.min(1, (performance.now() - start) / dur), q = .5 - .5 * Math.cos(k * Math.PI);
@@ -245,5 +251,5 @@ async function travel(from = "lpr", to = "ist") {
     else { r(B[0] - 4, B[1] - 1, 9, 2, "#b81c1c"); r(B[0] - 1, B[1] - 4, 2, 9, "#b81c1c"); }
   };
   [392, 523].forEach((f, n) => setTimeout(() => beep(f, 200, "triangle", .04), n * 160));
-  await sleep(dur + 500); overlay = null;
+  await sleep(dur + (again ? 200 : 500)); overlay = null;
 }

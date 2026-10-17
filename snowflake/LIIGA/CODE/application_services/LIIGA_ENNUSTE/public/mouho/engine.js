@@ -136,7 +136,11 @@ function say(text, who = "jussi") {
     const tm = setTimeout(done, 2200 + text.length * 70); skip = done;
   });
 }
-async function script(fn) { busy = true; $game.classList.add("cut"); try { await fn(); } finally { busy = false; $game.classList.remove("cut"); setSentence(); } }
+// Klikkaus repliikkien välissä (busy, ei kuplaa) talletetaan ja toteutetaan heti skriptin
+// päätyttyä, jos se on tuore (sokkotesti 2: "ensimmäinen klikkaus puheen jälkeen katoaa").
+let pendingClick = null;
+async function script(fn) { busy = true; $game.classList.add("cut"); for (const b of $verbs.children) b.classList.remove("def"); try { await fn(); } finally { busy = false; $game.classList.remove("cut"); setSentence();
+  const p = pendingClick; pendingClick = null; if (p && performance.now() - p.t < 900 && !overlay) click(p.e, p.right); } }
 // Keskustelu Fate of Atlantiksen tapaan: vaihtoehdot verbien paikalla, jo kysytyt
 // himmeinä, valittu repliikki Jussin suuhun.
 const asked = new Set();
@@ -190,7 +194,9 @@ async function act(v, target) {
 function stagePos(e) { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * W, ((e.clientY - b.top) / b.height) * H]; }
 cv.addEventListener("mousemove", (e) => { if (busy || !room()) return; const [x, y] = stagePos(e); setSentence(spotsAt(x, y)); });
 function click(e, right) {
-  if (skip) { skip(); return; } if (busy || !room() || overlay) return;
+  if (skip) { skip(); pendingClick = null; return; }
+  if (busy && !overlay) { pendingClick = { e: { clientX: e.clientX, clientY: e.clientY }, right, t: performance.now() }; return; }
+  if (busy || !room() || overlay) return;
   const [x, y] = stagePos(e); let o = spotsAt(x, y);
   if (o?.floor && verb === "Kävele" && !first && !right) o = null;   // lattiakohteelle (piano) kävellään klikattuun kohtaan
   if (o) { act(right && !first ? defVerb(o) : verb, o); verb = "Kävele"; renderVerbs(); }
@@ -204,7 +210,7 @@ cv.addEventListener("click", (e) => click(e, false));
 cv.addEventListener("contextmenu", (e) => { e.preventDefault(); click(e, true); });
 document.addEventListener("click", (e) => { if (skip && e.target !== cv && !e.target.closest("#dialog")) skip(); });
 document.addEventListener("keydown", (e) => { if ((e.key === "Escape" || e.key === ".") && skip) skip(); });
-function renderVerbs() { $verbs.replaceChildren(...VERBS.map((v) => { const b = document.createElement("button"); b.textContent = v; if (v === verb) b.className = "on"; b.onclick = () => { if (busy) return; verb = v; first = null; renderVerbs(); renderInv(); setSentence(); }; return b; })); }
+function renderVerbs() { $verbs.replaceChildren(...VERBS.map((v) => { const b = document.createElement("button"); b.textContent = v; if (v === verb) b.className = "on"; b.onclick = () => { if (busy && !room()) return; verb = v; first = null; renderVerbs(); renderInv(); setSentence(); }; return b; })); }
 // Tavarat kuvakkeina (MI2-tyyli): jokainen esine piirtää oman 24 x 16 kuvakkeensa.
 const iconCache = {};
 function icon(k) { if (iconCache[k]) return iconCache[k]; const c = document.createElement("canvas"); c.width = 24; c.height = 16; const prev = g; g = c.getContext("2d"); ITEMS[k].icon?.(); g = prev; return (iconCache[k] = c); }
