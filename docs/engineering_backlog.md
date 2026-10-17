@@ -170,3 +170,19 @@ odottaa kauden loppua. Testit kirjoitetaan nykyistä käytöstä vasten.
 
 **Milloin:** kohdat 1-2 heti kun halutaan (ei vaikuta ennusteeseen), 3-4
 kauden jälkeen.
+
+## 5. Mouho-peli: grafiikan tasoon nosto (lisätty 2026-10-17)
+
+Käyttäjän havainnot pelatessa (`public/mouho/`):
+
+1. **Kartat oikeiksi.** Euroopan kartta (`prologue.js`, `europeMapBg`, lennot
+   Lappeenranta -> Istanbul -> Kappadokia -> Helsinki) ei noudata oikeaa karttaa:
+   rantaviivat ja kaupunkien paikat pitää piirtää todellisen kartan mukaan.
+   Sama tarkistus Kaakkois-Suomen kartalle prologissa.
+2. **Muut henkilöt Jussin ja Raimon tasolle.** Basaarin väki (`figure()` art.js:ssä,
+   `basaariCrowd`, loppukohtauksen basaariryhmä) näyttää tikku-ukoilta. Tavoite on
+   sama bobblehead-tyyli kuin Jussilla ja Raimolla (`pixel_face.py`, `person()`).
+   Koskee myös Mehmetiä, salkkumiestä ja tuomarihaamua, jos ne jäävät jälkeen.
+3. **Hallitus pöydän taakse istumaan.** Kaivokadun hallituksen jäsenet
+   (`boardTable`, `hallitus_*` pixfaces) näyttävät leijuvilta päiltä: lisää
+   vartalot ja tuolit, ja pöytä peittää alavartalon.
