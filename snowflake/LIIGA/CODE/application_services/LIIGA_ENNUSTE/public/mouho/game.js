@@ -12,6 +12,8 @@ Object.assign(ITEMS, {
   pussi: { name: "kangaspussi", look: () => say("Tyhjä kangaspussi. Siinä on juuri idolin kokoinen ruumiinavaus.") },
   sakki: { name: "hiekkasäkki", look: () => say("Hiekkasäkki. Painaa suunnilleen yhtä paljon kuin kultainen idoli. Toivottavasti.") },
   ruoska: { name: "ruoska", look: () => say("Ruoska. En tiedä miten tätä käytetään, mutta näytän tosi hyvältä.") },
+  puhelin: { name: "kännykkä", look: () => say("Kännykkä. Pikavalinnassa ykkösenä Jouko Myrrä. Hän tietää aina mitä tehdä."),
+    Käytä: () => callMyrra(), Puhu: () => callMyrra() },
   idoli: { name: "kultainen idoli", look: () => say("Kultainen idoli. Se katsoo minua. Minä katson sitä. Me ymmärrämme toisiamme.") },
 });
 
@@ -226,6 +228,27 @@ async function sellIdol(inScript) {
 }
 
 
+// ---------------------------------------------------------------- Myrrän puhelut (call.js)
+// Kolme puhelua; joka kerta järkevä neuvo, jonka Jussi ymmärtää täsmälleen väärin.
+const MYRRA_CALLS = [
+  [["myrra", "Myrrä. Pakkailen tässä kamojani valmentajakopista. Kuka siellä?"],
+   ["jussi", "Jussi tässä! Kuule, minäkin pakkasin tänään. Liiga kiitti yhteistyöstä."],
+   ["myrra", "No niin. Kaksi vapaata miestä samana syksynä. Elämä jatkuu, Jussi."],
+   ["jussi", "Mouho hakee toiminnanjohtajaa. Mitä neuvoisit?"],
+   ["myrra", "Pidä se yksinkertaisena. Hyvä peli, hyvä ruoka, ja kaikki maksavat vain osallistumismaksun."],
+   ["myrra", "Ja pilkettä silmäkulmaan."],
+   { bulb: true },
+   ["jussi", "Yksinkertainen... yksi taso. Hyvä ruoka... kebab! Kaikki maksavat... KAIKKI REKRYTOIVAT!"],
+   ["jussi", "Kiitos, Jouko! Tämä on nerokasta!"],
+   ["myrra", "...Mitä minä juuri sanoin?"]],
+];
+async function callMyrra() {
+  const n = st.flags.myrraCalls ?? 0;
+  if (n >= MYRRA_CALLS.length) return say("Soitan Myrrälle myöhemmin. Hän pakkaa vielä.");
+  st.flags.myrraCalls = n + 1;
+  await phoneCall(MYRRA_CALLS[n]);
+}
+
 // Kohde nimellä, ei indeksillä: uusi kohde ruudun alkuun siirsi indeksit kerran.
 const spot = (room, id) => ROOMS[room].spots.find((p) => p.id === id);
 
@@ -387,12 +410,14 @@ ITEMS.sakki.icon = () => { disc(12, 10, 5, "#c8b48c", "#a8946c"); r(10, 2, 4, 4,
 ITEMS.ruoska.icon = () => { r(3, 10, 5, 3, "#3c2410"); for (let k = 0; k < 14; k++) px(8 + k, 10 - Math.sin(k / 2.2) * 5, "#8c5c2c"); px(21, 6, "#6c4420"); };
 ITEMS.kortti.icon = () => { r(3, 4, 18, 9, "#f4f0e4"); r(3, 4, 18, 1, "#fff"); r(5, 6, 6, 1, "#2c2c3c"); r(5, 8, 10, 1, "#8c8c8c"); r(5, 10, 8, 1, "#8c8c8c"); r(16, 6, 3, 3, "#c8a030"); };
 ITEMS.kebab.icon = () => { r(4, 5, 16, 8, "#e8c88c"); r(4, 5, 16, 1, "#f8e0a8"); r(6, 6, 12, 4, "#8c4c24"); r(7, 6, 3, 1, "#5c9c3c"); r(13, 7, 3, 1, "#c83c2c"); r(10, 8, 4, 1, "#f4f4ec"); r(4, 12, 16, 1, "#c8a46c"); };
+ITEMS.puhelin.icon = () => { r(9, 1, 7, 14, "#1c1c24"); r(10, 2, 5, 10, "#5c9cdc"); r(10, 2, 5, 2, "#9cd4fc"); r(11, 13, 3, 1, "#5c5c6c"); px(11, 6, "#fcfcfc"); };
 ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c"); r(9, 4, 2, 10, "#fcf06c"); r(13, 4, 2, 10, "#b8941c"); px(10, 7, "#3c2c0c"); px(13, 7, "#3c2c0c"); r(8, 14, 8, 1, "#8c6c1c"); px(15, 2, "#fff"); };
 
 // ---------------------------------------------------------------- käynnistys
 startEngine({
   titleScreen: drawTitle, startRoom: "koti", startX: 60, hint,
   intro: async () => {
+    give("puhelin");
     await say("Lappeenranta, lokakuu. Kisapuisto, SaiPan kotihalli.");
     await say("Liiga kiitti tänä aamuna yhteistyöstä. Pahvilaatikko, kahvikuppi ja nimikyltti \"Urheilujohtaja\".\nKädenpuristus oli lämmin. Ovi sulkeutui vielä lämpimämmin.");
     await say("Joten tulin sinne, mistä kaikki alkoi. Täällä minut sentään vielä tunnetaan.");

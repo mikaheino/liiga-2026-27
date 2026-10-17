@@ -4,13 +4,14 @@ Rajaa pään, poistaa taustan (harmaa, reunoihin yhteydessä) ja pelipaidan, pie
 pelin kokoihin, kvantisoi pieneen palettiin ja kirjoittaa tuloksen JS-datana
 public/mouho/pixfaces.js:ään. Valokuvaa itseään ei kopioida repoon.
 
-    python scripts/tools/pixel_face.py jussi <kuva> --box 33 0 407 468 --chin 425 --jaw 220 150 \\
-        --eye 170 203 --eye 281 203 --mouth 220 318 105
+    python scripts/tools/pixel_face.py --all          # asetukset: scripts/tools/pixel_faces.json
 """
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+import tempfile
 from collections import deque
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/public/mouho/pixfaces.js"
-SIZES = {"world": (40, 50), "portrait": (80, 100)}   # world piirretään puoleen kokoon 2x-kankaalle
+SIZES = {"world": (40, 50), "portrait": (64, 80)}   # world piirretään puoleen kokoon 2x-kankaalle
 
 
 def flat(im: Image.Image) -> list[int]:
@@ -80,10 +81,24 @@ def hair_color(im: Image.Image, m: Image.Image, top: float) -> tuple[int, int, i
     return tuple(sorted(c[k] for c in px)[len(px) // 2] for k in range(3))
 
 
+def load(src: Path, width: int | None = None) -> Image.Image:
+    """Kuva RGB:nä; AVIF muunnetaan macOS:n sipsillä (Pillow ei lue sitä ilman lisäosaa)."""
+    try:
+        im = Image.open(src)
+    except Exception:
+        tmp = Path(tempfile.mkdtemp()) / "face.png"
+        subprocess.run(["sips", "-s", "format", "png", str(src), "--out", str(tmp)], check=True, capture_output=True)
+        im = Image.open(tmp)
+    im = im.convert("RGB")
+    if width and im.width != width:
+        im = im.resize((width, round(im.height * width / im.width)), Image.Resampling.LANCZOS)
+    return im
+
+
 def build(src: Path, box: tuple[int, int, int, int], chin: int, colors: int, jaw: tuple[float, float],
           eyes: list[tuple[int, int]], mouth: tuple[int, int, int], poly: list[tuple[float, float]] | None = None,
-          bg: str = "grey", tol: float = 45, hair_fix: bool = False, bright: float = 1.0) -> dict:
-    im = Image.open(src).convert("RGB").crop(box)
+          bg: str = "grey", tol: float = 45, hair_fix: bool = False, bright: float = 1.0, width: int | None = None) -> dict:
+    im = load(src, width).crop(box)
     loc = [(x - box[0], y - box[1]) for x, y in poly] if poly else None
     m = mask(im, chin - box[1], jaw[0] - box[0], jaw[1], loc, bg, tol)
     # taustan harmaa ohuiden hiusten läpi: yläosan harmaat maskin pikselit tukan väriksi
@@ -130,41 +145,46 @@ def build(src: Path, box: tuple[int, int, int, int], chin: int, colors: int, jaw
     return out
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("name")
-    ap.add_argument("src", type=Path)
-    ap.add_argument("--box", type=int, nargs=4, required=True, help="rajaus kuvan pikseleinä: x0 y0 x1 y1 (kuvasuhde 4:5)")
-    ap.add_argument("--chin", type=int, required=True, help="leuan alareuna kuvan pikseleinä; sen alta pois")
-    ap.add_argument("--colors", type=int, default=24)
-    ap.add_argument("--jaw", type=float, nargs=2, required=True, help="leuan keskikohta x ja puolileveys kuvan pikseleinä")
-    ap.add_argument("--eye", type=int, nargs=2, action="append", required=True, help="silmän (iiriksen) keskikohta, kahdesti")
-    ap.add_argument("--mouth", type=int, nargs=3, required=True, help="suun keskikohta x y ja leveys")
-    ap.add_argument("--poly", help="pään ääriviiva kuvan pikseleinä: 'x,y x,y ...'")
-    ap.add_argument("--bg", choices=["grey", "sample"], default="grey", help="taustan tunnistus")
-    ap.add_argument("--tol", type=float, default=45, help="sample: etäisyys reunan mediaanivärista")
-    ap.add_argument("--hair-fix", action="store_true", help="värjää taustan harmaan ohuessa vaaleassa tukassa (vain vaalea tukka)")
-    ap.add_argument("--iris", default="#4c84c8", help="iiriksen väri tai 'none'")
-    ap.add_argument("--bright", type=float, default=1.0, help="kirkkauskerroin (tumma kuva)")
-    a = ap.parse_args()
-    data = {}
-    if OUT.exists():
-        txt = OUT.read_text(encoding="utf-8")
-        data = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
-    poly = [tuple(float(v) for v in p.split(",")) for p in a.poly.split()] if a.poly else None
-    data[a.name] = build(a.src, tuple(a.box), a.chin, a.colors, tuple(a.jaw), [tuple(e) for e in a.eye], tuple(a.mouth),
-                         poly, a.bg, a.tol, a.hair_fix, a.bright)
-    for v in data[a.name].values():
-        if a.iris == "none":
-            v.pop("iris", None)
-        else:
-            v["irisC"] = a.iris
+CONFIG = Path(__file__).with_name("pixel_faces.json")
+
+
+def write(data: dict) -> None:
     OUT.write_text(
         "// Mouhon salaisuus -- valokuvista pikselöidyt päät (scripts/tools/pixel_face.py).\n"
         "// Generoitu tiedosto: älä muokkaa käsin. Valokuvia ei ole repossa.\n"
         f"const PIXFACES = {json.dumps(data, ensure_ascii=False, separators=(',', ':'))};\n", encoding="utf-8")
-    sizes = ", ".join(f"{k} {v['w']}x{v['h']} {len(v['pal'])} väriä" for k, v in data[a.name].items())
-    print(f"{a.name}: {sizes} -> {OUT.name}")
+
+
+def from_config(name: str, c: dict, src_dir: Path) -> dict:
+    poly = [tuple(float(v) for v in p.split(",")) for p in c["poly"].split()] if c.get("poly") else None
+    out = build(src_dir / c["src"], tuple(c["box"]), c["chin"], c.get("colors", 24), tuple(c["jaw"]), [tuple(e) for e in c["eye"]],
+                tuple(c["mouth"]), poly, c.get("bg", "grey"), c.get("tol", 45), c.get("hair_fix", False), c.get("bright", 1.0), c.get("width"))
+    for v in out.values():
+        if c.get("iris", "#4c84c8") == "none":
+            v.pop("iris", None)
+        else:
+            v["irisC"] = c.get("iris", "#4c84c8")
+    return out
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--all", action="store_true", help="kaikki hahmot pixel_faces.json:sta")
+    ap.add_argument("--src-dir", type=Path, default=ROOT.parent / "mouho_2026" / "mouho_concept")
+    ap.add_argument("--only", nargs="*", help="vain nämä hahmot (--all)")
+    a = ap.parse_args()
+    cfg = {k: v for k, v in json.loads(CONFIG.read_text(encoding="utf-8")).items() if not k.startswith("_")}
+    data = {}
+    if OUT.exists():
+        txt = OUT.read_text(encoding="utf-8")
+        data = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
+    for name, c in cfg.items():
+        if a.only and name not in a.only:
+            continue
+        data[name] = from_config(name, c, a.src_dir)
+        sizes = ", ".join(f"{k} {v['w']}x{v['h']} {len(v['pal'])} väriä" for k, v in data[name].items())
+        print(f"{name}: {sizes}")
+    write(data)
 
 
 if __name__ == "__main__":

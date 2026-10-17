@@ -10,7 +10,7 @@
 "use strict";
 
 const FACE_W = 100, FACE_H = 120, SS = 4;
-const HEAD = { world: [40, 50], portrait: [80, 100] };   // world piirretään puoleen kokoon (2x kangas)
+const HEAD = { world: [40, 50], portrait: [64, 80] };   // world piirretään puoleen kokoon (2x kangas)
 
 // Muodot: e = ellipsi [cx, cy, rx, ry], p = monikulmio, l = viiva [pisteet], s = ellipsin kaari
 // (lasit). d = ditheröity toinen väri (sparse: 25 % eikä 50 %). on: "talk" | "still" | "blink" | "open" rajaa muodon variaatioon.

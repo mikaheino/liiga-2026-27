@@ -54,6 +54,7 @@ const st = { scene: "koti", x: 60, y: 126, dir: 1, frame: 0, path: [], hat: fals
 const ROOMS = {}, ITEMS = {};
 const VERBS = ["Anna", "Poimi", "Käytä", "Avaa", "Katso", "Työnnä", "Sulje", "Puhu", "Vedä"];
 let verb = "Kävele", first = null, busy = false, onArrive = null, overlay = null, speaking = null, skip = null;
+let callSpk = null;   // puhelun aikana: puhujien kuplien kohdat paneeleissa (call.js)
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 const has = (k) => st.inv.includes(k);
 function give(k) { if (!has(k)) st.inv.push(k); renderInv(); }
@@ -117,7 +118,7 @@ function beep(freq, ms = 220, type = "square", vol = 0.06) { try { actx ??= new 
 function say(text, who = "jussi") {
   return new Promise((res) => {
     const npc = room()?.actors?.find((a) => a.id === who);
-    const spk = who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#c8a460" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : null;
+    const spk = callSpk?.[who] ?? (who === "jussi" ? { x: st.x, y: st.y - 50 * depth(st.y), c: "#c8a460" } : npc ? { x: npc.x, y: npc.y - (npc.h ?? 44) * depth(npc.y), c: npc.color } : null);
     const el = document.createElement("div");
     if (!spk) el.className = "caption";
     else {
@@ -166,6 +167,7 @@ function setSentence(target) {
 async function act(v, target) {
   if (typeof target === "string") {
     if (v === "Katso") return script(ITEMS[target].look);
+    if (ITEMS[target][v] && !first) return script(ITEMS[target][v]);     // esineen oma verbi (esim. Käytä kännykkä)
     if ((v === "Käytä" || v === "Anna") && !first) { first = target; renderInv(); setSentence(); return; }
     return script(() => say("Ei, se ei toimi noin."));
   }
