@@ -4,6 +4,10 @@
 #            versioon -> tagi agent-vN + Release evaluoinnin tuloksella
 # Palautus: python scripts/deploy/deploy_agent.py --promote VERSION$N.
 #
+# Sovellus (Next.js + Mouho-peli) julkaistaan erikseen: deploy-app.yml. Erotettu
+# 17.10.: yhteisessä jonossa sovelluksen muutos odotti agentin hyväksyntää ja
+# päinvastoin, ja vanha odottava ajo pysäytti koko putken.
+#
 # Ajetaan kun agentin, semanttisten mallien, näkymien tai skillin lähde muuttuu
 # mainissa, tai käsin (workflow_dispatch). Snowflakeen kirjaudutaan
 # palvelukäyttäjänä LIIGA_CI avainparilla (snowflake/_account/roles/LIIGA_DEPLOYER.sql); rooli on
@@ -33,7 +37,6 @@ on:
       - scripts/deploy/deploy_tools.py
       - snowflake/LIIGA/MODEL/cortex_search/LIIGA_TIETO/**
       - scripts/deploy/deploy_knowledge.py
-      - snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/**
       - .github/workflows/deploy.yml
       - .github/actions/**
   workflow_dispatch:
@@ -105,51 +108,9 @@ jobs:
           name: eval-candidate
           path: snowflake/LIIGA/EVALS/results/
 
-  app-candidate:
-    name: Sovellus (STAGING)
-    # Rinnakkain agentin ehdokkaan kanssa: App Runtimen käännös (npm ci + next build
-    # Snowflakessa) ei odota agentin evaluointia eikä päinvastoin.
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-          cache: pip
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/package-lock.json
-      - uses: ./.github/actions/snowflake-setup
-        with:
-          private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
-      - name: Tyypit ennen Snowflake-käännöstä
-        run: npm ci && npm run typecheck
-      - name: Käännös ja ehdokas (LIIGA_ENNUSTE_STAGING)
-        run: snow app deploy --target staging -c ci --no-interactive
-      - name: Ehdokas käynnissä
-        shell: bash
-        run: |
-          snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE_STAGING' IN SCHEMA LIIGA.CODE" > svc.json
-          python - <<'PY'
-          import json, os
-          r = json.load(open("svc.json"))
-          assert r, "LIIGA_ENNUSTE_STAGING puuttuu"
-          state = {k.lower(): v for k, v in r[0].items()}
-          print({k: state.get(k) for k in ("name", "status", "state", "url", "endpoint")})
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
-              fh.write(f"### Sovellus (STAGING)\n\n`LIIGA.CODE.LIIGA_ENNUSTE_STAGING`: {state.get('status') or state.get('state')}\n")
-          PY
-
   prod:
     name: Tuotanto (vaatii hyväksynnän)
-    needs: [candidate, app-candidate]
+    needs: candidate
     # Turvalukko: GitHub luo puuttuvan ympäristön automaattisesti ILMAN
     # hyväksyjää. Tuotanto ajetaan vain, kun repo-muuttuja
     # PRODUCTION_PROTECTED = true on asetettu -- tee se vasta kun
@@ -174,14 +135,6 @@ jobs:
       # täsmälleen se, joka evaluoitiin, vaikka STAGING olisi välissä siirtynyt.
       - name: Promootio (PRODUCTION + oletusversio)
         run: python scripts/deploy/deploy_agent.py --promote "VERSION\$$V"
-      - name: Sovellus tuotantoon (sama käännös kuin STAGING)
-        working-directory: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE
-        run: |
-          snow app deploy --target prod --promote-only -c ci --no-interactive
-          snow sql -c ci -q "GRANT USAGE ON APPLICATION SERVICE LIIGA.CODE.LIIGA_ENNUSTE TO ROLE LIIGA_AGENT_USER"
-          url=$(snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE' IN SCHEMA LIIGA.CODE" | python -c "import json,sys; print(next((r.get('url') for r in json.load(sys.stdin) if r.get('name') == 'LIIGA_ENNUSTE'), ''))")
-          echo "### Sovellus tuotannossa" >> "$GITHUB_STEP_SUMMARY"
-          echo "https://$url" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v7
         with:
           name: eval-candidate

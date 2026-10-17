@@ -959,6 +959,19 @@ julkaistaan **vain putken kautta** kuten agentti: `deploy.yml`:n `app-candidate`
 prod-targetiin omalta koneelta. Prototypointi jatkuu paikallisesti (`npm run dev`, :3010).
 DEV-palvelu `LIIGA_ENNUSTE_DEV` on pysäytetty.
 
+**Kaksi erillistä putkea (17.10.):** `deploy.yml` = agentti (näkymät, semanttiset mallit,
+proseduurit, tietopankki, agenttiversio + evaluointi), `deploy-app.yml` = sovellus ja peli
+(STAGING-käännös -> hyväksyntä -> `--promote-only`). Oma jono kummallakin: yhteisessä jonossa
+vanha odottava ajo pysäytti kaiken.
+
+**Paikallinen tila (17.10.):** ilman Snowflakea sovellus lukee `data/liiga.duckdb`:tä
+(`scripts/local/duckdb_query.py`, `DATA_MODE` lib/snowflake.ts:ssä; App Runtimessa
+sessiotoken -> Snowflake; `LIIGA_DATA` pakottaa). "Kysy agentilta" käyttää paikallisesti
+Claude Codea (`claude -p`, ei työkaluja, tilannekuva DuckDB:stä, lib/localClaude.ts), Snowflakessa
+agenttia. Jäädytykset: tagit `app-vN`/`mouho-vN`, peli `releases/mouho/*.html`
+(`scripts/tools/bundle_mouho.py`), sovelluspaketti `releases/app/` (gitignore). Kysy käyttäjältä
+välillä, jäädytetäänkö versio.
+
 **Keskustelu ja peli (16.10.):** jokaisella sivulla on "Kysy agentilta" (`components/Chat.tsx`,
 `/api/chat` -> `SNOWFLAKE.CORTEX.DATA_AGENT_RUN` samalla yhteydellä kuin data, n. 25-30 s/vastaus).
 `/mouho` = point-and-click-peli Mouho 2026 -turnaukseen (`public/mouho/`, oma moottori
