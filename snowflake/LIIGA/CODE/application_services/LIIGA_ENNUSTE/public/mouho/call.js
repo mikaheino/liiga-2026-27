@@ -128,7 +128,7 @@ function panelDraw(P, off, who, t, bgFn, ringing) {
     g.restore();
   } else glow(150, 150, 80, "255,200,120", .12);
   const talk = speaking === who && Math.floor(t / 110) % 2 === 1, blink = (t + (who === "myrra" ? 1700 : 0)) % 3700 < 130, bob = speaking === who ? Math.round(Math.sin(t / 140)) : 0;
-  const B = PIXFACES[who].bust, bimg = faceCache[`bust|${who}`] ??= renderPix(B, {}), face = faceImg(who, "portrait", { talk, blink });
+  const B = PIXFACES[who].bust, bimg = faceCache[`bust|${who}`] ??= renderPix(B, {}), face = faceImg(who, "portrait", { talk, blink, over: true });
   const bx = who === "myrra" ? 52 : 168, by = PH - bimg.height + 2;
   if (who === "jussi") {                           // kuva on kapea: pelipaita jatkuu hartioihin
     fillPoly([[bx + 10, by + 76], [bx - 30, by + 92], [bx - 40, PH], [bx + 20, PH]], "#f8d838"); fillPoly([[bx + 66, by + 76], [bx + 110, by + 92], [bx + 120, PH], [bx + 56, PH]], "#e8c428");

@@ -214,7 +214,7 @@ function renderPix(P, v) {
   if (v.blink && P.eyes) for (const [ex, ey, ew] of P.eyes) for (let k = 0; k < ew; k++) { put(ex + k, ey, P.lid ?? "#c88c70"); put(ex + k, ey - 1, P.lid ?? "#c88c70"); }
   const [orr, og, ob] = hex(P.outline ?? "#3c2414");
   for (let j = 0; j < h + 2; j++) for (let i = 0; i < w + 2; i++) {
-    const q = j * (w + 2) + i; if (solid[q]) continue;
+    const q = j * (w + 2) + i; if (solid[q] || v.over) continue;    // over: pää rintakuvan päällä, ei ääriviivaa
     if ((i > 0 && solid[q - 1]) || (i < w + 1 && solid[q + 1]) || (j > 0 && solid[q - w - 2]) || (j < h + 1 && solid[q + w + 2])) d.set([orr, og, ob, 255], q * 4);
   }
   o.putImageData(img, 0, 0); return out;
@@ -222,7 +222,7 @@ function renderPix(P, v) {
 const faceCache = {};
 function faceImg(name, size = "world", v = {}) {
   const P = typeof PIXFACES !== "undefined" && PIXFACES[name]?.[size];
-  if (P && !v.back) { const k = `pix|${name}|${size}|${v.talk ? 1 : 0}${v.blink ? 1 : 0}`; return (faceCache[k] ??= renderPix(P, v)); }
+  if (P && !v.back) { const k = `pix|${name}|${size}|${v.talk ? 1 : 0}${v.blink ? 1 : 0}${v.over ? 1 : 0}`; return (faceCache[k] ??= renderPix(P, v)); }
   const k = `${name}|${size}|${v.talk ? 1 : 0}${v.blink ? 1 : 0}${v.back ? 1 : 0}`;
   return (faceCache[k] ??= renderFace(name, HEAD[size], v));
 }

@@ -98,8 +98,13 @@ def load(src: Path, width: int | None = None) -> Image.Image:
 def build(src: Path, box: tuple[int, int, int, int], chin: int, colors: int, jaw: tuple[float, float],
           eyes: list[tuple[int, int]], mouth: tuple[int, int, int], poly: list[tuple[float, float]] | None = None,
           bg: str = "grey", tol: float = 45, hair_fix: bool = False, bright: float = 1.0, width: int | None = None,
-          sizes: dict[str, tuple[int, int]] | None = None) -> dict:
-    im = load(src, width).crop(box)
+          sizes: dict[str, tuple[int, int]] | None = None, paint: list[dict] | None = None) -> dict:
+    im = load(src, width)
+    # maalausalueet ennen pikselöintiä (esim. pelipaidan mainokset pois: 17.10. "ei näytetä
+    # pelaajalle, että Jussi on rakennettu pelikortista")
+    for pt in paint or []:
+        ImageDraw.Draw(im).polygon([tuple(float(v) for v in q.split(",")) for q in pt["poly"].split()], fill=pt["color"])
+    im = im.crop(box)
     loc = [(x - box[0], y - box[1]) for x, y in poly] if poly else None
     m = mask(im, chin - box[1], jaw[0] - box[0], jaw[1], loc, bg, tol)
     # taustan harmaa ohuiden hiusten läpi: yläosan harmaat maskin pikselit tukan väriksi
@@ -159,7 +164,8 @@ def write(data: dict) -> None:
 def from_config(name: str, c: dict, src_dir: Path) -> dict:
     poly = [tuple(float(v) for v in p.split(",")) for p in c["poly"].split()] if c.get("poly") else None
     out = build(src_dir / c["src"], tuple(c["box"]), c["chin"], c.get("colors", 24), tuple(c["jaw"]), [tuple(e) for e in c["eye"]],
-                tuple(c["mouth"]), poly, c.get("bg", "grey"), c.get("tol", 45), c.get("hair_fix", False), c.get("bright", 1.0), c.get("width"))
+                tuple(c["mouth"]), poly, c.get("bg", "grey"), c.get("tol", 45), c.get("hair_fix", False), c.get("bright", 1.0), c.get("width"),
+                paint=c.get("paint"))
     # rintakuva puheluihin: sama mittakaava kuin muotokuvassa, hartiat mukana, ei leukaleikkausta
     if c.get("bust"):
         b = c["bust"]
@@ -168,7 +174,8 @@ def from_config(name: str, c: dict, src_dir: Path) -> dict:
         bpoly = [tuple(float(v) for v in p.split(",")) for p in b["poly"].split()] if b.get("poly") else None
         out.update(build(src_dir / c["src"], bbox, bbox[3] + 200, c.get("colors", 24) + 4, (0, 1e6), [tuple(e) for e in c["eye"]],
                          tuple(c["mouth"]), bpoly, b.get("bg", c.get("bg", "grey")), b.get("tol", c.get("tol", 45)), c.get("hair_fix", False),
-                         c.get("bright", 1.0), c.get("width"), {"bust": (round((bbox[2] - bbox[0]) * k), round((bbox[3] - bbox[1]) * k))}))
+                         c.get("bright", 1.0), c.get("width"), {"bust": (round((bbox[2] - bbox[0]) * k), round((bbox[3] - bbox[1]) * k))},
+                         c.get("paint")))
         # pää piirretään rintakuvan päälle muotokuvasta (siistimpi maski): sen paikka rintakuvassa
         out["bust"]["head_at"] = [round((c["box"][0] - bbox[0]) * k) - 1, round((c["box"][1] - bbox[1]) * k) - 1]
     for v in out.values():

@@ -1,5 +1,5 @@
 {
-  "_ohje": "python scripts/tools/pixel_face.py --all [--src-dir ../mouho_2026/mouho_concept]. Kuvat eivät ole repossa; koordinaatit ovat kunkin kuvan pikseleitä (saarni: kuva pienennetty 1600 px leveäksi).",
+  "_ohje": "python scripts/tools/pixel_face.py --all [--src-dir ../mouho_2026/mouho_concept]. Kuvat eivät ole repossa; koordinaatit ovat kunkin kuvan pikseleitä (saarni: kuva pienennetty 1600 px leveäksi). paint = monikulmiot jotka maalataan kuvaan ennen pikselöintiä (Jussin pelipaidan mainokset pois).",
   "jussi": {
     "src": "jussi_markkanen_3.jpg",
     "box": [
@@ -36,7 +36,25 @@
         435,
         600
       ]
-    }
+    },
+    "paint": [
+      {
+        "poly": "0,415 82,372 92,450 150,500 235,600 0,600",
+        "color": "#f2cc22"
+      },
+      {
+        "poly": "345,440 435,425 435,600 400,600",
+        "color": "#e6be18"
+      },
+      {
+        "poly": "78,372 118,372 140,425 170,470 210,515 240,522 300,520 300,600 222,606 86,450",
+        "color": "#1c1c28"
+      },
+      {
+        "poly": "296,425 340,420 355,465 412,600 296,600",
+        "color": "#1c1c28"
+      }
+    ]
   },
   "myrra": {
     "src": "jouko_myrrä_1.jpg",
