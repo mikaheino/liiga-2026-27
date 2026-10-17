@@ -148,10 +148,10 @@ function kisaPostbox() { // SaiPan toimiston postilaatikko: posti tulee yhä tä
   r(93, 84, 12, 8, "#e8b83c"); r(93, 84, 12, 1, "#fcd870"); r(93, 91, 12, 1, "#a07c24"); r(104, 85, 1, 4, "#c81c1c"); r(105, 85, 2, 2, "#c81c1c");
   if (open) { r(93, 81, 12, 2, "#f0c450"); r(94, 85, 10, 5, "#14121a"); if (!st.flags.letterTaken) { r(96, 86, 6, 2, "#f4f4f4"); px(98, 86, "#c81c1c"); } }
   else { r(96, 88, 6, 1, "#3c2c10"); text3("SP", 95, 85, "#6c4c14"); } }
-function kisaRack() { // pysäköintiautomaatti, fedora päällä
+function kisaRack() { // pysäköintiautomaatti
   shadow(206, 96, 5); r(203, 80, 7, 16, "#5c6070"); r(203, 80, 7, 1, "#8c90a0"); r(204, 82, 5, 3, "#9cd0fc"); r(205, 87, 3, 1, "#1c1c24"); r(202, 95, 9, 1, "#2c2c34");
   r(201, 76, 2, 3, "#2c64c8"); text3("P", 199, 70, "#2c64c8");
-  if (!st.hat) { r(200, 79, 13, 1, "#5c3c1c"); r(202, 75, 9, 4, "#7c5c34"); r(202, 77, 9, 1, "#2c1808"); px(206, 75, "#9c7c4c"); } }
+}
 function kisaPig() { g.save(); g.translate(0, 7);
   r(140, 113, 22, 2, "#6c6c78"); r(140, 115, 22, 1, "#3c3c48");                                  // betoninen pysäköintiste
   shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
@@ -327,7 +327,7 @@ function temppeliPost(t) {
   L.globalCompositeOperation = "destination-out";
   const hole = (x, y, rad, a) => { const gr = L.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); L.fillStyle = gr; L.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
   const f = Math.sin(t / 90) * 4 + Math.sin(t / 53) * 2;
-  hole(37, 40, 70 + f, .95); hole(283, 40, 70 - f, .95); hole(st.x, st.y - 16, 34, .55); hole(160, 58, 30, .8);
+  hole(37, 40, 70 + f, .95); hole(283, 40, 70 - f, .95); hole(st.x, st.y - 22, 44, 1);   // Jussi kokonaan valossa (17.10.: "Jussi on luolassa haalea") hole(160, 58, 30, .8);
   L.beginPath(); L.moveTo(152, 0); L.lineTo(168, 0); L.lineTo(176, 66); L.lineTo(144, 66); L.closePath(); L.fillStyle = "rgba(0,0,0,.6)"; L.fill();
   g.drawImage(darkC2, 0, 0);
   g.fillStyle = "rgba(255,236,170,.07)"; g.beginPath(); g.moveTo(152, 0); g.lineTo(168, 0); g.lineTo(176, 66); g.lineTo(144, 66); g.closePath(); g.fill();

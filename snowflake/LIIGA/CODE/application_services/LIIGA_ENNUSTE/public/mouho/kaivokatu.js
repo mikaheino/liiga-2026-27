@@ -44,7 +44,7 @@ function kaivokatuDraw(t, jx, idol) {
   g.drawImage(paintBg("kaivokatu", kaivokatuBg), 0, 0);
   tram(-140 + ((t / 1000 * 60) % 600));
   for (const [x0, c, v] of [[60, "#3c2c4c", 9], [210, "#2c4c3c", -7], [260, "#5c2c2c", 6]]) { const x = ((x0 + t / 1000 * v) % 340 + 340) % 340 - 10; figure(x, 116, c, false, t + x0 * 50, v); }
-  shadow(jx, 117, 6); jussi(jx, 117, 1, Math.floor(t / 120) % 4, { hat: true, whip: true }, .9);
+  shadow(jx, 117, 6); jussi(jx, 117, 1, Math.floor(t / 120) % 4, { whip: true }, .9);
   if (idol) { r(jx + 6, 99, 4, 6, "#e8c81c"); r(jx + 7, 97, 2, 2, "#e8c81c"); glow(jx + 8, 101, 8, "255,220,100", .3); }
 }
 
@@ -81,7 +81,7 @@ function boardTable(t) {      // hallitus pöydän takana oikealla
 // ---------------------------------------------------------------- loppu
 async function ending() {
   st.scene = "loppu"; $game.classList.add("cut"); $sent.textContent = "";
-  await travel([226, 104], [127, 40]);
+  await travel("ist", "hki");
   const f = st.flags;
   // 1. ulkokuva
   let jx = -10; const T0 = performance.now();
@@ -105,14 +105,27 @@ async function ending() {
       else if (c.who === "salkkumies") salesman(c.x, c.ty, t);
       else if (c.who === "tuomari") ghostRef(c.x, c.ty, t, speaking === "tuomari");
       else figure(c.x, c.ty, c.c, c.fez, t, mv ? 4 : Math.sin(t / 300 + c.tx)); }
-    shadow(176, 128, 7); jussi(176, 128, -1, 0, { hat: true, whip: true });
-    // jäsenhankintakaavio telineessä; Jussi kääntää sen turnauskaavioksi
+    shadow(176, 128, 7); jussi(176, 128, -1, 0, { whip: true });
+    // jäsenhankintakaavio telineessä; Jussi kääntää sen turnauskaavioksi (17.10.: "kaavio rumalta")
     const k2 = flipT ? Math.min(1, (performance.now() - flipT) / 1400) : 0, sy = Math.cos(k2 * Math.PI);
-    g.save(); g.translate(126, 100); g.scale(1, Math.abs(sy) < .02 ? .02 : sy);
-    r(-18, -14, 36, 28, "#f4f0e4"); r(-18, -14, 36, 1, "#ffffff");
-    if (k2 < .5) { for (let j = 0; j < 4; j++) for (let i = 0; i <= j; i++) r(-1 - j * 3 + i * 6, -10 + j * 6, 3, 3, j === 0 ? "#c81c1c" : "#2c4c9c"); }
-    else { for (let j = 0; j < 3; j++) for (let i = 0; i < 4 >> j; i++) { const y = -10 + j * 8 + (4 >> j) - 1, x = -14 + i * (28 / (4 >> j)); r(x, y, 6, 1, "#1c1c1c"); r(x + 6, y - 2, 1, 5, "#1c1c1c"); } r(10, 2, 6, 3, "#e8c81c"); }
-    g.restore(); r(124, 114, 4, 16, "#5c4c3c");
+    lineC(112, 128, 120, 92, "#5c4c3c", 2); lineC(140, 128, 132, 92, "#5c4c3c", 2); lineC(126, 128, 126, 96, "#4c3c2c", 2);   // maalarin teline
+    g.save(); g.translate(126, 82); g.scale(1, Math.abs(sy) < .02 ? .02 : sy);
+    r(-27, -17, 54, 34, "#3c3c44"); r(-26, -16, 52, 32, "#f8f6ee"); r(-26, -16, 52, 1, "#ffffff");
+    if (k2 < .5) {                                 // pyramidi: Jussi huipulla, rivit tihenevät
+      r(-3, -13, 6, 4, "#c81c1c"); for (let j = 1; j < 5; j++) { const n = 2 ** j > 16 ? 16 : 2 ** j, w = Math.min(46, n * 3); for (let i = 0; i < n; i++) r(-w / 2 + i * (w / n) + .5, -11 + j * 5, Math.max(1, w / n - 1), 3, j === 1 ? "#2c4c9c" : j === 2 ? "#4c6cbc" : "#7c9cdc"); }
+      for (let j = 0; j < 4; j++) { lineC(0, -9 + j * 5, -4 - j * 5, -6 + j * 5, "#9c9cac"); lineC(0, -9 + j * 5, 4 + j * 5, -6 + j * 5, "#9c9cac"); }
+    } else {                                       // turnauskaavio: 8 -> 4 -> 2 -> finaali, pokaali keskellä
+      g.scale(1, -1);                              // käännetty takaisin oikein päin
+      const C = ["#c81c1c", "#2c4c9c", "#e8c81c", "#2c8c4c", "#7c2c8c", "#e8742c", "#3c3c3c", "#2cacac"];
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 4; i++) { const y = -12 + i * 7, x0 = side * 24; r(Math.min(x0, x0 - side * 6), y, 6, 2, C[i + (side > 0 ? 4 : 0)]); lineC(x0 - side * 6, y + 1, x0 - side * 9, y + 1, "#1c1c24"); }
+        for (let i = 0; i < 2; i++) { const yA = -11 + i * 14, yB = yA + 7, x = side * 15; lineC(x, yA, x, yB, "#1c1c24"); lineC(x, yA + 3.5, side * 10, yA + 3.5, "#1c1c24"); }
+        lineC(side * 10, -7.5, side * 10, 6.5, "#1c1c24"); lineC(side * 10, -.5, side * 5, -.5, "#1c1c24");
+      }
+      r(-3, -4, 6, 6, "#e8c81c"); r(-2, -7, 4, 3, "#e8c81c"); r(-4, 2, 8, 2, "#8c6c1c"); px(-1, -2, "#3c2c0c"); px(1, -2, "#3c2c0c");
+      g.font = "6px VT323, monospace"; g.fillStyle = "#1c1c24"; g.textAlign = "center"; g.fillText("MOUHO 2026", 0, 14); g.textAlign = "left";
+    }
+    g.restore();
     if (whistleT && performance.now() - whistleT < 900) { g.font = "bold 10px VT323, monospace"; g.fillStyle = "#fcfcfc"; g.fillText("PRIIIT!", 60, 70); }
   };
   await say("Neljäs kerros. Mouhon hallitus istuu pöydän takana.", "muu");

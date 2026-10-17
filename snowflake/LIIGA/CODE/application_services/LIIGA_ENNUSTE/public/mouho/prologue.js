@@ -191,3 +191,59 @@ async function prologue() {
     st.flags.leafPile = true; place(LAND[0], LAND[1]);
   }
 }
+
+// ---------------------------------------------------------------- lento Lappeenrannasta Istanbuliin ja takaisin
+// Samaa pergamenttityyliä kuin Kaakkois-Suomen kartta (17.10.: "kartta-animaatio on vielä vanha").
+const EUP = { lpr: [214, 20], hki: [200, 26], ist: [222, 106], kap: [262, 114] };
+function europeMapBg() {
+  seed = 7; noise(0, 0, W, H, "#e8d4a4", ["#dcc896", "#f0e0b8", "#d4bc88", "#e4cc9c"], .45);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const e = Math.min(i, j, W - 1 - i, H - 1 - j); if (e < 10 && bay(i, j) < (10 - e) / 12) px(i, j, "#b89c6c"); }
+  const sea = (pts) => { fillPoly(pts, "#94b4c8"); g.strokeStyle = "#5c7c94"; g.lineWidth = 1; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke(); };
+  // Itämeri ja Pohjanlahti, Suomenlahti
+  sea([[150, 0], [176, 0], [180, 12], [190, 22], [210, 28], [196, 32], [180, 36], [176, 48], [168, 58], [150, 62], [140, 56], [146, 40], [156, 26], [152, 12]]);
+  // Pohjanmeri ja Atlantti vasemmalla
+  sea([[0, 20], [40, 14], [70, 24], [96, 34], [100, 54], [84, 66], [60, 60], [40, 70], [20, 84], [0, 96]]);
+  // Välimeri ja Egeanmeri
+  sea([[0, 118], [40, 112], [80, 118], [120, 110], [150, 116], [176, 108], [196, 112], [206, 120], [214, 112], [212, 128], [250, 130], [320, 128], [320, 136], [0, 136]]);
+  // Mustameri
+  sea([[230, 80], [256, 74], [290, 76], [306, 86], [296, 98], [270, 100], [246, 98], [232, 92]]);
+  sea([[218, 102], [224, 98], [230, 92], [226, 104]]);                                          // Bosporin suu
+  // järvet ja joet
+  for (const [x, y, rx, ry] of [[226, 18, 8, 3], [236, 12, 6, 3], [188, 92, 5, 2]]) { g.fillStyle = "#94b4c8"; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); }
+  g.strokeStyle = "#7c9cb4"; g.lineWidth = 1; g.beginPath(); g.moveTo(110, 70); g.quadraticCurveTo(160, 84, 236, 90); g.stroke();   // Tonava
+  // vuoristot ja metsät
+  seed = 23; for (let i = 0; i < 200; i++) { const x = 8 + ((rnd() * 304) | 0), y = 8 + ((rnd() * 118) | 0);
+    if ((x > 140 && x < 212 && y < 62) || (x < 100 && y > 20 && y < 96 && x < 96 - (y - 20) * .1) || y > 108 || (x > 228 && x < 306 && y > 72 && y < 100)) continue;
+    if (y > 60 && y < 80 && x > 90 && x < 170 && i % 3 === 0) { tri(x, y, 7, 5, "#a08c6c"); px(x + 3, y, "#f4f0e8"); } else { tri(x, y, 5, 6, (x + y) % 3 ? "#6c8c4c" : "#5c7c40"); r(x + 2, y + 6, 1, 2, "#5c4c34"); } }
+  // kaupungit
+  const city = (k, label, dx, dy, c = "#b81c1c") => { const [x, y] = EUP[k]; disc(x, y, 3, c, "#4c3c24"); g.font = "10px VT323, monospace"; g.fillStyle = "#f4e4c0"; g.fillText(label, x + dx + 1, y + dy + 1); g.fillStyle = "#4c3c24"; g.fillText(label, x + dx, y + dy); };
+  city("lpr", "Lappeenranta", 6, 4); city("hki", "Helsinki", -10, 12); city("ist", "Istanbul", -48, 4); city("kap", "Kappadokia", -18, 14, "#c8941c");
+  // mosheijan siluetti Istanbulin kohdalla, halli Lappeenrannan kohdalla
+  { const [x, y] = EUP.ist; disc(x + 6, y - 8, 3, "#5c3c4c"); r(x + 3, y - 8, 7, 3, "#5c3c4c"); r(x + 2, y - 13, 1, 6, "#5c3c4c"); r(x + 11, y - 13, 1, 6, "#5c3c4c"); }
+  { const [x, y] = EUP.lpr; r(x - 6, y - 8, 9, 5, "#e8b83c"); r(x + 3, y - 7, 6, 4, "#9c9cac"); }
+  g.fillStyle = "#6c5c3c"; g.font = "9px VT323, monospace";
+  g.fillText("Itämeri", 156, 50); g.fillText("Mustameri", 252, 90); g.fillText("Välimeri", 96, 128); g.fillText("SUOMI", 222, 34); g.fillText("TURKKI", 270, 124);
+  r(8, 6, 74, 16, "#f4e4c0"); g.strokeStyle = "#6c4c2c"; g.strokeRect(8.5, 6.5, 73, 15); g.strokeRect(10.5, 8.5, 69, 11); g.fillStyle = "#4c2c14"; g.font = "11px VT323, monospace"; g.fillText("EUROOPPA", 20, 18);
+  { const x = 30, y = 100; g.strokeStyle = "#6c4c2c"; g.beginPath(); g.arc(x, y, 11, 0, 7); g.stroke();
+    fillPoly([[x, y - 14], [x + 3, y], [x, y + 14], [x - 3, y]], "#6c4c2c"); fillPoly([[x - 14, y], [x, y - 3], [x + 14, y], [x, y + 3]], "#8c6c44"); fillPoly([[x, y - 14], [x + 3, y], [x - 3, y]], "#b81c1c"); }
+  g.strokeStyle = "#6c4c2c"; g.lineWidth = 1; g.strokeRect(2.5, 2.5, W - 5, H - 5); g.strokeStyle = "#a07c4c"; g.strokeRect(4.5, 4.5, W - 9, H - 9);
+}
+function plane(x, y, ang) {
+  g.save(); g.translate(x, y); g.rotate(ang);
+  r(-7, -1, 14, 3, "#f4f4f4"); r(-7, 1, 14, 1, "#9c9cac"); r(5, -1, 3, 2, "#9cc4ec"); fillPoly([[-2, -1], [2, -1], [-1, -7], [-4, -7]], "#d8d8e0"); fillPoly([[-2, 2], [2, 2], [-1, 8], [-4, 8]], "#c8c8d0");
+  fillPoly([[-7, -1], [-5, -1], [-7, -5]], "#c81c1c"); g.restore();
+}
+async function travel(from = "lpr", to = "ist") {
+  const A = EUP[from], B = EUP[to], start = performance.now(), dur = 4200;
+  const at = (q) => [A[0] + (B[0] - A[0]) * q + Math.sin(q * Math.PI) * 26, A[1] + (B[1] - A[1]) * q - Math.sin(q * Math.PI) * 6];
+  overlay = () => {
+    const k = Math.min(1, (performance.now() - start) / dur), q = .5 - .5 * Math.cos(k * Math.PI);
+    g.drawImage(paintBg("europe", europeMapBg), 0, 0);
+    for (let i = 0; i < q * 60; i += 2) { const [x, y] = at(i / 60); r(x, y, 2, 2, "#b81c1c"); }
+    const [x, y] = at(q), [x2, y2] = at(Math.min(1, q + .01));
+    if (k < 1) { g.fillStyle = "rgba(0,0,0,.18)"; g.beginPath(); g.ellipse(x + 6, y + 8, 6, 2, 0, 0, 7); g.fill(); plane(x, y, Math.atan2(y2 - y, x2 - x)); }
+    else { r(B[0] - 4, B[1] - 1, 9, 2, "#b81c1c"); r(B[0] - 1, B[1] - 4, 2, 9, "#b81c1c"); }
+  };
+  [392, 523].forEach((f, n) => setTimeout(() => beep(f, 200, "triangle", .04), n * 160));
+  await sleep(dur + 500); overlay = null;
+}

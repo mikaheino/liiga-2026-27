@@ -86,7 +86,7 @@ function drawTitle(t) {
   for (const [x, y] of PARASOLS) { r(x, y, 1, 32, "#8c8c8c"); tri(x - 14, y - 6, 29, 7, "#f4f4ec"); r(x - 14, y, 29, 1, "#c8c8c0"); }
   QUEUE.forEach(([x, shirt, hair], i) => { const sw = Math.round(Math.sin(t / 500 + i) * .6); r(x - 2 + sw, 86, 5, 9, shirt); disc(x + sw, 83, 2, "#e8b890"); r(x - 2 + sw, 81, 5, 1, hair); r(x - 2, 95, 2, 6, "#2c2c3c"); r(x + 1, 95, 2, 6, "#2c2c3c"); });
   const gx = ((t / 30) % 380) - 30; px(gx, 30 + Math.sin(t / 200) * 2, "#fcfcfc"); px(gx + 1, 29, "#fcfcfc"); px(gx + 2, 30, "#fcfcfc"); px(gx + 3, 29, "#fcfcfc"); px(gx + 4, 30 + Math.sin(t / 200) * 2, "#fcfcfc");
-  shadow(160, 128, 7); jussi(160, 128, 1, Math.floor(t / 900) % 2 ? 0 : 0, { hat: true });
+  shadow(160, 128, 7); jussi(160, 128, 1, 0, {});
   g.textAlign = "center"; g.font = "30px VT323, monospace";
   g.fillStyle = "#1c0c00"; g.fillText("MOUHON SALAISUUS", 162, 30);
   const gr = g.createLinearGradient(0, 10, 0, 30); gr.addColorStop(0, "#fff4b0"); gr.addColorStop(.5, "#fcc81c"); gr.addColorStop(1, "#c8641c");
@@ -109,19 +109,7 @@ function mapBg() {
   r(286, 10, 1, 18, "#5c4c34"); r(278, 18, 17, 1, "#5c4c34"); g.fillText("P", 284, 8);
   g.strokeStyle = "#8c6c44"; g.strokeRect(2.5, 2.5, W - 5, H - 5);
 }
-async function travel(from = [132, 34], to = [226, 104]) {
-  const start = performance.now(), dur = 3600;
-  overlay = (t) => {
-    const k = Math.min((t - start) / dur, 1);
-    g.drawImage(paintBg("map", mapBg), 0, 0);
-    const [ax, ay] = from, [bx, by] = to, n = Math.floor(k * 48);
-    const at = (q) => [ax + (bx - ax) * q, ay + (by - ay) * q - Math.sin(q * Math.PI) * 22];
-    for (let i = 0; i < n; i += 2) { const [x, y] = at(i / 48); r(x, y, 2, 2, "#b81c1c"); }
-    const [x, y] = at(n / 48); r(x - 4, y, 9, 2, "#2c2c2c"); r(x - 1, y - 3, 3, 8, "#2c2c2c"); r(x - 4, y - 1, 2, 4, "#2c2c2c"); px(x + 4, y, "#fcfcfc");
-    if (k >= 1) { r(bx - 3, by - 1, 7, 1, "#b81c1c"); r(bx, by - 4, 1, 7, "#b81c1c"); }
-  };
-  await sleep(dur + 500); overlay = null;
-}
+// Lentomatka: prologue.js (travel, Euroopan kartta).
 // Loppu: Mouho 2026, Kaivokatu 10, 4. krs (recordlydata.com/events/mouho-2026):
 // 2v2 NHL PS5:llä, 3 min erät, parit arvotaan, pizza n. 18.30 -- ja osallistuminen on ILMAINEN.
 function mouhoBg() {
