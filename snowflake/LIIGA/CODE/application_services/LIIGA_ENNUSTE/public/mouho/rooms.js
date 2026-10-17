@@ -75,8 +75,7 @@ function kisaBg() {
   r(48, 26, 62, 2, "#3c3448"); r(70, 20, 10, 6, "#4c4458"); r(72, 18, 6, 2, "#5c546c");      // katto ja ilmanvaihto
   // mainostaulu keltaisessa seinässä: maalivahti ja teksti
   r(56, 40, 46, 22, "#f4dc5c"); r(56, 40, 46, 1, "#fcf09c"); r(56, 61, 46, 1, "#b8942c");
-  text3("TERVETULOA", 58, 43, "#3c2c10"); text3("PELIIN", 58, 50, "#3c2c10");
-  r(88, 44, 8, 14, "#8c3c2c"); disc(92, 43, 3, "#e8c09c"); r(87, 56, 10, 3, "#6c2c1c"); r(89, 47, 6, 1, "#fcd41c");
+  // kyltin sisältö (SaiPan logo ja teksti) piirretään tuplatarkkana kisaDraw:ssa: saipaSign()
   // valkoinen matala osa, ovet ja ikkunat
   r(108, 62, 156, BASE - 62, "#c4c0d4"); r(108, 62, 156, 1, "#e0dcec"); dither(108, 72, 156, BASE - 72, "#c4c0d4", "#aca8c0", .4);
   for (const x of [214, 228, 242]) { r(x, 66, 9, 6, "#4c4864"); r(x + 1, 67, 7, 4, "#ffd890"); }
@@ -101,9 +100,7 @@ function kisaBg() {
   r(10, 96, 300, 1, "rgba(220,220,230,.22)");
   for (let i = -5; i <= 5; i++) { const xb = 160 + i * 64; lineC(lerp(VPK[0], xb, (122 - VPK[1]) / (H - VPK[1])), 122, xb, H, "rgba(220,220,230,.18)"); }
   // pysäköidyt autot hallin edessä (kaukana)
-  for (const [x, c] of [[36, "#5c6c7c"], [70, "#8c3c3c"], [232, "#3c4c5c"], [268, "#b8b4ac"]]) {
-    r(x, 84, 22, 6, c); r(x + 4, 80, 13, 5, c); r(x + 5, 81, 5, 3, "#9cb4d8"); r(x + 11, 81, 5, 3, "#7c94b8"); r(x, 84, 22, 1, "rgba(255,255,255,.25)");
-    disc(x + 4, 90, 2, "#101014"); disc(x + 18, 90, 2, "#101014"); r(x, 91, 22, 2, "rgba(0,0,0,.35)"); }
+  for (const [x, c, d] of [[36, "#5c6c7c", 1], [70, "#9c2c2c", -1], [232, "#3c4c5c", 1], [268, "#c8c4bc", -1]]) parkedCar(x, 80, c, d);
   // nurmikaistale ja lehtiä vasemmalla edessä
   vgrad(0, 126, 64, 10, ["#2c3c24", "#22301c"]); seed = 77; for (let k = 0; k < 60; k++) px(rnd() * 70, 124 + rnd() * 12, ["#c8782c", "#e8a83c", "#8c4c1c", "#3c4c2c"][(rnd() * 4) | 0]);
   r(0, 125, 66, 1, "#5c5c68"); fillPoly([[66, 125], [74, 136], [72, 136], [64, 126]], "#4c4c58");
@@ -113,9 +110,43 @@ function kisaBg() {
   seed = 91; for (let k = 0; k < 420; k++) { const a = rnd() * 6.3, d = Math.sqrt(rnd()) * 20, x = 12 + Math.cos(a) * d * 1.4, y = 16 + Math.sin(a) * d;
     px(x, y, bay(x | 0, y | 0) < .3 ? "#8c5c1c" : rnd() > .4 ? "#e8b440" : "#f8d868"); }
 }
+// Pysäköity sedan sivulta (17.10.: autot paremmiksi). d = 1 keula oikealle, -1 vasemmalle.
+// Kori kahdella sävyllä, ikkunoissa taivaan heijastus, ovisaumat, valot, vanteet ja märän
+// asfaltin heijastus auton alla.
+function parkedCar(x, y, c, d) {
+  const sh = (hex, k) => { const n = parseInt(hex.slice(1), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+  const X = (dx, w = 1) => (d > 0 ? x + dx : x + 24 - dx - w);       // peilaus keulan suunnan mukaan
+  for (let k = 0; k < 4; k++) r(x + 1, y + 12 + k, 22, 1, `rgba(${parseInt(c.slice(1, 3), 16)},${parseInt(c.slice(3, 5), 16)},${parseInt(c.slice(5, 7), 16)},${.16 - k * .04})`);   // heijastus
+  r(x + 1, y + 10, 22, 2, "rgba(0,0,0,.45)");                                                // varjo
+  r(x, y + 5, 24, 5, c); r(x, y + 5, 24, 1, sh(c, 1.35)); r(x, y + 9, 24, 1, sh(c, .6));     // kori
+  r(X(19, 5), y + 4, 5, 1, c); r(X(0, 4), y + 4, 4, 1, c);                                   // konepelti ja takakontti
+  fillPoly(d > 0 ? [[x + 5, y + 4], [x + 8, y], [x + 16, y], [x + 19, y + 4]] : [[x + 5, y + 4], [x + 8, y], [x + 16, y], [x + 19, y + 4]], sh(c, .9));   // ohjaamo
+  r(x + 9, y + 1, 3, 3, "#9cb4d8"); r(x + 13, y + 1, 3, 3, "#7c94b8"); px(x + 9, y + 1, "#d8e8fc"); r(x + 12, y + 1, 1, 3, sh(c, .7));   // ikkunat
+  px(X(7), y + 2, "#8ca4c8"); px(X(16), y + 2, "#6c84a8");
+  r(x + 12, y + 5, 1, 4, sh(c, .7)); px(x + 9, y + 6, sh(c, 1.4)); px(x + 15, y + 6, sh(c, 1.4));   // ovisauma ja kahvat
+  r(X(23), y + 6, 1, 2, "#fcf4c8"); r(X(0), y + 6, 1, 2, "#c81c1c");                       // ajovalo ja takavalo
+  r(X(9, 4), y + 8, 4, 1, "#e8e8e8");                                                        // rekisterikilpi
+  for (const wx of [x + 5, x + 19]) { disc(wx, y + 10, 2, "#0c0c10"); px(wx, y + 10, "#9c9ca8"); r(wx - 3, y + 7, 6, 1, sh(c, .5)); }   // renkaat ja vanteet
+}
+// SaiPan kyltti "Tervetuloa peliin" keltaiseen seinään: tuplatarkka, logo vasemmalla.
+let _saipaSign = null;
+function saipaSign() {
+  if (_saipaSign) return _saipaSign;
+  const cnv = document.createElement("canvas"); cnv.width = 92; cnv.height = 44; const prev = g; g = cnv.getContext("2d");
+  r(0, 0, 92, 44, "#f4dc5c"); r(0, 0, 92, 2, "#fcf09c"); r(0, 42, 92, 2, "#b8942c");
+  // logo: musta neljän sakaran tähti vinottain, keltainen kiekko mustin reunoin, SaiPa-teksti
+  const cx = 22, cy = 22; g.fillStyle = "#141414";
+  for (const [ax, ay] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.beginPath(); g.moveTo(cx + ax * 20, cy + ay * 20); g.lineTo(cx + ax * 9 - ay * 5, cy + ay * 9 + ax * 5); g.lineTo(cx + ax * 9 + ay * 5, cy + ay * 9 - ax * 5); g.closePath(); g.fill(); }
+  g.beginPath(); g.arc(cx, cy, 16, 0, 7); g.fill(); g.fillStyle = "#f8dc18"; g.beginPath(); g.arc(cx, cy, 14, 0, 7); g.fill();
+  g.fillStyle = "#141414"; g.font = "italic bold 10px Arial, Helvetica, sans-serif"; g.textAlign = "center"; g.fillText("SaiPa", cx, cy + 3);
+  g.font = "bold 6px Arial, sans-serif"; g.fillText("1948", cx, cy + 11); g.textAlign = "left";
+  text3("TERVETULOA", 47, 14, "#3c2c10"); text3("PELIIN", 47, 24, "#3c2c10");
+  g = prev; return (_saipaSign = cnv);
+}
 const LEAVES = Array.from({ length: 9 }, (_, i) => ({ x: (i * 53) % W, s: .3 + (i % 3) * .15, ph: i * 1.7 }));
 function kisaDraw(t) {
   g.drawImage(paintBg("kisapuisto", kisaBg), 0, 0);
+  g.imageSmoothingEnabled = false; g.drawImage(saipaSign(), 56, 40, 46, 22);
   // lyhtypylväät: kaukainen oikealla, valokeila ja heijastus märässä asfaltissa
   for (const [x, y0, h] of [[24, 84, 34], [286, 88, 40]]) {
     r(x, y0 - h, 1, h, "#2c2a38"); r(x - 3, y0 - h - 1, 7, 2, "#3c3a4c"); r(x - 2, y0 - h + 1, 5, 1, "#fff0b0");
@@ -163,7 +194,13 @@ function kisaBox() { // Jussin pahvilaatikko Liigan toimistolta (piirretty x 229
   fillPoly([[233, 110], [229, 106], [238, 106], [241, 110]], "#c8a26c"); fillPoly([[251, 110], [255, 106], [247, 106], [244, 110]], "#a8824c");
   r(236, 103, 4, 5, "#f4f4ec"); r(236, 103, 4, 1, "#c81c1c");                                     // kahvikuppi
   r(244, 102, 7, 4, "#c8a030"); r(245, 103, 5, 1, "#3c2c10");                                    // nimikyltti
-  r(235, 113, 12, 3, "#f4f0e4"); text3("LIIGA", 235, 113, "#2c2c3c"); g.restore(); }
+  // LIIGA-tarra luettavana (17.10.: "LIIG"): I-kirjaimet yhden pikselin levyisinä, jotta sana mahtuu.
+  r(233, 111, 19, 9, "#2c2c3c"); r(234, 112, 17, 7, "#f4f0e4"); liigaWord(235, 113, "#1c1c2c"); g.restore(); }
+function liigaWord(x, y, c) {
+  r(x, y, 1, 5, c); r(x, y + 4, 3, 1, c);                                                   // L
+  r(x + 4, y, 1, 5, c); r(x + 6, y, 1, 5, c);                                               // I I
+  r(x + 8, y, 3, 1, c); r(x + 8, y, 1, 5, c); r(x + 8, y + 4, 3, 1, c); r(x + 10, y + 2, 1, 3, c); px(x + 9, y + 2, c);   // G
+  r(x + 12, y + 1, 1, 4, c); r(x + 14, y + 1, 1, 4, c); px(x + 13, y, c); r(x + 12, y + 2, 3, 1, c); }   // A
 function kisaTaxi() { shadow(282, 134, 40);
   r(242, 108, 78, 22, "#e8c81c"); r(242, 122, 78, 8, "#c8a414"); r(242, 108, 78, 1, "#fce870"); r(256, 96, 50, 13, "#e8c81c"); r(257, 95, 48, 1, "#fce870");
   r(260, 98, 19, 9, "#4c6ca0"); r(283, 98, 20, 9, "#4c6ca0"); r(261, 99, 4, 1, "#c8d8fc"); r(284, 99, 4, 1, "#c8d8fc"); r(264, 101, 6, 4, "#2c2c3c");

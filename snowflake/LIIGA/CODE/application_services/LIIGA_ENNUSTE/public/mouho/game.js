@@ -780,7 +780,7 @@ startEngine({
 })();
 
 // ---------------------------------------------------------------- esikatselu (kehitys)
-// ?nayta=kartta|hallitus|hahmot|basaari piirtää yhden näkymän paikallaan, jotta grafiikan voi
+// ?nayta=kartta|suomi|hallitus|hahmot|basaari|kisa piirtää yhden näkymän paikallaan, jotta grafiikan voi
 // tarkistaa kuvakaappauksella (myös päätteettömällä Chromella) pelaamatta sinne asti.
 (() => {
   const n = new URLSearchParams(location.search).get("nayta"); if (!n) return;
@@ -794,6 +794,7 @@ startEngine({
     else if (n === "hahmot") overlay = (t) => { r(0, 0, W, H, "#5c6c7c"); r(0, 100, W, 36, "#3c3c44");
       jussi(20, 120, 1, 0, {}); helminen(48, 120, t); person("saarni", 76, 120, t); merchant(104, 120, t); salesman(130, 120, t);
       for (let i = 0; i < 6; i++) npc(i, 160 + i * 26, 120, t, { talking: i === 0 }); for (let i = 0; i < 3; i++) npc(i, 170 + i * 30, 70, t, { back: true }); };
+    else if (n === "kisa") { Object.assign(st.flags, { leafPile: true }); go("koti", 178, true, 127); }
     else if (n === "basaari") { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, 128); }
     renderVerbs(); renderInv();
   }, 300));
