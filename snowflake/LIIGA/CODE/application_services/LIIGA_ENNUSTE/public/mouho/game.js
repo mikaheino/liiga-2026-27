@@ -746,3 +746,20 @@ startEngine({
     await say("Lensin sinne, mistä kaikki alkoi. Täällä minut sentään vielä tunnetaan.");
     await saarniScene(); },
 });
+
+// ---------------------------------------------------------------- testauksen aloituskohdat
+// ?alku=istanbul (tai kappadokia) aloittaa suoraan ruudusta sillä tilalla, joka pelaajalla
+// olisi sinne asti päästyään (17.10.: "voitko avata minulle pelin Istanbulista?").
+(() => {
+  const alku = new URLSearchParams(location.search).get("alku"); if (!alku) return;
+  const kisa = { introDone: true, leafPile: true, billOut: true, billStuck: true, billCaught: true, billReturned: true, adRead: true, noteHint: true,
+    myrraCalls: 1, pyramid: true, recruits: 2, mgp: true, metSales: true, pianoT: 1, unlocked: true, letterTaken: true, boxOpen: false, pig: true };
+  const ist = { merhaba: true, mehmetWho: true, signed: true, myrra1: true, quest: true, questHeard: true, map: true, askedMap: true, bag: true, bazaar: true };
+  Object.assign(st.flags, kisa); st.hat = true; st.inv = ["puhelin", "lappu", "kaavio", "kortti", "kirje", "lippu", "rahat"];
+  if (alku === "kappadokia") { Object.assign(st.flags, ist); st.flags.recruits = 42; st.whip = true; st.inv = ["puhelin", "lappu", "kaavio", "kortti", "kirje", "lippu", "velkakirja", "pussi", "ruoska", "kebab"]; }
+  addEventListener("load", () => setTimeout(() => {
+    title = false; renderVerbs(); renderInv(); renderIq(); setSentence();
+    if (alku === "kappadokia") { go("basaari", 160, true, 74); script(() => toTemple()); }
+    else { go("basaari", 40, true); script(() => say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä jokainen on potentiaalinen jäsen.")); }
+  }, 200));
+})();
