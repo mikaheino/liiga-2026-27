@@ -53,7 +53,9 @@ canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; 
 #dialog button { color: #fc54fc; } #dialog button.asked { color: #7c3c9c; } #dialog button:hover { color: #fcfc54; }
 #iq { color: #fcc81c; }
 #game.talking #ui { display: none; } #game.talking #dialog { display: flex; }
-#game.cut canvas { cursor: wait; }
+/* Välikohtauksessa himmeä pikseliristikko eikä "wait": macOS näyttää waitin pyörivänä
+   latausikonina, ja peli näytti jumittuvan (käyttäjä 17.10.). */
+#game.cut canvas { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' shape-rendering='crispEdges'%3E%3Cpath d='M8 0h1v6H8zM8 11h1v6H8zM0 8h6v1H0zM11 8h6v1h-6z' fill='%23707090'/%3E%3C/svg%3E") 8 8, default; }
 .hint { margin-top: 10px; color: #545454; font-size: 18px; text-align: center; }
 @media (max-width: 520px) { #ui { grid-template-columns: 1fr; } }
 </style>

@@ -18,7 +18,7 @@ Object.assign(ITEMS, {
   kebab: { name: "kebab", look: () => say("Aito Istanbulin döner kebab. Säästän sen Mouhoon. Pizza on yliarvostettu.") },
   kortti: { name: "käyntikortti", look: () => say("\"MOUHO GLOBAL PARTNERS. Istanbul - Milano - Lappeenranta.\nKansainvälistä jäsenhankintaa.\"\nKuulostaa viralliselta. Siinä on kultareunus.") },
   kirje: { name: "kirje", look: async () => { await say("\"Arvoisa toiminnanjohtaja Markkanen! Mouho Global Partners on kiinnostunut rakenteestanne.\nTervetuloa Istanbuliin rekrytoimaan. Sijoittajat odottavat.\""); await say("Rakenteestani! Tieto kulkee nopeasti. Pyramidi toimii jo."); if (!has("lippu")) { await say("Kirjeen välissä on lentolippu Istanbuliin. Ilmainen! Se on aina hyvä merkki. Eikö olekin?"); give("lippu"); } } },
-  seteli: { name: "50 euron seteli", look: () => say("Herra Saarnin viisikymppinen. Se ei ole minun. Palautan sen. Niin tehdään.") },
+  seteli: { name: "50 euron seteli", look: () => say("Herra Saarnin viisikymppinen. Se ei ole minun. Palautan sen SaiPan toimiston postiluukusta: käytä seteliä postilaatikkoon.") },
   ilmoitus: { name: "Mouhon ilmoitus", look: () => say(st.flags.pyramid ? "Ilmoituksen takana on pyramidikaavioni. Huipulla: minä." : "\"Mouho hakee toiminnanjohtajaa.\" Luin sen jo kolme kertaa. Joka kerta se kuulostaa paremmalta.") },
   kaavio: { name: "pyramidikaavio", look: () => say(st.flags.recruits ? `Pyramidikaavio. Huipulla minä, alla ${st.flags.recruits} rekrytoitua. Kasvaa kuin ennustemallin virhemarginaali.` : "Pyramidikaavio Mouhon ilmoituksen takana. Huipulla minä. Alla tilaa kahdelle, ja niiden alla neljälle, ja...\nTämä on nerokasta.") },
   lippu: { name: "lentolippu", look: () => say("Yksisuuntainen lippu Istanbuliin. Paluu järjestyy jotenkin. Aina järjestyy.") },
@@ -279,7 +279,8 @@ async function callMyrra() {
   await phoneCall(MYRRA_CALLS[n]);
   if (n === 0) { st.flags.pyramid = true; take("ilmoitus"); give("kaavio"); iq("pyramidi", 5);
     await say("Piirrän ilmoituksen taakse. Huipulle minä. Alle kaksi. Niiden alle neljä. Ja niin edelleen.");
-    await say("Pyramidi! Mouhon toiminnanjohtaja Markkanen. Kuulostaa jo paremmalta kuin urheilujohtaja."); }
+    await say("Pyramidi! Mouhon toiminnanjohtaja Markkanen. Kuulostaa jo paremmalta kuin urheilujohtaja.");
+    if (st.flags.billReturned) { await say("Ja hetkinen... ne kaksi peukkua toimiston ikkunassa!"); await recruitSaarni(); } }
 }
 
 // ---------------------------------------------------------------- Kisapuisto: seteli, ilmoitus, taustakohtaus
@@ -303,7 +304,8 @@ async function chaseBill() {
   if (st.flags.billStuck) {            // toinen yritys: seteli laatikon kyljestä käteen
     await walkTo(108, 124); st.dir = -1; await sleep(200);
     st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
-    return say("Sain sen! Herra Saarnin viisikymppinen on nyt tavaroissani. Se ei ole minun.");
+    await say("Sain sen! Herra Saarnin viisikymppinen on nyt tavaroissani.");
+    return say("Se ei ole minun. Herra Saarni meni SaiPan toimistoon. Palautan sen toimiston postiluukusta, tuosta postilaatikosta.");
   }
   gust(); await say("Melkein! Tuulenpuuska vei sen viime hetkellä... suoraan pahvilaatikkoni kylkeen. Siellä se nyt lepattaa.");
 }
@@ -315,12 +317,20 @@ async function standOnBox() {
   st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
   await say("Tuulenpuuska toi sen suoraan käteen! Tuuli on puolellani. Tänään ensimmäistä kertaa.");
 }
+// Palautus sitoo setelin juoneen: lapussa mainos Mouhosta, ikkunasta kaksi peukkua -- Jussin
+// mielestä pyramidin kaksi ensimmäistä jäsentä (Saarni ja maskotti). He tulevat loppuun.
 async function returnBill() {
   take("seteli"); st.flags.billReturned = true; iq("rehellisyys", 10);
-  await say("Kirjoitan lapun: \"Herra Saarnille. Putosi parkkipaikalle. -- J.M.\"\nJa postiluukusta sisään.");
+  await say("Kirjoitan lapun: \"Herra Saarnille. Putosi parkkipaikalle. -- J.M.\nP.S. Mouho hakee jäseniä!\"\nJa postiluukusta sisään.");
   st.flags.thumbT = Date.now(); beep(523, 120, "triangle", .05); setTimeout(() => beep(784, 200, "triangle", .05), 140);
-  await sleep(500); await say("Toimiston ikkunasta nousee iso valkoinen peukku.", "muu");
-  await say("Maskotti. Se iskee silmää. Se iskee silmää aina.");
+  await sleep(500); await say("Toimiston ikkunasta nousee kaksi peukkua. Iso valkoinen ja pieni liituraitainen.", "muu");
+  if (st.flags.pyramid) await recruitSaarni();
+  else await say("Kaksi peukkua... kaksi kannattajaa. Pitää muistaa tämä, kun minulla on suunnitelma.");
+}
+async function recruitSaarni() {
+  st.flags.recruits = Math.max(st.flags.recruits ?? 0, 2); iq("ensimmaiset", 5);
+  await say("Kaksi peukkua! Herra Saarni ja maskotti liittyivät Mouhoon. Pyramidin kaksi ensimmäistä jäsentä!");
+  await say("Merkitsen heidät kaavioon. Jokainen tuo kaksi uutta. Tämä toimii jo.");
 }
 async function salesmanBill() {
   await say("Ah, seteli! Annahan se tänne, välitän sen eteenpäin. Ammattilaisena.", "salkkumies");
@@ -335,6 +345,7 @@ function thumbsUp() {             // maskotin peukku toimiston ikkunassa setelin
   const s = st.flags.thumbT ? (Date.now() - st.flags.thumbT) / 1000 : 9; if (s > 3) return;
   const up = Math.min(1, s * 3), y = 74 - up * 8;
   r(213, 66, 8, 6, "#ffd890"); r(215, y, 4, 6, "#f4f4f4"); r(216, y - 3, 2, 3, "#f4f4f4"); r(214, y + 5, 6, 2, "#1c1c22");
+  const y2 = 75 - Math.min(1, Math.max(0, s - .3) * 3) * 6; r(229, y2, 3, 4, "#dca482"); r(230, y2 - 2, 1, 2, "#dca482"); r(228, y2 + 4, 5, 2, "#1c2444");   // Saarnin peukku
 }
 async function readAd() {
   if (st.flags.adRead) return say("\"MOUHO hakee toiminnanjohtajaa: uuden turnauksen järjestäminen, jäsenten hankinta, tarjoilu.\"\nSuunnitelmani on jo valmis. Melkein.");
@@ -480,7 +491,7 @@ const HINTS = () => {
   const f = st.flags, here = st.scene;
   if (here === "koti") {
     if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
-    if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon.", "Käytä seteliä postilaatikkoon (postiluukku)."];
+    if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon, ja toimiston postilaatikossa on luukku.", "Valitse Käytä, klikkaa seteliä tavaroissa ja sitten postilaatikkoa."];
     if (!f.adRead) return ["Ilmoitustaululla on jotain uutta.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
     if (!f.unlocked && !f.pianoT) return ["Liituraitamies katselee kaaviotani kiinnostuneena.", "Puhu salkkumiehelle ja kysy, mitä sijoittajat haluavat."];
