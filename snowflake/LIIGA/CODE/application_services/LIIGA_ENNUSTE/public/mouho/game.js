@@ -124,15 +124,18 @@ Object.assign(ROOMS, {
   // hiekkasäkki. Hiekka on luolassa, pussi tingitään basaarista. Kuilun yli kulkee kivipolku.
   temppeli: {
     title: "Unohdettu luolatemppeli, Kappadokia", scale: [62, 136, 0.34, 1.06], start: 128,
-    walk: [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]],
+    // Tuomari vartioi kivipolkua (17.10.: "luolassa voi käydä juttelematta tuomarin kanssa"):
+    // takaosaan pääsee vasta, kun hänet on värvätty turnauksen tuomariksi.
+    walk: () => st.flags.refRecruited ? [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
+                                      : [[[24, 100], [296, 100], [318, 136], [2, 136]]],
     enter: () => { st.flags.crossed = true; },
     draw: temppeliDraw,
     post: (t) => { temppeliPost(t); guideTemppeli(t); },
-    actors: [{ id: "tuomari", x: 100, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(100, 106, t, talking) }],
+    actors: [{ id: "tuomari", get x() { return st.flags.refRecruited ? 100 : 203; }, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(st.flags.refRecruited ? 100 : 203, 106, t, talking) }],
     props: [{ y: 76, draw: temppeliPedestal }, { y: 129, draw: temppeliSand }, { y: 131, draw: temppeliPillar }, { get y() { return st.flags.boulder == null ? -1 : boulderY(); }, draw: temppeliBoulder }],
     spots: [
-      { id: "tuomari", name: "erotuomarin haamu", actor: true, hidden: () => !st.flags.refHere, x: 92, y: 64, w: 16, h: 42, at: 112, aty: 110,
-        Katso: () => say("Muinaisen erotuomarin haamu. Raitapaita, pilli ja ilme, joka on nähnyt kaiken."), Puhu: () => refereeTalk() },
+      { id: "tuomari", name: "erotuomarin haamu", actor: true, hidden: () => !st.flags.refHere, get x() { return st.flags.refRecruited ? 92 : 195; }, y: 64, w: 16, h: 42, get at() { return st.flags.refRecruited ? 112 : 184; }, aty: 110,
+        Katso: () => say(st.flags.refRecruited ? "Turnauksemme tuomari. Hän harjoittelee vihellystä reliefille." : "Muinaisen erotuomarin haamu. Hän seisoo kivipolun päässä kuin maalivahti, joka ei päästä mitään läpi."), Puhu: () => refereeTalk() },
       { id: "pylvas", name: "kaatunut pylväs", x: 234, y: 118, w: 36, h: 14, at: 228, aty: 133,
         Katso: () => say("Kaatunut pylväs. Siinä on enemmän ryhtiä kuin minulla maanantaisin."), Työnnä: () => say("Se ei liiku. Eikä sen kuulukaan. Se on jo kaatunut kerran.") },
       { id: "hiekka", name: "hiekka", x: 36, y: 114, w: 36, h: 16, at: 76, aty: 127,
@@ -147,8 +150,8 @@ Object.assign(ROOMS, {
         Kävele: () => say("En hyppää. Kivipolku oikealla riittää.") },
       { id: "idoli", name: "kultainen idoli", x: 152, y: 49, w: 16, h: 16, at: 160, aty: 70, hidden: () => st.flags.idol && !st.flags.swapped,
         Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli korkealla jalustalla. Isoisän pyramidin huippu."),
-        Poimi: () => st.flags.idol ? say("Se on jo minulla.") : discoverTrap(),
-        "Käytä:sakki": () => grabIdol() },
+        Poimi: () => st.flags.idol ? say("Se on jo minulla.") : !st.flags.refRecruited ? blocked() : discoverTrap(),
+        "Käytä:sakki": () => (!st.flags.refRecruited ? blocked() : grabIdol()) },
       { id: "ovi", name: "käytävä basaariin", x: 2, y: 76, w: 18, h: 52, at: 22, aty: 118, exit: true,
         Katso: () => say("Käytävä takaisin basaariin."), Käytä: () => go("basaari", 160, false, 74), Kävele: () => go("basaari", 160, false, 74) },
     ],
@@ -175,10 +178,11 @@ async function toTemple() {
       await say("Kappadokia. Kalliotorneja, luolia... ja tuolla! Korkea jalusta ja sen huipulla kultainen idoli.");
       await say("Isoisän pyramidin huippu. Ja tuleva kiertopalkinto.");
       await refereeAppears(); await myrraIncoming(2);
-      await say("Turnaus tarvitsee tuomarin. Ja tuo tuomari näyttää tarvitsevan joukkueen."); }
+      await say("Turnaus tarvitsee tuomarin. Ja tuo tuomari näyttää tarvitsevan joukkueen. Jutellaan hänen kanssaan."); }
 
   });
 }
+function blocked() { return say("Tuomari seisoo kivipolulla. Hän ei päästä ketään ohi. Pitäisi jutella hänen kanssaan."); }
 // Paineansa: ensimmäinen yritys paljastaa pulman, ja ratkaisun osat ovat jo nähtävillä.
 async function discoverTrap() {
   await walkTo(160, 70);
@@ -476,7 +480,12 @@ function tasksText() {
 // 17.10.: "pelaajaa ohjataan oikeisiin tehtäviin pelaajan sitä kuitenkaan tietämättä".
 // Pelimaailman sisäisiä vihjeitä: tähtikipinä juuri nyt tarpeellisen esineen päällä ja
 // hahmojen lyhyet huudahdukset kuplan sijaan pienenä tekstinä. Ei koskaan välikohtauksessa.
+// Kipinä näkyy vain, jos pelaaja on ollut hetken jumissa (17.10.: tähti hiekan päällä oli
+// liian ilmeinen): 20 s ilman klikkausta tai uutta esinettä. Sitä ennen pelaaja löytää itse.
+let lastProgress = performance.now();
+for (const ev of ["click", "contextmenu", "keydown"]) document.addEventListener(ev, () => { lastProgress = performance.now(); }, true);
 function sparkle(x, y, t, ph = 0, period = 2600) {
+  if (performance.now() - lastProgress < 20000) return;
   const k = ((t + ph * 977) % period) / 600; if (k > 1 || busy) return;
   const a = Math.sin(k * Math.PI), L = 1 + Math.round(a * 3), c = `rgba(255,248,200,${.4 + a * .6})`;
   r(x - L, y, L * 2 + 1, 1, c); r(x, y - L, 1, L * 2 + 1, c); if (a > .6) { px(x - 1, y - 1, c); px(x + 1, y + 1, c); px(x + 1, y - 1, c); px(x - 1, y + 1, c); }
@@ -508,8 +517,9 @@ function guideBasaari(t) {
 }
 function guideTemppeli(t) {
   const f = st.flags;
-  if (f.refHere && f.myrra2 && !f.refRecruited) bark(100, 58, f.refWho ? "Joukkue, sanoit...?" : "Hmph. Kukaan ei kysy, kuka minä olen.", t, 1, 8000);
-  if (!f.needWeight && !f.idol) sparkle(160, 54, t, 2, 2400);
+  if (f.refHere && f.myrra2 && !f.refRecruited) bark(203, 58, f.refWho ? "Joukkue, sanoit...?" : "Hmph. Kukaan ei kysy, kuka minä olen.", t, 1, 8000);
+  if (f.refHere && !f.refRecruited) sparkle(203, 70, t, 6, 2000);
+  if (f.refRecruited && !f.needWeight && !f.idol) sparkle(160, 54, t, 2, 2400);
   if (has("pussi")) sparkle(54, 120, t, 3, 1800);
   if (has("sakki")) sparkle(160, 54, t, 4, 1600);
   if (has("idoli")) sparkle(11, 96, t, 5, 1400);
@@ -567,7 +577,8 @@ function quizStep(k) {
 async function refereeAppears() {
   st.flags.refMet = true; st.flags.refHere = true; beep(2200, 200, "square", .05); await sleep(300);
   await say("Pilli soi kammiossa. Reliefin eteen materialisoituu läpikuultava erotuomari.", "muu");
-  await say("Vieras! Kaksituhatta vuotta olen odottanut, että joku tulisi pelaamaan.", "tuomari");
+  await say("Seis! Kukaan ei kulje tätä kivipolkua. Olen vartioinut sitä kaksituhatta vuotta.", "tuomari");
+  await say("Miksi? Koska kukaan ei ole tullut pelaamaan. Vartiointi on ainoa peli, joka minulle jäi.", "tuomari");
 }
 // Jussi värvää tuomarin (Myrrä: "tärkeintä on joukkue").
 function refereeTalk() {
@@ -588,6 +599,8 @@ async function recruitReferee() {
   await say("Kaksituhatta vuotta olen vihellellyt tässä luolassa yksin. Ja nyt joku tarjoaa joukkuetta.", "tuomari");
   await say("Kyllä. Tulen viheltämään turnauksenne. Näen kaiken, paitsi paitsiot.", "tuomari");
   st.flags.refRecruited = true; st.flags.recruits = (st.flags.recruits ?? 0) + 1; iq("tuomarivarvays", 5);
+  beep(2200, 160, "square", .05);
+  await say("Tuomari viheltää ja liukuu sivuun. Kivipolku idolin luo on vapaa.", "muu");
   await say("Turnauksella on tuomari! Ja jäsenhankinta ulottuu nyt tuonpuoleiseen.");
 }
 
@@ -663,6 +676,8 @@ const HINTS = () => {
   }
   if (here === "temppeli") {
     if (f.idol) return ["Ulos ja äkkiä.", "Mene ovesta vasemmalle."];
+    if (!f.refWho) return ["Tuomari vartioi kivipolkua. Kukaan ei näytä koskaan kysyneen, kuka hän on.", "Puhu tuomarille ja kysy, kuka hän on."];
+    if (!f.refRecruited) return ["Jouko sanoi: tärkeintä on joukkue. Ja turnaus tarvitsee tuomarin.", "Puhu tuomarille ja pyydä häntä liittymään Mouhoon."];
     if (!f.needWeight) return ["Idoli on korkealla jalustalla. Mennään katsomaan.", "Poimi idoli jalustalta."];
     if (has("sakki")) return ["Hiekkasäkki on yhtä painava kuin idoli. Vaihto sulavasti.", "Käytä hiekkasäkkiä idoliin."];
     if (has("pussi")) return ["Pussiin pitää saada hiekkaa.", "Käytä nahkapussia hiekkaan (vasemmalla edessä)."];
