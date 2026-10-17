@@ -44,7 +44,7 @@ function kaivokatuDraw(t, jx, idol) {
   g.drawImage(paintBg("kaivokatu", kaivokatuBg), 0, 0);
   tram(-140 + ((t / 1000 * 60) % 600));
   for (const [x0, c, v] of [[60, "#3c2c4c", 9], [210, "#2c4c3c", -7], [260, "#5c2c2c", 6]]) { const x = ((x0 + t / 1000 * v) % 340 + 340) % 340 - 10; figure(x, 116, c, false, t + x0 * 50, v); }
-  shadow(jx, 117, 6); jussi(jx, 117, 1, Math.floor(t / 120) % 4, { whip: true }, .9);
+  shadow(jx, 117, 6); jussi(jx, 117, 1, Math.floor(t / 120) % 4, {}, .9);
   if (idol) { r(jx + 6, 99, 4, 6, "#e8c81c"); r(jx + 7, 97, 2, 2, "#e8c81c"); glow(jx + 8, 101, 8, "255,220,100", .3); }
 }
 
@@ -105,7 +105,7 @@ async function ending() {
       else if (c.who === "salkkumies") salesman(c.x, c.ty, t);
       else if (c.who === "tuomari") ghostRef(c.x, c.ty, t, speaking === "tuomari");
       else figure(c.x, c.ty, c.c, c.fez, t, mv ? 4 : Math.sin(t / 300 + c.tx)); }
-    shadow(176, 128, 7); jussi(176, 128, -1, 0, { whip: true });
+    shadow(176, 128, 7); jussi(176, 128, -1, 0, {});
     // jäsenhankintakaavio telineessä; Jussi kääntää sen turnauskaavioksi (17.10.: "kaavio rumalta")
     const k2 = flipT ? Math.min(1, (performance.now() - flipT) / 1400) : 0, sy = Math.cos(k2 * Math.PI);
     lineC(112, 128, 120, 92, "#5c4c3c", 2); lineC(140, 128, 132, 92, "#5c4c3c", 2); lineC(126, 128, 126, 96, "#4c3c2c", 2);   // maalarin teline

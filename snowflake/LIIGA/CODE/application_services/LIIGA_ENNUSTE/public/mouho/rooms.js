@@ -247,8 +247,6 @@ function basaariDraw(t) {
   // lyhdyt
   for (const [x, y, s] of [[60, 40, 1], [110, 50, .7], [210, 50, .7], [262, 40, 1]]) { const f = .5 + .5 * Math.sin(t / 110 + x); r(x, y - 4, 1, 4, "#3c2c1c");
     r(x - 2 * s, y, 5 * s, 6 * s, "#a8741c"); r(x - s, y + s, 3 * s, 4 * s, f > .5 ? "#fce070" : "#fcc040"); glow(x, y + 3, 12 * s, "255,160,60", .16 + .05 * f); }
-  if (!st.flags.bag) { r(84, 60, 1, 4, "#3c3c3c"); r(80, 64, 9, 11, "#c8b48c"); r(80, 64, 9, 1, "#e0d0a8"); r(82, 65, 5, 2, "#a8946c"); r(87, 66, 2, 9, "#a8946c"); }
-  if (!st.whip) { r(222, 72, 2, 12, "#6c4420"); r(219, 71, 6, 2, "#6c4420"); for (let k = 0; k < 8; k++) px(224 + k, 82 + Math.sin(k) * 2, "#6c4420"); }
   // höyry teelaseista, kissa jonka häntä heiluu, kyyhkyt
   for (let i = 0; i < 3; i++) { const k = ((t / 900 + i / 3) % 1); px(118 + i * 6 + Math.sin(t / 300 + i) * 1.5, 105 - k * 10, `rgba(240,230,220,${.5 * (1 - k)})`); }
   { const tw = Math.sin(t / 420) * 3; r(182, 120, 8, 6, "#4c3c34"); disc(188, 119, 3, "#4c3c34"); px(186, 116, "#4c3c34"); px(190, 116, "#4c3c34"); px(187, 119, "#c8e85c"); px(189, 119, "#c8e85c");
