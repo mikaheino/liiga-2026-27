@@ -45,9 +45,10 @@ Käytä vain alla annettua tilannekuvaa; älä keksi lukuja. Jos kysytty asia ei
 Lyhyesti: vastaus yhdellä lauseella, tarvittaessa enintään 10 rivin taulukko, enintään kaksi lausetta tulkintaa. Prosentit yhdellä desimaalilla, desimaalipilkku.
 "Mestaruus" tarkoittaa tässä runkosarjan voittoa: malli ei ennusta pudotuspelejä. Vyöhykkeet: 1-6 puolivälierät, 7-10 karsinta, 15-17 putoaa. Vertaa mallin osuvuutta siihen, että kotijoukkue voittaa aina.
 Vedonlyönnistä: anna luvut, älä kehota pelaamaan.
-Lopeta joukkueita koskeva vastaus rivillä "Lisää sovelluksessa: /joukkue/<Joukkue>" ja muut sopivalla sivulla (/sarjataulukko, /voittaja, /ottelut, /liike).`;
+Lopeta joukkueita koskeva vastaus rivillä "Lisää sovelluksessa: /joukkue/<Joukkue>" ja muut sopivalla sivulla (/sarjataulukko, /voittaja, /ottelut, /liike).
+Kirjoita aivan viimeiseksi riviksi kolme lyhyttä jatkokysymystä, joita käyttäjä voisi kysyä seuraavaksi, muodossa "JATKO: kysymys 1 | kysymys 2 | kysymys 3".`;
 
-export async function askLocal(history: Turn[]): Promise<{ text: string; ms: number }> {
+export async function askLocal(history: Turn[]): Promise<{ text: string; ms: number; suggestions: string[] }> {
   const t0 = Date.now();
   const convo = history.slice(-10).map((t) => `${t.role === "user" ? "Käyttäjä" : "Sinä"}: ${t.text}`).join("\n\n");
   const prompt = `TILANNEKUVA\n${await context()}\n\nKESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
@@ -63,5 +64,8 @@ export async function askLocal(history: Turn[]): Promise<{ text: string; ms: num
   });
   const j = JSON.parse(out) as { result?: string; is_error?: boolean };
   if (j.is_error || !j.result) throw new Error(j.result || "Paikallinen Claude ei vastannut.");
-  return { text: j.result, ms: Date.now() - t0 };
+  // Jatkokysymykset viimeiseltä JATKO-riviltä, kuten Snowflaken agentin suggested_queries.
+  const m = j.result.match(/\n?\s*JATKO:\s*(.+)\s*$/);
+  const suggestions = m ? m[1].split("|").map((q) => q.trim()).filter(Boolean).slice(0, 3) : [];
+  return { text: m ? j.result.slice(0, m.index).trimEnd() : j.result, ms: Date.now() - t0, suggestions };
 }

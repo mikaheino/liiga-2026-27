@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -154,7 +155,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
     skills = sorted(p.parent.name for p in SKILLS.glob("*/SKILL.md")) if html else []
     orch = ORCHESTRATION if html else ORCHESTRATION.rsplit(" Load the esikatselu-html", 1)[0]
     s = {
-        "models": {"orchestration": "auto"},
+        # "auto" valitsee Opuksen; LIIGA_AGENT_MODEL kokeilee nopeampaa mallia (mitattu, ks. optimointiloki).
+        "models": {"orchestration": os.environ.get("LIIGA_AGENT_MODEL", "auto")},
         "orchestration": {"budget": {"seconds": 300, "tokens": 20000}},
         "instructions": {
             "orchestration": orch,

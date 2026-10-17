@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { md } from "@/lib/markdown";
 
-type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean };
+type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean; suggestions?: string[] };
 const KEY = "liiga-chat";
 const load = (): Turn[] => { try { return JSON.parse(sessionStorage.getItem(KEY) ?? "[]"); } catch { return []; } };
 const save = (t: Turn[]) => { try { sessionStorage.setItem(KEY, JSON.stringify(t.slice(-30))); } catch { /* yksityinen ikkuna */ } };
@@ -39,7 +39,7 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ history: history.map(({ role, text }) => ({ role, text })) }) });
       const j = await res.json();
-      setTurns((t) => [...t, j.error ? { role: "assistant", text: `Agentti ei vastannut: ${j.error}`, error: true } : { role: "assistant", text: j.text, ms: j.ms }]);
+      setTurns((t) => [...t, j.error ? { role: "assistant", text: `Agentti ei vastannut: ${j.error}`, error: true } : { role: "assistant", text: j.text, ms: j.ms, suggestions: j.suggestions }]);
     } catch (e) {
       setTurns((t) => [...t, { role: "assistant", text: `Yhteys katkesi: ${(e as Error).message}`, error: true }]);
     } finally { setBusy(null); }
@@ -70,6 +70,11 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
                 {t.ms != null && <span className="msg-ms">{(t.ms / 1000).toFixed(0)} s</span>}
               </div>
             ))}
+            {busy == null && turns.at(-1)?.suggestions?.length ? (
+              <div className="chat-follow">
+                {turns.at(-1)!.suggestions!.map((s) => <button key={s} className="chat-q" onClick={() => send(s)}>▸ {s}</button>)}
+              </div>
+            ) : null}
             {busy != null && (
               <div className="msg assistant thinking">
                 <div className="loading-rink small"><b className="puck" /></div>

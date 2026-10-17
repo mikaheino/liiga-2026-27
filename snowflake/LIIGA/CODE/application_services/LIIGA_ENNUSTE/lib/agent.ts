@@ -10,10 +10,11 @@ import { DATA_MODE, query } from "@/lib/snowflake";
 const AGENT = process.env.LIIGA_AGENT ?? "SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA";
 export type Turn = { role: "user" | "assistant"; text: string };
 
-type Part = { type?: string; text?: string };
+type Part = { type?: string; text?: string; suggested_queries?: { query?: string }[] };
+export type Answer = { text: string; ms: number; suggestions?: string[] };
 // Paikallisesti (DuckDB-tila) keskustelu käyttää paikallista Claudea, Snowflakessa agenttia.
 export const AGENT_SOURCE = DATA_MODE === "duckdb" ? "local" : "snowflake";
-export async function ask(history: Turn[]): Promise<{ text: string; ms: number }> {
+export async function ask(history: Turn[]): Promise<Answer> {
   if (AGENT_SOURCE === "local") return askLocal(history);
   const body = JSON.stringify({
     messages: history.slice(-12).map((t) => ({ role: t.role, content: [{ type: "text", text: t.text }] })),
@@ -24,5 +25,7 @@ export async function ask(history: Turn[]): Promise<{ text: string; ms: number }
   const r = JSON.parse(rows[0]?.R ?? "{}") as { content?: Part[]; message?: string; error?: string };
   const texts = (r.content ?? []).filter((p) => p.type === "text" && p.text).map((p) => p.text!);
   const text = texts.length ? texts[texts.length - 1] : r.message ?? r.error ?? "Agentti ei vastannut.";
-  return { text, ms: Date.now() - t0 };
+  // Jatkokysymykset, kuten CoWork näyttää: agentti palauttaa ne omana osanaan.
+  const suggestions = (r.content ?? []).flatMap((p) => p.suggested_queries ?? []).map((q) => q.query ?? "").filter(Boolean).slice(0, 3);
+  return { text, ms: Date.now() - t0, suggestions };
 }
