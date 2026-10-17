@@ -82,7 +82,7 @@ def snapshot_standings(con=None, season: int | None = None) -> int:
     """
     cfg = load_config()["ingestion"]
     season = season or cfg["target_season"]
-    taken = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    taken = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
     rows = []
     for t in fetch_standings(season, cfg):
@@ -190,7 +190,7 @@ def reconstruct_games(con=None, season: int | None = None) -> dict:
             if d["games"] == 1 and missing >= 1:
                 played_once.add(team)
 
-        now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+        now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
         pending = query_df(
             con,
             f"""SELECT game_id, home_team, away_team FROM raw_games

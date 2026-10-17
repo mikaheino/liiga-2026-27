@@ -278,7 +278,7 @@ def games_needing_update(con, season: int, *, grace_hours: int = 8,
     start time is missing, the fallback is the calendar: a game dated 4.9. has
     certainly finished once it is 5.9.
     """
-    now = now or dt.datetime.now(dt.UTC)
+    now = now or dt.datetime.now(dt.timezone.utc)
     sched = query_df(
         con,
         f"""SELECT game_id, start_time, ended FROM raw_games
@@ -398,11 +398,11 @@ def ingest_results(season: int | None = None, *, game_ids: list[int] | None = No
 
     return {"season": season, "games_fetched": len(game_ids) - len(failed),
             "rows": counts, "failed": failed,
-            "fetched_at": dt.datetime.now(dt.UTC)
+            "fetched_at": dt.datetime.now(dt.timezone.utc)
                             .isoformat(timespec="seconds")}
 
 
 def yesterday() -> str:
     """Yesterday in UTC, as the API dates games."""
-    return (dt.datetime.now(dt.UTC).date()
+    return (dt.datetime.now(dt.timezone.utc).date()
             - dt.timedelta(days=1)).isoformat()

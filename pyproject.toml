@@ -52,6 +52,11 @@ ignore = ["E501", "B905", "E731"]
 [tool.ruff.lint.per-file-ignores]
 # Skriptit lisäävät sys.pathin ennen omia importtejaan (ajetaan suoraan, ei pakettina).
 "scripts/**" = ["E402"]
+# UP017 (datetime.UTC) vaatii Python 3.11:n. src/ ja Snowflake-proseduurit ajetaan myös
+# Snowflaken notebookissa vanhemmalla Pythonilla: ruffin automaattikorjaus 16.10. kaatoi
+# aamuajon (AttributeError: module 'datetime' has no attribute 'UTC'). tests/test_snowflake_python.py.
+"src/**" = ["UP017"]
+"snowflake/**" = ["UP017"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["liiga"]
