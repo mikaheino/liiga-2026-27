@@ -190,10 +190,10 @@ function kisaPig() { g.save(); g.translate(0, 7);
   shadow(152, 114, 6); r(147, 108, 9, 6, "#fc9cb4"); r(146, 109, 11, 4, "#fc9cb4"); r(148, 108, 5, 1, "#fcbccc"); r(156, 110, 2, 2, "#fc7c9c");
   px(148, 114, "#d87c94"); px(154, 114, "#d87c94"); r(149, 108, 3, 1, "#3c1c24"); px(154, 109, "#000"); g.restore(); }
 function kisaBox() { // Jussin pahvilaatikko Liigan toimistolta (piirretty x 229-255, siirretty pianon alle)
-  g.save(); g.translate(-138, 9); shadow(242, 121, 9); r(233, 110, 18, 11, "#b8925c"); r(233, 110, 18, 1, "#d8b27c"); r(242, 110, 1, 11, "#8c6c3c");
+  g.save(); g.translate(BOX_AT[0] - 242, BOX_AT[1] - 121); shadow(242, 121, 9); r(233, 110, 18, 11, "#b8925c"); r(233, 110, 18, 1, "#d8b27c"); r(242, 110, 1, 11, "#8c6c3c");
   fillPoly([[233, 110], [229, 106], [238, 106], [241, 110]], "#c8a26c"); fillPoly([[251, 110], [255, 106], [247, 106], [244, 110]], "#a8824c");
   r(236, 103, 4, 5, "#f4f4ec"); r(236, 103, 4, 1, "#c81c1c");                                     // kahvikuppi
-  r(244, 102, 7, 4, "#c8a030"); r(245, 103, 5, 1, "#3c2c10");                                    // nimikyltti
+  // nimikyltti ei ole laatikossa: se putosi Jussin päähän ja on tavaroissa
   // LIIGA-tarra luettavana (17.10.: "LIIG"): I-kirjaimet yhden pikselin levyisinä, jotta sana mahtuu.
   r(233, 111, 19, 9, "#2c2c3c"); r(234, 112, 17, 7, "#f4f0e4"); liigaWord(235, 113, "#1c1c2c"); g.restore(); }
 function liigaWord(x, y, c) {

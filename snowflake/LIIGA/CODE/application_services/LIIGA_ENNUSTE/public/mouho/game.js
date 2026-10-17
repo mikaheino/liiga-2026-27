@@ -63,7 +63,7 @@ Object.assign(ROOMS, {
         hidden: () => !st.flags.billOut || st.flags.billCaught,
         Katso: () => say("Viisikymppinen lepattaa tuulessa. Herra Saarnin salkusta. Se ei ole minun."),
         Poimi: () => chaseBill(), Käytä: () => chaseBill() },
-      { id: "pollari", name: "pahvilaatikko", x: 91, y: 109, w: 26, h: 22, at: 122, aty: 128,
+      { id: "pollari", name: "pahvilaatikko", x: BOX_AT[0] - 13, y: BOX_AT[1] - 21, w: 26, h: 22, at: BOX_AT[0] - 20, aty: 128,
         Katso: () => say("Tavarani Liigan toimistolta. Kahvikuppi ja otteluohjelma, jossa on enemmän post-it-lappuja kuin otteluita."),
         // Sokkotesti 4: Ilveksen vuosi ei löytynyt pelistä. Vihje laatikosta, päättely itse (2025 - 40).
         Avaa: () => say("Kahvikuppi: \"Maailman paras urheilujohtaja\". Ostin sen itse.\nJa viime kevään otteluohjelma. Post-it: \"Ilves-ilta 2025: 40 vuotta viimeisestä mestaruudesta!\""),
@@ -417,7 +417,7 @@ async function chaseBill() {
 }
 async function standOnBox() {
   if (!st.flags.billOut || st.flags.billCaught) return say("Seison laatikolla hetken. Näköala on sama, mutta ylempää.");
-  await walkTo(104, 128); st.hop = performance.now(); await sleep(260);
+  await walkTo(BOX_AT[0], 128); st.hop = performance.now(); await sleep(260);
   await say("Ylös laatikon päälle. Toiminnanjohtaja seisoo aina vähän muita korkeammalla.");
   BILL.tx = st.x + 4; BILL.ty = st.y - 20; beep(300, 400, "triangle", .03); await sleep(900);
   st.flags.billCaught = true; give("seteli"); iq("seteli", 5);

@@ -131,6 +131,8 @@ const flightAt = (q) => { const [ax, ay] = MAPP.hki, [bx, by] = MAPP.lpr; return
 
 // ---------------------------------------------------------------- Kisapuisto: lehtikasa
 const LAND = [178, 127];
+// Laatikko jää siihen, mihin se putoaa (17.10.: "tavarat ovat eri paikassa ja ilmestyvät tyhjästä").
+const BOX_AT = [LAND[0] - 34, LAND[1] + 3];
 function leafPile(x, y, burst = 0) {
   seed = 5; for (let k = 0; k < 90; k++) { const a = rnd() * Math.PI, d = rnd() * 16; const X = x + Math.cos(a) * d * 1.3, Y = y - Math.sin(a) * d * .5;
     px(X, Y, ["#e8a83c", "#c8782c", "#f0c850", "#8c4c1c"][k % 4]); }
@@ -179,7 +181,7 @@ async function prologue() {
     T0 = performance.now();
     const fall = (start, from, to, gpx) => (k) => (k < start ? null : Math.min(to, from + (k - start) ** 2 * gpx));
     const tJ = Math.sqrt((LAND[1] + 30) / 260), tB = tJ + .5 + Math.sqrt((LAND[1] + 22) / 300), tP = tB + .4 + Math.sqrt((LAND[1] - 36) / 320);
-    const jF = fall(0, -30, LAND[1], 260), bF = fall(tJ + .5, -20, LAND[1] + 2, 300), pF = fall(tB + .4, -10, LAND[1] - 46, 320);
+    const jF = fall(0, -30, LAND[1], 260), bF = fall(tJ + .5, -20, BOX_AT[1] - 1, 300), pF = fall(tB + .4, -10, LAND[1] - 46, 320);
     setTimeout(() => beep(80, 200, "triangle", .1), tJ * 1000); setTimeout(() => beep(60, 160, "square", .08), tB * 1000);
     setTimeout(() => { beep(1300, 60, "square", .08); setTimeout(() => beep(900, 120, "triangle", .06), 60); }, tP * 1000);
     overlay = (t) => {
@@ -190,7 +192,7 @@ async function prologue() {
       for (const p of room().props.slice(1).filter((p) => p.draw !== kisaBox).sort((a, b) => a.y - b.y)) p.draw(t);
       leafPile(LAND[0], LAND[1], k > tJ && k < tJ + .7 ? (k - tJ) / .7 : 0);
       if (k >= tJ) jussi(LAND[0], LAND[1] + 2, 1, 0, { hat: false, whip: false }, depth(LAND[1])); else tumbleJussi(LAND[0], jF(k), k * 10, depth(LAND[1]));
-      const by = bF(k); if (by != null) tumbleBox(LAND[0] - 26, by - 6, k >= tB ? 0 : (k - tJ) * 8, 1.2);
+      const by = bF(k); if (by != null) { if (k >= tB) kisaBox(); else tumbleBox(BOX_AT[0], by - 6, (k - tJ) * 8, 1.2); }   // laskeuduttuaan sama laatikko kuin pelissä
       const py = pF(k);
       if (py != null && k < tP + .9) { r(LAND[0] - 8, py, 16, 6, "#c8a030"); r(LAND[0] - 7, py + 1, 14, 1, "#fce870"); r(LAND[0] - 6, py + 3, 12, 1, "#3c2c10"); }
       if (k >= tP) { const s2 = k - tP; for (let i = 0; i < 4; i++) { const a = s2 * 6 + i * Math.PI / 2, sx = LAND[0] + Math.cos(a) * 10, sy = LAND[1] - 52 + Math.sin(a) * 3; r(sx, sy, 2, 2, "#fcf09c"); }
