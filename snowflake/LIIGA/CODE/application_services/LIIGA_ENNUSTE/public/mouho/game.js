@@ -290,15 +290,26 @@ const BILL = { x: 204, y: 104, tx: 204, ty: 104, i: 0, fly: null };
 function drawBill(t) {
   if (!st.flags.billOut || st.flags.billCaught) return;
   BILL.x += (BILL.tx - BILL.x) * .06; BILL.y += (BILL.ty - BILL.y) * .06;
-  if (!busy && Math.hypot(st.x - BILL.x, st.y - BILL.y) < 16) gust();          // karkaa, kun tullaan lähelle
+  if (!busy && !st.flags.billStuck && Math.hypot(st.x - BILL.x, st.y - BILL.y) < 16) gust();   // karkaa lähestyessä (kahdesti)
   const f = Math.sin(t / 90), y = BILL.y - 6 - Math.abs(Math.sin(t / 300)) * 4;
   shadow(BILL.x, BILL.y, 3);
   g.save(); g.translate(BILL.x, y); g.rotate(f * .5); g.scale(1, .5 + .5 * Math.abs(Math.cos(t / 140)));
   r(-4, -2, 8, 4, "#c8a87c"); r(-4, -2, 8, 1, "#e8d0a8"); r(-1, -1, 2, 2, "#8c6c4c"); g.restore();
 }
-function gust() { BILL.i = (BILL.i + 1 + Math.floor(Math.random() * 2)) % BILL_SPOTS.length; [BILL.tx, BILL.ty] = BILL_SPOTS[BILL.i]; beep(180 + Math.random() * 60, 120, "triangle", .02); }
+// 17.10.: "setelin kiinni saaminen on liian vaikeata" -- karkaa vain kahdesti, sitten jää
+// kiinni Jussin pahvilaatikkoon (laatikon päältä saa yhä heti).
+const BOX_SPOT = [104, 117];
+function gust() {
+  st.flags.gusts = (st.flags.gusts ?? 0) + 1; beep(180 + Math.random() * 60, 120, "triangle", .02);
+  if (st.flags.gusts >= 2) { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOX_SPOT; return; }
+  BILL.i = (BILL.i + 1) % BILL_SPOTS.length; [BILL.tx, BILL.ty] = BILL_SPOTS[BILL.i];
+}
 async function chaseBill() {
-  await say(["Tuuli vie sen aina viime hetkellä.", "Melkein! Tämä seteli on liukkaampi kuin ennakkomaksut.", "Tarvitsisin korkeutta. Tuulenpuuskat kulkevat vähän ylempänä."][(st.flags.chase = (st.flags.chase ?? 0) + 1) % 3]);
+  if (st.flags.billStuck) {            // jäi kiinni laatikkoon: poimitaan
+    await walkTo(108, 124); st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
+    return say("Seteli jäi kiinni pahvilaatikkooni. Laatikko on tänään enemmän hyödyksi kuin minä.");
+  }
+  gust(); await say(st.flags.billStuck ? "Tuuli vei sen... suoraan pahvilaatikkoni kylkeen. Nyt se jäi kiinni!" : "Tuuli vie sen aina viime hetkellä. Melkein!");
 }
 async function standOnBox() {
   if (!st.flags.billOut || st.flags.billCaught) return say("Seison laatikolla hetken. Näköala on sama, mutta ylempää.");
@@ -338,16 +349,21 @@ async function readAd() {
   await say("Otan ilmoituksen mukaan. Tästä pitää kysyä neuvoa joltakulta viisaalta. Joukolla on aina neuvo.");
 }
 // Taustakohtaus intron aikana: Saarni ja maskotti autolta toimistoon, seteleitä lentää.
+// Vuorotellen (17.10.: "menee päällekkäin puheruutujen kanssa"): Jussi puhuu ensin, he
+// kävelevät hiljaa ja pysähtyvät vasemmalle Jussin kuplan alta pois, Saarni puhuu, sitten ovelle.
 async function saarniScene() {
-  Object.assign(SAARNI, { x: 36, y: 92 }); Object.assign(MASKOTTI, { x: 18, y: 93 }); st.flags.saarniHere = true; beep(90, 80, "square", .05);
-  const walking = Promise.all([walkActor(SAARNI, 150, 90, .9), walkActor(MASKOTTI, 132, 91, .9)]);
   await say("Mitä minä nyt teen? Koiranulkoiluttaja? Koira ulkoiluttaisi minua.");
-  await walking; st.flags.billOut = true; [BILL.x, BILL.y] = [SAARNI.x, SAARNI.y - 20]; [BILL.tx, BILL.ty] = BILL_SPOTS[0];
+  Object.assign(SAARNI, { x: 30, y: 92 }); Object.assign(MASKOTTI, { x: 12, y: 93 }); st.flags.saarniHere = true; beep(90, 80, "square", .05);
+  await sleep(300);
+  await Promise.all([walkActor(SAARNI, 92, 90, 1), walkActor(MASKOTTI, 74, 91, 1)]);
+  st.flags.billOut = true; [BILL.x, BILL.y] = [SAARNI.x - 6, SAARNI.y - 16]; [BILL.tx, BILL.ty] = BILL_SPOTS[0];
+  SAARNI.dir = -1;
   await say("Tultiin ostamaan pelaajia. Harri Aho on jumala, täältä on löytynyt pelaajia Otakarista asti.", "saarni");
   await say("Ja tekstitv:stä.", "saarni");
   await say("Maskotti iskee silmää. Se iskee silmää aina.", "muu");
-  await Promise.all([walkActor(SAARNI, 224, 86, 1), walkActor(MASKOTTI, 210, 87, 1)]);
+  await Promise.all([walkActor(SAARNI, 224, 86, 1.3), walkActor(MASKOTTI, 210, 87, 1.3)]);
   beep(140, 120, "square", .04); st.flags.saarniHere = false;
+  await sleep(300);
   await say("Pitkävetovalmentaja? Ei, se vaatisi, että voittaisin.");
   await say("Hetkinen. Herra Saarnin salkusta putosi jotain. Tuolla lentää viisikymppinen!");
 }
@@ -467,7 +483,7 @@ async function salesmanTalk() {
 const HINTS = () => {
   const f = st.flags, here = st.scene;
   if (here === "koti") {
-    if (f.billOut && !f.billCaught) return ["Seteli karkaa aina tuulen mukana. Tarvitsisin korkeutta.", "Käytä pahvilaatikkoa: seiso sen päällä, niin tuuli tuo setelin."];
+    if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Seteli karkaa tuulen mukana. Yritä vielä, tai nouse korkeammalle.", "Poimi seteliä uudelleen, tai käytä pahvilaatikkoa (seiso sen päällä)."];
     if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon.", "Käytä seteliä postilaatikkoon (postiluukku)."];
     if (!f.adRead) return ["Ilmoitustaululla on jotain uutta.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
