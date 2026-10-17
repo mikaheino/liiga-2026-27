@@ -36,3 +36,6 @@ snowflake/LIIGA/EVALS/results/
 
 # Sovelluksen ajettavat paketit (n. 20 Mt) jäävät gitin ulkopuolelle; lähde = tagi app-vN
 releases/app/
+
+# Mouho 2027 -ilmoittautumiset (henkilötietoja, ei julkiseen repoon)
+data/mouho_2027_ilmoittautumiset.csv

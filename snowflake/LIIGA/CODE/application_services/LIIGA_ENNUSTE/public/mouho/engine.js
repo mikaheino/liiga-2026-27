@@ -132,7 +132,8 @@ function say(text, who = "jussi") {
     }
     el.textContent = text; $say.replaceChildren(el); speaking = who;
     const done = () => { clearTimeout(tm); skip = null; speaking = null; el.remove(); res(); };
-    const tm = setTimeout(done, 1300 + text.length * 55); skip = done;
+    // Kesto pituuden mukaan (17.10. sokkotesti: ~3 s riitti vain lyhyille, tärkeitä rivejä jäi lukematta).
+    const tm = setTimeout(done, 2200 + text.length * 70); skip = done;
   });
 }
 async function script(fn) { busy = true; $game.classList.add("cut"); try { await fn(); } finally { busy = false; $game.classList.remove("cut"); setSentence(); } }
@@ -162,8 +163,10 @@ const nameOf = (o) => (typeof o === "string" ? ITEMS[o].name : o.name);
 const defVerb = (o) => (typeof o === "string" ? "Katso" : o.def ?? (o.actor ? "Puhu" : o.exit ? "Kävele" : "Katso"));
 function setSentence(target) {
   if (busy) return;
-  const join = verb === "Anna" ? " henkilölle " : " kanssa ";
-  $sent.textContent = first ? `${verb} ${nameOf(first)}${join}${target ? nameOf(target) : ""}` : `${verb}${target ? " " + nameOf(target) : ""}`;
+  // "Kävele" näytetään vain uloskäynneille ja lattialle; muuten oletustoiminto (sokkotesti:
+  // "Kävele 50 euron seteli"). Kahden kohteen lause nuolella, koska taivutus ei onnistu.
+  const shown = verb === "Kävele" && target && !(typeof target !== "string" && (target.exit || target.floor)) ? defVerb(target) : verb;
+  $sent.textContent = first ? `${verb}: ${nameOf(first)} \u2192 ${target ? nameOf(target) : "..."}` : `${shown}${target ? " " + nameOf(target) : ""}`;
   const dv = target ? defVerb(target) : null; for (const b of $verbs.children) b.classList.toggle("def", b.textContent === dv);
 }
 async function act(v, target) {
@@ -249,12 +252,13 @@ function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
     go(startRoom, startX, true); renderVerbs(); renderInv(); renderIq(); setSentence();
     await script(intro);
   }, { capture: true });
-  document.getElementById("save")?.addEventListener("click", saveGame);
+  // stopPropagation: muuten sama klikkaus ohittaa heti "Peli tallennettu" -ilmoituksen (sokkotesti).
+  document.getElementById("save")?.addEventListener("click", (e) => { e.stopPropagation(); saveGame(); });
   document.getElementById("hint")?.addEventListener("click", (e) => { e.stopPropagation(); idleAt = performance.now(); hint?.(); });   // ei kupli: muuten sama klikkaus ohittaisi vihjeen
   // Toimettomuus: minuutin hiljaisuuden jälkeen Jussi miettii ääneen seuraavaa askelta.
   let idleAt = performance.now();
   for (const ev of ["click", "contextmenu", "keydown"]) document.addEventListener(ev, () => { idleAt = performance.now(); }, true);
   setInterval(() => { if (!title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
-  document.getElementById("load")?.addEventListener("click", loadGame);
+  document.getElementById("load")?.addEventListener("click", (e) => { e.stopPropagation(); loadGame(); });
   requestAnimationFrame(frame);
 }

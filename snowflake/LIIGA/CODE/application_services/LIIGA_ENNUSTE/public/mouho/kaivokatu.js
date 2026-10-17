@@ -173,11 +173,43 @@ async function ending() {
   await say("Juuri kuten suunnittelin. Tai melkein.");
   [880, 1040, 880, 1040].forEach((fq, n) => setTimeout(() => beep(fq, 70, "square", .04), n * 75)); await sleep(600);
   await say("Puhelin soi. Liigan toimisto.", "muu");
-  await say("Liiga: \"Markkanen? Miten sait turkkilaiset sijoittajat kiinnostumaan jääkiekosta?\"", "muu");
+  await say(`Liiga: "Markkanen? Mouho-illan uutinen kiertää jo: turkkilaiset sijoittajat, ${f.recruits ?? 0} jäsentä ja haamutuomari. Miten sait turkkilaiset kiinnostumaan jääkiekosta?"`, "muu");
   await say("Pidin sen yksinkertaisena.");
   await say(`Mouho-IQ: ${iqTotal()} / ${IQ_MAX}. ${iqTotal() >= IQ_MAX ? "Täydet pisteet. Mouhoness saavutettu." : "Löytyikö kaikki? Kokeile uudestaan."}`, "muu");
   $say.innerHTML = '<div class="line" style="left:50%;bottom:76%;color:#fcfc54">MOUHO 2026 · 22.5. klo 17<br>Kaivokatu 10, 4. krs, Helsinki</div>';
   $game.classList.remove("cut");
   $dlg.replaceChildren(Object.assign(document.createElement("button"), { textContent: "Pelaa uudestaan", onclick: () => location.reload() }));
   $game.classList.add("talking");
+  await sleep(1200); mouho2027Form();
+}
+
+// ---------------------------------------------------------------- Mouho 2027 -ilmoittautuminen
+// Pelin palkinto (käyttäjä 17.10.): läpipeluun jälkeen avautuu lomake, jolla ilmoittaudutaan
+// oikeaan Mouho 2027 -turnaukseen. Lähetys sovelluksen reitille /api/mouho/ilmoittaudu.
+function mouho2027Form() {
+  const box = document.createElement("form"); box.id = "mouho2027";
+  box.innerHTML = `
+    <h2>Mouho 2027</h2>
+    <p>Toiminnanjohtaja Markkanen kutsuu sinut: 2v2 NHL, PS5. Ilmainen, kuten aina.</p>
+    <label>Nimi <input name="nimi" required minlength="2" maxlength="80" autocomplete="name"></label>
+    <label>Sähköposti <input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+    <label>Pelikaveri (2v2, valinnainen) <input name="pari" maxlength="80"></label>
+    <label>PSN-nimi (valinnainen) <input name="psn" maxlength="40"></label>
+    <small>Tietoja käytetään vain Mouho 2027 -ilmoittautumiseen.</small>
+    <div class="row"><button type="submit">Ilmoittaudu</button><button type="button" data-close>Ei nyt</button></div>
+    <p class="msg" role="status"></p>`;
+  const msg = box.querySelector(".msg");
+  box.querySelector("[data-close]").onclick = () => box.remove();
+  box.onsubmit = async (e) => {
+    e.preventDefault(); const d = Object.fromEntries(new FormData(box)); d.iq = `${iqTotal()}/${IQ_MAX}`;
+    msg.textContent = "Lähetetään..."; box.querySelector("[type=submit]").disabled = true;
+    try {
+      const res = await fetch("/api/mouho/ilmoittaudu", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      box.innerHTML = `<h2>Nähdään Mouhossa!</h2><p>${d.nimi.replace(/[<>&]/g, "")}, ilmoittautumisesi Mouho 2027:ään on vastaanotettu.</p><div class="row"><button type="button">Sulje</button></div>`;
+      box.querySelector("button").onclick = () => box.remove(); beep(523, 150, "triangle", .05); setTimeout(() => beep(784, 250, "triangle", .05), 160);
+    } catch (err) { msg.textContent = `Ilmoittautuminen ei onnistunut: ${err.message}`; box.querySelector("[type=submit]").disabled = false; }
+  };
+  document.getElementById("stage").append(box); box.querySelector("input").focus();
 }

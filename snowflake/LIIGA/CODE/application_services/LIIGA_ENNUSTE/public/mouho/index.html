@@ -60,6 +60,17 @@ canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; 
 #game.cut canvas { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' shape-rendering='crispEdges'%3E%3Cpath d='M8 0h1v6H8zM8 11h1v6H8zM0 8h6v1H0zM11 8h6v1h-6z' fill='%23707090'/%3E%3C/svg%3E") 8 8, default; }
 .hint { margin-top: 10px; color: #545454; font-size: 18px; text-align: center; }
 @media (max-width: 520px) { #ui { grid-template-columns: 1fr; } }
+#mouho2027 { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 420px); background: #10104c; border: 2px solid #fcd41c;
+  color: #e8e0c8; font: 15px VT323, monospace; padding: 12px 16px; display: grid; gap: 7px; box-shadow: 0 0 0 4px #000, 0 10px 30px #000a; z-index: 5; }
+#mouho2027 h2 { margin: 0; color: #fcfc54; font-size: 26px; letter-spacing: .04em; }
+#mouho2027 p { margin: 0; }
+#mouho2027 label { display: grid; gap: 2px; color: #a8c8fc; }
+#mouho2027 input { font: 16px VT323, monospace; background: #000; color: #fcfcfc; border: 1px solid #5c5ca8; padding: 4px 6px; }
+#mouho2027 small { color: #8c8cc8; }
+#mouho2027 .row { display: flex; gap: 12px; }
+#mouho2027 button { all: unset; cursor: pointer; padding: 4px 12px; background: #fcd41c; color: #10104c; font: 18px VT323, monospace; }
+#mouho2027 button[data-close] { background: transparent; color: #8c8cc8; }
+#mouho2027 .msg { color: #fc9c7c; min-height: 1em; }
 </style>
 </head>
 <body>
