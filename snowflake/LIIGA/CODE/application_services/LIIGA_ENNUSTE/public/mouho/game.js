@@ -28,6 +28,7 @@ Object.assign(ITEMS, {
   ruoska: { name: "ruoska", look: () => say("Ruoska. En tiedä miten tätä käytetään, mutta näytän tosi hyvältä.") },
   puhelin: { name: "kännykkä", look: () => say("Kännykkä. Pikavalinnassa ykkösenä Jouko Myrrä. Hän tietää aina mitä tehdä."),
     Käytä: () => callMyrra(), Puhu: () => callMyrra() },
+  lappu: { name: "Saarnin lappu", look: () => say(st.flags.adRead ? "\"Kiitos, rehellistä. Mouho kuulostaa hauskalta. Ollaan mukana. -M.S.\"" : "\"Kiitos, rehellistä. Kuulin että etsit töitä. Ilmoitustaululla on paikka, joka sopii sinulle. -M.S.\"") },
   velkakirja: { name: "velkakirja", look: () => say("\"Mouho Global Partners. Kebabtarjoilu Mouhoon, maksetaan JÄLKIKÄTEEN.\"\nEn maksanut mitään etukäteen. Jouko olisi ylpeä.") },
   idoli: { name: "kultainen idoli", look: () => say("Kultainen idoli. Pyramidin huippu. Se katsoo minua. Minä katson sitä. Me ymmärrämme toisiamme.") },
 });
@@ -44,6 +45,7 @@ Object.assign(ROOMS, {
     actors: [{ id: "salkkumies", x: 184, y: 92, h: 48, color: "#7cfcfc", draw: (t, talking) => salesman(184, 92, t, talking) },
              RAIMO, SAARNI, MASKOTTI],
     draw: (t) => { kisaDraw(t); satamaPiano(t); ghostLynx(t); thumbsUp(t); moneyTrail(t); },
+    post: (t) => guideKisa(t),
     onStop: (x, y) => quizStep(keyAt(x, y)),
     props: [{ y: 127, draw: () => st.flags.leafPile && leafPile(LAND[0], LAND[1]) }, { y: 128, draw: kisaPoster }, { y: 104, draw: kisaPostbox }, { y: 96, draw: kisaRack }, { y: 121, draw: kisaPig }, { y: 130, draw: kisaBox }, { y: 134, draw: kisaTaxi },
             { get y() { return BILL.y; }, draw: drawBill }],
@@ -93,6 +95,7 @@ Object.assign(ROOMS, {
     walk: [[[142, 72], [178, 72], [206, 96], [206, 121], [300, 136], [20, 136]]],
     actors: [{ id: "kauppias", x: 258, y: 96, h: 46, color: "#fc54fc", draw: (t, talking) => merchant(258, 96, t, talking) }],
     draw: (t) => { basaariDraw(t); satamaPiano(t); ghostCup(t); },
+    post: (t) => guideBasaari(t),
     onStop: (x, y) => quizStep(keyAt(x, y)),
     props: [{ y: 114, draw: basaariCounter }, { y: 101, draw: basaariSpices }, { y: 131, draw: basaariAmphora }],
     spots: [
@@ -128,7 +131,7 @@ Object.assign(ROOMS, {
     walk: () => st.flags.crossed ? [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
                                  : [[[24, 100], [296, 100], [318, 136], [2, 136]]],
     draw: temppeliDraw,
-    post: (t) => { temppeliPost(t); satamaPiano(t); ghostTrophy(t); },
+    post: (t) => { temppeliPost(t); satamaPiano(t); ghostTrophy(t); guideTemppeli(t); },
     onStop: (x, y) => quizStep(keyAt(x, y)),
     actors: [{ id: "tuomari", x: 100, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(100, 106, t, talking) }],
     props: [{ y: 76, draw: temppeliPedestal }, { y: 129, draw: temppeliSand }, { y: 131, draw: temppeliPillar }, { get y() { return st.flags.boulder == null ? -1 : boulderY(); }, draw: temppeliBoulder }],
@@ -397,8 +400,11 @@ async function returnBill() {
   await say(`Kirjoitan lapun: "Herra Saarnille. Putosi parkkipaikalle. -- J.M.${ps}"\nJa postiluukusta sisään.`);
   st.flags.thumbT = Date.now(); beep(523, 120, "triangle", .05); setTimeout(() => beep(784, 200, "triangle", .05), 140);
   await sleep(500); await say("Toimiston ikkunasta nousee kaksi peukkua. Iso valkoinen ja pieni liituraitainen.", "muu");
-  if (st.flags.adRead) await recruitSaarni();
-  else await say("Kaksi peukkua. Mukavaa, että joku vielä peukuttaa minua. Tänään se ei ole itsestäänselvyys.");
+  await sleep(300); beep(400, 80, "square", .04); await say("Postiluukusta tipahtaa lappu takaisin.", "muu"); give("lappu");
+  if (st.flags.adRead) { await say("\"Kiitos, rehellistä. Mouho kuulostaa hauskalta. Ollaan mukana. -M.S.\""); await recruitSaarni(); }
+  else { st.flags.noteHint = true;
+    await say("\"Kiitos, rehellistä. Kuulin että etsit töitä. Ilmoitustaululla on paikka, joka sopii sinulle. -M.S.\"");
+    await say("Herra Saarni itse! Työpaikka ilmoitustaululla. Rehellisyys kannattaa. Joskus."); }
 }
 async function recruitSaarni() {
   st.flags.recruits = Math.max(st.flags.recruits ?? 0, 2); iq("ensimmaiset", 5);
@@ -425,14 +431,15 @@ async function readAd() {
   st.flags.adRead = true; iq("ilmoitus", 3); give("ilmoitus");
   await say("Ilmoitustaululla on uusi lappu Mouho-logon alla:");
   await say("\"MOUHO hakee TOIMINNANJOHTAJAA. Tehtävät: uuden turnauksen järjestäminen, jäsenten hankinta, tarjoilu. Osallistuminen kaikille ilmaista.\"", "muu");
-  await say("Toiminnanjohtaja... JOHTAJA. Jäsenten hankinta... Jokainen jäsen hankkii jäseniä!");
+  await say("Toiminnanjohtaja... JOHTAJA! Työpaikka, ja vielä johtajan! Jäsenten hankinta... Jokainen jäsen hankkii jäseniä!");
   await say("Otan ilmoituksen mukaan. Tästä pitää kysyä neuvoa joltakulta viisaalta. Joukolla on aina neuvo.");
 }
 // Taustakohtaus intron aikana: Saarni ja maskotti autolta toimistoon, seteleitä lentää.
 // Vuorotellen (17.10.: "menee päällekkäin puheruutujen kanssa"): Jussi puhuu ensin, he
 // kävelevät hiljaa ja pysähtyvät vasemmalle Jussin kuplan alta pois, Saarni puhuu, sitten ovelle.
 async function saarniScene() {
-  await say("Mitä minä nyt teen? Koiranulkoiluttaja? Koira ulkoiluttaisi minua.");
+  await say("Mitä minä nyt teen? Tarvitsen uuden työn. Tänään. Liigan pitää nähdä, että Markkanen nousee.");
+  await say("Koiranulkoiluttaja? Koira ulkoiluttaisi minua.");
   Object.assign(SAARNI, { x: 30, y: 92 }); Object.assign(MASKOTTI, { x: 12, y: 93 }); st.flags.saarniHere = true; beep(90, 80, "square", .05);
   await sleep(300);
   await Promise.all([walkActor(SAARNI, 92, 90, 1), walkActor(MASKOTTI, 74, 91, 1)]);
@@ -446,6 +453,53 @@ async function saarniScene() {
   await sleep(300);
   await say("Pitkävetovalmentaja? Ei, se vaatisi, että voittaisin.");
   await say("Hetkinen. Herra Saarnin salkusta putosi jotain. Tuolla lentää viisikymppinen!");
+  await say("Ja Kisapuiston ilmoitustaululla on aina ollut työpaikkoja. Mutta ensin tuo seteli.");
+  st.flags.introDone = true;
+}
+
+// ---------------------------------------------------------------- huomaamaton ohjaus
+// 17.10.: "pelaajaa ohjataan oikeisiin tehtäviin pelaajan sitä kuitenkaan tietämättä".
+// Pelimaailman sisäisiä vihjeitä: tähtikipinä juuri nyt tarpeellisen esineen päällä ja
+// hahmojen lyhyet huudahdukset kuplan sijaan pienenä tekstinä. Ei koskaan välikohtauksessa.
+function sparkle(x, y, t, ph = 0, period = 2600) {
+  const k = ((t + ph * 977) % period) / 600; if (k > 1 || busy) return;
+  const a = Math.sin(k * Math.PI), L = 1 + Math.round(a * 3), c = `rgba(255,248,200,${.4 + a * .6})`;
+  r(x - L, y, L * 2 + 1, 1, c); r(x, y - L, 1, L * 2 + 1, c); if (a > .6) { px(x - 1, y - 1, c); px(x + 1, y + 1, c); px(x + 1, y - 1, c); px(x - 1, y + 1, c); }
+}
+function bark(x, y, text, t, ph = 0, period = 9000, dur = 2600) {
+  if (busy || overlay) return; const k = (t + ph * 1301) % period; if (k > dur) return;
+  const a = Math.min(1, k / 200, (dur - k) / 300);
+  g.save(); g.globalAlpha = a; g.font = "9px VT323, monospace"; g.textAlign = "center"; g.lineWidth = 3;
+  const hw = g.measureText(text).width / 2 + 3; x = Math.max(hw, Math.min(W - hw, x));        // aina ruudun sisällä g.strokeStyle = "#0c0c14"; g.strokeText(text, x, y - (k / dur) * 3); g.fillStyle = "#fcf4c8"; g.fillText(text, x, y - (k / dur) * 3); g.restore(); g.textAlign = "left";
+}
+function guideKisa(t) {
+  const f = st.flags; if (!f.introDone) return;
+  if (f.billOut && !f.billCaught) sparkle(BILL.x + 4, BILL.y - 12, t, 1, 2000);
+  if (!f.adRead) { sparkle(30, 92, t, 2, f.noteHint ? 1400 : 3200); if (f.noteHint) sparkle(44, 100, t, 5, 1400); }
+  if (f.pyramid && !f.mgp) bark(184, 54, "Psst! Toiminnanjohtaja!", t, 3, 7000);
+  if (f.unlocked && !f.letterTaken) sparkle(99, 83, t, 4, 1600);
+  if (has("lippu") && !f.pig) sparkle(151, 115, t, 6, 2200);
+  if (has("lippu") && !st.hat) sparkle(206, 74, t, 7, 2200);
+  if (has("lippu")) { bark(280, 86, "TÖÖT!", t, 8, 11000, 1400); const k = (t + 8 * 1301) % 11000; if (!busy && k < 30) beep(330, 140, "square", .02); }
+}
+function guideBasaari(t) {
+  const f = st.flags;
+  if (!f.merhaba) bark(258, 46, "Toiminnanjohtaja! Täällä, ystäväni!", t, 1, 6000);
+  else if (has("idoli")) bark(258, 46, "Aarre?! Tuo se tänne!", t, 2, 6000);
+  else if (!f.signed) bark(258, 46, "Se kaavio, ystäväni! Näytä!", t, 3, 8000);
+  else if (f.quest && !st.whip) bark(258, 46, "Arkeologi ilman ruoskaa? Tingitään!", t, 4, 9000);
+  if (f.quest && !f.map) sparkle(33, 70, t, 5, 1800);
+  if (f.quest && !f.bag) sparkle(84, 64, t, 6, 2200);
+  if (f.quest && !st.whip) sparkle(224, 74, t, 7, 2400);
+  if (f.quest && f.map && st.whip && !has("idoli")) sparkle(160, 52, t, 8, 1600);
+}
+function guideTemppeli(t) {
+  const f = st.flags;
+  if (f.refHere && f.myrra2 && !f.refRecruited) bark(100, 58, "Joukkue, sanoit...?", t, 1, 8000);
+  if (!f.crossed) sparkle(160, 14, t, 2, 2400);
+  if (has("pussi") && !has("sakki") && !f.swapped) sparkle(54, 120, t, 3, 1800);
+  if (f.crossed && has("sakki")) sparkle(160, 54, t, 4, 1600);
+  if (has("idoli")) sparkle(11, 96, t, 5, 1400);
 }
 
 // Kohde nimellä, ei indeksillä: uusi kohde ruudun alkuun siirsi indeksit kerran.
@@ -586,7 +640,7 @@ const HINTS = () => {
   if (here === "koti") {
     if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
     if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon, ja toimiston postilaatikossa on luukku.", "Valitse Käytä, klikkaa seteliä tavaroissa ja sitten postilaatikkoa."];
-    if (!f.adRead) return ["Ilmoitustaululla on jotain uutta.", "Katso ilmoitustaulua vasemmalla."];
+    if (!f.adRead) return [f.noteHint ? "Saarnin lappu sanoi, että ilmoitustaululla on minulle sopiva paikka." : "Tarvitsen työn. Ilmoitustaululla on aina ollut työpaikkoja.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
     if (!f.unlocked && !f.pianoT) return ["Liituraitamies katselee kaaviotani kiinnostuneena.", "Puhu salkkumiehelle ja kysy, mitä sijoittajat haluavat."];
     if (!f.unlocked) return ["Ilves on Tampereelta. Viimeisin mestaruus tuli 80-luvulla. Numerot ovat asfaltissa.", "Kävele asfaltin numeroille 1, 9, 8 ja 5, tässä järjestyksessä."];
@@ -634,6 +688,7 @@ ITEMS.seteli.icon = () => { r(3, 4, 18, 9, "#c8a87c"); r(3, 4, 18, 1, "#e8d0a8")
 ITEMS.ilmoitus.icon = () => { r(5, 1, 14, 15, "#f4f0e4"); r(5, 1, 14, 4, "#c81c1c"); r(7, 2, 10, 1, "#fce8c8"); for (let k = 0; k < 4; k++) r(7, 7 + k * 2, 8 + (k % 2) * 2, 1, "#6c6c6c"); px(18, 1, "#c8c8c8"); };
 ITEMS.kaavio.icon = () => { r(5, 1, 14, 15, "#f4f0e4"); for (let j = 0; j < 4; j++) for (let i = 0; i <= j; i++) r(11 - j * 2 + i * 4, 3 + j * 3, 2, 2, j === 0 ? "#c81c1c" : "#2c4c9c"); for (let j = 0; j < 3; j++) { lineC(12, 4 + j * 3, 10 - j * 2, 6 + j * 3, "#8c8c8c"); lineC(12, 4 + j * 3, 14 + j * 2, 6 + j * 3, "#8c8c8c"); } };
 ITEMS.velkakirja.icon = () => { r(5, 1, 14, 15, "#f0e8d0"); r(5, 1, 14, 1, "#fcf8ec"); for (let k = 0; k < 4; k++) r(7, 4 + k * 2, 10, 1, "#6c6c6c"); lineC(7, 13, 16, 12, "#2c3c8c"); disc(16, 13, 2, "#c81c1c"); };
+ITEMS.lappu.icon = () => { r(6, 3, 12, 11, "#fcf4c0"); r(6, 3, 12, 1, "#fffce0"); for (let k = 0; k < 3; k++) r(8, 6 + k * 2, 8 - k * 2, 1, "#4c4c6c"); r(13, 11, 4, 1, "#2c3c8c"); };
 ITEMS.puhelin.icon = () => { r(9, 1, 7, 14, "#1c1c24"); r(10, 2, 5, 10, "#5c9cdc"); r(10, 2, 5, 2, "#9cd4fc"); r(11, 13, 3, 1, "#5c5c6c"); px(11, 6, "#fcfcfc"); };
 ITEMS.idoli.icon = () => { r(9, 4, 6, 10, "#e8c81c"); r(10, 2, 4, 3, "#e8c81c"); r(9, 4, 2, 10, "#fcf06c"); r(13, 4, 2, 10, "#b8941c"); px(10, 7, "#3c2c0c"); px(13, 7, "#3c2c0c"); r(8, 14, 8, 1, "#8c6c1c"); px(15, 2, "#fff"); };
 
