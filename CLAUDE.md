@@ -32,6 +32,13 @@ Parannus lukitaan: `--update-baseline`. Sama portti ajetaan:
 - **Claude Code** (`.claude/settings.json`): ruff jokaiselle muokatulle .py-tiedostolle,
   löydökset palautuvat heti (exit 2) -- korjaa ne samalla kierroksella.
 
+⚠️ **Snowflakessa ajettava Python on vanhempi kuin 3.11** (17.10.): ruffin UP017 vaihtoi
+`datetime.timezone.utc` -> `datetime.UTC`, ja LIIGA_DAILY-notebook kaatui (AttributeError), joten
+Snowflake jäi päivän jälkeen. UP017 on pois `src/**`:sta ja `snowflake/**`:sta, ja
+`tests/test_snowflake_python.py` kaatuu 3.11+-ominaisuuksiin. Korjauksen jälkeen: push ->
+`ALTER GIT REPOSITORY LIIGA.CODE.LIIGA_REPO FETCH` -> `EXECUTE NOTEBOOK LIIGA.CODE.LIIGA_DAILY()`
+(ylläpitäjänä; notebook lukee src/:n reposta ajon aikana, itse ipynb on luontihetken kopio).
+
 Käyttöönotossa ruff korjasi 68 löydöstä (importit, `datetime.UTC`) ja loput käsin;
 B023-tapaukset olivat vääriä hälytyksiä (sulkeuma kutsutaan samalla kierroksella),
 sidottu oletusargumentiksi. Mallin ennuste tarkistettu muuttumattomaksi (ero 0,0).
