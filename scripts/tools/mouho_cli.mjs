@@ -47,7 +47,7 @@ if (cmd === "aloita") {
   if (existsSync(stateFile)) { try { process.kill(JSON.parse(readFileSync(stateFile, "utf8")).pid); } catch { /* jo poissa */ } }
   const port = 9400 + Math.floor(Math.random() * 400), alku = args[0] ? `&alku=${args[0]}` : "";
   const ch = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=/tmp/mouho-cli-profile-${name}`, "--window-size=960,700", `${BASE}?testi${alku}`],
+    ["--headless=new", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", `--remote-debugging-port=${port}`, `--user-data-dir=/tmp/mouho-cli-profile-${name}`, "--window-size=960,700", `${BASE}?testi${alku}`],
     { stdio: "ignore", detached: true });
   ch.unref(); writeFileSync(stateFile, JSON.stringify({ port, pid: ch.pid }));
   await sleep(2500);

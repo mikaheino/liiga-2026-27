@@ -84,6 +84,8 @@ Object.assign(ROOMS, {
         Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (!st.flags.unlocked) return say("Pelkkiä laskuja. Ne saavat jäädä sinne."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje sijoittajilta! Kultareunainen kuori. Joku muistaa minut."); },
         "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(),
         Katso: () => say("SaiPan toimiston postilaatikko, keltaisen oven vieressä. Postini tulee yhä tänne, vaikka lähdin keväällä 2023.") },
+      { id: "kirje", name: "kirje", x: 229, y: 70, w: 9, h: 7, at: 233, aty: 88, hidden: () => !(st.flags.boxOpen && st.flags.unlocked && !st.flags.letterTaken),
+        Katso: () => say("Kultareunainen kuori postilaatikossa. Sijoittajilta."), Poimi: () => spot("koti", "laatikko").Poimi(), Avaa: () => spot("koti", "laatikko").Poimi() },
       { id: "ovi", name: "SaiPan toimiston ovi", x: 219, y: 62, w: 8, h: 18, at: 224, aty: 88,
         // Sokkotesti 2: setelin tarjoaminen ovelle on luontevaa, joten se käy palautukseksi.
         "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(),
@@ -120,7 +122,7 @@ Object.assign(ROOMS, {
         Poimi: () => say("Kebab maksaa, ystäväni. Mutta tuoksu on ilmainen.", "kauppias"),
         Käytä: () => say("Pyöritän sitä toiseen suuntaan. Mehmet katsoo minua kuin olisin siirtänyt ottelun.") },
       { id: "matto", name: "matto", x: 16, y: 46, w: 34, h: 54, at: 56, aty: 112,
-        Katso: async () => { st.flags.map = true; iq("kartta", 4); await say("Mattoon on kudottu kartta! Kappadokia... luolatemppeli... ja punainen rasti.\nPainan sen mieleeni. Kadun päästä pääsee itään."); },
+        Katso: async () => { st.flags.map = true; iq("kartta", 4); await say("Mattoon on kudottu kartta! Kappadokia... luolatemppeli... ja punainen rasti.\nMuistan sen. Kadun päästä pääsee itään."); },
         Poimi: () => say("Matto maksaa enemmän kuin sinä.", "kauppias"), Työnnä: () => say("Matto ei lennä. Tarkistin.") },
       { id: "kauppias", name: "kauppias", actor: true, x: 247, y: 64, w: 22, h: 32, at: 160, aty: 122,
         Katso: () => say("Mehmet, Mouho Global Partnersin johtaja. Basaarin kovin tinkijä. Kuulemma hän on myynyt hiekkaa autiomaahan ja logon Lappeenrantaan."),
@@ -677,7 +679,8 @@ async function salesmanTalk() {
         await say("Milloin Ilves voitti viimeksi Suomen mestaruuden? Astu se vuosi asfalttiin, numero kerrallaan. Oikeasta vastauksesta sijoittajat kutsuvat teidät neuvottelemaan.", "salkkumies");
         f.pianoT = Date.now(); [262, 330, 392, 523, 659].forEach((fq, n) => setTimeout(() => beep(fq, 150, "triangle", .06), n * 110));
         await sleep(1100); await say("...Asfalttiin ilmestyi numeroita. Tämä kaupunki ei lakkaa yllättämästä.");
-        await say("Kuin siinä Tom Hanksin elokuvassa. Tarvitsee vain seistä oikeilla numeroilla oikeassa järjestyksessä."); return; }
+        await say("Kuin siinä Tom Hanksin elokuvassa. Tarvitsee vain seistä oikeilla numeroilla oikeassa järjestyksessä.");
+        await say("Ilveksen viimeinen mestaruus... Liigan toimiston papereissa laatikossani oli jotain Ilveksestä."); return; }
       else if (pick.startsWith("Otteluohjelma")) { f.salesSchedule = true;
         await say("Ai. No siirtyykö se lauantain peli? Kysyn vain varmuuden vuoksi. Ja sunnuntain. Ja ensi kuun.", "salkkumies");
         await say("Kaikki ottelut pelataan suunnitellusti. Luulisin. Älä lainaa minua."); }
@@ -791,9 +794,12 @@ startEngine({
     else if (n === "hallitus") overlay = (t) => { g.drawImage(paintBg("mouhoIn", mouhoInBg), 0, 0); boardTable(t); shadow(176, 128, 7); jussi(176, 128, -1, 0, {});
       for (let i = 0; i < 6; i++) npc(i, 14 + i * 13, 110, t, { sc: .85 });
       person("maskotti", 22, 124, t, { sc: .85 }); person("saarni", 46, 124, t, { sc: .85 }); merchant(72, 124, t); salesman(96, 124, t); ghostRef(154, 122, t); };
-    else if (n === "hahmot") overlay = (t) => { r(0, 0, W, H, "#5c6c7c"); r(0, 100, W, 36, "#3c3c44");
-      jussi(20, 120, 1, 0, {}); helminen(48, 120, t); person("saarni", 76, 120, t); merchant(104, 120, t); salesman(130, 120, t);
-      for (let i = 0; i < 6; i++) npc(i, 160 + i * 26, 120, t, { talking: i === 0 }); for (let i = 0; i < 3; i++) npc(i, 170 + i * 30, 70, t, { back: true }); };
+    else if (n === "hahmot") overlay = (t) => { r(0, 0, W, H, "#4c5c6c"); r(0, 62, W, 2, "#3c4c5c"); r(0, 130, W, 6, "#3c3c44");
+      // rivi 1: vertailuksi Jussi, Raimo ja Saarni (valokuvapäät) sekä uudet Mehmet ja salkkumies
+      jussi(40, 58, 1, 0, {}); helminen(90, 58, t); person("saarni", 140, 58, t); merchant(210, 58, t); salesman(262, 58, t);
+      // rivi 2: basaarin väki edestä ja takaa
+      for (let i = 0; i < 6; i++) npc(i, 24 + i * 27, 126, t);
+      for (let i = 0; i < 6; i++) npc(i, 186 + i * 22, 126, t, { back: true }); };
     else if (n === "kisa") { Object.assign(st.flags, { leafPile: true }); go("koti", 178, true, 127); }
     else if (n === "basaari") { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, 128); }
     renderVerbs(); renderInv();

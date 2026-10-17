@@ -274,7 +274,7 @@ function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
   // Toimettomuus: minuutin hiljaisuuden jälkeen Jussi miettii ääneen seuraavaa askelta.
   let idleAt = performance.now();
   for (const ev of ["click", "contextmenu", "keydown"]) document.addEventListener(ev, () => { idleAt = performance.now(); }, true);
-  setInterval(() => { if (!title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
+  setInterval(() => { if (!TEST && !title && !busy && !overlay && room() && performance.now() - idleAt > 60000) { idleAt = performance.now(); hint?.(); } }, 5000);
   document.getElementById("load")?.addEventListener("click", (e) => { e.stopPropagation(); loadGame(); });
   requestAnimationFrame(frame);
 }
@@ -296,7 +296,7 @@ if (TEST) {
       vaihtoehdot: $game.classList.contains("talking") ? [...$dlg.children].map((b) => b.textContent) : null,
       lomake: form ? form.innerText.slice(0, 400) : null, uudet_repliikit: lines, mouho_iq: document.getElementById("iq")?.textContent }; };
   const settle = async () => { const t0 = performance.now(); let calm = 0;
-    while (performance.now() - t0 < 60000) { await new Promise((r) => setTimeout(r, 60));
+    while (performance.now() - t0 < 60000) { await new Promise((r) => setTimeout(r, 60)); skip?.();      // repliikit ovat jo lokissa: ei odoteta niitä
       if ($game.classList.contains("talking") || document.getElementById("mouho2027")) { calm += 60; if (calm > 300) break; continue; }
       if (!busy && !skip && !overlay && !title) { calm += 60; if (calm > 400) break; } else calm = 0; }
     return view(); };
@@ -308,11 +308,13 @@ if (TEST) {
     katso: () => view(),
     aloita: async () => { if (title) cv.dispatchEvent(new MouseEvent("click", { clientX: 1, clientY: 1 })); while (skip || busy || overlay) { skip?.(); await new Promise((r) => setTimeout(r, 80)); } return settle(); },
     async tee(verbi, kohde, esine) {
-      if (busy || $game.classList.contains("talking")) return { virhe: "Odota: kohtaus tai keskustelu on kesken.", ...view() };
+      if (busy && !$game.classList.contains("talking")) await settle();
+      if ($game.classList.contains("talking")) return { virhe: "Keskustelu on kesken: valitse vaihtoehto.", ...view() };
       const m = /^numero (\d)$/.exec(kohde ?? "");
       if (m) { const A = QUIZ_AREA[st.scene], y = (A.y0 + A.y1) / 2, [a, b] = A.edges(y), i = KEYS.indexOf(m[1]);
         place(a + (i + .5) / 10 * (b - a), y); room().onStop?.(st.x, st.y); return settle(); }
-      if (esine) { const k = findItem(esine); if (!k) return { virhe: `Tavaroissa ei ole: ${esine}`, ...view() };
+      if (esine && !findItem(esine) && findItem(kohde)) [kohde, esine] = [esine, kohde];       // kumpi tahansa järjestys
+      if (esine) { const k = findItem(esine); if (!k) return { virhe: `Tavaroissa ei ole: ${esine} (muoto: tee Käytä <kohde> <esine>)`, ...view() };
         const p = findSpot(kohde); if (!p) { const k2 = findItem(kohde); if (!k2) return { virhe: `Ei näkyvissä: ${kohde}`, ...view() }; first = k; act(verbi, k2); return settle(); }
         first = k; act(verbi, p); return settle(); }
       const p = findSpot(kohde);
