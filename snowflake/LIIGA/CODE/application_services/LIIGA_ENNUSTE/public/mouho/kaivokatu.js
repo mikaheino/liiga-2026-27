@@ -160,7 +160,7 @@ async function ending() {
   // 4. pyramidin lupaus lunastetaan
   await say("\"No, toiminnanjohtaja? Jokainen meistä toi kaksi uutta. Mitä me saamme?\"", "muu");
   await say("Te saatte... tuota... saatte...");
-  await say("Hetkinen. Soitan Joukolle.");
+  await say("Hetkinen. Soitan Jouko Myrrälle.");
   f.myrra3 = true; await phoneCall(MYRRA_CALLS[3]); callSpk = endSpk;
   await say("Anna ihmisten pelata... Ja jos pyramidin kääntää ylösalaisin...");
   flipT = performance.now(); beep(330, 200, "triangle", .06); setTimeout(() => beep(523, 300, "triangle", .06), 260); await sleep(1600);
@@ -174,6 +174,7 @@ async function ending() {
   await say("Ottelut alkavat. Kukaan ei enää kysy, mitä saa. Kaikki pelaavat.", "muu");
   // 5. haastattelu ja brändi
   await say("Hallitus: \"Markkanen. Jäsenten hankinta, tarjoilu, turnaus. Kaikki ennen haastattelua.\"", "muu");
+  await say("Ja kansainvälinen kumppanuus: tässä sopimus Mouho Global Partnersin kanssa. Allekirjoitettu Istanbulissa.");
   await say("Hallitus: \"Mutta tässä sopimuksessa lukee, että myit Mouho-brändin turkkilaisille.\"", "muu");
   await say("...Ensimmäinen sivu oli liimautunut kiinni.");
   await say("Hallitus: \"Brändiä ei voi myydä, jos se ei ole sinun. Et ole vielä edes toiminnanjohtaja.\"", "muu");
@@ -206,7 +207,7 @@ function mouho2027Form() {
     <label>Sähköposti <input name="email" type="email" required maxlength="120" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
     <label>Pelikaveri (2v2, valinnainen) <input name="pari" maxlength="80" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
     <label>PSN-nimi (valinnainen) <input name="psn" maxlength="40" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
-    <small>Tietoja käytetään vain Mouho 2027 -ilmoittautumiseen.</small>
+    <small>Päivä ja paikka ilmoitetaan sähköpostilla. Tietoja käytetään vain Mouho 2027 -ilmoittautumiseen.</small>
     <div class="row"><button type="submit">Ilmoittaudu</button><button type="button" data-close>Ei nyt</button></div>
     <p class="msg" role="status"></p>`;
   const msg = box.querySelector(".msg");

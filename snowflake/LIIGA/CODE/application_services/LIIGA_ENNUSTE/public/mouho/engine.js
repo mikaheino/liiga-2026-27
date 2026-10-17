@@ -154,9 +154,9 @@ async function script(fn) { busy = true; $game.classList.add("cut"); for (const 
 const asked = new Set();
 function choose(options) {
   return new Promise((res) => {
-    logLine("? " + options.map((o, i) => `[${i + 1}] ${o}`).join("  ")); $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
+    logLine("? " + options.map((o, i) => `[${i + 1}] ${o}`).join("  ")); const shown = performance.now(); $game.classList.add("talking"); $dlg.replaceChildren(...options.map((o, i) => { const b = document.createElement("button"); b.textContent = o; if (asked.has(o)) b.className = "asked";
       // stopPropagation: muuten sama klikkaus kuplii dokumenttiin ja ohittaa heti Jussin repliikin.
-      b.onclick = (e) => { e.stopPropagation(); asked.add(o); $game.classList.remove("talking"); res(i); }; return b; }));
+      b.onclick = (e) => { e.stopPropagation(); if (performance.now() - shown < 350) return; asked.add(o); $game.classList.remove("talking"); res(i); }; return b; }));   // 350 ms: repliikin ohitusklikkaus ei valitse (sokkotesti 3)
   });
 }
 
