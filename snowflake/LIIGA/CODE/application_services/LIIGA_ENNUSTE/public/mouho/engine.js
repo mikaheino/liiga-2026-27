@@ -57,7 +57,9 @@ let verb = "Kävele", first = null, busy = false, onArrive = null, overlay = nul
 let callSpk = null;   // puhelun aikana: puhujien kuplien kohdat paneeleissa (call.js)
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 const has = (k) => st.inv.includes(k);
-function give(k) { if (!has(k)) st.inv.push(k); renderInv(); }
+// Uusi esine välähtää tavaroissa ja soi (17.10.: "siirtyy inventaariin ilman että tajusin").
+let newItem = null;
+function give(k) { if (!has(k)) { st.inv.push(k); newItem = k; [659, 880].forEach((f, n) => setTimeout(() => beep(f, 120, "triangle", .05), n * 110)); setTimeout(() => { newItem = null; renderInv(); }, 2600); } renderInv(); }
 function take(k) { st.inv = st.inv.filter((x) => x !== k); if (first === k) first = null; renderInv(); }
 const room = () => ROOMS[st.scene];
 
@@ -205,7 +207,7 @@ const iconCache = {};
 function icon(k) { if (iconCache[k]) return iconCache[k]; const c = document.createElement("canvas"); c.width = 24; c.height = 16; const prev = g; g = c.getContext("2d"); ITEMS[k].icon?.(); g = prev; return (iconCache[k] = c); }
 function renderInv() { $inv.replaceChildren(...st.inv.map((k) => { const b = document.createElement("button"); b.title = ITEMS[k].name; b.setAttribute("aria-label", ITEMS[k].name);
   const img = document.createElement("img"); img.src = icon(k).toDataURL(); img.alt = ""; b.append(img);
-  if (first === k) b.className = "sel";
+  if (first === k) b.className = "sel"; else if (newItem === k) b.className = "new";
   b.onclick = () => { if (busy) return; if (first && first !== k) return script(() => say("Ne eivät sovi yhteen.")); act(verb === "Kävele" ? "Katso" : verb, k); if (verb !== "Käytä" && verb !== "Anna") { verb = "Kävele"; renderVerbs(); } };
   b.oncontextmenu = (e) => { e.preventDefault(); if (!busy) act("Katso", k); };
   b.onmouseenter = () => setSentence(k); return b; })); }

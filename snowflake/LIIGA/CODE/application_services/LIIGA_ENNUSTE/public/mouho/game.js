@@ -290,26 +290,22 @@ const BILL = { x: 204, y: 104, tx: 204, ty: 104, i: 0, fly: null };
 function drawBill(t) {
   if (!st.flags.billOut || st.flags.billCaught) return;
   BILL.x += (BILL.tx - BILL.x) * .06; BILL.y += (BILL.ty - BILL.y) * .06;
-  if (!busy && !st.flags.billStuck && Math.hypot(st.x - BILL.x, st.y - BILL.y) < 16) gust();   // karkaa lähestyessä (kahdesti)
   const f = Math.sin(t / 90), y = BILL.y - 6 - Math.abs(Math.sin(t / 300)) * 4;
   shadow(BILL.x, BILL.y, 3);
   g.save(); g.translate(BILL.x, y); g.rotate(f * .5); g.scale(1, .5 + .5 * Math.abs(Math.cos(t / 140)));
   r(-4, -2, 8, 4, "#c8a87c"); r(-4, -2, 8, 1, "#e8d0a8"); r(-1, -1, 2, 2, "#8c6c4c"); g.restore();
 }
-// 17.10.: "setelin kiinni saaminen on liian vaikeata" -- karkaa vain kahdesti, sitten jää
-// kiinni Jussin pahvilaatikkoon (laatikon päältä saa yhä heti).
+// 17.10.: ensimmäinen Poimi -- tuulenpuuska vie setelin pahvilaatikon kylkeen; toinen Poimi --
+// seteli käteen ja selvästi tavaroihin (laatikon päältä saa yhä heti).
 const BOX_SPOT = [104, 117];
-function gust() {
-  st.flags.gusts = (st.flags.gusts ?? 0) + 1; beep(180 + Math.random() * 60, 120, "triangle", .02);
-  if (st.flags.gusts >= 2) { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOX_SPOT; return; }
-  BILL.i = (BILL.i + 1) % BILL_SPOTS.length; [BILL.tx, BILL.ty] = BILL_SPOTS[BILL.i];
-}
+function gust() { st.flags.billStuck = true; [BILL.tx, BILL.ty] = BOX_SPOT; beep(220, 300, "triangle", .03); }
 async function chaseBill() {
-  if (st.flags.billStuck) {            // jäi kiinni laatikkoon: poimitaan
-    await walkTo(108, 124); st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
-    return say("Seteli jäi kiinni pahvilaatikkooni. Laatikko on tänään enemmän hyödyksi kuin minä.");
+  if (st.flags.billStuck) {            // toinen yritys: seteli laatikon kyljestä käteen
+    await walkTo(108, 124); st.dir = -1; await sleep(200);
+    st.flags.billCaught = true; give("seteli"); iq("seteli", 5);
+    return say("Sain sen! Herra Saarnin viisikymppinen on nyt tavaroissani. Se ei ole minun.");
   }
-  gust(); await say(st.flags.billStuck ? "Tuuli vei sen... suoraan pahvilaatikkoni kylkeen. Nyt se jäi kiinni!" : "Tuuli vie sen aina viime hetkellä. Melkein!");
+  gust(); await say("Melkein! Tuulenpuuska vei sen viime hetkellä... suoraan pahvilaatikkoni kylkeen. Siellä se nyt lepattaa.");
 }
 async function standOnBox() {
   if (!st.flags.billOut || st.flags.billCaught) return say("Seison laatikolla hetken. Näköala on sama, mutta ylempää.");
@@ -483,7 +479,7 @@ async function salesmanTalk() {
 const HINTS = () => {
   const f = st.flags, here = st.scene;
   if (here === "koti") {
-    if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Seteli karkaa tuulen mukana. Yritä vielä, tai nouse korkeammalle.", "Poimi seteliä uudelleen, tai käytä pahvilaatikkoa (seiso sen päällä)."];
+    if (f.billOut && !f.billCaught) return f.billStuck ? ["Seteli jäi kiinni pahvilaatikkooni.", "Poimi seteli pahvilaatikon kyljestä."] : ["Tuolla lentää jonkun viisikymppinen.", "Poimi seteli parkkipaikalta."];
     if (f.billCaught && !f.billReturned) return ["Seteli kuuluu Saarnille. Hän meni SaiPan toimistoon.", "Käytä seteliä postilaatikkoon (postiluukku)."];
     if (!f.adRead) return ["Ilmoitustaululla on jotain uutta.", "Katso ilmoitustaulua vasemmalla."];
     if (!f.pyramid) return ["Tarvitsen neuvoa. Joukolla on aina neuvo.", "Käytä kännykkää tavaroista: soita Myrrälle."];
