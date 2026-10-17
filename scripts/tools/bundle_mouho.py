@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/public/mouho"
 
 
-def bundle(version: str) -> Path:
+def bundle(version: str, out_dir: Path | None = None) -> Path:
     html = (SRC / "index.html").read_text(encoding="utf-8")
 
     def inline(m: re.Match) -> str:
@@ -28,9 +28,9 @@ def bundle(version: str) -> Path:
     if n == 0:
         raise SystemExit("index.html:stä ei löytynyt skriptejä upotettavaksi")
     out = out.replace("<title>Mouhon salaisuus</title>", f"<title>Mouhon salaisuus {version}</title>")
-    dest = ROOT / "releases/mouho" / f"mouhon-salaisuus-{version}.html"
+    dest = (out_dir or ROOT / "releases/mouho") / f"mouhon-salaisuus-{version}.html"
     dest.write_text(out, encoding="utf-8")
-    print(f"{dest.relative_to(ROOT)}: {n} skriptiä upotettu, {dest.stat().st_size // 1024} kt")
+    print(f"{dest.name}: {n} skriptiä upotettu, {dest.stat().st_size // 1024} kt")
     return dest
 
 
