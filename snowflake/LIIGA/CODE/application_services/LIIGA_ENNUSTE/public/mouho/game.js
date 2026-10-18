@@ -800,6 +800,10 @@ startEngine({
       // rivi 2: basaarin väki edestä ja takaa
       for (let i = 0; i < 6; i++) npc(i, 24 + i * 27, 126, t);
       for (let i = 0; i < 6; i++) npc(i, 186 + i * 22, 126, t, { back: true }); };
+    else if (n === "sp") overlay = (t) => { r(0, 0, W, H, "#c4cce0"); r(0, 64, W, 2, "#aab4cc"); r(0, 132, W, 4, "#aab4cc");
+      for (let i = 0; i < 9; i++) spDraw(spGen(i + 1), 20 + i * 35, 62, t, { talking: i === 2 });
+      const fixed = [{ hat: "fetsi" }, { hat: "huivi" }, { hat: "lippis" }, { hat: "pipo" }, { glasses: "pyöreät", female: true }, { hair: "kalju", age: "vanha", glasses: "suorakulmaiset" }, { stache: true, hair: "sotkuinen" }, { beard: true }, { build: 2 }];
+      fixed.forEach((o, i) => spDraw(spGen(40 + i, o), 20 + i * 35, 130, t)); };
     else if (n === "kisa") { Object.assign(st.flags, { leafPile: true }); go("koti", 178, true, 127); }
     else if (n === "basaari") { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, 128); }
     renderVerbs(); renderInv();
