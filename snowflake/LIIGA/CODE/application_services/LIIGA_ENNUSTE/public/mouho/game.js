@@ -783,7 +783,7 @@ startEngine({
 })();
 
 // ---------------------------------------------------------------- esikatselu (kehitys)
-// ?nayta=kartta|suomi|hallitus|hahmot|basaari|kisa piirtää yhden näkymän paikallaan, jotta grafiikan voi
+// ?nayta=kisa|liiga|suomi|kartta|basaari|temppeli|kaivokatu|loppu|hallitus|puhelu|esineet|hahmot|otsikko piirtää yhden näkymän paikallaan, jotta grafiikan voi
 // tarkistaa kuvakaappauksella (myös päätteettömällä Chromella) pelaamatta sinne asti.
 (() => {
   const n = new URLSearchParams(location.search).get("nayta"); if (!n) return;
@@ -804,6 +804,14 @@ startEngine({
       for (let i = 0; i < 9; i++) spDraw(spGen(i + 1), 20 + i * 35, 62, t, { talking: i === 2 });
       const fixed = [{ hat: "fetsi" }, { hat: "huivi" }, { hat: "lippis" }, { hat: "pipo" }, { glasses: "pyöreät", female: true }, { hair: "kalju", age: "vanha", glasses: "suorakulmaiset" }, { stache: true, hair: "sotkuinen" }, { beard: true }, { build: 2 }];
       fixed.forEach((o, i) => spDraw(spGen(40 + i, o), 20 + i * 35, 130, t)); };
+    else if (n === "liiga") overlay = (t) => { g.drawImage(paintBg("liiga", liigaOfficeBg), 0, 0); tram(40); };
+    else if (n === "temppeli") { Object.assign(st.flags, { refHere: true, refMet: true }); go("temppeli", 130, true, 120); }
+    else if (n === "kaivokatu") overlay = (t) => kaivokatuDraw(t, 140, false);
+    else if (n === "loppu") overlay = (t) => { g.drawImage(paintBg("mouhoIn", mouhoInBg), 0, 0); rinkTV(t); boardTable(t); shadow(176, 128, 7); jussi(176, 128, -1, 0, {}); };
+    else if (n === "puhelu") overlay = (t) => { r(0, 0, W, H, "#140f1c"); panelDraw(PANEL.L, 0, "jussi", t, kisaPanel, false); panelDraw(PANEL.R, 0, "myrra", t, coachPanel, false); };
+    else if (n === "esineet") overlay = () => { r(0, 0, W, H, "#1c1c4c"); Object.keys(ITEMS).forEach((k, i) => { const x = 8 + (i % 8) * 39, y = 10 + Math.floor(i / 8) * 40;
+      r(x - 2, y - 2, 34, 26, "#2c2c6c"); g.save(); g.translate(x + 4, y + 3); ITEMS[k].icon?.(); g.restore(); text3(k.toUpperCase().slice(0, 8), x, y + 26, "#a8a8d8"); }); };
+    else if (n === "otsikko") { title = true; return; }
     else if (n === "kisa") { Object.assign(st.flags, { leafPile: true }); go("koti", 178, true, 127); }
     else if (n === "basaari") { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, 128); }
     renderVerbs(); renderInv();
