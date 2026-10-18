@@ -463,36 +463,71 @@ function basaariAmphora() { shadow(38, 131, 8); disc(38, 122, 8, "#b85c2c", "#8c
 const CHASM = { y0: 82, y1: 96 };
 const floorX = (y) => { const k = (y - 62) / (H - 62); return [lerp(60, -10, k), lerp(260, 330, k)]; };
 function temppeliBg() {
-  noise(0, 0, W, H, "#2a1a10", ["#3a2616", "#1c1008", "#33210f"], .4);
-  // takaseinä ja sivuseinät
-  fillPoly([[60, 8], [260, 8], [260, 62], [60, 62]], "#32200f"); fillPoly([[0, 0], [60, 8], [60, 62], [0, 104]], "#24160c"); fillPoly([[320, 0], [260, 8], [260, 62], [320, 104]], "#20140a");
-  seed = 4; for (let k = 0; k < 1400; k++) { const x = rnd() * W, y = rnd() * 104; if (y < 62 || (x > 60 && x < 260)) continue; px(x, y, rnd() < .5 ? "#2e1e10" : "#160c06"); }
-  for (let y = 16; y < 62; y += 8) { seed = y; let yy = y; for (let x = 60; x < 260; x++) { if (rnd() < .2) yy += rnd() < .5 ? -1 : 1; yy = Math.max(y - 2, Math.min(y + 2, yy)); px(x, yy, "#1a0e06"); } }
-  r(0, 0, W, 8, "#120904"); seed = 3; for (let x = 0; x < W; x += 6 + ((rnd() * 9) | 0)) { const h = 3 + ((rnd() * 8) | 0), w = 3 + ((rnd() * 3) | 0); for (let j = 0; j < h; j++) { const ww = Math.max(1, Math.round(w * (1 - j / h))); r(x + (w - ww) / 2, 8 + j, ww, 1, "#120904"); } }
-  r(152, 0, 16, 8, "#7c6c4c"); r(155, 0, 10, 8, "#a8946c");
+  noise(0, 0, W, H, "#221816", ["#2c201c", "#1a1214", "#261c18"], .35);
+  const SH = "#2c2438", TL = ["#3a2c24", "#5a4632", "#6e5638", "#86683f"];
+  // sivuseinät: kylmä kallio, soihtujen lämmin valo ditheröityinä renkaina
+  fillPoly([[0, 0], [60, 8], [60, 62], [0, 104]], "#241a1c"); fillPoly([[320, 0], [260, 8], [260, 62], [320, 104]], "#201820");
+  seed = 4; for (let k = 0; k < 90; k++) { const x = rnd() * W, y = 10 + rnd() * 90; if (x > 58 && x < 262) continue; const w = 3 + ((rnd() * 4) | 0); r(x, y, w, 2, "#2e2422"); r(x, y, w, 1, "#3a2c24"); r(x, y + 2, w, 1, SH); }
+  for (const [tx, ty] of [[37, 46], [283, 46]]) for (let y = ty - 34; y < ty + 50; y++) for (let x = tx - 34; x < tx + 34; x++) {
+    if (x > 59 && x < 261 && y < 63) continue; if (y > 62 && (x > floorX(y)[0] && x < floorX(y)[1])) continue; if (x < 0 || x >= W || y < 8) continue;
+    const d = Math.hypot(x - tx, (y - ty) * .8), b = bay(x, y);
+    if (d < 11) px(x, y, b < .6 ? "#6e5638" : "#5a4632"); else if (d < 21) { if (b < .55) px(x, y, "#4a3a2c"); } else if (d < 30 && b < .12) px(x, y, "#3a2c24"); }
+  // takaseinä: muuratut lohkot, valo kuilusta keskellä
+  r(60, 8, 200, 54, SH);
+  seed = 11; for (let y = 9, row = 0; y < 62; row++) { const h = 6 + (row % 3 === 1 ? 1 : 0); let x = 60 - ((rnd() * 10) | 0);
+    while (x < 260) { const w = 10 + ((rnd() * 13) | 0), x0 = Math.max(60, x), x1 = Math.min(260, x + w - 1), cx = (x0 + x1) / 2, dc = Math.abs(cx - 160);
+      const lv = dc < 30 ? 2 : dc < 70 ? 1 : 0, alt = rnd() < .25 ? 1 : 0, hh = Math.min(h - 1, 62 - y);
+      for (let j = 0; j < hh; j++) for (let i = x0; i < x1; i++) { const edge = (i < 80 || i > 240) && bay(i, y + j) < .5; px(i, y + j, TL[Math.max(0, Math.min(2, lv + alt - (edge ? 1 : 0)))]); }
+      r(x0, y, x1 - x0, 1, TL[Math.min(3, lv + 1)]);                                           // ylävalo
+      if (cx < 160) r(x1 - 1, y, 1, hh, TL[Math.min(3, lv + 1)]); else r(x0, y, 1, hh, TL[Math.min(3, lv + 1)]);   // reunavalo kohti kuilua
+      r(x0, y + hh - 1, x1 - x0, 1, "#3a2c24");
+      if (rnd() < .18) { r(x0 + 1, y + hh - 3, 2, 2, "#3a2c24"); px(x0 + 1, y + hh - 3, SH); }   // lohkeama
+      x += w; }
+    y += h; }
+  for (const [cx, cy, n, dir] of [[96, 12, 8, 1], [214, 30, 10, -1], [246, 16, 6, 1], [128, 40, 7, -1]]) for (let i = 0; i < n; i++) px(cx + Math.floor(i / 2) * dir, cy + i, SH);
+  // katto ja tippukivet klustereina
+  r(0, 0, W, 9, "#140e14"); r(0, 9, W, 1, SH);
+  for (const [x, len, w] of [[14, 6, 3], [22, 3, 2], [47, 9, 4], [53, 4, 2], [88, 5, 3], [118, 11, 4], [124, 5, 2], [196, 7, 3], [201, 3, 2], [229, 12, 4], [236, 5, 2], [268, 6, 3], [296, 9, 3], [302, 4, 2]])
+    for (let j = 0; j < len; j++) { const ww = Math.max(1, Math.round(w * (1 - j / len))); r(x + (w - ww) / 2, 9 + j, ww, 1, j > len - 3 ? "#2c2438" : "#140e14"); if (ww > 1) px(x + (w - ww) / 2, 9 + j, "#3a2c24"); }
+  r(152, 0, 16, 9, "#a8884c"); r(155, 0, 10, 9, "#d8b868");
   // kaiverrettu oviaukko takaseinässä
-  r(144, 26, 32, 36, "#0c0603"); disc(160, 26, 16, "#0c0603"); r(140, 26, 4, 36, "#5a4632"); r(176, 26, 4, 36, "#5a4632");
-  for (let a = 0; a < Math.PI; a += .08) { px(160 + Math.cos(a) * 18, 26 - Math.sin(a) * 18, "#6c5640"); px(160 + Math.cos(a) * 19, 26 - Math.sin(a) * 19, "#86704e"); }
-  for (let x = 146; x < 176; x += 7) { r(x, 10, 3, 2, "#3c2c1c"); px(x + 1, 10, "#86704e"); }
+  r(144, 26, 32, 36, "#0e0a14"); disc(160, 26, 16, "#0e0a14"); r(140, 26, 4, 36, "#6e5638"); r(140, 26, 1, 36, "#86683f"); r(176, 26, 4, 36, "#5a4632"); r(179, 26, 1, 36, SH);
+  for (let a = 0; a < Math.PI; a += .06) { px(160 + Math.cos(a) * 18, 26 - Math.sin(a) * 18, "#6e5638"); px(160 + Math.cos(a) * 19, 26 - Math.sin(a) * 19, "#86683f"); px(160 + Math.cos(a) * 17, 26 - Math.sin(a) * 17, SH); }
   // reliefi: muinainen otteluohjelma
-  r(76, 20, 50, 30, "#3c2a18"); r(76, 20, 50, 1, "#56402a"); r(76, 49, 50, 1, "#1c1008");
-  for (let row = 0; row < 4; row++) for (let c = 0; c < 6; c++) r(80 + c * 7, 24 + row * 6, 4, 3, (row + c) % 3 ? "#2a1c10" : "#56402a");
-  r(108, 30, 14, 1, "#86704e"); r(108, 36, 10, 1, "#86704e");
+  r(76, 20, 50, 30, "#3a2c24"); r(76, 20, 50, 1, SH); r(76, 49, 50, 1, "#86683f"); r(125, 20, 1, 30, "#6e5638");
+  for (let row = 0; row < 4; row++) for (let c = 0; c < 6; c++) { r(80 + c * 7, 24 + row * 6, 4, 3, (row + c) % 3 ? SH : "#6e5638"); r(80 + c * 7, 26 + row * 6, 4, 1, (row + c) % 3 ? "#4a3a2c" : "#86683f"); }
+  r(108, 30, 14, 1, "#86683f"); r(108, 36, 10, 1, "#86683f"); r(108, 31, 14, 1, SH); r(108, 37, 10, 1, SH);
   // seitit
-  for (let k = 0; k < 7; k++) for (let j = 0; j < 14; j++) px(2 + j * Math.cos(k / 4.5), 8 + j * Math.sin(k / 4.5) * 1.2, "#5c5c5c");
-  // lattia perspektiivissä: kivilaatat, rivit tihenevät kauemmas
-  for (let y = 62; y < H; y++) { const [a, b] = floorX(y), k = (y - 62) / (H - 62); r(a, y, b - a, 1, y < CHASM.y0 ? "#3c2a18" : "#4c3420"); }
-  for (const yy of [66, 71, 77, 104, 113, 124]) { const [a, b] = floorX(yy); r(a, yy, b - a, 1, "#2e1e10"); }
-  for (let i = 1; i < 10; i++) { const xf = lerp(60, 260, i / 10), xn = lerp(-10, 330, i / 10); lineC(xf, 62, xn, H, "rgba(30,18,8,.6)"); }
-  r(60, 62, 200, 1, "#5a3e26");
-  // kuilu poikittain
-  for (let y = CHASM.y0; y < CHASM.y1; y++) { const [a, b] = floorX(y), k = (y - CHASM.y0) / (CHASM.y1 - CHASM.y0); r(a, y, b - a, 1, k < .25 ? "#1c1008" : k < .6 ? "#0a0503" : "#000"); }
-  { const [a, b] = floorX(CHASM.y0); r(a, CHASM.y0 - 1, b - a, 1, "#6c4c30"); } { const [a, b] = floorX(CHASM.y1); r(a, CHASM.y1, b - a, 1, "#6c4c30"); r(a, CHASM.y1 + 1, b - a, 1, "#2a1a0e"); }
-  r(122, 98, 6, 4, "#d8d0b8"); px(123, 99, "#1c1008"); px(126, 99, "#1c1008"); r(129, 100, 5, 1, "#c8c0a8");
-  // koukku katossa kuilun yllä, soihtujen pidikkeet, ovi vasemmalla
-  r(160, 8, 1, 16, "#5c5c5c"); r(156, 23, 8, 2, "#7c7c7c"); r(163, 20, 1, 4, "#7c7c7c");
-  r(34, 44, 6, 2, "#3c3c3c"); r(280, 44, 6, 2, "#3c3c3c");
-  fillPoly([[2, 76], [18, 82], [18, 124], [2, 128]], "#0a0503"); lineC(18, 82, 18, 124, "#4a3622");
+  for (let k = 0; k < 7; k++) for (let j = 0; j < 14; j++) px(2 + j * Math.cos(k / 4.5), 10 + j * Math.sin(k / 4.5) * 1.2, "#4e4650");
+  // valokeila kuilusta: kolmiportainen lämmin ramppi, levenee lattiaa kohti
+  for (let y = 9; y < 63; y++) { const hw = 8 + (y - 9) * .2; for (let x = Math.floor(160 - hw); x <= Math.ceil(160 + hw); x++) { const v = 1 - Math.abs(x - 159.5) / hw, b = bay(x, y);
+    if (v > .72) px(x, y, b < (v - .72) * 4 ? "#d8b868" : "#a8884c"); else if (v > .4) { if (b < .75) px(x, y, b < (v - .4) * 2.5 ? "#a8884c" : "#6e5a3a"); } else if (v > 0 && b < v * 1.2) px(x, y, "#6e5a3a"); } }
+  // lattia: laatat, valo kuilusta ja soihduista, reunat kylmiä
+  const rows = [62, 66, 71, 77, CHASM.y0, CHASM.y1 + 2, 104, 113, 124, H], FT = ["#2a2030", "#3a2c24", "#4a3a2c", "#5a4632", "#6e5638"];
+  for (let y = 62; y < H; y++) { if (y >= CHASM.y0 - 1 && y <= CHASM.y1 + 1) continue; const [a, b] = floorX(y), ri = rows.findIndex((v, i) => y >= v && y < rows[i + 1]);
+    for (let x = Math.max(0, Math.floor(a)); x < Math.min(W, Math.ceil(b)); x++) { const ci = Math.floor((x - a) / (b - a) * 10), hsh = ((ri * 7 + ci * 13) % 5) / 5 - .4;
+      const L = Math.max(1.1 - Math.hypot((x - 160) / 70, (y - 70) / 26), 1 - Math.hypot((x - 37) / 60, (y - 70) / 30), 1 - Math.hypot((x - 283) / 60, (y - 70) / 30), .05) * 3.6 + hsh, k = Math.floor(L), f = L - k;
+      px(x, y, FT[Math.max(0, Math.min(4, k + (bay(x, y) < f ? 1 : 0)))]); } }
+  for (const yy of rows.slice(1, -1)) { if (yy === CHASM.y0 || yy === CHASM.y1 + 2) continue; const [a, b] = floorX(yy); r(a, yy, b - a, 1, "#241c24"); const [a2, b2] = floorX(yy + 1); r(a2, yy + 1, b2 - a2, 1, "#4a3a2c"); }
+  for (let i = 1; i < 10; i++) { const xf = lerp(60, 260, i / 10), xn = lerp(-10, 330, i / 10); for (let y = 62; y < H; y++) { if (y >= CHASM.y0 - 1 && y <= CHASM.y1 + 1) continue; px(Math.round(lerp(xf, xn, (y - 62) / (H - 62))), y, "#241c24"); } }
+  r(60, 62, 200, 1, "#86683f");
+  // kirkas valolammikko jalustan alla
+  for (let y = 63; y < CHASM.y0 - 1; y++) for (let x = 128; x < 193; x++) { const d = Math.hypot((x - 160) / 30, (y - 70) / 8), b = bay(x, y);
+    if (d < .45) px(x, y, b < .5 ? "#d8b868" : "#a8884c"); else if (d < .75) { if (b < .7) px(x, y, "#a8884c"); } else if (d < 1 && b < .3) px(x, y, "#86683f"); }
+  // halkeamat 1:2 ja soraklusterit
+  for (const [cx, cy, n, dir] of [[98, 64, 10, -1], [214, 66, 12, 1], [70, 106, 12, -1], [244, 104, 14, 1], [184, 114, 10, -1], [128, 118, 12, 1]]) for (let i = 0; i < n; i++) { px(cx + Math.floor(i / 2) * dir, cy + i, "#1c1620"); if (i === 5) { px(cx + 3 * dir + dir, cy + i + 1, "#1c1620"); px(cx + 3 * dir + 2 * dir, cy + i + 1, "#1c1620"); } }
+  for (const [sx, sy] of [[86, 74], [226, 73], [104, 120], [292, 126], [200, 128], [150, 108]]) { r(sx, sy, 3, 1, "#6e5638"); px(sx + 1, sy - 1, "#86683f"); px(sx + 3, sy, "#2c2438"); px(sx + 5, sy + 1, "#5a4632"); px(sx - 2, sy + 1, "#a8884c"); r(sx - 1, sy + 1, 4, 1, "#2c2438"); }
+  // kuilu poikittain: valaistu yläreuna, kylmä sinimusta sisus
+  for (let y = CHASM.y0; y < CHASM.y1; y++) { const [a, b] = floorX(y), k = (y - CHASM.y0) / (CHASM.y1 - CHASM.y0);
+    for (let x = Math.max(0, Math.floor(a)); x < Math.min(W, Math.ceil(b)); x++) px(x, y, k < .2 ? (bay(x, y) < k * 4 ? SH : "#3a2c24") : k < .5 ? (bay(x, y) < (k - .2) * 3 ? "#0c0a14" : "#1a1626") : "#06060c"); }
+  { const [a, b] = floorX(CHASM.y0 - 1); r(a, CHASM.y0 - 1, b - a, 1, "#a8884c"); r(128, CHASM.y0 - 1, 64, 1, "#d8b868"); }
+  { const [a, b] = floorX(CHASM.y1); r(a, CHASM.y1, b - a, 1, "#6e5638"); r(a, CHASM.y1 + 1, b - a, 1, SH); }
+  r(122, 98, 6, 4, "#c8bca0"); r(122, 98, 6, 1, "#e0d4b8"); px(123, 99, "#2c2438"); px(126, 99, "#2c2438"); r(129, 100, 5, 1, "#a89c84");
+  // ketju ja koukku kuilun yllä (piiska ripustetaan tähän, x 160)
+  for (let y = 9; y < 22; y++) px(160, y, y % 3 === 0 ? "#3a3440" : y % 3 === 1 ? "#a89c84" : "#6e6458");
+  r(160, 22, 1, 4, "#a89c84"); px(159, 26, "#6e6458"); px(158, 25, "#6e6458"); px(158, 24, "#c8bca0"); px(161, 23, "#3a3440"); px(161, 24, "#3a3440");
+  // ovi vasemmalla
+  fillPoly([[2, 76], [18, 82], [18, 124], [2, 128]], "#0a0810"); r(18, 82, 1, 42, "#5a4632"); r(19, 82, 1, 42, SH);
 }
 const DUST2 = Array.from({ length: 16 }, (_, i) => ({ x: 152 + (i * 7) % 16, y: (i * 13) % 70, s: 3 + (i % 4) }));
 let darkC2 = null;
@@ -505,9 +540,15 @@ function temppeliSand() { const n = st.flags.sandUsed ? 7 : 12, top = 129 - n;  
   for (let j = 0; j < n; j++) { const w = Math.round(32 * Math.pow((j + 1 + 12 - n) / 12, .55)), y = top + j; for (let i = 0; i < w; i++) { const x = 54 - w / 2 + i; px(x, y, bay(x, y) < j / 12 ? "#b08c48" : bay(x, y) < .7 ? "#d8b46c" : "#c8a45c"); } } px(53, top, "#f0d090"); }
 function temppeliPillar() { shadow(252, 131, 16); r(236, 121, 32, 10, "#6c5a46"); r(236, 121, 32, 2, "#86704e"); r(236, 129, 32, 2, "#4c3c2c"); r(266, 121, 3, 10, "#5a4a38");
   r(245, 122, 1, 7, "#3c2c1c"); r(254, 123, 1, 6, "#3c2c1c"); disc(236, 126, 5, "#5a4a38"); }
-function temppeliPedestal() { r(154, 64, 12, 12, "#7c6c5c"); r(163, 64, 3, 12, "#5c4c3c"); r(152, 62, 16, 3, "#9c8c7c"); r(152, 62, 16, 1, "#b4a494");
-  if (!st.flags.idol) { const sp = Math.sin(performance.now() / 260); r(157, 54, 6, 8, "#e8c81c"); r(158, 52, 4, 2, "#e8c81c"); r(157, 54, 1, 8, "#fcf06c"); r(162, 54, 1, 8, "#b8941c");
-    px(158, 56, "#3c2c0c"); px(161, 56, "#3c2c0c"); if (sp > .6) { px(160, 50, "#fff"); px(159, 51, "#fcfc9c"); px(161, 51, "#fcfc9c"); } }
+function temppeliPedestal() { const T = "#b8a078", F = "#8a6e50", S = "#4a3a40";
+  r(154, 65, 12, 9, F); r(154, 65, 1, 9, "#a08460"); r(163, 65, 3, 9, S); r(154, 65, 12, 1, S);
+  r(154, 68, 12, 1, S); r(154, 69, 9, 1, T); r(163, 69, 3, 1, "#6a5048");
+  r(152, 74, 16, 2, F); r(152, 74, 12, 1, T); r(164, 74, 4, 2, S); r(152, 75, 16, 1, "#5a4632");
+  r(152, 62, 16, 3, F); r(152, 62, 16, 1, "#d8c094"); r(152, 63, 13, 1, T); r(165, 63, 3, 2, S); px(152, 64, "#6a5048");
+  if (!st.flags.idol) { const sp = Math.sin(performance.now() / 260);
+    r(157, 54, 6, 8, "#d8a828"); r(158, 52, 4, 2, "#d8a828"); r(161, 52, 1, 2, "#8a6018"); r(161, 54, 1, 8, "#8a6018"); r(162, 54, 1, 8, "#4a3010");
+    r(157, 54, 1, 8, "#f8d860"); r(158, 52, 1, 2, "#f8d860"); r(158, 52, 3, 1, "#fff0a0"); px(157, 54, "#fff0a0"); r(158, 59, 3, 1, "#8a6018");
+    px(158, 56, "#4a3010"); px(160, 56, "#4a3010"); if (sp > .6) { px(160, 50, "#fff"); px(159, 51, "#fcfc9c"); px(161, 51, "#fcfc9c"); } }
   else if (st.flags.swapped) { r(156, 57, 8, 5, "#c8b48c"); r(156, 57, 8, 1, "#e0d0a8"); } }
 // Kivenjärkäle vyöryy oviaukosta katsojaa kohti: y ja koko kasvavat.
 const boulderY = () => 52 + st.flags.boulder * 92;
@@ -516,16 +557,29 @@ function temppeliBoulder() { if (st.flags.boulder == null) return; const k = st.
   r(160 + Math.cos(rot) * rad * .5, y - rad * .8 + Math.sin(rot) * rad * .5, rad * .25, rad * .18, "#3c3024"); r(160 - Math.cos(rot) * rad * .55, y - rad * .8 - Math.sin(rot) * rad * .4, rad * .2, rad * .2, "#3c3024"); }
 function temppeliPost(t) {
   darkC2 ??= Object.assign(document.createElement("canvas"), { width: W, height: H });
-  const L = darkC2.getContext("2d"); L.globalCompositeOperation = "source-over"; L.clearRect(0, 0, W, H); L.fillStyle = "rgba(6,3,0,.66)"; L.fillRect(0, 0, W, H);
+  const L = darkC2.getContext("2d"); L.globalCompositeOperation = "source-over"; L.clearRect(0, 0, W, H); L.fillStyle = "rgba(6,3,0,.62)"; L.fillRect(0, 0, W, H);
   L.globalCompositeOperation = "destination-out";
   const hole = (x, y, rad, a) => { const gr = L.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); L.fillStyle = gr; L.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
   const f = Math.sin(t / 90) * 4 + Math.sin(t / 53) * 2;
-  hole(37, 40, 70 + f, .95); hole(283, 40, 70 - f, .95); hole(st.x, st.y - 22, 44, 1);   // Jussi kokonaan valossa (17.10.: "Jussi on luolassa haalea") hole(160, 58, 30, .8);
-  L.beginPath(); L.moveTo(152, 0); L.lineTo(168, 0); L.lineTo(176, 66); L.lineTo(144, 66); L.closePath(); L.fillStyle = "rgba(0,0,0,.6)"; L.fill();
+  hole(37, 46, 70 + f, .95); hole(283, 46, 70 - f, .95); hole(st.x, st.y - 22, 44, 1); hole(160, 70, 36, .85);   // Jussi kokonaan valossa (17.10.); valolammikko
+  L.beginPath(); L.moveTo(150, 0); L.lineTo(170, 0); L.lineTo(182, 66); L.lineTo(138, 66); L.closePath(); L.fillStyle = "rgba(0,0,0,.8)"; L.fill();
   g.drawImage(darkC2, 0, 0);
-  g.fillStyle = "rgba(255,236,170,.07)"; g.beginPath(); g.moveTo(152, 0); g.lineTo(168, 0); g.lineTo(176, 66); g.lineTo(144, 66); g.closePath(); g.fill();
-  for (const d of DUST2) { d.y = (d.y + d.s * 0.012) % 64; px(d.x + Math.sin(t / 700 + d.y) * 3 + d.y * .08, d.y, "#f8e4b0"); }
-  flame(36, 48, t); flame(282, 48, t); glow(37, 42, 34, "255,130,40", .28); glow(283, 42, 34, "255,130,40", .28);
+  const DA = [[157, 16], [165, 34], [155, 50]];                                          // pöly kolmena harvana parvena
+  DUST2.forEach((d, i) => { d.y = (d.y + d.s * 0.012) % 64; const [ax, ay] = DA[i % 3]; px(ax + ((i * 5) % 7) - 3 + Math.sin(t / 700 + i) * 1.5, ay + ((d.y * .2 + i * 3) % 9) - 4, i % 2 ? "#f8e4b0" : "#d8b868"); });
+  for (const [tx, ty] of [[36, 48], [282, 48]]) {                                        // soihdut: täyttövalo
+    g.globalCompositeOperation = "lighter";
+    for (let y = ty - 34; y < ty + 34; y++) for (let x = tx - 34; x < tx + 37; x++) { const d = Math.hypot(x - tx - 1, y - ty + 6), b = bay(x, y);
+      if (d < 11) { if (b < .75) px(x, y, "rgba(255,160,60,.16)"); } else if (d < 21) { if (b < .4) px(x, y, "rgba(255,130,40,.10)"); } else if (d < 30 + f * .5 && b < .12) px(x, y, "rgba(220,90,30,.07)"); }
+    g.globalCompositeOperation = "source-over";
+    r(tx - 2, ty + 3, 7, 2, "#2c2438"); px(tx - 2, ty + 3, "#86683f"); r(tx + 1, ty + 5, 1, 3, "#2c2438");
+    r(tx, ty, 3, 10, "#4a3428"); r(tx, ty, 1, 10, "#86683f"); r(tx + 2, ty, 1, 10, "#2c2438");
+    r(tx - 1, ty - 1, 5, 2, "#3a2c24"); px(tx - 1, ty - 1, "#a8884c");
+    const fl = (Math.sin(t / 70 + tx) + Math.sin(t / 113 + tx * 2)) / 2, h = 10 + Math.round(fl * 2), lean = Math.round(fl);
+    for (let j = 0; j < h; j++) { const w = Math.max(1, 6 - Math.floor(j / 2)), cx = tx + 1.5 + (j > h / 2 ? lean : 0), y = ty - 2 - j;
+      r(cx - w / 2, y, w, 1, j > h * .65 ? "#b03a20" : "#ff9a30"); if (j < h * .5 && w > 2) r(cx - w / 2 + 1, y, w - 2, 1, j < 3 ? "#fff0a0" : bay(tx, y) < .5 ? "#fff0a0" : "#ffc860"); if (w > 2 && j > 1) { px(cx - w / 2, y, "#b03a20"); } }
+    for (let c = 0; c < 3; c++) { const ph = (t / 700 + c * .37 + tx) % 1, ey = ty - h - 2 - ph * 12, ex = tx + 1 + (c - 1) * 2 + Math.sin(t / 300 + c) * 1.5;
+      if (ph < .8) { px(ex, ey, "#ff9a30"); px(ex + 1, ey - 1, ph < .4 ? "#fff0a0" : "#b03a20"); } }
+  }
 }
 
 // =============================================================== LATTIAPIANO (Kisapuisto)
