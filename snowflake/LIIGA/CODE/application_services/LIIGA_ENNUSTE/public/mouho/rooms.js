@@ -289,38 +289,81 @@ function kisaTaxi() { shadow(282, 134, 40);
 // Katu kapenee kohti moskeijaa; kojut molemmin puolin, Mehmetin tiski oikealla.
 const VPB = [160, 56];
 function basaariBg() {
-  vgrad(0, 0, W, 70, ["#24123c", "#4a1848", "#7c2448", "#b43c40", "#e0603a", "#f48c3c", "#fcb85c"]);
+  // taivas: kuusi sävyporrasta magentasta oranssiin horisonttiin, saumat Bayer-ditheröintinä
+  const SKY = ["#3c1448", "#6c1c58", "#a02c58", "#d04c48", "#ec7438", "#f8a048"], SB = [0, 12, 24, 36, 47, 58, 70];
+  for (let i = 0; i < SKY.length; i++) { r(0, SB[i], W, SB[i + 1] - SB[i], SKY[i]); if (i) for (let j = 0; j < 4; j++) dither(0, SB[i] - 2 + j, W, 1, SKY[i - 1], SKY[i], (j + 1) / 5); }
   disc(118, 50, 8, "#fce890", "#fcd070");
-  const M = "#3a1834"; disc(160, 34, 12, M); r(146, 34, 28, 4, M); disc(143, 42, 6, M); disc(177, 42, 6, M); r(136, 40, 48, 30, M); r(159, 17, 2, 6, M);
-  for (const [x, top] of [[130, 18], [188, 18], [122, 28], [196, 28]]) { r(x, top, 2, 52, M); tri(x, top - 6, 2, 6, M); r(x - 1, top + 10, 4, 1, M); }
-  for (let x = 140; x < 182; x += 6) px(x, 50, "#fcb04c");
-  // seinät perspektiivissä: vasen ja oikea kojurivi
+  // moskeija: tumma violetti siluetti, auringon puolella (vasen) reunavalo
+  const M = "#3a1834", ML = "#6a2c50";
+  disc(160, 34, 12, ML); disc(161, 34, 11, M); r(146, 34, 28, 4, M); r(146, 34, 1, 4, ML); disc(143, 42, 6, ML); disc(144, 42, 5, M); disc(177, 42, 6, M);
+  r(136, 40, 48, 30, M); r(136, 40, 1, 30, ML); r(159, 17, 2, 6, M); r(159, 17, 1, 6, ML); px(160, 15, "#fcb04c"); px(159, 16, "#fcb04c");
+  for (const [x, top] of [[130, 18], [188, 18], [122, 28], [196, 28]]) { r(x, top, 2, 52, M); r(x, top, 1, 52, ML); tri(x, top - 6, 2, 6, M); r(x - 1, top + 10, 4, 1, ML); }
+  for (let x = 140; x < 182; x += 6) { px(x, 50, "#fcb04c"); px(x, 51, "#c86c3c"); }
+  // seinät perspektiivissä: rapattu pinta klustereina (laikut, tahrat, lohkeamat)
+  const inL = (x, y) => x < 136 && y > 38 * x / 136 && y < 112 - 42 * x / 136, inR = (x, y) => x > 184 && inL(320 - x, y);
   fillPoly([[0, 0], [136, 38], [136, 70], [0, 112]], "#b0744a"); fillPoly([[320, 0], [184, 38], [184, 70], [320, 112]], "#a46c40");
-  seed = 9; for (let k = 0; k < 900; k++) { const y = rnd() * 112, x = rnd() * 136, top = 38 * x / 136, bot = 112 - 42 * x / 136; if (y > top && y < bot) px(x, y, rnd() < .5 ? "#9c6438" : "#c4885a"); }
-  for (let k = 0; k < 900; k++) { const y = rnd() * 112, x = 184 + rnd() * 136, xx = 320 - x, top = 38 * xx / 136, bot = 112 - 42 * xx / 136; if (y > top && y < bot) px(x, y, rnd() < .5 ? "#94603a" : "#b87c50"); }
-  // kaaret seinissä (perspektiivissä kapenevat)
-  for (const k of [.12, .38, .6, .78]) { const x = k * 136, top = 38 * k + 26 * (1 - k), bot = 112 - 42 * k, w = 26 * (1 - k * .8);
-    fillPoly([[x, top], [x + w, top + w * .28], [x + w, bot - w * .3], [x, bot]], "#4a2414"); fillPoly([[320 - x, top], [320 - x - w, top + w * .28], [320 - x - w, bot - w * .3], [320 - x, bot]], "#3a1c10"); }
+  seed = 9;
+  for (let k = 0; k < 160; k++) { const s = k % 2, xx = rnd() * 130, y = rnd() * 112; if (!inL(xx, y - 2) || !inL(xx + 3, y + 3)) continue;
+    const x = s ? 320 - xx - 3 : xx, c = rnd() < .55 ? (s ? "#94603a" : "#9c6438") : (s ? "#b87c50" : "#c4885a"), w = 2 + (rnd() * 2 | 0), h = 2 + (rnd() * 2 | 0);
+    r(x, y, w, h - 1, c); r(x + 1, y + h - 1, w - 1, 1, c); }
+  for (const [xx, y, s] of [[8, 30, 0], [92, 52, 0], [40, 64, 1], [104, 44, 1], [70, 78, 0]]) { const x = s ? 320 - xx - 9 : xx;
+    r(x - 1, y - 1, 10, 1, s ? "#c8905c" : "#d49c6c"); r(x - 1, y, 1, 6, s ? "#c8905c" : "#d49c6c"); r(x, y, 9, 6, "#8c4c30");
+    for (let j = 0; j < 6; j += 2) { r(x, y + j + 1, 9, 1, "#6c3424"); for (let i = (j % 4 ? 1 : 3); i < 9; i += 4) px(x + i, y + j, "#6c3424"); } r(x + 6, y + 5, 3, 1, s ? "#a46c40" : "#b0744a"); }
+  for (const xx of [20, 46, 78, 100, 120]) for (const s of [0, 1]) { const top = 38 * xx / 136 + 20 - 6 * xx / 136, x = s ? 320 - xx - 2 : xx;
+    for (let j = 0; j < 12; j++) for (let i = 0; i < 2; i++) if (bay(x + i, top + j) < .55 - j * .04) px(x + i, top + j, s ? "#84542e" : "#8c5832"); }
+  // lyhtyjen valo seinällä: yksi lämmin lähde per lyhty, ditheröity kartio
+  for (const [lx, ly, s] of [[60, 40, 1], [110, 50, .7], [210, 50, .7], [262, 40, 1]]) { const rad = 18 * s + 4;
+    for (let y = ly - rad; y < ly + rad * 1.4; y++) for (let x = lx - rad; x < lx + rad; x++) { const d = Math.hypot(x - lx, (y - ly - 3) * .75) / rad; if (d >= 1 || !(inL(x, y) || inR(x, y))) continue;
+      if (bay(x, y) < (1 - d) * .9) px(x, y, d < .45 && bay(x + 1, y) < .5 ? "#ecb87c" : (x < 160 ? "#d49a64" : "#c88e5a")); } }
   // markiisiraidat seinien yläreunassa
   for (let i = 0; i < 14; i++) { const a = i / 14, b = (i + 1) / 14, c = i % 2 ? "#b81c1c" : "#ece4c4";
     fillPoly([[a * 136, 38 * a + 8], [b * 136, 38 * b + 8], [b * 136, 38 * b + 20 - 6 * b], [a * 136, 38 * a + 20 - 6 * a]], c);
     fillPoly([[320 - a * 136, 38 * a + 8], [320 - b * 136, 38 * b + 8], [320 - b * 136, 38 * b + 20 - 6 * b], [320 - a * 136, 38 * a + 20 - 6 * a]], c); }
-  // katu: mukulakivet perspektiivissä
-  for (let y = 70; y < H; y++) { const k = (y - 70) / (H - 70), x0 = lerp(136, -60, k), x1 = lerp(184, 380, k); r(x0, y, x1 - x0, 1, "#6c4422");
-    const step = 3 + k * 9, off = (Math.floor((y - 70) / (1 + k * 4)) % 2) * step / 2;
-    if (((y - 70) % Math.max(1, Math.round(1 + k * 4))) !== 0) for (let x = x0 + off; x < x1; x += step) r(x + 1, y, step - 1.5, 1, ["#8c5c30", "#9c6a3a", "#845428"][Math.floor(x / step) % 3 & 3] ?? "#8c5c30"); }
+  // ovet ja kojuaukot: suippokaari, laattareunus, puuovet syineen tai luukut
+  const DOOR = (A, B, C, D, lit, i) => { const P = (u, v) => [lerp(lerp(A[0], B[0], u), lerp(D[0], C[0], u), v), lerp(lerp(A[1], B[1], u), lerp(D[1], C[1], u), v)];
+    const q = (u0, v0, u1, v1, c) => fillPoly([P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)], c), trim = lit ? "#dcb47c" : "#bc905c", wood = lit ? "#7c4420" : "#6c3818";
+    q(-.12, -.1, 1.12, 1, trim); q(-.12, -.1, 1.12, -.03, "#2c5c9c"); for (let u = -.06; u < 1.1; u += .18) { const [x, y] = P(u, -.07); px(x, y, "#e8e0c4"); }
+    if (i % 2) { q(0, 0, 1, 1, "#24101c"); for (let v = .05; v < .48; v += .07) { q(0, v, 1, v + .04, wood); q(0, v + .04, 1, v + .05, "#3c1c10"); } q(0, .48, 1, .52, "#4a2410"); }
+    else { q(0, 0, 1, 1, wood); for (const u of [.33, .66]) lineC(...P(u, .12), ...P(u, 1), "#4a2410"); lineC(...P(.08, .14), ...P(.08, 1), "#9c5c2c"); const [hx, hy] = P(.82, .6); px(hx, hy, "#e8c81c"); }
+    fillPoly([P(-.01, -.01), P(.5, -.01), P(-.01, .16)], trim); fillPoly([P(1.01, -.01), P(.5, -.01), P(1.01, .16)], trim); lineC(...P(-.12, 1), ...P(1.12, 1), "#4a2414"); };
+  [.12, .38, .6, .78].forEach((k, i) => { const x = k * 136, top = 38 * k + 26 * (1 - k), bot = 112 - 42 * k, w = 26 * (1 - k * .8);
+    DOOR([x, top], [x + w, top + w * .28], [x + w, bot - w * .3], [x, bot], 1, i); DOOR([320 - x, top], [320 - x - w, top + w * .28], [320 - x - w, bot - w * .3], [320 - x, bot], 0, i + 1); });
+  // katu: mukulakivet perspektiivissä, rivit kapenevat kohti katoamispistettä; lämmin valo, kylmä varjo
+  const LIG = [[60, 104, 46], [110, 100, 34], [210, 100, 34], [262, 104, 46], [257, 106, 44]], FL = ["#3c2838", "#5c4050", "#86603e", "#a87a4c", "#c89a64"], MOR = "#34202c";
+  const hsh = (a, b) => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v); };
+  for (let y = 70, row = 0; y < H; row++) { const h = Math.max(1, Math.round(1 + (y - 70) / 66 * 6));
+    for (let j = 0; j < h && y + j < H; j++) { const yy = y + j, k = (yy - 70) / 66, x0 = lerp(136, -60, k), x1 = lerp(184, 380, k), hw = (x1 - x0) / 2, du = .1, sw = du * hw;
+      for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, x1); x++) { const u = (x - 160) / hw + (row % 2 ? du / 2 : 0), sid = Math.floor(u / du), fu = u / du - sid;
+        if ((j === h - 1 && h > 1) || (fu * sw < 1 && sw > 3)) { px(x, yy, MOR); continue; }
+        let L = 1.9 + (hsh(sid, row) - .5) * .9;
+        for (const [lx, ly, lr] of LIG) { const d = Math.hypot(x - lx, (yy - ly) * 2.2); if (d < lr) L += 2.2 * (1 - d / lr); }
+        if (u < -.6) L -= (-.6 - u) * 5;
+        if (hsh(sid, row + 50) < .07) { L -= .9; if (h > 2 && Math.round(fu * sw) === j + 1) { px(x, yy, MOR); continue; } }
+        if (j === 0 && h > 2) L += .5;
+        L += (bay(x, yy) - .5) * .8; px(x, yy, FL[Math.max(0, Math.min(4, Math.round(L)))]); } }
+    y += h; }
+  // reunakivet seinien juurella: tumman ruskea sävyramppi
+  fillPoly([[0, 112], [136, 70], [0, 116]], "#4a2c24"); lineC(0, 112, 136, 70, "#7c4c34"); fillPoly([[320, 112], [184, 70], [320, 116]], "#3c2420"); lineC(319, 112, 184, 70, "#5c3828");
   // matto vasemmalla seinällä (kartta kudottuna)
   fillPoly([[16, 46], [50, 54], [50, 98], [16, 100]], "#6c1428"); fillPoly([[19, 50], [47, 57], [47, 95], [19, 97]], "#b42c38"); fillPoly([[22, 54], [44, 60], [44, 92], [22, 94]], "#d8983c");
   disc(33, 75, 4, "#2c3c8c"); disc(33, 75, 2, "#e8c84c"); for (let k = 0; k < 7; k++) px(25 + k * 2, 86 - (k % 3), "#c81c1c"); r(39, 83, 1, 3, "#1c1c1c"); r(38, 84, 3, 1, "#1c1c1c");
-  for (let x = 16; x < 50; x += 2) r(x, 99 + (x - 16) / 34, 1, 2, "#e8d8a8");
-  // Mehmetin koju oikealla: katos ja takaseinä (tiski itse on propsi)
-  fillPoly([[214, 58], [300, 50], [300, 60], [214, 66]], "#2c7c4c"); for (let i = 0; i < 6; i++) { const a = 214 + i * 14.3; fillPoly([[a, 58 - i * 1.3], [a + 7, 58 - i * 1.3 - .7], [a + 7, 66 - i * 1], [a, 66 - i * 1]], "#e8e0c4"); }
+  for (let x = 16; x < 50; x += 2) r(x, 99 + (x - 16) / 34, 1, 2, "#c8a878");
+  // Mehmetin koju oikealla: takaseinä, hylly, katos poimuineen ja varjo (tiski itse on propsi)
   r(216, 66, 2, 26, "#5c3418"); r(296, 60, 2, 34, "#5c3418"); fillPoly([[218, 66], [296, 60], [296, 92], [218, 92]], "#4a2414");
-  for (const x of [232, 240]) { r(x, 82, 6, 5, "#d8a81c"); r(x + 5, 81, 3, 2, "#d8a81c"); r(x + 1, 80, 3, 2, "#e8c84c"); px(x + 1, 83, "#fcf09c"); }
-  r(274, 81, 10, 7, "#3c8cbc"); r(276, 79, 6, 2, "#3c8cbc"); r(283, 82, 3, 1, "#3c8cbc"); px(276, 83, "#e8f4fc");
+  for (let x = 218; x < 296; x++) { const yb = 66 - (x - 214) * 6 / 86; for (let j = 1; j < 7; j++) if (bay(x, yb + j) < .8 - j * .12) px(x, yb + j, "#2a1410"); }
+  fillPoly([[214, 58], [300, 50], [300, 60], [214, 66]], "#2c7c4c"); for (let i = 0; i < 6; i++) { const a = 214 + i * 14.3; fillPoly([[a, 58 - i * 1.3], [a + 7, 58 - i * 1.3 - .7], [a + 7, 66 - i * 1], [a, 66 - i * 1]], "#e8e0c4");
+    lineC(a + 7, 58 - i * 1.3, a + 7, 65 - i, "#c8bc9c"); lineC(a + 14, 57 - i * 1.3, a + 14, 64 - i, "#1c5c34"); }
+  lineC(214, 58, 300, 50, "#5cac6c");
+  for (let i = 0; i < 12; i++) { const x = 214 + i * 7.15, yb = 66 - (x - 214) * 6 / 86, c = i % 2 ? "#2c7c4c" : "#e8e0c4"; r(x + 1, yb, 5, 1, c); r(x + 2, yb + 1, 3, 1, c); px(x + 3, yb + 2, i % 2 ? "#1c5c34" : "#c8bc9c"); }
+  r(220, 88, 74, 2, "#6c3c1c"); r(220, 88, 74, 1, "#9c6430"); r(220, 90, 74, 1, "#2a1410");
+  for (const x of [232, 240]) { r(x, 82, 6, 6, "#a87c18"); r(x, 82, 2, 6, "#fcc860"); r(x + 4, 83, 2, 5, "#6c4c10"); r(x + 6, 81, 2, 2, "#a87c18"); px(x + 7, 80, "#6c4c10");
+    r(x + 1, 80, 4, 2, "#c8941c"); px(x + 1, 80, "#fcd890"); px(x + 2, 79, "#6c4c10"); }
+  for (const x of [252, 256, 260, 264]) { r(x, 84, 2, 4, "#8c2c10"); r(x, 84, 1, 4, "#fc9c5c"); r(x, 83, 2, 1, "#f4e8d8"); }
+  r(274, 81, 10, 7, "#2c6c9c"); r(276, 79, 6, 2, "#2c6c9c"); r(274, 82, 1, 5, "#fca86c"); r(275, 81, 2, 6, "#5c9cc8"); r(281, 81, 3, 7, "#1c4468"); r(283, 82, 3, 1, "#2c6c9c");
+  px(276, 83, "#e8f4fc"); for (let x = 277; x < 281; x += 2) px(x, 85, "#e8c81c");
+  for (const [x, y] of [[250, 74], [260, 76]]) { lineC(x, 66 - (x - 214) * 6 / 86, x, y - 3, "#3c2c1c"); disc(x, y, 2, "#c87c3c", "#7c3c1c"); px(x - 2, y, "#fcb06c"); px(x - 1, y - 1, "#fcb06c"); px(x + 1, y + 1, "#5c2c14"); }
   // kadun pää: kuja moskeijan alla
   r(146, 54, 28, 16, "#2c1428"); disc(160, 54, 14, "#2c1428"); r(146, 68, 28, 2, "#4a2440");
-  g.fillStyle = "rgba(20,0,0,.22)"; g.fillRect(0, 108, W, 28);
   basaariDetail();
 }
 // Yksityiskohtakerros (17.10.: "paranna grafiikat Istanbuliin" Kisapuiston tasolle):
@@ -328,9 +371,8 @@ function basaariBg() {
 // riippuvat matot, kankaat, mausteiden ja teelasien pöytä, kaukaiset kojut, kissa.
 function basaariDetail() {
   seed = 51;
-  for (let i = 0; i < 22; i++) { const x = (rnd() * W) | 0, y = 4 + ((rnd() * 28) | 0), w = 8 + ((rnd() * 30) | 0), lo = y > 18;
-    r(x, y, w, 1, lo ? "#8c3448" : "#3c1c48"); r(x + 2, y + 1, w - 4, 1, lo ? "#fca468" : "#d0587c"); }
-  for (const [x, h] of [[96, 34], [224, 30], [74, 22], [246, 20]]) { const M2 = "#5c2448"; r(x, 70 - h, 2, h, M2); tri(x - 1, 70 - h - 5, 4, 5, M2); r(x - 1, 70 - h + 6, 4, 1, M2); }
+  for (let i = 0; i < 16; i++) { const w = 6 + (rnd() * 5 | 0), x = 30 + (rnd() * 250 | 0), y = 5 + (rnd() * 26 | 0), lo = y > 16; if (y + 4 > 38 * Math.min(x - 2, 318 - x - w) / 136) continue;
+    r(x + 2, y, w - 4, 1, lo ? "#e88c5c" : "#a03c68"); r(x, y + 1, w, 1, lo ? "#c85c50" : "#7c2458"); r(x + 1, y + 2, w - 2, 1, lo ? "#fcb878" : "#d05c78"); }
   // kaukaiset kojut kadun päässä
   for (const [x, c] of [[138, "#2c7c4c"], [148, "#b81c1c"], [166, "#2c4c9c"], [176, "#c8941c"]]) { fillPoly([[x, 64], [x + 8, 64], [x + 9, 67], [x - 1, 67]], c); r(x, 67, 8, 4, "#3c1c18"); }
   // keramiikkalautaset oikealla seinällä markiisin yläpuolella
@@ -341,8 +383,9 @@ function basaariDetail() {
   // riippuvat kankaat oikealla sivuseinällä (kojun ja kuvan reunan välissä)
   for (const [x, c1, c2] of [[302, "#c83c4c", "#e8c84c"], [310, "#2c6c9c", "#e8e0c4"]]) { for (let y = 46; y < 92; y++) { const w = 6 + Math.sin(y / 5) * .8; r(x, y, w, 1, (y >> 2) % 3 ? c1 : c2); } r(x - 1, 45, 8, 1, "#5c3418"); }
   // pöytä: teelasit ja baklava edustalla vasemmalla
-  fillPoly([[112, 112], [140, 112], [142, 116], [110, 116]], "#7c4c24"); r(110, 116, 32, 2, "#5c341c"); r(112, 118, 2, 10, "#4c2c14"); r(138, 118, 2, 10, "#4c2c14");
-  for (const x of [116, 122, 128]) { r(x, 107, 3, 5, "#c84c1c"); r(x, 107, 3, 1, "#fce0b0"); r(x - 1, 106, 5, 1, "#e8c81c"); }
+  fillPoly([[112, 112], [140, 112], [142, 116], [110, 116]], "#9c6c38"); dither(112, 113, 28, 2, "#9c6c38", "#7c5028", .35); r(110, 116, 32, 2, "#5c341c"); for (let x = 111; x < 142; x += 2) px(x, 116 + (x >> 1) % 2, "#7c4c24");
+  r(112, 118, 2, 10, "#4c2c14"); r(112, 118, 1, 10, "#7c4c24"); r(138, 118, 2, 10, "#4c2c14"); r(114, 128, 28, 1, "#3c2430");
+  for (const x of [116, 122, 128]) { r(x - 1, 111, 5, 1, "#e8c81c"); px(x + 3, 111, "#a8841c"); r(x, 106, 3, 5, "#b83c14"); r(x + 1, 107, 1, 3, "#fc8c3c"); r(x, 106, 1, 5, "#fce8c8"); r(x + 2, 106, 1, 5, "#6c1c08"); r(x, 105, 3, 1, "#f4ece0"); }
   r(132, 108, 8, 4, "#d8a04c"); for (let k = 0; k < 4; k++) px(133 + k * 2, 109, "#7c9c3c");
   // kissa kadulla (piirretään animoituna basaariDraw:ssa, tässä vain varjo)
   g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(186, 127, 6, 1.5, 0, 0, 7); g.fill();
@@ -370,11 +413,25 @@ function basaariDraw(t) {
   { const ph = Math.floor(t / 140) % 3; r(226, 68, 1, 24, "#8c8c8c"); r(230, 66, 6, 26, "#2c2c2c"); r(231, 68, 4, 22, "#e8401c"); glow(233, 80, 11, "255,90,30", .2);
     for (let j = 0; j < 20; j++) { const w = 5.5 - Math.abs(j - 8) / 4; r(226 - w / 2 + .5, 70 + j, w, 1, (j + ph) % 3 === 0 ? "#6c3414" : (j + ph) % 3 === 1 ? "#a8642c" : "#c8843c"); } }
 }
-function basaariCounter() { fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]], "#8c5c2c"); r(214, 98, 86, 16, "#24448c"); r(214, 98, 86, 1, "#e8c81c");
-  for (let x = 218; x < 298; x += 8) { px(x, 104, "#e8c81c"); px(x - 1, 105, "#e8c81c"); px(x + 1, 105, "#e8c81c"); px(x, 106, "#e8c81c"); }
-  for (const x of [244, 249, 254]) { r(x, 89, 3, 4, "#c84c1c"); r(x, 89, 3, 1, "#fce0b0"); } shadow(257, 114, 42); }
-function basaariSpices() { for (const [x, c, hi] of [[70, "#c83c1c", "#fc6c3c"], [84, "#e8b41c", "#fce06c"], [98, "#5c8c2c", "#8cbc4c"]]) {
-  r(x, 92, 12, 9, "#c8b080"); r(x - 1, 90, 14, 3, "#dcc490"); tri(x + 1, 85, 10, 6, c); px(x + 5, 85, hi); px(x + 3, 88, hi); } shadow(90, 101, 18); }
+function basaariCounter() { fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]], "#8c5c2c"); lineC(218, 92, 296, 92, "#6c4020"); r(214, 97, 86, 1, "#c08a4c");
+  r(214, 98, 86, 14, "#24448c"); r(214, 98, 86, 2, "#3c64b4"); r(214, 98, 86, 1, "#6c8ccc");
+  for (const x of [236, 263, 285]) { r(x, 100, 3, 12, "#1a3070"); r(x - 1, 100, 1, 12, "#3458a8"); }
+  [219, 228, 243, 251, 258, 271, 279, 293].forEach((x, i) => { const y = 105 + (i % 3 === 1 ? 1 : 0);
+    if (i % 2 === 0) { px(x, y - 2, "#fcec8c"); r(x - 1, y - 1, 3, 1, "#e8c81c"); r(x - 2, y, 5, 1, "#e8c81c"); r(x - 1, y + 1, 3, 1, "#e8c81c"); px(x, y + 2, "#a8841c"); }
+    else { px(x, y - 1, "#fcec8c"); r(x - 1, y, 3, 1, "#e8c81c"); px(x, y + 1, "#a8841c"); } });
+  r(214, 111, 86, 1, "#18285c"); r(214, 112, 86, 1, "#e8c81c");
+  for (let x = 214; x < 300; x += 2) r(x, 113, 1, (x * 7) % 5 > 2 ? 2 : 1, "#c8a41c");
+  for (let x = 217; x < 300; x += 9) { r(x, 113, 1, 3, "#e8c81c"); px(x, 116, "#a8841c"); }
+  for (const x of [244, 249, 254]) { r(x, 89, 3, 3, "#a83c1c"); r(x, 89, 1, 3, "#fc9c5c"); r(x + 2, 89, 1, 3, "#6c200c"); r(x, 88, 3, 1, "#f4e8d8"); r(x - 1, 92, 5, 1, "#e8c81c"); } shadow(257, 114, 42); }
+function basaariSpices() {
+  for (const [x, c, hi, sh, dk] of [[70, "#c83c1c", "#fc7c4c", "#8c2410", "#4c1408"], [84, "#e0a81c", "#fce47c", "#a8741c", "#5c3c0c"], [98, "#5c8c2c", "#9cc85c", "#3c6018", "#1c3410"]]) {
+    r(x - 1, 95, 14, 7, "#7c4c24"); r(x - 1, 95, 14, 1, "#b07c44"); r(x - 1, 98, 14, 1, "#4a2810"); r(x - 1, 101, 14, 1, "#3c200c"); r(x - 1, 95, 1, 7, "#4a2810"); r(x + 12, 95, 1, 7, "#3c200c"); px(x + 3, 96, "#5c3418"); px(x + 8, 99, "#5c3418");
+    r(x, 89, 12, 6, "#c8b080"); for (let j = 0; j < 6; j++) for (let i = j % 3; i < 12; i += 3) px(x + i, 89 + j, "#b09868"); r(x + 9, 90, 3, 5, "#a08858");
+    r(x - 1, 88, 14, 2, "#e4d0a0"); r(x - 1, 89, 14, 1, "#b8a070"); px(x - 1, 88, "#8c7448"); px(x + 12, 88, "#8c7448");
+    for (let j = 0; j < 7; j++) { const w = 2 + (j * 1.6 | 0), t3 = Math.max(1, w / 3 | 0), x0 = x + 6 - (w >> 1), y = 81 + j;
+      px(x0 - 1, y, dk); px(x0 + w, y, dk); r(x0, y, w, 1, c); r(x0, y, t3, 1, hi); r(x0 + w - t3, y, t3, 1, sh); }
+    r(x + 5, 80, 2, 1, dk); r(x + 13, 97, 2, 5, "#3c2430"); }
+  r(69, 102, 44, 1, "#3c2430"); }
 // Mehmetin nahkapussit kojun katosta (sokkotesti 2: Jussi puhui pusseista, joita ei näkynyt).
 function basaariBags() { lineC(274, 64, 296, 64, "#5c3c1c");
   for (const [x, h] of [[278, 14], [285, 18], [292, 12]]) { lineC(x, 64, x, 64 + h - 8, "#3c2c1c");
