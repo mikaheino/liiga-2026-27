@@ -340,7 +340,9 @@ function basaariBg() {
         if (u < -.6) L -= (-.6 - u) * 5;
         if (hsh(sid, row + 50) < .07) { L -= .9; if (h > 2 && Math.round(fu * sw) === j + 1) { px(x, yy, MOR); continue; } }
         if (j === 0 && h > 2) L += .5;
-        L += (bay(x, yy) - .5) * .8; px(x, yy, FL[Math.max(0, Math.min(4, Math.round(L)))]); } }
+        L += (bay(x, yy) - .5) * .3 + (hsh(sid, row + 9) < .5 ? .25 : -.25); px(x, yy, FL[Math.max(0, Math.min(4, Math.round(L)))]);
+        if (hsh(x, yy) < .012 && h > 2) px(x, yy, MOR);
+        if (k < .4 && bay(x, yy) < (.4 - k) / .4 * .85) px(x, yy, k < .15 ? "#8c5850" : "#7c4c48"); } }
     y += h; }
   // reunakivet seinien juurella: tumman ruskea sävyramppi
   fillPoly([[0, 112], [136, 70], [0, 116]], "#4a2c24"); lineC(0, 112, 136, 70, "#7c4c34"); fillPoly([[320, 112], [184, 70], [320, 116]], "#3c2420"); lineC(319, 112, 184, 70, "#5c3828");
@@ -387,6 +389,13 @@ function basaariDetail() {
   r(112, 118, 2, 10, "#4c2c14"); r(112, 118, 1, 10, "#7c4c24"); r(138, 118, 2, 10, "#4c2c14"); r(114, 128, 28, 1, "#3c2430");
   for (const x of [116, 122, 128]) { r(x - 1, 111, 5, 1, "#e8c81c"); px(x + 3, 111, "#a8841c"); r(x, 106, 3, 5, "#b83c14"); r(x + 1, 107, 1, 3, "#fc8c3c"); r(x, 106, 1, 5, "#fce8c8"); r(x + 2, 106, 1, 5, "#6c1c08"); r(x, 105, 3, 1, "#f4ece0"); }
   r(132, 108, 8, 4, "#d8a04c"); for (let k = 0; k < 4; k++) px(133 + k * 2, 109, "#7c9c3c");
+  // ilmaperspektiivi: kaukaiset seinänosat viilenevät kohti katoamispistettä
+  const inL = (x, y) => x < 136 && y > 38 * x / 136 && y < 112 - 42 * x / 136;
+  for (let y = 26; y < 80; y++) for (let x = 84; x < 136; x++) { const d = (x - 84) / 52 * .3; if (!inL(x, y) || y < 38 * x / 136 + 21 || bay(x, y) >= d) continue;
+    px(x, y, "#8c5c64"); if (x > 108) px(320 - x, y, "#7c5460"); }
+  // lyhtyjen hehku: kolmiportainen ditheröity sädekehä (lämmin päävalo)
+  for (const [lx, ly, s] of [[60, 40, 1], [110, 50, .7], [210, 50, .7], [262, 40, 1]]) for (const [rr, dn, c] of [[13, .14, "#c87848"], [9, .3, "#f0a050"], [5.5, .55, "#fcd070"]]) {
+    const R = rr * s; for (let y = ly + 3 - R; y < ly + 3 + R; y++) for (let x = lx - R; x < lx + R; x++) if (Math.hypot(x - lx, y - ly - 3) < R && bay(x, y) < dn) px(x, y, c); }
   // kissa kadulla (piirretään animoituna basaariDraw:ssa, tässä vain varjo)
   g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(186, 127, 6, 1.5, 0, 0, 7); g.fill();
 }
@@ -413,7 +422,13 @@ function basaariDraw(t) {
   { const ph = Math.floor(t / 140) % 3; r(226, 68, 1, 24, "#8c8c8c"); r(230, 66, 6, 26, "#2c2c2c"); r(231, 68, 4, 22, "#e8401c"); glow(233, 80, 11, "255,90,30", .2);
     for (let j = 0; j < 20; j++) { const w = 5.5 - Math.abs(j - 8) / 4; r(226 - w / 2 + .5, 70 + j, w, 1, (j + ph) % 3 === 0 ? "#6c3414" : (j + ph) % 3 === 1 ? "#a8642c" : "#c8843c"); } }
 }
-function basaariCounter() { fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]], "#8c5c2c"); lineC(218, 92, 296, 92, "#6c4020"); r(214, 97, 86, 1, "#c08a4c");
+function basaariCounter() {
+  // varjokaista katoksen alla ja tavaraa takaseinällä (kankaat, messinkipannut)
+  for (let x = 218; x < 296; x++) { if (x > 223 && x < 239) continue; const yb = 66 - (x - 214) * 6 / 86; for (let j = 1; j < 5; j++) if (bay(x, yb + j) < .9 - j * .15) px(x, yb + j, "#160a0c"); }
+  for (const [x, c1, c2, len] of [[218, "#8c2c5c", "#e8c84c", 14], [286, "#c86c1c", "#2c5c8c", 16], [291, "#2c7c5c", "#e8e0c4", 12]]) { const yb = Math.round(66 - (x - 214) * 6 / 86) + 2;
+    for (let y = yb; y < yb + len; y++) { r(x, y, 4, 1, (y - yb) % 5 === 2 ? c2 : c1); px(x + 3, y, "#2a1018"); } r(x, yb + len, 4, 1, c2); px(x + 1, yb + len + 1, c2); }
+  for (const [x, y] of [[268, 72], [276, 70]]) { r(x, 66 - (x - 214) * 6 / 86 + 1, 1, y - 66 + (x - 214) * 6 / 86 - 2, "#3c2c1c"); r(x - 2, y - 1, 5, 1, "#a87c18"); disc(x, y + 2, 3, "#c8941c", "#6c4c10"); px(x - 1, y + 1, "#fcd890"); px(x + 2, y + 3, "#6c4c10"); }
+  fillPoly([[218, 92], [296, 92], [300, 98], [214, 98]], "#8c5c2c"); lineC(218, 92, 296, 92, "#6c4020"); r(214, 97, 86, 1, "#c08a4c");
   r(214, 98, 86, 14, "#24448c"); r(214, 98, 86, 2, "#3c64b4"); r(214, 98, 86, 1, "#6c8ccc");
   for (const x of [236, 263, 285]) { r(x, 100, 3, 12, "#1a3070"); r(x - 1, 100, 1, 12, "#3458a8"); }
   [219, 228, 243, 251, 258, 271, 279, 293].forEach((x, i) => { const y = 105 + (i % 3 === 1 ? 1 : 0);
