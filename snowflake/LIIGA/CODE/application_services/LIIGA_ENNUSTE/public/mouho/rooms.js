@@ -77,6 +77,8 @@ function kisaBg() {
   for (const [x, h] of [[296, 26], [312, 32], [228, 20]]) for (let j = 0; j < h; j += 3) { const w = 2 + ((j * 7 / h) | 0), y = 62 - h + j;
     r(x - w, y, w * 2 + 1, 3, "#1e2434"); r(x - w, y + 2, w * 2 + 1, 1, "#141826"); r(x - w, y, w, 2, "#161c2c"); r(x + 1, y, w - 1, 1, "#3a3450"); px(x + w, y + 1, "#8c5468"); }
   r(0, 62, W, BASE - 62, "#161a26"); dither(0, 62, W, 4, "#1c2230", "#161a26", .5);
+  // horisontin usva puiden juurella: harva dither, tihenee alas
+  for (let y = 54; y < 66; y++) for (let x = 0; x < W; x++) { const f = 1 - Math.abs(y - 61) / 6; if (bay(x, y) < f * .32 + .06 * Math.sin(x / 23)) px(x, y, y < 61 ? "#5a4870" : "#3c3656"); }
   // --- halli: keltainen lohko vasemmalla, harmaa pääsali harjakattoineen, valkoinen matala osa edessä
   // pääsali (aaltopelti, hämärän violetti)
   // sävyramppi: lämmin pinkki-oranssi taivaalle päin yläreunassa -> kylmä violetti varjo alhaalla
@@ -85,6 +87,14 @@ function kisaBg() {
     for (let y = top; y < BASE; y++) { const f = Math.min(4, Math.max(0, (y - top) / 5 + (x > 178 ? .6 : 0))), k = f | 0, fr = f - k; px(x, y, P[Math.min(4, k + (bay(x, y) < fr ? 1 : 0))]); } }
   fillPoly([[178, 24], [264, 40], [264, 43], [178, 27]], "#5c5a74");
   lineC(104, 39, 178, 23, "#f4c8a0"); lineC(178, 23, 264, 39, "#d89890"); lineC(104, 40, 178, 24, "#e0a48c"); lineC(178, 24, 264, 40, "#46445c");   // reunavalo + kattoreuna
+  // paneelisaumat niitteineen ja valumajäljet katon alta
+  for (const x of [122, 142, 162, 196, 218, 240, 258]) { const top = Math.ceil(x < 178 ? 40 - (x - 104) * 16 / 74 : 24 + (x - 178) * 16 / 86) + 2;
+    r(x, top, 1, 62 - top, "#4a4870"); r(x + 1, top, 1, 62 - top, "#8c84a4");
+    for (let y = top + 3; y < 61; y += 6) px(x - 1, y, "#c0a4b0"); }
+  for (const [x, n] of [[132, 9], [150, 6], [204, 11], [230, 7], [252, 8]]) { const top = Math.ceil(x < 178 ? 40 - (x - 104) * 16 / 74 : 24 + (x - 178) * 16 / 86) + 2;
+    for (let y = top; y < top + n; y++) if (bay(x, y) < 1 - (y - top) / n) px(x, y, "#5a4c6c"); px(x, top, "#46405e"); }
+  // räystäskouru ja syöksytorvi oikealla
+  lineC(178, 26, 264, 42, "#2c2a40"); r(262, 42, 2, BASE - 42, "#3a3852"); r(262, 42, 1, BASE - 42, "#6c6888"); r(260, BASE - 2, 4, 2, "#3a3852");
   // ruoste- ja likaklusterit kylkiä rikkomaan
   for (const [x, y, n] of [[124, 48, 7], [206, 42, 5], [246, 50, 9]]) { r(x, y, 2, n, "#8c5a4c"); r(x + 1, y + 2, 2, n - 2, "#6c4448"); px(x, y, "#b4745c"); px(x + 3, y + n - 3, "#6c4448"); r(x - 1, y + n, 4, 1, "#4c3c50"); }
   // toimistoikkunan lämmin valo seinälle (dithattu)
@@ -118,12 +128,20 @@ function kisaBg() {
   seed = 61; for (let k = 0; k < 260; k++) { const x = (rnd() * W) | 0, y = BASE + 2 + ((rnd() * (H - BASE)) | 0); r(x, y, 2 + ((rnd() * 2) | 0), 1, rnd() > .5 ? "#34344c" : "#141622"); }   // kiviaines klustereina
   // aulan lämmin valo asfaltilla ovien edessä (dithattu, porrastettu)
   for (let j = 0; j < 22; j++) for (let i = -44; i <= 44; i++) { const d = Math.hypot(i / 44, j / 22); if (d < 1 && bay(158 + i, 80 + j) < (1 - d) * .7) px(158 + i, 80 + j, d < .45 ? "#7a5e50" : "#4e4250"); }
+  // sisäänkäynnin valokeila: levenevä, dithattu trapetsi ovista kohti katsojaa
+  for (let y = BASE + 1; y < BASE + 34; y++) { const t = (y - BASE) / 34, x0 = 124 - t * 30, x1 = 194 + t * 30;
+    for (let x = x0 | 0; x <= x1; x++) { const u = Math.min(x - x0, x1 - x) / 10; if (bay(x, y) < Math.min(1, u) * (1 - t) * .5) px(x, y, t < .35 ? "#6a5458" : "#4a4054"); } }
+  // lyhtyjen pehmeä halo taustassa (dithattu, porrastettu)
+  for (const [lx, ly] of [[24, 52], [286, 50]]) for (let j = -14; j <= 14; j++) for (let i = -14; i <= 14; i++) { const d = Math.hypot(i, j) / 14;
+    if (d < 1 && bay(lx + i, ly + j) < (1 - d) * .5) px(lx + i, ly + j, d < .4 ? "#c89c74" : "#7c5c6c"); }
   // lätäköt: taivaan heijastus + pystysuorat valojuovat ikkunoista ja vasemmasta lyhdystä
-  for (const [cx, cy, rx, ry] of [[30, 104, 20, 3], [160, 108, 36, 4], [104, 121, 18, 3], [212, 118, 22, 3], [58, 130, 14, 2]]) for (let j = -ry; j <= ry; j++) for (let i = -rx; i <= rx; i++) {
+  for (const [cx, cy, rx, ry] of [[30, 104, 20, 3], [160, 109, 36, 7], [104, 121, 18, 3], [212, 118, 22, 3], [58, 130, 14, 2]]) for (let j = -ry; j <= ry; j++) for (let i = -rx; i <= rx; i++) {
     const x = cx + i, y = cy + j, e = (i * i) / (rx * rx) + (j * j) / (ry * ry); if (e > 1 || (e > .7 && bay(x, y) < .5)) continue;
-    const win = x >= 126 && x < 192 && (x - 126) % 11 < 9, lamp = Math.abs(x - 24) < 3, fall = (j + ry) / (2 * ry);
-    px(x, y, j === -ry ? "#56607c" : "#38425e");
-    if ((win && (x - 126) % 11 > 1 && (x - 126) % 11 < 7) || lamp) px(x, y, lamp ? "#e8d8a0" : fall < .5 ? "#c8a06c" : "#8c6c54"); }
+    const fall = (j + ry) / (2 * ry), rip = ((y * 3) % 5 < 2 ? 1 : 0) - (y % 4 === 0 ? 1 : 0), xs = x + rip;   // aaltoileva pystyheijastus
+    const wc = (xs - 126) % 11, win = xs >= 126 && xs < 192 && wc >= 1 && wc <= 7, edge = wc === 1 || wc === 7, lamp = Math.abs(xs - 24) < 3;
+    px(x, y, j === -ry ? "#56607c" : e > .55 ? "#303852" : "#38425e");
+    if (j === ry || (e > .8 && j > 0)) { px(x, y, "#1a1c2c"); continue; }                     // tumma lätäkön reuna lähipuolella
+    if ((win || lamp) && bay(x, y) < (edge ? .45 : 1) - fall * .55) px(x, y, lamp ? (fall < .5 ? "#f0e0a8" : "#a89470") : fall < .3 ? "#ecc884" : fall < .65 ? "#c8a06c" : "#8c6c54"); }
   // öljytahrat ja kulunut halkeama
   for (const [x, y] of [[84, 113], [198, 128], [138, 96]]) { r(x, y, 6, 2, "#151424"); r(x + 1, y - 1, 3, 1, "#151424"); r(x + 2, y + 2, 3, 1, "#151424"); px(x + 2, y, "#4c3c6c"); px(x + 3, y, "#2c5c5c"); }
   for (const [x0, y0, x1, y1] of [[58, 98, 64, 101], [64, 101, 68, 105], [68, 105, 70, 109], [70, 109, 78, 113]]) { lineC(x0, y0, x1, y1, "#100e18"); lineC(x0 + 1, y0, x1 + 1, y1, "#3e3e58"); }
@@ -137,6 +155,10 @@ function kisaBg() {
   // nurmikaistale ja lehtiä vasemmalla edessä
   vgrad(0, 126, 64, 10, ["#2c3c24", "#22301c"]); seed = 77; for (let k = 0; k < 60; k++) px(rnd() * 70, 124 + rnd() * 12, ["#c8782c", "#e8a83c", "#8c4c1c", "#3c4c2c"][(rnd() * 4) | 0]);
   r(0, 125, 66, 1, "#5c5c68"); fillPoly([[66, 125], [74, 136], [72, 136], [64, 126]], "#4c4c58");
+  // tummat etualan pensaat syvyydeksi (kylmä siluetti, ohut lämmin reunavalo)
+  for (const [bx, by, bw] of [[-4, 129, 40], [24, 131, 30], [288, 128, 36], [306, 125, 20]]) { seed = bx + 200;
+    for (let x = bx; x < bx + bw; x++) { const h = 3 + Math.round(Math.sin((x - bx) / bw * Math.PI) * (bw / 6)) + ((rnd() * 2) | 0), top = by + (bw / 6) - h + 3;
+      r(x, top, 1, H - top, "#0e1018"); if (x % 3 === 0) px(x, top, "#2a2438"); if (x % 5 === 1) px(x, top - 1, "#0e1018"); } }
   // koivu vasemmalla edessä: valkoinen runko mustin juovin, keltainen latvus kehyksenä
   r(4, 16, 4, 112, "#e8e4dc"); r(7, 16, 1, 112, "#b8b4ac"); for (let y = 22; y < 126; y += 7 + (y % 5)) r(4 + (y % 3), y, 2, 1, "#2c2c2c");
   lineC(6, 40, 22, 26, "#d8d4cc", 2); lineC(6, 60, -4, 48, "#d8d4cc", 2);
