@@ -171,30 +171,6 @@ odottaa kauden loppua. Testit kirjoitetaan nykyistä käytöstä vasten.
 **Milloin:** kohdat 1-2 heti kun halutaan (ei vaikuta ennusteeseen), 3-4
 kauden jälkeen.
 
-## 5. Mouho-peli: grafiikan tasoon nosto (lisätty ja tehty 2026-10-17)
+## 5.–6. Mouho-peli
 
-**Tehty 17.10.:** kartat oikeista koordinaateista (`MAP_P`, `SEP` prologue.js:ssä),
-nimettömät hahmot, Mehmet ja salkkumies bobblehead-tyyliin (`npc()` faces.js:ssä), hallitus
-tuoleissa pöydän takana. Esikatselu: `index.html?nayta=kartta|suomi|hallitus|hahmot|basaari`.
-
-Käyttäjän havainnot pelatessa (`public/mouho/`):
-
-1. **Kartat oikeiksi.** Euroopan kartta (`prologue.js`, `europeMapBg`, lennot
-   Lappeenranta -> Istanbul -> Kappadokia -> Helsinki) ei noudata oikeaa karttaa:
-   rantaviivat ja kaupunkien paikat pitää piirtää todellisen kartan mukaan.
-   Sama tarkistus Kaakkois-Suomen kartalle prologissa.
-2. **Muut henkilöt Jussin ja Raimon tasolle.** Basaarin väki (`figure()` art.js:ssä,
-   `basaariCrowd`, loppukohtauksen basaariryhmä) näyttää tikku-ukoilta. Tavoite on
-   sama bobblehead-tyyli kuin Jussilla ja Raimolla (`pixel_face.py`, `person()`).
-   Koskee myös Mehmetiä, salkkumiestä ja tuomarihaamua, jos ne jäävät jälkeen.
-3. **Hallitus pöydän taakse istumaan.** Kaivokadun hallituksen jäsenet
-   (`boardTable`, `hallitus_*` pixfaces) näyttävät leijuvilta päiltä: lisää
-   vartalot ja tuolit, ja pöytä peittää alavartalon.
-
-## 6. Mouho-peli: sivuhahmojen graafinen tyyli (lisätty 2026-10-18)
-
-Sivuhahmojen (basaarin väki, Mehmet, salkkumies, Kaivokadun jalankulkijat, loppukohtauksen
-joukko) graafinen tyyli pitää parantaa. Kokeiltu 17.–18.10.: piirretyt bobblehead-päät
-(`npc()` faces.js), npc_style-chibi, South Park -generaattori (`southpark.js`, ei kytketty).
-Yksikään ei vielä istu päähenkilöiden valokuvapäiden rinnalle. Grafiikkaputki
-(docs/mouho_pixel_art.md) ei koske sivuhahmoihin ennen kuin tyyli on päätetty.
+Siirretty 23.10.2026 omaan repoon `/Users/mika.heino/prod/mouho_2026` (docs/backlog.md).

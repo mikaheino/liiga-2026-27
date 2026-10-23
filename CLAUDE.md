@@ -1,5 +1,8 @@
 # Liiga 2026-27 — Claude Code notes
 
+**Mouho-peli on omassa repossaan (23.10.2026): `/Users/mika.heino/prod/mouho_2026`.** Pelityö tehdään
+siellä; tämän repon `public/mouho` on julkaisukopio (`tools/sync-liiga.sh` siellä). Älä muokkaa peliä täällä.
+
 ## Repo & git (since 2026-08-18)
 
 Version-controlled at **https://github.com/mikaheino/liiga-2026-27** (public),
