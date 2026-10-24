@@ -112,8 +112,6 @@ const HINTS = () => {
       !lot ? "Kävele parkkipaikan perälle vasemmasta reunasta." : f.mgp ? "Puhu salkkumiehelle ja kysy, mitä sijoittajat haluavat." : "Näytä pyramidikaavio salkkumiehelle (Anna kaavio, tai Puhu)."];
     if (!f.unlocked) return lot ? ["Liigan toimiston otteluohjelmassa oli post-it Ilveksestä. Se on pahvilaatikossani.", "Ilves-ilta 2025 juhli 40 vuotta mestaruudesta: kävele numeroille 1, 9, 8 ja 5."]
       : ["Pahvilaatikon otteluohjelmassa oli post-it Ilveksestä.", "Avaa pahvilaatikko, ja kävele sitten parkkipaikan perälle numeroille 1, 9, 8 ja 5."];
-    if (!f.letterTaken) return ["Sijoittajat jättivät kirjeen postilaatikkoon.", lot ? "Kävele hallin eteen, avaa postilaatikko ja poimi kirje." : "Avaa postilaatikko ja poimi kirje."];
-    if (!has("lippu")) return ["Kirjeessä voi olla muutakin kuin sanoja.", "Katso kirjettä: oikea painike kirjeen kuvaan tavaroissa."];
     return ["Kaikki on valmista. Lentokenttä kutsuu.", lot ? "Kävele hallin eteen ja käytä taksia." : "Käytä taksia oikealla."];
   }
   if (here === "lentoasema") return ["Istanbulin lento lähtee portilta 1.", "Käytä lentolippua portilla 1 oikealla."];

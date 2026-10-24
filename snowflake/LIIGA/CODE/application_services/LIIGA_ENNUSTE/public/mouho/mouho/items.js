@@ -5,8 +5,7 @@ Object.assign(ITEMS, {
   kortti: { name: "käyntikortti", look: () => say("Kultareunainen käyntikortti. Painettu nimi on vedetty yli, ja tilalle on juuri kirjoitettu kuulakärkikynällä: \"MOUHO GLOBAL PARTNERS. Istanbul - Lappeenranta.\"\nKuulostaa viralliselta.") },
   kirje: { name: "kirje", look: async () => {
     await say("\"Arvoisa herra Markkanen! Sijoittajamme ovat valmiita neuvottelemaan MOUHO-brändistä kanssanne.\nTervetuloa Istanbuliin: Suuri basaari, Mehmetin koju. -- Mouho Global Partners\"");
-    await say("Neuvottelemaan Mouhosta! Kansainvälinen kumppanuus, ennen kuin olen edes saanut paikkaa. Proaktiivisempaa ei voi olla.");
-    if (!has("lippu")) { await say("Kirjeen välissä on lentolippu Istanbuliin. Ilmainen! Se on aina hyvä merkki. Eikö olekin?"); give("lippu"); } },
+    await say("Neuvottelemaan Mouhosta! Kansainvälinen kumppanuus, ennen kuin olen edes saanut paikkaa. Proaktiivisempaa ei voi olla."); },
     Avaa: () => ITEMS.kirje.look() },          // sokkotesti 2: "Avaa kirje" on luontevin verbi
   seteli: { name: "50 euron seteli", look: () => say(st.flags.pyramid ? "Viisikymppinen. Paperia sekin, kun oikein katsoo. Reunassa on hyvin tilaa kirjoittaa." : "Viisikymppinen. Se lensi herra Saarnin salkusta. Pidän sen tallessa.") },
   ilmoitus: { name: "Mouhon ilmoitus", look: () => say(st.flags.pyramid ? "Ilmoituksen takana on pyramidikaavioni. Huipulla: minä." : "\"Mouho hakee toiminnanjohtajaa.\" Luin sen jo kolme kertaa. Joka kerta se kuulostaa paremmalta.") },

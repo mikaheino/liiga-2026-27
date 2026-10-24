@@ -316,15 +316,11 @@ defineRoom("koti", {
       Kävele: () => toParkki(), Käytä: () => toParkki() },
     { id: "laatikko", name: "postilaatikko", x: 227, y: 68, w: 13, h: 14, at: 233, aty: 88,
       // Ei lukossa (17.10.: "miksi postilaatikko on lukossa, jos sinne palautetaan rahat?").
-      // Sijoittajien kirje ilmestyy vasta pätevyystestin (Ilves 1985) jälkeen.
-      Avaa: async () => { if (st.flags.boxOpen) return say(st.flags.unlocked && !st.flags.letterTaken ? "Se on jo auki. Sisällä on kultareunainen kirje." : "Se on jo auki."); st.flags.boxOpen = true;
-        await say(st.flags.letterTaken ? "Tyhjä." : st.flags.unlocked ? "Laatikossa on uusi kirje! Kultareunainen kuori." : "Laskuja. Ja Liigan kiitoskirje, toinen kappale. Ei mitään uutta."); },
+      Avaa: async () => { if (st.flags.boxOpen) return say("Se on jo auki."); st.flags.boxOpen = true; await say("Laskuja. Ja Liigan kiitoskirje, toinen kappale. Ei mitään uutta."); },
       Sulje: async () => { st.flags.boxOpen = false; await say("Suljettu. Postilaatikot ovat tyytyväisimpiä suljettuina."); },
-      Poimi: async () => { if (!st.flags.boxOpen) return say("Laatikko on kiinni."); if (!st.flags.unlocked) return say("Pelkkiä laskuja. Ne saavat jäädä sinne."); if (st.flags.letterTaken) return say("Ei siellä ole enää mitään."); st.flags.letterTaken = true; give("kirje"); await say("Kirje sijoittajilta! Kultareunainen kuori. Joku muistaa minut."); },
+      Poimi: () => say(st.flags.boxOpen ? "Pelkkiä laskuja. Ne saavat jäädä sinne." : "Laatikko on kiinni."),
       "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(), "Käytä:kaavio": () => postChart(),
       Katso: () => say("SaiPan toimiston postilaatikko, keltaisen oven vieressä. Postini tulee yhä tänne, vaikka lähdin keväällä 2023.") },
-    { id: "kirje", name: "kirje", x: 229, y: 70, w: 9, h: 7, at: 233, aty: 88, hidden: () => !(st.flags.boxOpen && st.flags.unlocked && !st.flags.letterTaken),
-      Katso: () => say("Kultareunainen kuori postilaatikossa. Sijoittajilta."), Poimi: () => spot("koti", "laatikko").Poimi(), Avaa: () => spot("koti", "laatikko").Poimi() },
     { id: "ovi", name: "SaiPan toimiston ovi", x: 219, y: 62, w: 8, h: 18, at: 224, aty: 88,
       // Sokkotesti 2: setelin tarjoaminen ovelle on luontevaa, joten se käy palautukseksi.
       "Käytä:seteli": () => returnBill(), "Anna:seteli": () => returnBill(), "Käytä:kaavio": () => postChart(),
@@ -346,7 +342,7 @@ async function leave() {
   await script(async () => {
     if (!st.flags.pyramid) return say("Lähteä minne? Minulla ei ole vielä edes suunnitelmaa. Ilmoitustaululla oli jotain.");
     if (!st.flags.billReturned) return say(has("seteli") ? "Ensin kutsu herra Saarnille ja maskotille. Pyramidi tarvitsee kaksi ensimmäistä jäsentä, ja toimiston postiluukku on tuossa." : "Ensin kaksi ensimmäistä jäsentä: herra Saarni ja maskotti. Kutsuun tarvitsisin paperia. Tuolla lensi jokin paperi.");
-    if (!has("lippu")) return say(st.flags.letterTaken ? "Kirjettä pitäisi katsoa tarkemmin. Siinä tuntui olevan jotain muutakin." : st.flags.unlocked ? "Lippu? Sijoittajien kirje odottaa postilaatikossa." : "Lentokentälle? Ilman lippua en pääse edes turvatarkastukseen.");
+    if (!has("lippu")) return say("Lentokentälle? Ilman lippua en pääse edes turvatarkastukseen. Ehkä sijoittajat järjestävät jotain.");
     await say(st.flags.searched ? "Lentoasemalle, kiitos." : "Lentoasemalle! Hetkinen... onko Lappeenrannassa edes lentokenttää? Kuukkelöin.");
     if (!st.flags.searched) { st.flags.searched = true; await kuukkeliSearch(); }
     go("lentoasema", 30, true, 122);

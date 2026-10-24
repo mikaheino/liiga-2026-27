@@ -78,10 +78,6 @@ function basaariFg() {
     y += h; }
   // reunakivet seinien juurella: tumman ruskea sävyramppi
   fillPoly([[0, 112], [136, 70], [0, 116]], "#4a2c24"); lineC(0, 112, 136, 70, "#7c4c34"); fillPoly([[320, 112], [184, 70], [320, 116]], "#3c2420"); lineC(319, 112, 184, 70, "#5c3828");
-  // matto vasemmalla seinällä (kartta kudottuna)
-  fillPoly([[16, 46], [50, 54], [50, 98], [16, 100]], "#6c1428"); fillPoly([[19, 50], [47, 57], [47, 95], [19, 97]], "#b42c38"); fillPoly([[22, 54], [44, 60], [44, 92], [22, 94]], "#d8983c");
-  disc(33, 75, 4, "#2c3c8c"); disc(33, 75, 2, "#e8c84c"); for (let k = 0; k < 7; k++) px(25 + k * 2, 86 - (k % 3), "#c81c1c"); r(39, 83, 1, 3, "#1c1c1c"); r(38, 84, 3, 1, "#1c1c1c");
-  for (let x = 16; x < 50; x += 2) r(x, 99 + (x - 16) / 34, 1, 2, "#c8a878");
   // Mehmetin koju oikealla: takaseinä, hylly, katos poimuineen ja varjo (tiski itse on propsi)
   r(216, 66, 2, 26, "#5c3418"); r(296, 60, 2, 34, "#5c3418"); fillPoly([[218, 66], [296, 60], [296, 92], [218, 92]], "#4a2414");
   for (let x = 218; x < 296; x++) { const yb = 66 - (x - 214) * 6 / 86; for (let j = 1; j < 7; j++) if (bay(x, yb + j) < .8 - j * .12) px(x, yb + j, "#2a1410"); }
@@ -105,7 +101,31 @@ function basaariFg() {
     if (y < 12 && bay(x, y) < (12 - y) / 12 * .9 && (mx < 60 || y < 8)) px(x, y, "#2a1f40"); }
   for (let y = 38; y < 70; y++) { px(135, y, "#ffb060"); px(184, y, "#ffb060"); }
   lineC(0, 112, 136, 70, "#ffb060"); lineC(319, 112, 184, 70, "#ffb060");
-  basaariDetail();
+  basaariDetail(); basaariRug();
+}
+// Kartta-matto vasemmalla seinällä (palaute 25.10.: "matto on piilossa"): iso, kirkas seinävaate
+// tangossa ja hapsuineen, piirretään varjojen päälle. Kuvio lasketaan maton omissa (u, v)-koordinaateissa,
+// jolloin kartta seuraa seinän perspektiiviä.
+function basaariRug() {
+  const X0 = 12, X1 = 58, top = (u) => 40 + 11 * u, bot = (u) => 102 - 9 * u;
+  const ink = (u, v) => {
+    if (u < .07 || u > .93 || v < .05 || v > .95) return (Math.round(u * 40) + Math.round(v * 60)) % 4 ? "#7c1424" : "#e8c84c";
+    if (u < .13 || u > .87 || v < .1 || v > .9) return (Math.round(v * 30) % 2) ? "#2c4c9c" : "#1c2c6c";
+    const sea = v < .42 && u < .55 - v * .6 + Math.sin(v * 30) * .03;
+    if (sea) return (Math.round(u * 20 + v * 25) % 3) ? "#3c7cc8" : "#5c9ce0";
+    const d = Math.abs(v - (.32 + (u - .3) * .95)); if (u > .3 && u < .7 && d < .025 && Math.round(u * 40) % 2) return "#c81c1c";
+    for (const [mu, mv] of [[.55, .66], [.68, .6], [.62, .74]]) if (v > mv - .1 && v < mv && Math.abs(u - mu) < (v - mv + .1) * .8) return v < mv - .07 ? "#f4f0e4" : "#8c4c24";
+    if (Math.hypot(u - .3, (v - .3) * .7) < .045) return "#e8c84c";
+    if (Math.abs(u - .72) < .06 && Math.abs(Math.abs(u - .72) - Math.abs(v - .78) * .7) < .018) return "#c81c1c";
+    return bay(Math.round(u * 46), Math.round(v * 60)) < .25 ? "#d8b878" : "#ecd4a0";
+  };
+  for (let x = X0; x <= X1; x++) { const u = (x - X0) / (X1 - X0), y0 = top(u), y1 = bot(u);
+    for (let y = Math.ceil(y0); y <= y1; y++) px(x, y, ink(u, (y - y0) / (y1 - y0)));
+    if (x % 2 === 0) { r(x, Math.floor(y1) + 1, 1, 3, "#e8c84c"); px(x, Math.floor(y1) + 4, "#c8941c"); } }
+  lineC(X0 - 2, top(0) - 2, X1 + 2, top(1) - 2, "#5c341c"); lineC(X0 - 2, top(0) - 3, X1 + 2, top(1) - 3, "#9c6430");
+  disc(X0 - 2, top(0) - 2.5, 1.5, "#e8c84c"); disc(X1 + 2, top(1) - 2.5, 1.5, "#e8c84c");
+  for (let y = 40; y < 104; y++) if (bay(X0 - 1, y) < .5) px(X0 - 1, y, "#1c0c10");        // varjo seinään
+  for (let k = 0; k < 18; k++) { const u = .16 + k * .04, x = X0 + u * (X1 - X0); px(x, top(u) + 3, "#fff4c8"); }   // lyhdyn valo yläreunassa
 }
 // Yksityiskohtakerros (17.10.: "paranna grafiikat Istanbuliin" Kisapuiston tasolle):
 // pilvet ja kaukaiset minareetit, kangaskattokaistale, keramiikkalautaset, kuparipannut,
@@ -136,7 +156,7 @@ function basaariDetail() {
   for (const [lx, ly, s] of [[60, 40, 1], [110, 50, .7], [210, 50, .7], [262, 40, 1]]) for (const [rr, dn, c] of [[13, .14, "#c87848"], [9, .3, "#f0a050"], [5.5, .55, "#fcd070"]]) {
     const R = rr * s; for (let y = ly + 3 - R; y < ly + 3 + R; y++) for (let x = lx - R; x < lx + R; x++) if (Math.hypot(x - lx, y - ly - 3) < R && bay(x, y) < dn) px(x, y, c); }
   // riippuvat kangasmatot vasemmalla seinällä: siksak-kuvio
-  for (const [x, y, h, c1, c2] of [[52, 50, 12, "#2c8a8a", "#b53a3a"], [57, 56, 14, "#b53a3a", "#2c8a8a"], [31, 52, 10, "#2c8a8a", "#b53a3a"]]) { r(x - 1, y - 1, 6, 1, "#3c2c1c");
+  for (const [x, y, h, c1, c2] of [[62, 54, 14, "#b53a3a", "#2c8a8a"]]) { r(x - 1, y - 1, 6, 1, "#3c2c1c");
     for (let j = 0; j < h; j++) for (let i = 0; i < 4; i++) px(x + i, y + j, (i + (j >> 1) % 2 * 2 + (j % 2)) % 4 < 2 ? c1 : c2); }
   // lyhdyt narujen varassa: kolme kokoa, hehkuhalo
   const LAN = [[70, 36, 1], [110, 28, 2], [150, 24, 0], [205, 33, 2]];
@@ -250,7 +270,7 @@ defineRoom("basaari", {
       Katso: () => say("Döner kebab pyörii hitaasti. Kuin Liigan otteluohjelma: aina sama liha, mutta joka kerta eri kohdassa."),
       Poimi: () => say("Kebab maksaa, ystäväni. Mutta tuoksu on ilmainen.", "kauppias"),
       Käytä: () => say("Pyöritän sitä toiseen suuntaan. Mehmet katsoo minua kuin olisin siirtänyt ottelun.") },
-    { id: "matto", name: "matto", x: 16, y: 46, w: 34, h: 54, at: 56, aty: 112,
+    { id: "matto", name: "matto", x: 10, y: 38, w: 50, h: 68, at: 60, aty: 112,
       Katso: async () => { st.flags.map = true; iq("kartta", 4); await say("Mattoon on kudottu kartta! Kappadokia... luolatemppeli... ja punainen rasti.\nMuistan sen. Kadun päästä pääsee itään."); },
       Poimi: () => say("Matto maksaa enemmän kuin sinä.", "kauppias"), Työnnä: () => say("Matto ei lennä. Tarkistin.") },
     { id: "kauppias", name: "kauppias", actor: true, x: 247, y: 64, w: 22, h: 32, at: 160, aty: 122,

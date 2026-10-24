@@ -19,8 +19,9 @@ startEngine({
 const KISA_DONE = { introDone: true, leafPile: true, billOut: true, billStuck: true, billCaught: true, billReturned: true, adRead: true, noteHint: true,
   myrraCalls: 1, pyramid: true, recruits: 2, mgp: true, metSales: true, pianoT: 1, unlocked: true, letterTaken: true, boxOpen: false };
 const IST_DONE = { merhaba: true, mehmetWho: true, signed: true, myrra1: true, quest: true, questHeard: true, map: true, askedMap: true, bag: true, bazaar: true };
-const afterKisa = (inv = ["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje"]) =>      // lippu käytetään lennolla { Object.assign(st.flags, KISA_DONE); st.inv = inv; };
-defineStart("istanbul", () => { afterKisa(); go("portti", 40, true, 122); script(() => say("Istanbul! Basaarit, moskeijat ja simitin tuoksu. Täällä jokainen on potentiaalinen jäsen.")); });
+// Oletuksena ilman lentolippua: se käytetään lennolla.
+const afterKisa = (inv = ["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje"]) => { Object.assign(st.flags, KISA_DONE); st.inv = inv; };
+defineStart("istanbul", () => { afterKisa(); go("portti", 110, true, 87); script(async () => { await walkTo(60, 122); await say("Istanbul! Basaarit, moskeijat ja simitin tuoksu. Täällä jokainen on potentiaalinen jäsen."); }); });
 defineStart("kappadokia", () => { afterKisa(["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje", "velkakirja"]);
   Object.assign(st.flags, IST_DONE, { recruits: 2, bazaar: false }); go("basaari", 160, true, 74); script(() => toTemple()); });
 // jalonen: Kisapuisto heti Myrrän ensimmäisen puhelun jälkeen
@@ -59,7 +60,7 @@ definePreview("hallitus", () => { overlay = (t) => { mouhoInDraw(t); boardTable(
   person("maskotti", 22, 124, t, { sc: .85 }); person("saarni", 46, 124, t, { sc: .85 }); merchant(72, 124, t); salesman(96, 124, t); ghostRef(154, 122, t); }; });
 definePreview("puhelu", () => { overlay = (t) => { r(0, 0, W, H, "#140f1c"); panelDraw(PANEL.L, 0, "jussi", t, kisaPanel, false); panelDraw(PANEL.R, 0, "myrra", t, coachPanel, false); }; });
 definePreview("esineet", () => { overlay = () => { r(0, 0, W, H, "#1c1c4c"); Object.keys(ITEMS).forEach((k, i) => { const x = 10 + (i % 6) * 51, y = 4 + Math.floor(i / 6) * 44;   // kuvakkeet 48 x 32 ääriviivoineen
-  r(x - 1, y - 1, 50, 34, "#2c2c6c"); g.drawImage(icon(k), x, y); text3(k.toUpperCase().slice(0, 10), x, y + 35, "#a8a8d8"); }); }; });
+  g.drawImage(icon(k), x, y); text3(k.toUpperCase().slice(0, 10), x, y + 35, "#a8a8d8"); }); }; });
 // hahmot: vertailuksi valokuvapäät (Jussi, Raimo, Saarni, valmentajat) ja sivuhahmot edestä ja takaa
 definePreview("hahmot", () => { overlay = (t) => { r(0, 0, W, H, "#4c5c6c"); r(0, 62, W, 2, "#3c4c5c"); r(0, 130, W, 6, "#3c3c44");
   jussi(40, 58, 1, 0, {}); helminen(90, 58, t); person("saarni", 140, 58, t); merchant(210, 58, t); salesman(250, 58, t); person("jalonen", 278, 58, t); person("valtonen", 304, 58, t);

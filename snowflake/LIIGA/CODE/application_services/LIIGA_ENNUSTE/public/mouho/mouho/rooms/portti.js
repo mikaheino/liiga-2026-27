@@ -102,8 +102,8 @@ defineStrip(["portti", "basaari"]);
 const toBazaar = () => crossTo("basaari", 60, 128);
 
 defineRoom("portti", {
-  title: "Suuren basaarin portti, Istanbul", scale: [72, 136, 0.4, 1.06], start: 124,
-  walk: [[[0, 96], [228, 96], [240, 116], [320, 116], [320, 136], [0, 136]]],
+  title: "Suuren basaarin portti, Istanbul", scale: [80, 136, 0.25, 1.12], start: 124,     // aukio jatkuu moskeijalle asti (syvyys, 25.10.)
+  walk: [[[0, 90], [30, 86], [200, 86], [228, 96], [240, 116], [320, 116], [320, 136], [0, 136]]],
   draw: porttiDraw,
   edges: { oikea: () => toBazaar() },
   spots: [

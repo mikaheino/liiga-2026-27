@@ -68,8 +68,16 @@ function temppeliBg() {
   // ketju ja koukku kuilun yllä (piiska ripustetaan tähän, x 160)
   for (let y = 9; y < 22; y++) px(160, y, y % 3 === 0 ? "#3a3440" : y % 3 === 1 ? "#a89c84" : "#6e6458");
   r(160, 22, 1, 4, "#a89c84"); px(159, 26, "#6e6458"); px(158, 25, "#6e6458"); px(158, 24, "#c8bca0"); px(161, 23, "#3a3440"); px(161, 24, "#3a3440");
-  // ovi vasemmalla
-  fillPoly([[2, 76], [18, 82], [18, 124], [2, 128]], "#0a0810"); r(18, 82, 1, 42, "#5a4632"); r(19, 82, 1, 42, SH);
+  // kivipolku kuilun yli (25.10.: ilman sitä Jussi käveli tyhjän päällä): laatat, valoreunat, varjo alla
+  for (let y = CHASM.y0 - 1; y <= CHASM.y1 + 1; y++) { const k = (y - CHASM.y0) / (CHASM.y1 - CHASM.y0), x0 = Math.round(lerp(197, 195, k)), x1 = Math.round(lerp(209, 211, k));
+    for (let x = x0; x <= x1; x++) px(x, y, x === x0 ? "#a8884c" : x === x1 ? "#2c2438" : ((y + (x >> 2)) % 4 === 0) ? "#3a2c24" : bay(x, y) < .5 ? "#6e5638" : "#5a4632"); }
+  r(195, CHASM.y1 + 2, 17, 1, "#86683f"); for (let x = 196; x < 210; x++) if (bay(x, 0) < .6) px(x, CHASM.y1 + 2, "#0a0810");
+  // temppelin suu oikealla: ilta-aurinko laaksosta (uloskäynti temppelin edustalle)
+  fillPoly([[318, 76], [302, 82], [302, 124], [318, 128]], "#3c2440");
+  for (let y = 78; y < 128; y++) for (let x = 303; x < 318; x++) { const top = 76 + (318 - x) * 6 / 16, bot = 128 - (318 - x) * 4 / 16; if (y < top || y > bot) continue;
+    const k = (y - top) / (bot - top); px(x, y, k < .35 ? (bay(x, y) < k * 3 ? "#c86c5c" : "#7c4468") : k < .6 ? (bay(x, y) < (k - .35) * 4 ? "#f0a050" : "#e0785c") : k < .7 ? "#fcd070" : bay(x, y) < .5 ? "#c8784c" : "#a8603c"); }
+  r(301, 82, 1, 42, "#86683f"); r(300, 82, 1, 42, SH);
+  for (let y = 112; y < H; y++) for (let x = 262; x < 302; x++) { const d = Math.hypot((x - 302) / 40, (y - 126) / 12); if (d < 1 && bay(x, y) < (1 - d) * .45) px(x, y, "#c8804c"); }
 }
 const DUST2 = Array.from({ length: 16 }, (_, i) => ({ x: 152 + (i * 7) % 16, y: (i * 13) % 70, s: 3 + (i % 4) }));
 let darkC2 = null;
@@ -107,7 +115,7 @@ function temppeliPost(t) {
   L.globalCompositeOperation = "destination-out";
   const hole = (x, y, rad, a) => { const gr = L.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); L.fillStyle = gr; L.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
   const f = Math.sin(t / 90) * 4 + Math.sin(t / 53) * 2;
-  hole(37, 46, 70 + f, .95); hole(283, 46, 70 - f, .95); hole(st.x, st.y - 22, 44, 1); hole(160, 70, 36, .85);   // Jussi kokonaan valossa (17.10.); valolammikko
+  hole(37, 46, 70 + f, .95); hole(283, 46, 70 - f, .95); hole(st.x, st.y - 22, 44, 1); hole(160, 70, 36, .85); hole(310, 104, 34, .9);   // Jussi kokonaan valossa (17.10.); valolammikko
   L.beginPath(); L.moveTo(150, 0); L.lineTo(170, 0); L.lineTo(182, 66); L.lineTo(138, 66); L.closePath(); L.fillStyle = "rgba(0,0,0,.8)"; L.fill();
   g.drawImage(darkC2, 0, 0);
   const DA = [[157, 16], [165, 34], [155, 50]];                                          // pöly kolmena harvana parvena
@@ -169,7 +177,7 @@ async function toTemple() {
   await script(async () => {
     if (!st.flags.quest) return say("Miksi menisin itään? Sijoittajilla on ensin asiaa. Puhutaan Mehmetin kanssa.");
     if (!st.flags.map) return say("Pyramidin huippu on jossain idässä. Mutta missä? Jossain täällä on varmasti kartta.");
-    await walkTo(160, 72); await travel("ist", "kap"); go("kallio", 250, true, 122);
+    await walkTo(160, 72); await travel("ist", "kap"); go("kallio", 201, true, 97); await walkTo(214, 120);     // polun päästä kohti katsojaa
     if (!st.flags.refMet) await say("Kappadokia. Kalliotorneja, kuumailmapalloja... ja tuolla kallioon hakattu ovi. Maton rasti osui tähän.");
 
   });
@@ -183,7 +191,8 @@ async function firstTempleVisit() {
   await refereeAppears(); await myrraIncoming(2);
   await say("Turnaus tarvitsee tuomarin. Ja tuo tuomari näyttää tarvitsevan joukkueen. Jutellaan hänen kanssaan.");
 }
-function backToBazaar() { return script(async () => { await travel("kap", "ist"); go("basaari", 160, true, 74); }); }
+function backToBazaar() { return script(async () => { if (st.scene === "kallio") await walkTo(201, 97);     // polkua pitkin horisonttiin
+  await travel("kap", "ist"); go("basaari", 160, true, 74); }); }
 function blocked() { return say("Tuomari seisoo kivipolulla. Hän ei päästä ketään ohi. Pitäisi jutella hänen kanssaan."); }
 // Paineansa: ensimmäinen yritys paljastaa pulman, ja ratkaisun osat ovat jo nähtävillä.
 async function discoverTrap() {
@@ -199,8 +208,8 @@ async function grabIdol() {
     await say("...", "muu"); await say("Jalusta painuu. Tietysti se painuu.");
     // Kivenjärkäle vyöryy oviaukosta katsojaa kohti (0 = oviaukko, 1 = ruudun reuna).
     st.flags.boulder = 0; await say("JUOKSE!");
-    walkTo(22, 118);
-    while (st.x > 28) { await sleep(30); st.flags.boulder = Math.min(1, st.flags.boulder + 0.0075); }
+    walkTo(300, 122);                                                                      // ulos temppelin suusta oikealle
+    while (st.x < 292) { await sleep(30); st.flags.boulder = Math.min(1, st.flags.boulder + 0.0075); }
     st.flags.boulder = null;
     await travel("kap", "ist"); go("basaari", 160, true, 74); await say("Hengissä. Ja minulla on pyramidin huippu. Sijoittajat odottavat.");
   });
@@ -212,7 +221,7 @@ function guideTemppeli(t) {
   if (f.refRecruited && !f.needWeight && !f.idol) sparkle(160, 54, t, 2, 2400);
   if (has("pussi")) sparkle(54, 120, t, 3, 1800);
   if (has("sakki")) sparkle(160, 54, t, 4, 1600);
-  if (has("idoli")) sparkle(11, 96, t, 5, 1400);
+  if (has("idoli")) sparkle(310, 96, t, 5, 1400);
 }
 // Temppelin erotuomari: ilmestyy ensikäynnillä; Jussi värvää hänet turnauksen tuomariksi.
 async function refereeAppears() {

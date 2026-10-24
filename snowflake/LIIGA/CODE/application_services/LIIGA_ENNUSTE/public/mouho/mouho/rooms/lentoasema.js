@@ -98,7 +98,7 @@ async function boardPlane() {
   await script(async () => {
     if (!has("lippu")) return say("Portti 1. Ilman lippua tästä ei mennä. Tarkistin ilmeestä.", "muu");
     await say("Istanbul, täältä tullaan! Mouho Global Partners odottaa.");
-    take("lippu"); await travel("lpr", "ist"); go("portti", 40, true, 122);       // aukiolle basaarin portin eteen (backlog 8)
+    take("lippu"); await travel("lpr", "ist"); go("portti", 110, true, 87); await walkTo(60, 122);       // aukion perältä kohti katsojaa (backlog 8, syvyys 25.10.)
     await say("Istanbul! Basaarit, moskeijat ja simitin tuoksu. Täällä jokainen on potentiaalinen jäsen.");
     await say("Kirjeen mukaan Mehmetin koju on Suuressa basaarissa. Portti on tuossa.");
   });

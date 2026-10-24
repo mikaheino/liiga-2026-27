@@ -45,7 +45,8 @@ const NOTE = { 1: 262, 2: 294, 3: 330, 4: 349, 5: 392, 6: 440, 7: 494, 8: 523, 9
 const QUIZZES = {
   parkki: { code: "1985", done: () => st.flags.unlocked, taunt: "salkkumies",
     lines: ["Hah! Väärin. Sijoittajat merkitsevät tämän muistiin.", "Ei se mennyt noin. Olitko oikeasti urheilujohtaja?", "Väärä vuosi. Ilveksen kannattajat itkevät."],
-    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("1985. Pätevyys todistettu. Sijoittajat jättivät teille kirjeen. SaiPan toimiston postilaatikkoon, sinne teidän postinne kai yhä tulee.", "salkkumies"); await say("Kirje? Minulle? Joku on tänään pitänyt minua pätevänä."); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
+    solve() { st.flags.unlocked = true; iq("piano", 10); script(async () => { await sleep(700); await say("1985. Pätevyys todistettu. Sijoittajat pyysivät antamaan teille tämän: kutsu Istanbuliin. Ja lentolippu, tietysti.", "salkkumies"); st.flags.letterTaken = true; give("kirje"); give("lippu");
+      await say("Kultareunainen kirje ja lentolippu Istanbuliin! Ilmainen! Se on aina hyvä merkki. Eikö olekin?"); await say("Ilves, 1985. Viimeinen mestaruus. Jotkut asiat eivät unohdu. Toiset eivät toistu.");
       st.flags.ghostT = Date.now(); [196, 247, 294, 392].forEach((f, n) => setTimeout(() => beep(f, 600, "sine", .05), n * 220)); await sleep(3300); await raimoCameo(); }); } },
   basaari: { code: "2006", done: () => st.flags.cupDone, taunt: "kauppias",
     lines: ["Ei, ei, ystäväni. Maalivahti muistaisi.", "Väärä vuosi! Tuollaisella muistilla et pääse edes Galatan sillalle.", "Hmm. Ehkä sinä olit vain katsomossa."],

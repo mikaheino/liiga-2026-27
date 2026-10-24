@@ -87,7 +87,9 @@ function kallioFg() {
   vgrad(0, 96, W, 40, ["#b4704c", "#a4643c", "#8c5434", "#74442c", "#5c3424"]);
   seed = 21; for (let i = 0; i < 120; i++) px(rnd() * W, 98 + rnd() * 38, rnd() < .5 ? "#c8845c" : "#4c2c1c");
   kalDunes();
-  fillPoly([[150, 136], [190, 100], [214, 100], [238, 136]], "#c88c5c"); for (let y = 102; y < H; y += 4) r(lerp(190, 150, (y - 100) / 36) + 6, y, 30, 1, "#b4784c");
+  // polku kapenee horisonttiin asti: Jussi kävelee sitä syvyyssuunnassa (palaute 25.10.: "enemmän kolmiulotteista liikkumista")
+  fillPoly([[150, 136], [195, 96], [207, 96], [238, 136]], "#c88c5c"); for (let y = 98; y < H; y += Math.max(2, Math.round((y - 90) / 6))) { const k = (y - 96) / 40; r(lerp(195, 150, k) + 2 + k * 4, y, lerp(12, 88, k) - 4 - k * 8, 1, "#b4784c"); }
+  r(196, 96, 10, 1, "#e8b07c");
   // kallioseinä vasemmalla: temppelin suu varjossa (x 0 lähes musta, valo lisääntyy oikealle)
   fillPoly([[0, 0], [70, 0], [62, 30], [74, 60], [66, 98], [76, 136], [0, 136]], "#5c3424");
   for (let y = 0; y < H; y++) for (let x = 0; x < 78; x++) { const k = x / 74; if (bay(x, y) > k * 1.1) px(x, y, y > 92 ? "#110b08" : "#16100f"); }
@@ -141,15 +143,15 @@ defineStrip(["temppeli", "kallio"]);
 const toTempleDoor = () => crossTo("temppeli", 270, 122);
 
 defineRoom("kallio", {
-  title: "Kalliotemppelin edusta, Kappadokia", scale: [62, 136, 0.34, 1.06], start: 122,
-  walk: [[[0, 104], [160, 100], [320, 102], [320, 136], [0, 136]]],
+  title: "Kalliotemppelin edusta, Kappadokia", scale: [94, 136, 0.18, 1.29], start: 122,     // jyrkkä syvyys: polun päässä Jussi on pieni
+  walk: [[[0, 104], [160, 100], [320, 102], [320, 136], [0, 136]], [[195, 96], [207, 96], [214, 104], [188, 104]]],
   draw: kallioDraw,
   edges: { vasen: () => toTempleDoor(), oikea: () => backToBazaar() },
   spots: [
     { id: "ovi", name: "temppelin ovi", x: 8, y: 36, w: 46, h: 78, at: 40, aty: 120, exit: true,
       Katso: () => say(st.flags.refMet ? "Temppelin suu. Sisällä tuomari ja idoli." : "Kallioon hakattu ovi. Sisältä kajastaa soihdun valo. Joku on käynyt täällä ennen minua. Tai jokin."),
       Kävele: () => toTempleDoor(), Käytä: () => toTempleDoor(), Avaa: () => toTempleDoor() },
-    { id: "polku", name: "polku basaariin", x: 296, y: 96, w: 24, h: 40, at: 312, aty: 122, exit: true,
+    { id: "polku", name: "polku basaariin", x: 184, y: 86, w: 34, h: 18, at: 201, aty: 97, exit: true,
       Katso: () => say("Polku laaksoon. Siitä bussilla ja minibussilla takaisin Istanbuliin. Tai Mehmetin serkun kyydillä."),
       Kävele: () => backToBazaar(), Käytä: () => backToBazaar() },
     { id: "pallot", name: "kuumailmapallot", x: 120, y: 8, w: 180, h: 46,

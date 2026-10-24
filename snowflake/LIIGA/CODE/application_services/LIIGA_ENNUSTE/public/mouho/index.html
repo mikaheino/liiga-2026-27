@@ -42,14 +42,14 @@ canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; 
 #verbs button:hover, #verbs button.on { color: var(--verb-hi); }
 #verbs button.def { color: #a8fca8; text-shadow: 0 0 6px #2c7c2c; }
 #inv { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(0, max-content); gap: 6px; align-content: start; background: var(--inv); padding: 6px; border: 2px solid #3c3cac; }
-/* Tavarat kuvakkeina (MI2): 24 x 16 pikseliä, skaalattu terävänä. */
-#inv button { all: unset; cursor: pointer; display: grid; place-items: center; aspect-ratio: 3 / 2; background: #10104c; border: 1px solid #2c2c8c; }
+/* Tavarat kuvakkeina (MI2): vapaasti paneelin päällä ilman ruutuja (palaute 25.10.: "turhat neliöt"). */
+#inv button { all: unset; cursor: pointer; display: grid; place-items: center; aspect-ratio: 3 / 2; }
 #inv button img { width: 100%; height: 100%; image-rendering: pixelated; }
 #inv button.new { animation: newItem .45s ease-in-out 5 alternate; }
 #inv button.nudge { animation: nudge 1.6s ease-in-out infinite; }
-@keyframes nudge { 50% { box-shadow: 0 0 0 2px rgba(252,212,28,.55), 0 0 10px rgba(252,212,28,.35); } }
-@keyframes newItem { from { box-shadow: 0 0 0 0 rgba(252,212,28,0); background: inherit; } to { box-shadow: 0 0 0 3px #fcd41c, 0 0 18px #fcd41c; transform: scale(1.12); } }
-#inv button:hover { border-color: #a8a8fc; } #inv button.sel { border-color: var(--inv-hi); background: #2c2c6c; }
+@keyframes nudge { 50% { filter: drop-shadow(0 0 4px rgba(252,212,28,.8)); } }
+@keyframes newItem { to { filter: drop-shadow(0 0 6px #fcd41c); transform: scale(1.15); } }
+#inv button:hover { transform: scale(1.08); filter: brightness(1.15); } #inv button.sel { filter: drop-shadow(0 0 2px var(--inv-hi)) drop-shadow(0 0 2px var(--inv-hi)); transform: scale(1.08); }
 .sys button { all: unset; cursor: pointer; color: #5c8c5c; } .sys button:hover { color: var(--verb-hi); }
 #dialog { display: none; flex-direction: column; gap: 2px; padding: 4px 6px 10px; min-height: 9.2em; font-size: clamp(16px, 2.8vw, 28px); }
 #dialog button { color: #fc54fc; } #dialog button.asked { color: #7c3c9c; } #dialog button:hover { color: #fcfc54; }
