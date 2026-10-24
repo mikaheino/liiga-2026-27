@@ -133,9 +133,11 @@ defineRoom("temppeli", {
   title: "Unohdettu luolatemppeli, Kappadokia", scale: [62, 136, 0.34, 1.06], start: 128,
   // Tuomari vartioi kivipolkua (17.10.: "luolassa voi käydä juttelematta tuomarin kanssa"):
   // takaosaan pääsee vasta, kun hänet on värvätty turnauksen tuomariksi.
-  walk: () => st.flags.refRecruited ? [[[24, 100], [296, 100], [318, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
-                                    : [[[24, 100], [296, 100], [318, 136], [2, 136]]],
+  walk: () => st.flags.refRecruited ? [[[24, 100], [296, 100], [320, 112], [320, 136], [2, 136]], [[94, 64], [226, 64], [256, 80], [64, 80]], [[197, 78], [208, 78], [209, 102], [196, 102]]]
+                                    : [[[24, 100], [296, 100], [320, 112], [320, 136], [2, 136]]],      // oikealla temppelin suu (24.10.)
   enter: () => { st.flags.crossed = true; },
+  arrive: () => firstTempleVisit(),
+  edges: { oikea: () => toCliff() },
   draw: temppeliDraw,
   post: (t) => { temppeliPost(t); guideTemppeli(t); },
   actors: [{ id: "tuomari", get x() { return st.flags.refRecruited ? 100 : 203; }, y: 106, h: 44, color: "#a8d8fc", hidden: () => !st.flags.refHere, draw: (t, talking) => ghostRef(st.flags.refRecruited ? 100 : 203, 106, t, talking) }],
@@ -159,22 +161,27 @@ defineRoom("temppeli", {
       Katso: () => say(st.flags.swapped ? "Hiekkasäkki jalustalla. Se ei huijaa ketään pitkään." : "Kultainen idoli korkealla jalustalla. Isoisän pyramidin huippu."),
       Poimi: () => st.flags.idol ? say("Se on jo minulla.") : !st.flags.refRecruited ? blocked() : discoverTrap(),
       "Käytä:sakki": () => (!st.flags.refRecruited ? blocked() : grabIdol()) },
-    { id: "ovi", name: "käytävä basaariin", x: 2, y: 76, w: 18, h: 52, at: 22, aty: 118, exit: true,
-      Katso: () => say("Käytävä takaisin basaariin."), Käytä: () => backToBazaar(), Kävele: () => backToBazaar() },
+    { id: "suu", name: "temppelin suu", x: 300, y: 70, w: 20, h: 60, at: 312, aty: 122, exit: true,
+      Katso: () => say("Temppelin suu. Ulkona laakso, kuumailmapallot ja polku takaisin Istanbuliin."), Käytä: () => toCliff(), Kävele: () => toCliff() },
   ],
 });
 async function toTemple() {
   await script(async () => {
     if (!st.flags.quest) return say("Miksi menisin itään? Sijoittajilla on ensin asiaa. Puhutaan Mehmetin kanssa.");
     if (!st.flags.map) return say("Pyramidin huippu on jossain idässä. Mutta missä? Jossain täällä on varmasti kartta.");
-    await walkTo(160, 72); await travel("ist", "kap"); go("temppeli", 160, true, 128);
-    if (!st.flags.refMet) {
-      await say("Kappadokia. Kalliotorneja, luolia... ja tuolla! Korkea jalusta ja sen huipulla kultainen idoli.");
-      await say("Isoisän pyramidin huippu. Ja tuleva kiertopalkinto.");
-      await refereeAppears(); await myrraIncoming(2);
-      await say("Turnaus tarvitsee tuomarin. Ja tuo tuomari näyttää tarvitsevan joukkueen. Jutellaan hänen kanssaan."); }
+    await walkTo(160, 72); await travel("ist", "kap"); go("kallio", 250, true, 122);
+    if (!st.flags.refMet) await say("Kappadokia. Kalliotorneja, kuumailmapalloja... ja tuolla kallioon hakattu ovi. Maton rasti osui tähän.");
 
   });
+}
+// Temppelin edusta on oma ruutu oikealla (backlog 8): ensimmäinen sisääntulo esittelee idolin ja tuomarin.
+const toCliff = () => crossTo("kallio", 70, 122);
+async function firstTempleVisit() {
+  if (st.flags.refMet) return;
+  await say("Sisällä! Ja tuolla, korkealla jalustalla: kultainen idoli.");
+  await say("Isoisän pyramidin huippu. Ja tuleva kiertopalkinto.");
+  await refereeAppears(); await myrraIncoming(2);
+  await say("Turnaus tarvitsee tuomarin. Ja tuo tuomari näyttää tarvitsevan joukkueen. Jutellaan hänen kanssaan.");
 }
 function backToBazaar() { return script(async () => { await travel("kap", "ist"); go("basaari", 160, true, 74); }); }
 function blocked() { return say("Tuomari seisoo kivipolulla. Hän ei päästä ketään ohi. Pitäisi jutella hänen kanssaan."); }

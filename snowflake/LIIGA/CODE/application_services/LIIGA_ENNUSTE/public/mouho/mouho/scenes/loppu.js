@@ -177,7 +177,7 @@ function boardTable(t) {
 // ---------------------------------------------------------------- loppu
 async function ending() {
   st.scene = "loppu"; $game.classList.add("cut"); $sent.textContent = "";
-  await travel("ist", "hki");
+  await travel("ist", "hki"); music("loppu");
   const f = st.flags;
   st.inv = ["puhelin"]; renderInv();     // idoli, kebab ja sopimus ovat nyt pöydällä ja hallituksella (sokkotesti 2)
   // 1. ulkokuva

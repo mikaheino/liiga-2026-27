@@ -53,4 +53,4 @@ function choose(options) {
 function iq(key, n) { st.iq ??= {}; if (st.iq[key]) return; st.iq[key] = n; renderIq(); }
 const iqTotal = () => Object.values(st.iq ?? {}).reduce((a, b) => a + b, 0);
 function renderIq() { const el = document.getElementById("iq"); if (el) el.textContent = `${GAME.iqLabel} ${iqTotal()} / ${GAME.iqMax}`; }
-function go(scene, x, keep, y) { if (typeof OUT !== "undefined") OUT.on = false; if (stripOf(scene) !== stripOf(st.scene)) CAM.snap = true; if (st.scene !== scene) logLine(`== ${ROOMS[scene]?.title ?? scene}`); st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }
+function go(scene, x, keep, y) { if (typeof OUT !== "undefined") OUT.on = false; if (stripOf(scene) !== stripOf(st.scene)) CAM.snap = true; music(GAME.roomMusic?.[scene]); if (st.scene !== scene) logLine(`== ${ROOMS[scene]?.title ?? scene}`); st.scene = scene; const r0 = ROOMS[scene]; place(x, y ?? r0?.start ?? 126); if (r0?.enter) r0.enter(); if (!keep) setSentence(); }

@@ -126,13 +126,19 @@ const HINTS = () => {
     return ["Kartan mukaan luola on idässä.", "Kävele kadun päähän moskeijan alle."];
   }
   if (here === "temppeli") {
-    if (f.idol) return ["Ulos ja äkkiä.", "Mene ovesta vasemmalle."];
+    if (f.idol) return ["Ulos ja äkkiä.", "Kävele temppelin suulle oikealle."];
     if (!f.refWho) return ["Tuomari vartioi kivipolkua. Kukaan ei näytä koskaan kysyneen, kuka hän on.", "Puhu tuomarille ja kysy, kuka hän on."];
     if (!f.refRecruited) return ["Jouko sanoi: tärkeintä on joukkue. Ja turnaus tarvitsee tuomarin.", "Puhu tuomarille ja pyydä häntä liittymään Mouhoon."];
     if (!f.needWeight) return ["Idoli on korkealla jalustalla. Mennään katsomaan.", "Poimi idoli jalustalta."];
     if (has("sakki")) return ["Hiekkasäkki on yhtä painava kuin idoli. Vaihto sulavasti.", "Käytä hiekkasäkkiä idoliin."];
     if (has("pussi")) return ["Pussiin pitää saada hiekkaa.", "Käytä nahkapussia hiekkaan (vasemmalla edessä)."];
-    return ["Hiekkaa täällä on, mutta millä sitä kantaa? Mehmetillä oli pusseja.", "Mene basaariin ja tingi Mehmetiltä pussi."];
+    return ["Hiekkaa täällä on, mutta millä sitä kantaa? Mehmetillä oli pusseja.", "Kävele ulos oikealle, polkua basaariin, ja tingi Mehmetiltä pussi."];
+  }
+  if (here === "portti") return ["Mehmetin koju on Suuressa basaarissa.", "Kävele portista sisään oikealla."];
+  if (here === "kallio") {                                       // temppelin edusta (backlog 8)
+    if (f.needWeight && !has("pussi") && !has("sakki") && !f.swapped) return ["Hiekalle tarvitaan pussi. Mehmetillä on pusseja.", "Kävele polkua basaariin oikealla."];
+    if (f.idol) return ["Idoli on minulla. Sijoittajat odottavat basaarissa.", "Kävele polkua basaariin oikealla."];
+    return ["Maton rasti osui kallioon hakattuun oveen.", "Kävele temppelin ovesta sisään vasemmalla."];
   }
   return null;
 };

@@ -13,16 +13,16 @@ function bazCloudBand(w, [by, dark, mid, lit, gap], k) {
     x += cw + gap + ((rnd() * gap) | 0); }
 }
 function basaariBg() { basaariSky(); BAZ_CLOUDS.forEach((b, k) => bazCloudBand(W, b, k)); basaariFg(); }
-function basaariSky() {
+function basaariSky(full = true) {    // full = false: porttiruudun taivas (aurinko ja kuu vain basaarissa)
   // taivas: kuusi sävyporrasta magentasta oranssiin horisonttiin, saumat Bayer-ditheröintinä
   const SKY = ["#3c1448", "#6c1c58", "#a02c58", "#d04c48", "#ec7438", "#f8a048"], SB = [0, 12, 24, 36, 47, 58, 70];
   for (let i = 0; i < SKY.length; i++) { r(0, SB[i], W, SB[i + 1] - SB[i], SKY[i]); if (i) for (let j = 0; j < 4; j++) dither(0, SB[i] - 2 + j, W, 1, SKY[i - 1], SKY[i], (j + 1) / 5); }
-  disc(118, 50, 8, "#fce890", "#fcd070");
+  if (full) disc(118, 50, 8, "#fce890", "#fcd070");
   // hämärän syvyys: indigo ylhäällä, magenta keskellä, lämmin oranssi horisontissa (Bayer-saumat)
   for (const [y0, y1, c, f] of [[0, 9, "#2a1f4d", 1], [9, 15, "#2a1f4d", .55], [15, 24, "#8a3a6e", .5], [24, 31, "#8a3a6e", .25], [32, 40, "#e8845a", .3]])
     for (let y = y0; y < y1; y++) for (let x = 0; x < W; x++) if (bay(x, y) < f * (y1 - y) / (y1 - y0) + (f === 1 ? 0 : .08)) px(x, y, c);
   for (const [x, y] of [[198, 3], [214, 9], [246, 4], [262, 12], [276, 6], [290, 13], [224, 13], [180, 8]]) px(x, y, "#ffe9a8");
-  disc(232, 6, 3, "#ffe9a8", "#c9a0d0"); disc(234, 5, 2, "#2a1f4d");
+  if (full) { disc(232, 6, 3, "#ffe9a8", "#c9a0d0"); disc(234, 5, 2, "#2a1f4d"); }
 }
 function basaariFg() {
   // moskeija: tumma violetti siluetti, auringon puolella (vasen) reunavalo
@@ -233,7 +233,7 @@ const CARLSSON = jogActor("carlsson", 2, (q, t, talking) => npc(9, q.x, 128, t, 
 // Basaari: katu kapenee kohti moskeijaa; Mehmet tiskinsä takana oikealla.
 defineRoom("basaari", {
   title: "Suuri basaari, Istanbul", scale: [72, 136, 0.4, 1.06], start: 128,
-  walk: [[[142, 72], [178, 72], [206, 96], [206, 121], [300, 136], [20, 136]]],
+  walk: [[[142, 72], [178, 72], [206, 96], [206, 121], [300, 136], [0, 136], [0, 124], [43, 124]]],      // vasen alakulma: porttiruutuun (24.10.)
   actors: [{ id: "kauppias", x: 258, y: 96, h: 46, color: "#fc54fc", draw: (t, talking) => merchant(258, 96, t, talking) }, JOKINEN, HYVARINEN, CARLSSON],
   draw: (t) => { basaariDraw(t); satamaPiano(t); ghostCup(t); },
   post: (t) => guideBasaari(t),

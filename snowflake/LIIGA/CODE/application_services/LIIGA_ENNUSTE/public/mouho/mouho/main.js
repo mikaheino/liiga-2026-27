@@ -19,15 +19,15 @@ startEngine({
 const KISA_DONE = { introDone: true, leafPile: true, billOut: true, billStuck: true, billCaught: true, billReturned: true, adRead: true, noteHint: true,
   myrraCalls: 1, pyramid: true, recruits: 2, mgp: true, metSales: true, pianoT: 1, unlocked: true, letterTaken: true, boxOpen: false };
 const IST_DONE = { merhaba: true, mehmetWho: true, signed: true, myrra1: true, quest: true, questHeard: true, map: true, askedMap: true, bag: true, bazaar: true };
-const afterKisa = (inv = ["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje", "lippu"]) => { Object.assign(st.flags, KISA_DONE); st.inv = inv; };
-defineStart("istanbul", () => { afterKisa(); go("basaari", 96, true); script(() => say("Istanbul! Basaarit, moskeijat ja kebabin tuoksu. Täällä jokainen on potentiaalinen jäsen.")); });
-defineStart("kappadokia", () => { afterKisa(["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje", "lippu", "velkakirja"]);
+const afterKisa = (inv = ["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje"]) =>      // lippu käytetään lennolla { Object.assign(st.flags, KISA_DONE); st.inv = inv; };
+defineStart("istanbul", () => { afterKisa(); go("portti", 40, true, 122); script(() => say("Istanbul! Basaarit, moskeijat ja simitin tuoksu. Täällä jokainen on potentiaalinen jäsen.")); });
+defineStart("kappadokia", () => { afterKisa(["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje", "velkakirja"]);
   Object.assign(st.flags, IST_DONE, { recruits: 2, bazaar: false }); go("basaari", 160, true, 74); script(() => toTemple()); });
 // jalonen: Kisapuisto heti Myrrän ensimmäisen puhelun jälkeen
 defineStart("jalonen", () => { afterKisa(["puhelin", "nimikyltti", "lappu", "kaavio"]); Object.assign(st.flags, { mgp: false, metSales: false, pianoT: 0, unlocked: false, letterTaken: false });
   go("koti", 100, true, 110); script(() => jalonenArrives()); });
 // valtonen: lentoaseman lähtöaula juuri taksista tultua (lippu taskussa)
-defineStart("valtonen", () => { afterKisa(); Object.assign(st.flags, { searched: true, airportSeen: true }); go("lentoasema", 30, true, 122); script(() => valtonenArrives()); });
+defineStart("valtonen", () => { afterKisa(["puhelin", "nimikyltti", "lappu", "kaavio", "kortti", "kirje", "lippu"]); Object.assign(st.flags, { searched: true, airportSeen: true }); go("lentoasema", 30, true, 122); script(() => valtonenArrives()); });
 // jokinen: basaari kebab taskussa
 defineStart("jokinen", () => { afterKisa(); give("kebab"); go("basaari", 96, true); });
 // haastattelu: suoraan loppuun kaikkien valmentajien kanssa
@@ -40,8 +40,10 @@ defineStart("haastattelu", () => { afterKisa(); Object.assign(st.flags, IST_DONE
 definePreview("otsikko", () => { title = true; });
 definePreview("kisa", (Q) => { Object.assign(st.flags, { leafPile: true, jalonenHere: true }); go("koti", 178, true, +Q.get("y") || 127); });      // Jalonen hallin ikkunalla
 definePreview("parkki", (Q) => { Object.assign(st.flags, { pianoT: Date.now() - 9000 }); go("parkki", 150, true, +Q.get("y") || 124); });   // salkkumies ja Ilves-piano
+definePreview("portti", (Q) => { go("portti", +Q.get("x") || 150, true, +Q.get("y") || 124); });   // basaarin portti (backlog 8)
 definePreview("basaari", (Q) => { Object.assign(st.flags, { crowd: true }); go("basaari", 96, true, +Q.get("y") || 128); });
 definePreview("lentoasema", (Q) => { Object.assign(st.flags, { valtonenHere: true }); go("lentoasema", 60, true, +Q.get("y") || 122); });
+definePreview("kallio", (Q) => { go("kallio", +Q.get("x") || 200, true, +Q.get("y") || 122); });   // temppelin edusta (backlog 8)
 definePreview("temppeli", () => { Object.assign(st.flags, { refHere: true, refMet: true }); go("temppeli", 130, true, 120); });
 definePreview("kuukkeli", () => { kuukkeliSearch(); });
 definePreview("liiga", () => { overlay = (t) => { liigaDraw(t); tram(40); }; });

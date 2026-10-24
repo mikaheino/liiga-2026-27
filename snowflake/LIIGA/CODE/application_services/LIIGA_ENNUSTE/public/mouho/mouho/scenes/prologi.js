@@ -175,7 +175,7 @@ async function prologue() {
   cv.addEventListener("click", onSkip, true);
   const wait = (ms) => new Promise((res) => { const t0 = performance.now(), iv = setInterval(() => { if (skipAll || performance.now() - t0 >= ms) { clearInterval(iv); res(); } }, 30); });
   const line = async (text, who, at) => { if (skipAll) return; if (at) callSpk = { [who]: at }; await say(text, who); callSpk = null; };
-  $game.classList.add("cut"); $sent.textContent = "";
+  $game.classList.add("cut"); $sent.textContent = ""; music("seikkailu");
   try {
     // 1. Liigan toimisto
     let T0 = performance.now(), fly = null, door = null;
@@ -230,7 +230,7 @@ async function prologue() {
     if (!skipAll) await line("\"Urheilujohtaja.\" Kiitos, nimikyltti. Muistan kyllä.", "jussi", { x: LAND[0], y: LAND[1] - 50, c: "#c8a460" });
   } finally {
     cv.removeEventListener("click", onSkip, true); overlay = null; callSpk = null; $game.classList.remove("cut");
-    st.flags.leafPile = true; place(LAND[0], LAND[1]);
+    st.flags.leafPile = true; place(LAND[0], LAND[1]); music(GAME.roomMusic.koti);
   }
 }
 

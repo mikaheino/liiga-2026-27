@@ -60,7 +60,7 @@ const room = () => ROOMS[st.scene];
 const SAVE = () => GAME.saveKey;
 function saveGame() { if (busy || overlay || !room()) return say("Ei nyt, kesken kaiken.", "muu"); try { localStorage.setItem(SAVE(), JSON.stringify({ ...st, path: [] })); } catch { /* yksityinen ikkuna */ } return script(() => say("Peli tallennettu.", "muu")); }
 function loadGame() { let d = null; try { d = JSON.parse(localStorage.getItem(SAVE()) ?? "null"); } catch { /* ei tallennusta */ } if (!d) return say("Tallennusta ei löydy.", "muu");
-  Object.assign(st, d, { path: [] }); title = false; overlay = null; renderVerbs(); renderInv(); renderIq(); setSentence(); }
+  Object.assign(st, d, { path: [] }); title = false; overlay = null; CAM.snap = true; music(GAME.roomMusic?.[st.scene]); renderVerbs(); renderInv(); renderIq(); setSentence(); }
 
 // ---------------------------------------------------------------- silmukka
 let last = performance.now(), title = true, drawTitleFn = null;
@@ -110,13 +110,16 @@ function roomAt(id, ox, t) {            // naapuriruutu ilman pelaajaa kohtaan o
   g.save(); g.beginPath(); g.rect(Math.round(ox), 0, W, H); g.clip(); g.translate(Math.round(ox), 0); s.draw(t);
   [...(s.props ?? []).map((p) => ({ y: p.y, draw: () => p.draw(t) })), ...(s.actors ?? []).filter((a) => !a.hidden?.()).map((a) => ({ y: a.y, draw: () => {
     const sc = depth(a.y); g.save(); g.translate(a.x, a.y); g.scale(sc, sc); g.translate(-a.x, -a.y); a.draw(t, false); g.restore(); } }))].sort((a, b) => a.y - b.y).forEach((i) => i.draw());
+  s.post?.(t);                          // liekit, pöly ja vihjekimallukset myös naapurina
   g.restore(); [st.scene, st.x, st.y] = keep;
 }
 // Rivin naapuriruutuun: kävely reunaan, ruudun vaihto samassa kohdassa (kamera ei hyppää) ja eteenpäin.
+// Huoneen arrive() ajetaan perillä (esim. temppelin ensimmäinen sisääntulo).
 function crossTo(id, x, y) {
   return script(async () => {
     const s = stripOf(st.scene), dir = s.indexOf(id) < s.indexOf(st.scene) ? -1 : 1;
     await walkTo(dir < 0 ? 1 : W - 1, st.y); go(id, dir < 0 ? W - 1 : 1, true, st.y); await walkTo(x, y);
+    await ROOMS[id].arrive?.();
   });
 }
 function startEngine({ titleScreen, intro, startRoom, startX, hint }) {
