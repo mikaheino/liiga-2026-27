@@ -24,7 +24,7 @@ def bundle(version: str, out_dir: Path | None = None) -> Path:
         js = (SRC / m.group(1)).read_text(encoding="utf-8").replace("</script", "<\\/script")
         return f"<script>/* {m.group(1)} */\n{js}\n</script>"
 
-    out, n = re.subn(r'<script src="([a-z]+\.js)"></script>', inline, html)
+    out, n = re.subn(r'<script src="([a-z/]+\.js)"></script>', inline, html)
     if n == 0:
         raise SystemExit("index.html:stä ei löytynyt skriptejä upotettavaksi")
     out = out.replace("<title>Mouhon salaisuus</title>", f"<title>Mouhon salaisuus {version}</title>")
