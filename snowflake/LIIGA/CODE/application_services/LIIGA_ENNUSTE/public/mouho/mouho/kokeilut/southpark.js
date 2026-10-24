@@ -1,10 +1,10 @@
+"use strict";
 // Mouhon salaisuus -- South Park -tyyliset sivuhahmot (18.10.2026).
 // Generaattori tuottaa ALKUPERÄISIÄ hahmoja sarjan aikuishahmojen tyylillä: mittasuhteet ja
 // muodot on kalibroitu referenssikuviin (mouho_concept/npc_style/south_park, ei repossa), mutta
 // sarjan omia hahmoja ei kopioida. Piirto: vektorimuodot 4x-ylinäytteistettynä ja alas
 // moodiväreillä, jolloin tulos on terävää pikseligrafiikkaa ilman pehmennystä ja väriliukumia.
 // Mitat yksikköinä: koko pituus 100 (jalkapohjasta päälakeen), origo jalkojen keskellä.
-"use strict";
 
 const SP_OUT = "#1c1a1e";
 const SP_SKIN = ["#fcdcbc", "#f6d0aa", "#e2b088", "#b88252", "#8a5c36", "#55392a"];

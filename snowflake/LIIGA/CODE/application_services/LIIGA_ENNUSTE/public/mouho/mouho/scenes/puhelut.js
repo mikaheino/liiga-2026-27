@@ -1,13 +1,12 @@
+"use strict";
 // Mouhon salaisuus -- puheluanimaatio (vaihe 2, 17.10.: "Myrrä puhelimessa, mutta erillisellä
 // hienolla animaatiolla"). Sarjakuvamainen jaettu ruutu: vasemmalla Jussi Kisapuistossa,
 // oikealla Myrrä valmentajakopissa pakkaamassa tavaroitaan (IS 7.10.: "kamojani tästä juuri
 // pakkailen valmentajakopista") -- kaksi juuri vapautunutta miestä, laatikot kummallakin.
 // Soittoääni, paneelit liukuvat sisään, muotokuvat puhuvat ja räpsyttävät, Jussin
 // väärinymmärrys syttyy hehkulamppuna, "KLIK" ja paneelit liukuvat ulos.
-"use strict";
 
 const PANEL = { L: { x: 6, y: 40, w: 150, h: 94 }, R: { x: 164, y: 40, w: 150, h: 94 } };
-const ease = (k) => 1 - Math.pow(1 - Math.max(0, Math.min(1, k)), 3);
 
 // Paneelit piirretään tuplatarkkuudella (300 x 188 laitepikseliä = 150 x 94 maailmassa;
 // 17.10.: "kasvot pienemmiksi ja taustaan tarkkuutta, nyt kasvot peittävät kaiken").
@@ -107,7 +106,7 @@ function coachPanel() {
 let panelCache = {};
 // Jussin paneelin tausta: Kisapuistossa oma huipputarkka kuva, muualla ruudun oma tausta
 // rajattuna ja 2x terävänä, valaistu iltaan sopivaksi.
-const SCENE_CROP = { basaari: ["basaari", () => basaariBg, 84, 18], temppeli: ["temppeli2", () => temppeliBg, 85, 8], loppu: ["mouhoIn", () => mouhoInBg, 168, 8] };
+const SCENE_CROP = { basaari: ["basaari", () => basaariBg, 84, 18], temppeli: ["temppeli2", () => temppeliBg, 85, 8], loppu: ["mouhoIn_full", () => mouhoInFull, 168, 8] };
 function jussiPanelBg() {
   const c = SCENE_CROP[st.scene]; if (!c) return kisaPanel;
   return () => { const [name, fn, sx, sy] = c, src = paintBg(name, fn()); g.imageSmoothingEnabled = false; g.drawImage(src, sx, sy, 150, 94, 0, 0, PW, PH);
