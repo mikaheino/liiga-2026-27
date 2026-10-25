@@ -46,6 +46,7 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 | `data/liiga.duckdb` | `LIIGA.RAW` + `LIIGA.MODEL` samoina tauluina, yhdessä skeemassa (skeemajako vasta kauden jälkeen) |
 | `data/transfers_2026_27.txt`, `external_players.csv`, `goalies_raw.txt`, `league_factors.csv`, `preseason_player_rates.csv` | kuratoidut `LIIGA.RAW`-taulut (`sync_to_snowflake.py`, rooli `LIIGA_LOADER`) |
 | `data/roster_impact.csv` | `LIIGA.MODEL.ROSTER_IMPACT` |
+| `data/coaching_changes.csv` | `LIIGA.RAW.COACHING_CHANGES` (`python -m liiga.coaching`, synkka) |
 | `data/raw/` | ei vastinetta: liiga.fi-välimuisti paikallista ajoa varten |
 | `config.yaml` | mallin asetukset; simulaattorin vakiot testataan niitä vasten |
 | `streamlit_app/` | Streamlit (paikallinen; Snowflake-kopiota ei päivitetä) |

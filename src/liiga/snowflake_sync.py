@@ -42,6 +42,7 @@ RAW_TABLES = {
     "player_bio",
     "roster_2026_27",
     "league_factors",
+    "coaching_changes",              # data/coaching_changes.csv, hand-curated
     # Frozen pre-season player expectations (data/preseason_player_rates.csv)
     # -- the yardstick for "who surprised"; player_rates moves in season.
     "preseason_player_rates",
@@ -74,6 +75,7 @@ CURATED_TABLES = [
     "preseason_player_rates",        # frozen 1 Sep 2026 expectations
     "roster_impact",                 # scripts/local/roster_impact.py: roster-only deltas
     "team_goalie_weights",           # per-goalie inputs of team_goaltending
+    "coaching_changes",              # head-coach changes, hand-curated
 ]
 
 
