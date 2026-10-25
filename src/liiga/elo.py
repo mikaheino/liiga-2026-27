@@ -54,6 +54,7 @@ def train_elo(
     season_regression: float = _DEFAULT_SEASON_REG,
     ot_weight: float = _DEFAULT_OT_WEIGHT,
     mov_scaling: bool = False,
+    ratings: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """Update Elo ratings through a chronologically sorted game log.
 
@@ -65,8 +66,11 @@ def train_elo(
     mov_scaling: scale each update by ln(1+|goal margin|)/ln(2), so a 1-goal win
     keeps the plain-Elo step and a 3-goal win counts double. OT/SO margins are
     treated as 1 (the ot_weight discount already handles those).
+
+    ratings: starting ratings to continue from (copied, not mutated); lets a
+    caller train history once and continue a season with a different k.
     """
-    ratings: dict[str, float] = {}
+    ratings = dict(ratings) if ratings else {}
     prev_season: int | None = None
 
     for _, g in games.iterrows():

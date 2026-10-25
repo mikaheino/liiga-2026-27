@@ -21,7 +21,7 @@ from .crowd import blend_with_model
 from .db import get_connection, query_df, register_df, replace_rows
 from .elo import _ot_rate_before, elo_game_probs, elo_ratings_current
 from .ensemble import ensemble_game_probs
-from .model import calibrate_ties, predict_games
+from .inseason import poisson_probs, season_played, thaw_ratings
 from .simulate import banked_points, simulate
 
 POISSON_WEIGHT = 0.4      # keep in sync with scripts/local/refresh_standings.py
@@ -122,19 +122,27 @@ def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:
         empty = pd.DataFrame(columns=["game_id", "home_team", "away_team",
                                       "p_home_reg", "p_away_reg", "p_overtime",
                                       "p_home_ot_win", "p_home_win"])
-        return empty, banked, {"n_total": n_total, "n_played": n_played}
+        return empty, banked, {"n_total": n_total, "n_played": n_played,
+                               "challenger": empty}
 
     poisson_ratings = query_df(con, "SELECT * FROM team_strength")
     ot_rate = _ot_rate_before(con, target)
-    poisson_pred = predict_games(remaining, poisson_ratings, cfg)
-    if cfg["match_model"].get("tie_calibration", True) and not remaining.empty:
-        poisson_pred = calibrate_ties(poisson_pred, ot_rate)
+    poisson_pred = poisson_probs(remaining, poisson_ratings, cfg, ot_rate)
     elo_pred = elo_game_probs(remaining, elo_ratings_current(con, target),
                               ot_rate=ot_rate,
                               ot_lean=cfg["match_model"]["ot_favourite_lean"])
     pred = ensemble_game_probs(poisson_pred, elo_pred,
                                poisson_weight=POISSON_WEIGHT)
-    return pred, banked, {"n_total": n_total, "n_played": n_played}
+
+    # Challenger (A/B since 2026-10-25, liiga.inseason): identical except that
+    # team_strength is thawed toward this season's observed xG. Logged per
+    # game for scoring only -- the standings stay the champion's.
+    thawed = thaw_ratings(poisson_ratings, season_played(con, target))
+    challenger = ensemble_game_probs(
+        poisson_probs(remaining, thawed, cfg, ot_rate), elo_pred,
+        poisson_weight=POISSON_WEIGHT)
+    return pred, banked, {"n_total": n_total, "n_played": n_played,
+                          "challenger": challenger}
 
 
 def forecast(con=None, cfg=None) -> dict:
@@ -183,9 +191,14 @@ def forecast(con=None, cfg=None) -> dict:
     if not games.empty:
         games.insert(0, "snapshot_date", today)
     games = games.reindex(columns=GAME_COLUMNS)
+    challenger = meta["challenger"].copy()
+    if not challenger.empty:
+        challenger.insert(0, "snapshot_date", today)
+    challenger = challenger.reindex(columns=GAME_COLUMNS)
 
     return {"standings": standings, "position": pos, "meta": meta_df,
-            "history": hist, "games": games, "today": today,
+            "history": hist, "games": games, "games_challenger": challenger,
+            "today": today,
             "n_played": meta["n_played"], "n_total": meta["n_total"],
             "crowd_weight": crowd_weight}
 
@@ -197,7 +210,7 @@ def _replace_today(con, table: str, columns: list[str], today: str,
 
 
 def persist(res: dict, con=None) -> None:
-    """Write the forecast to the five output tables, on either backend.
+    """Write the forecast to the output tables, on either backend.
 
     prediction_history is append-with-replace-today rather than DELETE +
     INSERT: the old version used DuckDB's own register()/execute() API, which
@@ -218,6 +231,11 @@ def persist(res: dict, con=None) -> None:
         register_df(con, "prediction_meta", res["meta"])
         register_df(con, "prediction_history", history)
         register_df(con, "prediction_games", games)
+        if "games_challenger" in res:
+            challenger = _replace_today(con, "prediction_games_challenger",
+                                        GAME_COLUMNS, res["today"],
+                                        res["games_challenger"])
+            register_df(con, "prediction_games_challenger", challenger)
     finally:
         if own:
             con.close()

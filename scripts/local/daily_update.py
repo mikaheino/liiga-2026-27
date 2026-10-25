@@ -8,6 +8,8 @@ Works before AND during the 2026-27 season:
 
 The player-model side (team_strength) deliberately stays a roster-based
 pre-season prior; current form enters through Elo and the banked points.
+Since 2026-10-25 a challenger with team_strength thawed toward this season's
+xG is logged alongside (prediction_games_challenger; liiga.inseason).
 
 Pipeline:
     refresh_results (results + transforms + per-game detail)

@@ -107,6 +107,77 @@ already exist there.
 
 ---
 
+## A/B since 2026-10-25 — thawed team_strength (challenger)
+
+`src/liiga/inseason.py`. The challenger is the production model with one
+change: each team's Poisson off/def rating is blended toward its observed
+**xG** for/against this season, weight `n / (n + 20)` (n = team games played).
+Elo, tie calibration and the 40/60 blend are untouched, so any difference is
+the thaw alone.
+
+**Chosen on past seasons only.** `python -m liiga.inseason` replays 2023–2026
+walk-forward (each game day predicted from that morning's ratings, Elo updated
+in-season as in production). 1 860 games:
+
+| variant | 2-way LL | 3-way LL |
+|---|---|---|
+| champion (frozen prior) | 0.6623 | 1.0386 |
+| thaw, goals, n0 = 20 | 0.6633 | 1.0403 |
+| thaw, **xG, n0 = 20** | **0.6602** | **1.0356** |
+
+Thawing on actual goals does not help at any n0 (10–80); goals are too noisy.
+xG helps in all four seasons and is flat across n0 = 10–40. Paired difference
+−0.0021 ± 0.0013 (2-way, t = −1.6), −0.0030 ± 0.0014 (3-way, t = −2.1):
+consistent, small.
+
+**Three refinements tried 2026-10-25 — none adopted.** Same walk-forward
+harness, 1 860 games, compared with the challenger above (3-way LL 1.0356):
+
+| idea | best variant | 3-way LL | t vs challenger |
+|---|---|---|---|
+| 1. opponent-adjusted xG rates | n0 = 20 | 1.0358 | +1.4 (worse) |
+| 2. separate n0 for offence / defence | off 20, def 10 | 1.0354 | −0.7 |
+| 3. xG margin in MOV-Elo (scaled ×2.35 to goal-margin size) | on top of challenger | 1.0354 | −0.1 |
+
+Raw (unscaled) xG margin in Elo is worse: it shrinks every update. All 21
+variants sit within ±0.0003 of the challenger — the thaw family is on a
+plateau, so the challenger stays as it is. The options remain in
+`thaw_ratings(n0_def=, opp_adjust=)` and `elo_input()`; scratch driver was
+a one-off over `backtest_inseason(variants=, elo_modes=)`.
+
+**Goaltending and in-season Elo speed, 2026-10-25 — neither adopted.**
+Prompted by KooKoo (7 pts vs 25.3 expected after 17 games, z = −3.3; 72
+goals allowed on 57.9 xG against). Same harness:
+
+| idea | variant | 3-way LL | t vs challenger |
+|---|---|---|---|
+| challenger | Elo k = 16 | 1.0356 | – |
+| + goaltending (GA / xGA vs league), own n0 | n0_gk = 160 | 1.0359 | +1.2 |
+| | n0_gk = 20 | 1.0375 | +2.1 |
+| faster in-season Elo | k = 24 | 1.0379 | +2.3 |
+| | k = 32 | 1.0412 | +3.2 |
+| | k = 64 | 1.0573 | +5.3 |
+| slower in-season Elo | k = 12 | 1.0352 | −0.6 |
+| | k = 8 | 1.0358 | +0.2 |
+
+Both get monotonically worse the harder they are pushed, in every season.
+In-season Elo is already at its optimum (k 12–16 flat); a faster Elo catches
+one KooKoo but chases noise in the other sixteen teams. Goals-vs-xG allowed
+is mostly noise at team level, as the goals-thaw result already suggested.
+Options kept: `thaw_ratings(n0_gk=)`, `train_elo(ratings=)` and
+`elo_modes={...: {"k": ...}}` in `backtest_inseason`.
+
+**How the A/B runs.** `pipeline.forecast()` also writes
+`prediction_games_challenger` (same columns as `prediction_games`) every day;
+the standings, site and app stay on the champion. `python scripts/dev/ab_report.py`
+scores both on games played after the first challenger snapshot, paired, last
+snapshot before game day. Expect it to stay inconclusive for a while: with
+~400 games left the SE is about ±0.002, the size of the expected effect.
+Decide at season end together with the five-season backtest — the A/B is
+evidence on top of it, not a substitute.
+
+---
+
 ## After ~30 games — revisit the blend, carefully
 
 **The 40/60 Poisson/Elo weight is fixed.** As the season progresses Elo gains

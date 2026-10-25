@@ -1,6 +1,6 @@
 {
  "limit": 15,
- "coverage_min": 21.4,
+ "coverage_min": 24.0,
  "complex_functions": {
   "scripts/deploy/deploy_agent.py::candidate": 29,
   "scripts/local/build_site.py::_assets": 19,
