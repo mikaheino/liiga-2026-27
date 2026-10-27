@@ -32,7 +32,7 @@ def restore(folder: Path) -> None:
         select = ", ".join(f'CAST("{c[0]}" AS {c[1]}) AS "{c[0]}"' for c in cols)
         con.execute(f"DELETE FROM {t}")
         con.execute(f"INSERT INTO {t} SELECT {select} FROM read_csv(?, header = true, all_varchar = true)", [str(csv)])
-        print(f"{t}: {con.sql(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
+        print(f"{t}: {con.execute(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
     con.close()
 
 
@@ -42,7 +42,7 @@ def save(folder: Path) -> None:
     for t in TABLES:
         cols = ", ".join(f'"{c[0]}"' for c in con.sql(f"DESCRIBE {t}").fetchall())
         con.execute(f"COPY (SELECT * FROM {t} ORDER BY {cols}) TO '{folder / f'{t}.csv'}' (HEADER)")
-        print(f"{t}: {con.sql(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
+        print(f"{t}: {con.execute(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
     con.close()
 
 
