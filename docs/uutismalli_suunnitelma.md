@@ -219,6 +219,23 @@ määrä ja yksikkö (ottelua / viikkoa / kuukautta / loppukausi); arvaus otsiko
 60 ott / 30 vko / 7 kk. Tunnistamattomaan uutiseen "kirjaa poissaolo" ja
 pelaajan valinta rosterista; myös poissaolo ilman uutista (tieto muualta).
 
+**Kirjaukset ja uudelleenlaskenta** (27.10.; käyttäjä: "tuleeko laskenta vasta
+useamman uutisen jälkeen?"): jokainen OK on oma tiedostonsa
+`news-data/absences/` (`absences.py`: tapahtumaloki, pelaajan viimeisin
+kirjaus voimassa, paluu on oma kirjauksensa). `absence.yml` vain kirjaa (ei
+jonoa: GitHubin jono pitää yhden odottavan ajon ja olisi perunut välissä tulleet
+OK:t) ja käynnistää `recompute.yml`:n, jonka jono ryhmittää: viisi OK:ta
+peräkkäin -> enintään kaksi laskentaa, viimeinen lukee kaikki kirjaukset.
+recompute = päivän haastaja (`challenger.py`) + sivu (kausiennuste
+`challenger_season.py`:ssä). Pushit `.github/scripts/push-retry.sh`:lla.
+
+**Uutissovellus** (27.10.): luokat Olennaiset / Loukkaantumiset / Pelikiellot /
+Siirrot ja hankinnat / Valmentajat / Kaikki. Pelikieltouutisessa vaikutus
+ennusteeseen (`news_effects`: hyväksytty kesto tai otsikon kesto, "arvio" kunnes
+OK; hyväksymättömille loukkaantumisille ei arviota). Siirtouutisessa "Rosterissa:
+X" tai "Ei rosterissa: tee pelaajalisäys". Siirtolippu ei koske otteluohjelmaa
+eikä maajoukkueita.
+
 **Sovellus (Pages):** Uutiset-sivu (alavalikko): Haastaja vs. lukittu malli
 (log-loss, osumat pelatuista), päivän haastajaennusteet, uutiset suodatettuna
 ("vain olennaiset", joukkueen korostus). OK-napit näkyvät vain selaimessa, johon

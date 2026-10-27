@@ -787,3 +787,8 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .nw-step b { min-width: 28px; text-align: center; font: 700 14px var(--mono); color: var(--ink); }
 .nw-unit-seg { grid-template-columns: repeat(4, auto); } .nw-unit-seg button { padding: 6px 7px; font-size: 9.5px; }
 .nw-other { justify-self: start; background: none; border: 0; padding: 2px 0; color: var(--gold); font: 400 10px var(--pixel); letter-spacing: .05em; text-transform: uppercase; cursor: pointer; }
+.nw-cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 10px; padding-bottom: 2px; }
+.nw-cats::-webkit-scrollbar { display: none; }
+.nw-cats .chip { flex: none; padding: 6px 10px; }
+.nw-effect { font-size: 12.5px; color: var(--gold-hi); } .nw-effect small { color: var(--faint); }
+.nw-roster { font-size: 12.5px; color: var(--muted); }

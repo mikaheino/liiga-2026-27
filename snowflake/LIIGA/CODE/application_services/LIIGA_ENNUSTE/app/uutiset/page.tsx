@@ -61,7 +61,7 @@ export default async function Page() {
         </>)}
       </section>
       <div className="label sub">Uutiset</div>
-      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} roster={news.roster} />
+      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} roster={news.roster} effects={news.effects} />
     </Shell>
   );
 }

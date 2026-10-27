@@ -62,7 +62,10 @@ YLE_ALIASES = {"Kiekko-Espoo": "K-Espoo", "Vaasan Sport": "Sport", "Porin Ässä
 FLAGS = {
     "loukkaantuminen": r"loukkaant|sivussa|vamma|leikkau|kuntoutu|sairasluet",
     "paluu": r"palaa|paluu|tervehty",
-    "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim|hankki|jättää|lähtee",
+    # Siirrot ja hankinnat (käyttäjä 27.10.: tieto pelaajalisäyksiä varten); seurojen
+    # tapa: "Hyökkääjä X Kouvolaan", "Y Stadiin!", "vahvistamaan", "kiinnitti".
+    "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim"
+              r"|hankki|kiinnit|jättää|lähtee|\b\w+(?:iin|aan|ään|een|uun|yyn|hin)!?$",
     "valmentaja": r"päävalmentaj|valmentaj|erotet|irtisano|potku",
     # "pelikiel": taivutukset pelikielto / pelikiellon / pelikieltoa (27.10.: "pelikielt"
     # ohitti Ylen otsikon "Lukas Wernblom sai pitkän pelikiellon").
@@ -86,9 +89,15 @@ def _iso(text: str | None) -> str:
         return text.strip()
 
 
+# Siirtolippu ei koske otteluohjelmaa eikä maajoukkueita ("kotiottelua siirtyy uuteen
+# ajankohtaan", "Floris Slovakian U20-maajoukkueeseen").
+NOT_TRANSFER = r"otteluohjelm|ajankoh|maajoukku|ottelusiir|pelattavaksi"
+
+
 def flags_of(text: str) -> str:
     low = text.lower()
-    return ";".join(k for k, rx in FLAGS.items() if re.search(rx, low))
+    return ";".join(k for k, rx in FLAGS.items()
+                    if re.search(rx, low) and not (k == "siirto" and re.search(NOT_TRANSFER, low)))
 
 
 def parse_rss(data: bytes) -> list[dict]:
@@ -185,7 +194,10 @@ def main(out_dir: Path) -> int:
     # Korjatut säännöt koskevat myös vanhoja rivejä: otsikosta lasketut liput
     # lisätään entisiin (ingressiä ei ole tallessa, joten sen liput säilyvät).
     for r in old:
-        r["flags"] = ";".join(k for k in FLAGS if k in set(filter(None, r["flags"].split(";"))) | set(filter(None, flags_of(r["title"]).split(";"))))
+        keep = set(filter(None, r["flags"].split(";"))) | set(filter(None, flags_of(r["title"]).split(";")))
+        if re.search(NOT_TRANSFER, r["title"].lower()):
+            keep.discard("siirto")
+        r["flags"] = ";".join(k for k in FLAGS if k in keep)
     now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     rows, status = collect({r["url"] for r in old}, now)
     with path.open("w", encoding="utf-8", newline="") as fh:

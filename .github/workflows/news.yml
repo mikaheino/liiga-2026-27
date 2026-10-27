@@ -4,10 +4,8 @@
 #     maalivahdit liiga.fi:stä (myös "ei vielä valmis" kirjataan: ajoituksen mittaus)
 #   - scripts/news/collect.py: Ylen SM-liiga-aihesyöte ja seurojen omat sivut
 #     (otsikko, linkki, joukkue, avainsanaliput; ei kielimallia)
-#   - scripts/news/challenger.py: uutishaastajan ennuste päivän otteluille
-#     (aloittavat maalivahdit, pelikiellot, hyväksytyt poissaolot); lukittu
-#     malli ei muutu, haastaja kirjataan erikseen A/B-vertailua varten
-# Tulos news-data-haaraan, sitten Pages-julkaisu.
+# Tulos news-data-haaraan, sitten recompute.yml: uutishaastajan ennuste
+# päivän otteluille (aloittavat maalivahdit, pelikiellot, poissaolot) ja sivu.
 name: news
 
 on:
@@ -54,20 +52,19 @@ jobs:
           URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
         run: |
           if git ls-remote --exit-code --heads "$URL" news-data >/dev/null; then
-            git clone -q --depth 1 --branch news-data "$URL" .news-data
+            git clone -q --branch news-data "$URL" .news-data
           else
             git init -q -b news-data .news-data && git -C .news-data remote add origin "$URL"
           fi
-          git clone -q --depth 1 --branch pages-data "$URL" .pages-data
           { echo '```'; python scripts/news/lineups.py .news-data; echo; python scripts/news/collect.py .news-data
-            echo; python scripts/news/challenger.py .news-data .pages-data; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
           cd .news-data
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Kokoonpanot ja uutiset $(TZ=Europe/Helsinki date +%F)" || { echo "ei muutoksia"; exit 0; }
-          git push -q origin news-data
+          ../.github/scripts/push-retry.sh news-data
       - if: steps.gate.outputs.run == '1'
-        name: Sivu uudelleen (haastaja näkyviin)
+        name: Haastaja ja sivu (recompute.yml)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml --repo "${{ github.repository }}" -f history=false
+        run: gh workflow run recompute.yml --repo "${{ github.repository }}"

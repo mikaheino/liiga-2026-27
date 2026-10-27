@@ -6,11 +6,21 @@
 // julkaisee sivun (~3 min). Token ei lähde muualle kuin api.github.comiin.
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { Absence, Candidate, NewsItem, Player } from "@/lib/data";
-import { logo } from "@/lib/table";
+import type { Absence, Candidate, NewsEffect, NewsItem, Player } from "@/lib/data";
+import { fi, logo } from "@/lib/table";
 import { GH_REPO } from "@/lib/target";
 
 const KEY = "liiga-gh-token";
+// Uutissovellus (käyttäjä 27.10.): luokat liputuksen mukaan. "Olennaiset" = kaikki
+// paitsi liputtamattomat ja pelkät kokoonpanojutut.
+const CATS: [string, string, RegExp][] = [
+  ["olennaiset", "Olennaiset", /loukkaantuminen|paluu|pelikielto|valmentaja|siirto/],
+  ["loukk", "Loukkaantumiset", /loukkaantuminen|paluu/],
+  ["kielto", "Pelikiellot", /pelikielto/],
+  ["siirto", "Siirrot ja hankinnat", /siirto/],
+  ["valm", "Valmentajat", /valmentaja/],
+  ["kaikki", "Kaikki", /.*/],
+];
 const FLAG_FI: Record<string, string> = { loukkaantuminen: "loukkaantuminen", paluu: "paluu", pelikielto: "pelikielto",
   valmentaja: "valmentaja", siirto: "siirto", kokoonpano: "kokoonpano" };
 // Kesto otteluina, viikkoina tai kuukausina tai loppukausi (käyttäjä 27.10.):
@@ -113,24 +123,34 @@ function AbsenceForm({ url, title, preset, teams, roster, token, allowBack }: {
   );
 }
 
-function List({ items, candidates, absences, teams, roster }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[] }) {
+function Effect({ e }: { e: NewsEffect }) {
+  return (
+    <div className="nw-effect">
+      Vaikutus ennusteeseen: {e.team} voittaa {e.games} ottelu{e.games === 1 ? "ssa" : "ssa keskimäärin"} {fi(100 * e.winBefore, 1)} → {fi(100 * e.winAfter, 1)} %,
+      {" "}odotetut pisteet {e.xp > 0 ? "+" : "−"}{fi(Math.abs(e.xp), 2)}
+      <small>{e.approved ? " · haastajassa" : " · arvio otsikon kestosta, ei vielä haastajassa"}</small>
+    </div>
+  );
+}
+
+function List({ items, candidates, absences, teams, roster, effects }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[] }) {
   const sp = useSearchParams();
   const pick = new Set((sp.get("joukkue") ?? "").split(",").filter((t) => teams.includes(t)));
   const [token, setToken] = useState("");
   const [draft, setDraft] = useState("");
-  const [onlyFlagged, setOnlyFlagged] = useState(true);
+  const [cat, setCat] = useState("olennaiset");
   const [open, setOpen] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
   useEffect(() => { setToken(readToken()); }, []);
   const save = (v: string) => { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch { /* yksityinen ikkuna */ } setToken(v); setDraft(""); };
 
-  const shown = items.filter((it) => (!pick.size || it.team.split(",").some((t) => pick.has(t)))
-    && (!onlyFlagged || /loukkaantuminen|paluu|pelikielto|valmentaja|siirto/.test(it.flags)));
+  const rx = (CATS.find((c) => c[0] === cat) ?? CATS[0])[2];
+  const shown = items.filter((it) => (!pick.size || it.team.split(",").some((t) => pick.has(t))) && (cat === "kaikki" || rx.test(it.flags)));
   return (
     <>
-      <div className="nw-tools">
-        <label className="sw"><input type="checkbox" checked={onlyFlagged} onChange={(e) => setOnlyFlagged(e.target.checked)} /><span />Vain olennaiset</label>
-        <span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span>
-      </div>
+      <nav className="nw-cats" aria-label="Uutisluokka">
+        {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
+      </nav>
+      <div className="nw-tools"><span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span></div>
       <div className="nw-list">
         {shown.map((it) => {
           const cands = candidates.filter((c) => c.url === it.url);
@@ -151,7 +171,13 @@ function List({ items, candidates, absences, teams, roster }: { items: NewsItem[
                 <div key={a.player + a.start} className="nw-done">✓ {a.player}: {a.kind === "out"
                   ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}</div>
               ))}
-              {token && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
+              {effects.filter((e) => e.url === it.url).map((e) => <Effect key={e.player} e={e} />)}
+              {/siirto/.test(it.flags) && !/loukkaantuminen|paluu|pelikielto/.test(it.flags) && (
+                <div className="nw-roster">{cands.length
+                  ? `Rosterissa: ${cands.map((c) => `${c.player} (${c.team})`).join(", ")}`
+                  : "Ei rosterissa: uusi nimi? Tee pelaajalisäys."}</div>
+              )}
+              {token && /loukkaantuminen|paluu|pelikielto/.test(it.flags) && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
                 <AbsenceForm key={c.player} url={it.url} title={it.title} preset={c} teams={teams} roster={roster} token={token}
                   allowBack={/palaa|paluu|kokoonpanoon|tervehty/i.test(it.title) && !/sivuun|sivussa|loukkaant/i.test(it.title)} />
               ))}
@@ -182,6 +208,6 @@ function List({ items, candidates, absences, teams, roster }: { items: NewsItem[
   );
 }
 
-export default function NewsList(props: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[] }) {
+export default function NewsList(props: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[] }) {
   return <Suspense><List {...props} /></Suspense>;
 }

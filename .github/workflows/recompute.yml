@@ -1,0 +1,48 @@
+# Haastajan uudelleenlaskenta (27.10.): päivän otteluiden haastajaennuste
+# (challenger.py -> news-data) ja sivun julkaisu, jossa kausiennuste
+# (pages.yml: challenger_season.py). Käynnistyy OK-painalluksista (absence.yml)
+# ja klo 14 -ajosta (news.yml).
+#
+# Ryhmittely: jonossa on yksi ajo käynnissä ja yksi odottamassa; uusi pyyntö
+# korvaa odottavan. Viisi OK:ta peräkkäin -> enintään kaksi laskentaa, ja
+# viimeinen lukee kaikki kirjaukset (ne ovat jo tallessa news-datassa).
+name: recompute
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: recompute
+  cancel-in-progress: false
+
+jobs:
+  recompute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Riippuvuudet
+        run: pip install -q -e .
+      - name: Päivän haastaja
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --branch news-data "$URL" .news-data
+          git clone -q --depth 1 --branch pages-data "$URL" .pages-data
+          python scripts/news/challenger.py .news-data .pages-data | tee -a "$GITHUB_STEP_SUMMARY"
+          cd .news-data
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Haastaja $(TZ=Europe/Helsinki date +%F\ %H:%M)" || { echo "ei muutoksia"; exit 0; }
+          ../.github/scripts/push-retry.sh news-data
+      - name: Sivu (kausiennuste mukaan)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "${{ github.repository }}" -f history=false

@@ -1,5 +1,5 @@
 """Sovelluksen OK-napin kirjaus: poissaolo tai paluu news-data-haaran
-absences.csv:hen (27.10.2026; docs/uutismalli_suunnitelma.md, vaihe 3).
+absences/-hakemistoon (27.10.2026; docs/uutismalli_suunnitelma.md, vaihe 3).
 
 Ajaa .github/workflows/absence.yml, jonka sovellus käynnistää (workflow_dispatch,
 token vain käyttäjän puhelimen selaimessa). Syöte tulee ympäristömuuttujista ja
@@ -21,8 +21,10 @@ from zoneinfo import ZoneInfo
 
 import duckdb
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import absences  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
-FIELDS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]
 SEASON_END = "2027-03-31"            # runkosarjan viimeinen kierros (544 ottelua)
 # Kesto otteluina, viikkoina tai kuukausina (käyttäjä 27.10.: "Wernblom poissa
 # kuusi ottelua" -> juuri ne ottelut lasketaan uudelleen; uutinen kertoo usein
@@ -95,20 +97,12 @@ def validate(url: str, player: str, team: str, kind: str, duration: str, urls: s
     return errors
 
 
-def record(path: Path, url: str, player: str, team: str, kind: str, duration: str, today: str) -> dict:
-    rows = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
-    if kind == "back":
-        # Paluu päättää pelaajan avoimet poissaolot tähän päivään.
-        for r in rows:
-            if r["player"] == player and r["kind"] == "out" and r["until"] > today:
-                r["until"] = today
+def record(folder: Path, url: str, player: str, team: str, kind: str, duration: str, today: str) -> dict:
+    """Uusi kirjaus omaan tiedostoonsa (absences.py); paluu on oma kirjauksensa."""
     new = {"approved_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "url": url, "player": player,
            "team": team, "kind": kind, "games": duration if kind == "out" else "", "start": today,
            "until": until_for(duration, team, today) if kind == "out" else today}
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=FIELDS)
-        w.writeheader()
-        w.writerows(rows + [new])
+    absences.write(folder, new)
     return new
 
 
@@ -121,7 +115,7 @@ def main(folder: Path) -> int:
         print("EI KIRJATTU: " + "; ".join(errors))
         return 1
     today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
-    r = record(folder / "absences.csv", env["NEWS_URL"], env["PLAYER"], env["TEAM"], env["KIND"], env["DURATION"], today)
+    r = record(folder, env["NEWS_URL"], env["PLAYER"], env["TEAM"], env["KIND"], env["DURATION"], today)
     print(f"kirjattu: {r['player']} ({r['team']}) " + (f"poissa {r['start']} – {r['until']}" if r["kind"] == "out" else f"palaa {today}"))
     return 0
 

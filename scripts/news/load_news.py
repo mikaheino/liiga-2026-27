@@ -22,15 +22,18 @@ import unicodedata
 from pathlib import Path
 
 import duckdb
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import absences  # noqa: E402
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 DB = ROOT / "data" / "liiga.duckdb"
-SUGGEST = ("loukkaantuminen", "paluu", "pelikielto")
+# Ehdokkaat: poissaolot (OK-lomake) ja siirrot (onko pelaaja jo rosterissa).
+SUGGEST = ("loukkaantuminen", "paluu", "pelikielto", "siirto")
 
 FILES = {
     "news_items": ("news_items.csv", ["fetched_at", "published", "source", "team", "flags", "title", "url"]),
-    "news_absences": ("absences.csv", ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]),
     "news_lineups": ("lineup_games.csv", ["fetched_at", "date", "game_id", "start", "home", "away",
                                            "lineup_ready", "home_starter", "away_starter"]),
     "prediction_games_news": ("prediction_games_news.csv", ["snapshot_date", "game_id", "home_team", "away_team",
@@ -80,6 +83,7 @@ def main(folder: Path) -> None:
             path = folder / fname
             df = pd.read_csv(path, dtype=str) if path.exists() else pd.DataFrame(columns=cols)
             frames[table] = df.reindex(columns=cols)
+        frames["news_absences"] = pd.DataFrame(absences.events(folder), columns=absences.FIELDS)
         roster = con.execute("""
             SELECT name, team, position_group FROM player_rates
             UNION ALL SELECT name, team, 'G' FROM team_goalie_weights""").df()

@@ -7,7 +7,7 @@ erikseen prediction_games_news.csv:hen ennen ottelua, ja sovellus vertaa niitä
 lukittuun malliin pelattujen otteluiden log-lossilla.
 
 Perusta = Pagesin aamun ennuste (pages-data/prediction_games.csv). Muutokset:
-- Poissaolot: hyväksytyt (absences.csv, OK-nappi) + liiga.fi:n pelikiellot
+- Poissaolot: hyväksytyt (absences/, OK-nappi) + liiga.fi:n pelikiellot
   (kokoonpanon `suspended`). Pelaaja, joka on päivän kokoonpanossa, ei ole
   poissa. Vaikutus skenaariotyökalun apply_injuries-funktiolla (sama kuin
   agentin liiga_skenaario): Poisson-osan muutos painolla 0,4.
@@ -28,6 +28,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import duckdb
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import absences  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVELS = ROOT / "data" / "goalie_levels_2027.csv"
@@ -71,8 +74,7 @@ def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[s
     latest = max((r["fetched_at"] for r in lineup), default="")
     lineup = [r for r in lineup if r["fetched_at"] == latest]
     playing = {f"{r['first_name']} {r['last_name']}" for r in lineup if r["line"] not in ("", None)}
-    approved = [r["player"] for r in _read(news / "absences.csv")
-                if r["kind"] == "out" and r["start"] <= day < r["until"] and r["player"] not in playing]
+    approved = [r["player"] for r in absences.active(news, day) if r["player"] not in playing]
     suspended = [f"{r['first_name']} {r['last_name']}" for r in lineup if r["suspended"] == "1"]
     return sorted(set(approved)), sorted(set(suspended) - set(approved))
 
