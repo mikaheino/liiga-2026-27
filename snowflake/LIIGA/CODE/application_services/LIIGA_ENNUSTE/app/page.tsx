@@ -2,21 +2,29 @@
 // heatmapin rivi avaa joukkueen (/joukkue/Tappara), valikko osiot. Käyttäjä 16.10.:
 // muut osiot eivät näy oletuksena, mutta demossa niihin hypätään täältä.
 import Link from "next/link";
-import Heatmap from "@/components/Heatmap";
+import Heatmap, { DEFAULT_LINE, type Line, type Need } from "@/components/Heatmap";
 import Season from "@/components/Season";
 import Top from "@/components/Top";
-import { loadFixtures, loadHistory, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { scoreboard } from "@/lib/fixtures";
-import { fi, seasonTable } from "@/lib/table";
+import { TEAMS, fi, seasonTable } from "@/lib/table";
+import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }] = await Promise.all([
-    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(),
+  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim] = await Promise.all([
+    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(),
   ]);
   // Jokaisessa ovessa elävä nosto -- ovi kertoo jo mitä sen takana on.
-  const leader = seasonTable(log, teams)[0];
+  const table = seasonTable(log, teams);
+  const leader = table[0];
+  // Joukkueen runkosarjan ottelut = kaikki ottelut x 2 / joukkueet (544 -> 64).
+  const perTeam = meta ? Math.round((Number(meta.GAMES_TOTAL) * 2) / TEAMS) : 0;
+  const need = new Map<string, Need>(table.map((r) => [r.team, { pts: r.pts, left: Math.max(perTeam - r.gp, 0) }]));
+  // 14 parhaan raja: todennäköinen ja varma simulaatiosta, toteuma = 14. sijan pisteet nyt.
+  const lineRank = sim?.rank ?? 14;
+  const line: Line | null = sim ? { ...sim, now: table[lineRank - 1]?.pts ?? null } : null;
   const fav = [...pos].sort((a, b) => b.pTitle - a.pTitle)[0];
   const s = scoreboard(fixtures);
   const latest = history.length ? history[history.length - 1].date : "";
@@ -29,14 +37,22 @@ export default async function Page() {
     { href: "/ottelut", k: "Ottelut", v: s.n ? `${Math.round((100 * s.hits) / s.n)} % oikein` : "–", s: s.n ? `${s.hits}/${s.n} voittajaa` : "" },
     { href: "/liike", k: "Ennusteen liike", v: mover ? `${mover.team} ${mover.d > 0 ? "+" : ""}${fi(mover.d)}` : "–", s: "suurin muutos esikaudesta" },
     { href: "/linkedin", k: "LinkedIn", v: "7 postausta", s: "PDF:t jakoon" },
-  ];
+  ].filter((d) => !(STATIC && d.href === "/linkedin"));
   return (
     <div className="shell">
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front">
         {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
-        <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
-        <Heatmap rows={pos} highlight={new Set()} link={teamHref} />
+        <div className="pick-row">
+          <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
+          <div className="line-note" title="Todennäköinen: riittää 14 parhaan joukkoon puolessa simulaatioista. Varma: 95 %:ssa. Nyt: 14. sijan pisteet sarjataulukossa.">
+            {lineRank} parhaan raja:
+            <span>todennäköinen <b>{line?.likely ?? DEFAULT_LINE} p</b></span>
+            {line && <span>varma <b>{line.safe} p</b></span>}
+            {line?.now != null && <span>nyt {lineRank}. sijalla <b>{line.now} p</b></span>}
+          </div>
+        </div>
+        <Heatmap rows={pos} highlight={new Set()} link={teamHref} need={perTeam ? need : undefined} line={line} />
         <nav className="doors" aria-label="Osiot">
           {doors.map((d, i) => (
             <Link key={d.href} href={d.href} className="door" style={{ animationDelay: `${600 + i * 90}ms` }}>

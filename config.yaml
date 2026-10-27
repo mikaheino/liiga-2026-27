@@ -154,6 +154,12 @@ simulation:
     overtime_loss: 1
     regulation_loss: 0
   playoff_cutoff_rank: 6   # top N make direct playoffs (for P(playoff) reporting)
+  # Points line for finishing in the top `line_rank` (2026-27: 14 of 17 go on).
+  # likely / safe = fewest points that beat the (line_rank+1)th team in at
+  # least that share of simulations. Shown in the app's 80-point column.
+  line_rank: 14
+  line_likely: 0.50
+  line_safe: 0.95
 
 # --- Crowd wisdom signal (pre-season, 2026-27 only) -------------------------
 # 40 Jatkoaika.com forum members posted standings predictions before the season.

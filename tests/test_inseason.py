@@ -79,3 +79,14 @@ def test_train_elo_continues_from_given_ratings():
     assert start == {"A": 1600.0, "B": 1400.0}          # not mutated
     assert r["A"] > 1600.0 and r["B"] < 1400.0
     assert train_elo(games)["A"] < r["A"]
+
+
+def test_points_line_beats_next_team():
+    import numpy as np
+
+    from liiga.simulate import points_line
+    # 3 teams, line_rank 2: the 3rd-best team has 10 points in 60 % and 20 in 40 % of sims
+    pts = np.array([[30, 25, 10]] * 6 + [[30, 25, 20]] * 4, dtype=float)
+    line = points_line(pts, {"line_rank": 2, "line_likely": 0.5, "line_safe": 0.95})
+    assert line == {"rank": 2, "likely": 11, "safe": 21}
+    assert points_line(pts, {"line_rank": 3}) == {}

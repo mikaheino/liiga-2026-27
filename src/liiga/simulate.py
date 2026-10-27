@@ -147,7 +147,27 @@ def simulate(con=None, pred: pd.DataFrame | None = None,
         pos[t] = counts / n
     pos_df = pd.DataFrame(pos, index=teams, columns=range(1, n_teams + 1))
 
-    return {"standings": standings, "position_distribution": pos_df, "predictions": pred}
+    return {"standings": standings, "position_distribution": pos_df, "predictions": pred,
+            "line": points_line(points, sim)}
+
+
+def points_line(points: np.ndarray, sim: dict) -> dict:
+    """Points needed to finish above the (line_rank+1)th team.
+
+    For a share q, the answer is the fewest whole points X with
+    P(points of the (line_rank+1)th team < X) >= q across simulations.
+    Empty when the league is too small for the line.
+    """
+    k = int(sim.get("line_rank", 14))
+    if points.shape[1] <= k:
+        return {}
+    nxt = -np.sort(-points, axis=1)[:, k]           # (k+1)th best in each simulation
+
+    def need(q: float) -> int:
+        return int(np.quantile(nxt, q, method="inverted_cdf")) + 1
+
+    return {"rank": k, "likely": need(sim.get("line_likely", 0.5)),
+            "safe": need(sim.get("line_safe", 0.95))}
 
 
 if __name__ == "__main__":

@@ -88,6 +88,15 @@ export const loadPosition = memo("loadPosition", async () => {
   return rows;
 });
 
+// 14 parhaan pisteraja simulaatiosta (simulate.points_line). SELECT *, koska
+// Snowflaken PREDICTION_META saa sarakkeet vasta kun notebook ajaa uuden koodin:
+// puuttuvat sarakkeet -> null, ja sovellus näyttää kiinteän 80 p:n oletuksen.
+export const loadLine = memo("loadLine", async () => {
+  const [r] = await query(`SELECT * FROM ${M}.PREDICTION_META`);
+  const rank = num(r?.LINE_RANK), likely = num(r?.LINE_LIKELY), safe = num(r?.LINE_SAFE);
+  return rank && likely && safe ? { rank, likely, safe } : null;
+});
+
 export const loadLog = memo("loadLog", async (): Promise<Game[]> => {
   const log = await query(`
     SELECT team, start_ts, points, goals_for, goals_against, xg_for, xg_against,
@@ -143,19 +152,6 @@ export const loadFixtures = memo("loadFixtures", async (): Promise<Fixture[]> =>
   }));
 });
 
-// URL-parametrit, jotka kulkevat sivulta toiselle (korostus ja ikkuna).
-export type Params = Record<string, string | undefined>;
-export function highlightOf(sp: Params, teams: string[]) {
-  return new Set((sp.joukkue ?? "").split(",").map((s) => s.trim()).filter((s) => teams.includes(s)));
-}
-// Linkki toiselle sivulle kantaa mukanaan vain yhteiset valinnat; saman sivun
-// linkki (sama polku) säilyttää myös sivun omat, kuten välilehden ja kuukauden.
-const CARRY = ["joukkue", "ikkuna", "kayra", "xg"];
-export function hrefWith(path: string, sp: Params, changes: Record<string, string | null> = {}, samePage = false) {
-  const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(sp)) if (v && (samePage || CARRY.includes(k))) q.set(k, v);
-  for (const [k, v] of Object.entries(changes)) { if (v) q.set(k, v); else q.delete(k); }
-  return q.size ? `${path}?${q}` : path;
-}
+export { type Params, highlightOf, hrefWith } from "@/lib/params";
 
 export const teamHref = (team: string) => `/joukkue/${encodeURIComponent(team)}`;

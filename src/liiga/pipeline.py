@@ -179,6 +179,10 @@ def forecast(con=None, cfg=None) -> dict:
         "games_played": meta["n_played"],
         "games_total": meta["n_total"],
         "crowd_weight_eff": round(crowd_weight, 4),
+        # Top-14 points line from the raw simulation (simulate.points_line).
+        "line_rank": res["line"].get("rank"),
+        "line_likely": res["line"].get("likely"),
+        "line_safe": res["line"].get("safe"),
     }])
 
     today = dt.datetime.now(dt.timezone.utc).date().isoformat()
