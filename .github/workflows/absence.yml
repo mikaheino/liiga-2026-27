@@ -10,8 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: Uutisen osoite (news_items.csv)
-        required: true
+        description: Uutisen osoite (news_items.csv); tyhjä = ilman uutista
+        required: false
+        default: ""
       player:
         description: Pelaaja rosterista
         required: true
@@ -24,9 +25,9 @@ on:
         type: choice
         options: [out, back]
       duration:
-        description: Kesto otteluina 1-10 tai kausi (out); approve.py validoi
+        description: Kesto, esim. 6ott, 3vko, 2kk tai kausi (out); approve.py validoi
         required: false
-        default: "1"
+        default: "1ott"
 
 permissions:
   contents: write

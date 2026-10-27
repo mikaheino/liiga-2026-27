@@ -8,6 +8,7 @@ Taulut (korvataan joka kerta; Pagesin runnerin kanta on kertakäyttöinen):
   news_candidates        uutisen otsikosta tunnistetut rosterin pelaajat
                          (vain loukkaantuminen/paluu/pelikielto-liputetut)
   news_absences          hyväksytyt poissaolot (OK-nappi, absence.yml)
+  news_roster            pelaajat joukkueittain (poissaolon lisäys käsin)
   news_lineups           päivän kokoonpanojen valmius ja aloittavat maalivahdit
   prediction_games_news  haastajan ennusteet (challenger.py)
 
@@ -82,7 +83,9 @@ def main(folder: Path) -> None:
         roster = con.execute("""
             SELECT name, team, position_group FROM player_rates
             UNION ALL SELECT name, team, 'G' FROM team_goalie_weights""").df()
+        roster = roster.drop_duplicates(["name", "team"])          # maalivahdit ovat kummassakin
         frames["news_candidates"] = candidates(frames["news_items"], roster)
+        frames["news_roster"] = roster.rename(columns={"name": "player", "position_group": "position"}).sort_values(["team", "player"])
         for table, df in frames.items():
             con.register("_df", df)
             con.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM _df")

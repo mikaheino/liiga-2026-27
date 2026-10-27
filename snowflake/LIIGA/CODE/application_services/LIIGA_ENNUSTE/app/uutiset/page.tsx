@@ -57,11 +57,11 @@ export default async function Page() {
               <span>top 6 {pct(t.topNow)} → {pct(t.top)}</span>
             </div>
           ))}
-          <p className="chs-abs">Poissa: {active.map((a) => `${a.player} (${a.team}, ${a.games === "kausi" ? "loppukausi" : `${a.games} ott.`}, palaa ${Number(a.until.slice(8, 10))}.${Number(a.until.slice(5, 7))}.)`).join(" · ")}</p>
+          <p className="chs-abs">Poissa: {active.map((a) => `${a.player} (${a.team}, ${a.games === "kausi" ? "loppukausi" : a.games.replace(/(ott|vko|kk)$/, " $1")}, palaa ${Number(a.until.slice(8, 10))}.${Number(a.until.slice(5, 7))}.)`).join(" · ")}</p>
         </>)}
       </section>
       <div className="label sub">Uutiset</div>
-      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} />
+      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} roster={news.roster} />
     </Shell>
   );
 }

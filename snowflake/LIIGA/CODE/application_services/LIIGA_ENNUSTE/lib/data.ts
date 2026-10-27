@@ -159,21 +159,24 @@ const optional = <T>(f: () => Promise<T[]>): Promise<T[]> =>
   DATA_MODE === "duckdb" ? f().catch(() => [] as T[]) : Promise.resolve([]);
 export type NewsItem = { published: string; fetched: string; source: string; team: string; flags: string; title: string; url: string };
 export type Candidate = { url: string; player: string; team: string; position: string };
+export type Player = { player: string; team: string; position: string };
 export type Absence = { url: string; player: string; team: string; kind: string; games: string; start: string; until: string };
 export type Challenger = { date: string; home: string; away: string; base: number; pHome: number; pOt: number; notes: string };
 
 export const loadNews = memo("loadNews", async () => {
-  const [items, cands, abs] = await Promise.all([
+  const [items, cands, abs, roster] = await Promise.all([
     optional(() => query(`SELECT published, fetched_at, source, team, flags, title, url FROM news_items
                           ORDER BY COALESCE(NULLIF(published, ''), fetched_at) DESC LIMIT 300`)),
     optional(() => query(`SELECT url, player, team, position FROM news_candidates`)),
     optional(() => query(`SELECT url, player, team, kind, games, start, until FROM news_absences ORDER BY approved_at`)),
+    optional(() => query(`SELECT player, team, position FROM news_roster ORDER BY team, player`)),
   ]);
   const s = (v: unknown) => (v == null ? "" : String(v));
   return {
     items: items.map((r): NewsItem => ({ published: s(r.PUBLISHED), fetched: s(r.FETCHED_AT), source: s(r.SOURCE), team: s(r.TEAM),
       flags: s(r.FLAGS), title: s(r.TITLE), url: s(r.URL) })),
     candidates: cands.map((r): Candidate => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), position: s(r.POSITION) })),
+    roster: roster.map((r): Player => ({ player: s(r.PLAYER), team: s(r.TEAM), position: s(r.POSITION) })),
     absences: abs.map((r): Absence => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), kind: s(r.KIND), games: s(r.GAMES), start: s(r.START), until: s(r.UNTIL) })),
   };
 });

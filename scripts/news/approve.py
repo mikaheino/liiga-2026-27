@@ -6,7 +6,7 @@ token vain käyttäjän puhelimen selaimessa). Syöte tulee ympäristömuuttujis
 käsitellään pelkkänä datana: uutisen on löydyttävä news_items.csv:stä, pelaajan
 rosterista samasta joukkueesta ja keston sallituista arvoista. Muuten ei kirjata.
 
-    NEWS_URL=... PLAYER=... TEAM=... KIND=out|back DURATION=1..10|kausi \\
+    NEWS_URL=...|"" PLAYER=... TEAM=... KIND=out|back DURATION=6ott|3vko|2kk|kausi \\
         python scripts/news/approve.py NEWSDIR
 """
 from __future__ import annotations
@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import os
+import re
 import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -23,9 +24,11 @@ import duckdb
 ROOT = Path(__file__).resolve().parents[2]
 FIELDS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]
 SEASON_END = "2027-03-31"            # runkosarjan viimeinen kierros (544 ottelua)
-# Kesto otteluina (käyttäjä 27.10.: "Wernblom poissa kuusi ottelua" -> juuri ne
-# kuusi ottelua lasketaan uudelleen) tai loppukausi.
-DURATIONS = {str(n) for n in range(1, 11)} | {"kausi"}
+# Kesto otteluina, viikkoina tai kuukausina (käyttäjä 27.10.: "Wernblom poissa
+# kuusi ottelua" -> juuri ne ottelut lasketaan uudelleen; uutinen kertoo usein
+# viikkoja tai kuukausia) tai loppukausi. Yläraja estää vahingot ("60kk").
+DURATION_RE = re.compile(r"^(\d{1,2})(ott|vko|kk)$")
+LIMITS = {"ott": 60, "vko": 30, "kk": 7}
 
 
 def _roster() -> set[tuple[str, str]]:
@@ -50,12 +53,30 @@ def _team_dates(team: str, today: str) -> list[str]:
         con.close()
 
 
+def valid_duration(duration: str) -> bool:
+    m = DURATION_RE.match(duration)
+    return duration == "kausi" or bool(m and 1 <= int(m.group(1)) <= LIMITS[m.group(2)])
+
+
+def _add_months(day: dt.date, n: int) -> dt.date:
+    y, m = divmod(day.month - 1 + n, 12)
+    nxt = dt.date(day.year + y, m + 1, 1)
+    last = ((nxt.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)).day
+    return nxt.replace(day=min(day.day, last))
+
+
 def until_for(duration: str, team: str, today: str) -> str:
-    """Paluupäivä: päivä N:nnen ottelun jälkeen (sinä päivänä jo pelaa)."""
+    """Paluupäivä (sinä päivänä jo pelaa): N:nnen ottelun jälkeinen päivä,
+    tai tänään + N viikkoa / kuukautta."""
     if duration == "kausi":
         return SEASON_END
+    m = DURATION_RE.match(duration)
+    n, unit = int(m.group(1)), m.group(2)
+    if unit == "vko":
+        return min(SEASON_END, (dt.date.fromisoformat(today) + dt.timedelta(weeks=n)).isoformat())
+    if unit == "kk":
+        return min(SEASON_END, _add_months(dt.date.fromisoformat(today), n).isoformat())
     dates = _team_dates(team, today)
-    n = int(duration)
     if n > len(dates):
         return SEASON_END
     return (dt.date.fromisoformat(dates[n - 1]) + dt.timedelta(days=1)).isoformat()
@@ -63,14 +84,14 @@ def until_for(duration: str, team: str, today: str) -> str:
 
 def validate(url: str, player: str, team: str, kind: str, duration: str, urls: set[str]) -> list[str]:
     errors = []
-    if url not in urls:
+    if url and url not in urls:              # tyhjä = kirjattu ilman uutista (tieto muualta)
         errors.append("uutista ei löydy news_items.csv:stä")
     if (player, team) not in _roster():
         errors.append("pelaajaa ei löydy joukkueen rosterista")
     if kind not in ("out", "back"):
         errors.append("KIND on out tai back")
-    if kind == "out" and duration not in DURATIONS:
-        errors.append("DURATION on 1-10 (ottelua) tai kausi")
+    if kind == "out" and not valid_duration(duration):
+        errors.append("DURATION on esim. 6ott, 3vko, 2kk tai kausi")
     return errors
 
 

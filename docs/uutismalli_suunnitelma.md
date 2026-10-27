@@ -211,6 +211,14 @@ satunnaisluvut). Esimerkki: Wernblom 6 ottelua -> TPS:n voitto noissa
 otteluissa 47,2 -> 45,0 %, kausi 89,8 -> 89,5 p, top 6 14,5 -> 13,6 %. Näkyy
 Uutiset-sivulla, joukkuesivulla ja kierroskortissa (myös tulevat päivät).
 
+**Kesto otteluina, viikkoina tai kuukausina** (käyttäjä 27.10.): lomakkeessa
+määrä ja yksikkö (ottelua / viikkoa / kuukautta / loppukausi); arvaus otsikosta
+("kuuden ottelun" -> 6 ott, "3–4 viikkoa" -> 4 vko, "kuukauden" -> 1 kk,
+"lokakuun sivussa" -> viikot kuun loppuun, "pitkään" -> kausi). `approve.py`:
+`6ott` = joukkueen 6. ottelun jälkeinen päivä, `3vko`/`2kk` kalenterista, rajat
+60 ott / 30 vko / 7 kk. Tunnistamattomaan uutiseen "kirjaa poissaolo" ja
+pelaajan valinta rosterista; myös poissaolo ilman uutista (tieto muualta).
+
 **Sovellus (Pages):** Uutiset-sivu (alavalikko): Haastaja vs. lukittu malli
 (log-loss, osumat pelatuista), päivän haastajaennusteet, uutiset suodatettuna
 ("vain olennaiset", joukkueen korostus). OK-napit näkyvät vain selaimessa, johon
