@@ -21,6 +21,16 @@ DB = Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb"
 TABLES = ("prediction_history", "prediction_games")
 
 
+def _q(con, sql: str, params: list | None = None) -> list:
+    # Tulos luetaan aina loppuun: uudempi DuckDB (CI asentaa uusimman) ei anna
+    # aloittaa seuraavaa kyselyä, ennen kuin edellisen tulos on haettu.
+    return con.execute(sql, params or []).fetchall()
+
+
+def _summary(con, t: str) -> str:
+    return f"{t}: {_q(con, f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}')[0]}"
+
+
 def restore(folder: Path) -> None:
     con = duckdb.connect(str(DB))
     for t in TABLES:
@@ -28,11 +38,11 @@ def restore(folder: Path) -> None:
         if not csv.exists():
             print(f"{t}: ei CSV:tä, käytetään repon tietokannan historiaa")
             continue
-        cols = con.sql(f"DESCRIBE {t}").fetchall()
+        cols = _q(con, f"DESCRIBE {t}")
         select = ", ".join(f'CAST("{c[0]}" AS {c[1]}) AS "{c[0]}"' for c in cols)
-        con.execute(f"DELETE FROM {t}")
-        con.execute(f"INSERT INTO {t} SELECT {select} FROM read_csv(?, header = true, all_varchar = true)", [str(csv)])
-        print(f"{t}: {con.execute(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
+        _q(con, f"DELETE FROM {t}")
+        _q(con, f"INSERT INTO {t} SELECT {select} FROM read_csv(?, header = true, all_varchar = true)", [str(csv)])
+        print(_summary(con, t))
     con.close()
 
 
@@ -40,9 +50,9 @@ def save(folder: Path) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(DB), read_only=True)
     for t in TABLES:
-        cols = ", ".join(f'"{c[0]}"' for c in con.sql(f"DESCRIBE {t}").fetchall())
-        con.execute(f"COPY (SELECT * FROM {t} ORDER BY {cols}) TO '{folder / f'{t}.csv'}' (HEADER)")
-        print(f"{t}: {con.execute(f'SELECT COUNT(*), MAX(snapshot_date) FROM {t}').fetchone()}")
+        cols = ", ".join(f'"{c[0]}"' for c in _q(con, f"DESCRIBE {t}"))
+        _q(con, f"COPY (SELECT * FROM {t} ORDER BY {cols}) TO '{folder / f'{t}.csv'}' (HEADER)")
+        print(_summary(con, t))
     con.close()
 
 
