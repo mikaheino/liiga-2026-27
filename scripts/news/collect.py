@@ -61,7 +61,7 @@ YLE_ALIASES = {"Kiekko-Espoo": "K-Espoo", "Vaasan Sport": "Sport", "Porin Ässä
 # vaihe 0 mittaa, montako osumaa tulee ja montako niistä on oikeasti olennaisia.
 FLAGS = {
     "loukkaantuminen": r"loukkaant|sivussa|vamma|leikkau|kuntoutu|sairasluet",
-    "paluu": r"palaa kokoonpano|paluu|palaa kaukalo|tervehty",
+    "paluu": r"palaa|paluu|tervehty",
     "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim|hankki|jättää|lähtee",
     "valmentaja": r"päävalmentaj|valmentaj|erotet|irtisano|potku",
     # "pelikiel": taivutukset pelikielto / pelikiellon / pelikieltoa (27.10.: "pelikielt"

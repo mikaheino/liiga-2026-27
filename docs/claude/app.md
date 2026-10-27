@@ -118,3 +118,10 @@ joukkuesivusta staattisen (● eikä ƒ), eli ensimmäisen haun data olisi jää
 URL-valinnoista riippuvat näkymät ovat `components/Views.tsx`:ssä selaimessa
 (`useSearchParams` + Suspense, fallback = oletusnäkymä), jotta sama koodi toimii molemmissa.
 
+**Uutishaastaja (27.10.):** `/uutiset` ja kierroskortin haastajarivi lukevat
+tauluja, jotka syntyvät vain Pages-käännöksessä (`load_news.py`); muualla
+`optional()` palauttaa tyhjän. OK-nappi = selaimen fine-grained token ->
+`absence.yml` workflow_dispatch. Testikäännös ilman kehityskannan muutoksia:
+`LIIGA_DUCKDB=<kopio> scripts/deploy/pages_build.sh` (duckdb_query.py lukee
+muuttujan). Suunnitelma ja tulokset: `docs/uutismalli_suunnitelma.md`.
+

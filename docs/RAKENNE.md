@@ -34,7 +34,10 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 |---|---|---|
 | `scripts/deploy/` | Snowflake-julkaisu: `deploy_views.py`, `semantic_views.py` (+ `_en`), `deploy_tools.py`, `deploy_knowledge.py`, `deploy_agent.py`, `agent_eval.py`, `sync_to_snowflake.py`, `snow_conn.py` | GitHub Actions (`deploy.yml`) ja kehittäjä DEV-aliakselle |
 | `scripts/deploy/pages_build.sh`, `pages_history.py` | GitHub Pages -kopio sovelluksesta (ei Snowflake-objekti): staattinen vienti ja Pagesin oma ennustehistoria `pages-data`-haarassa | GitHub Actions (`pages.yml`) |
-| `scripts/news/collect.py`, `lineups.py` | Uutiskeräin ja päivän kokoonpanot/aloittavat maalivahdit (uutismalli, ei Snowflake-objekti) -> `news-data`-haara | GitHub Actions (`news.yml`, klo 14.00 Suomen aikaa) |
+| `scripts/news/collect.py`, `lineups.py`, `challenger.py` | Uutiskeräin, päivän kokoonpanot/aloittavat maalivahdit ja uutishaastaja (ei Snowflake-objekti) -> `news-data`-haara | GitHub Actions (`news.yml`, klo 14.00 Suomen aikaa) |
+| `scripts/news/approve.py` | Sovelluksen OK-napin kirjaus (`absences.csv`), syötteen validointi | GitHub Actions (`absence.yml`, workflow_dispatch) |
+| `scripts/news/load_news.py` | news-data-haaran CSV:t Pages-käännöksen DuckDB-tauluiksi | GitHub Actions (`pages.yml`) |
+| `scripts/experiments/starting_goalie.py` | Aloittavan maalivahdin historiatesti, `data/goalie_levels_2027.csv` | käsin |
 | `scripts/local/` | paikallinen putki ja tuotokset: `daily_update.py/.sh` (launchd 08:30), `build_site.py`, `build_instagram.py`, `refresh_standings.py` (vain esikausi), rosterityökalut, `hockeydb.py`, launchd-plist | launchd ja kehittäjä |
 | `scripts/tools/` | Snowflake-työkalujen paikalliset vastineet: `skenaario.py` = `SIMULATE_SCENARIO`, `kokoonpanot.py` = `LINEUP_FORECAST` (sama lähdekoodi) | kehittäjä |
 | `scripts/dev/` | koodin laatu: `quality.py` (ruff + monimutkaisuus + testit/kattavuus, lähtötaso `quality_baseline.json`), `claude_ruff_hook.py` | CI (`ci.yml`), git pre-push, Claude Code -hook |

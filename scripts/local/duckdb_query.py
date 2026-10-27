@@ -12,13 +12,15 @@ from __future__ import annotations
 import datetime as dt
 import decimal
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
 import duckdb
 
-DB = Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb"
+# LIIGA_DUCKDB vaihtaa kannan (testikäännös kopiolla, 27.10.).
+DB = Path(os.environ.get("LIIGA_DUCKDB") or Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb")
 
 
 def _plain(v):

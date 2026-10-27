@@ -42,3 +42,6 @@ data/mouho_2027_ilmoittautumiset.csv
 
 # GitHub Pages -käännös (scripts/deploy/pages_build.sh), syntyy joka ajossa
 .pages/
+
+# Kokeiden välimuisti (scripts/experiments/starting_goalie.py: ~2 300 ottelun tiedot liiga.fi:stä)
+.cache/

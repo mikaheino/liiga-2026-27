@@ -6,7 +6,8 @@ import Heatmap, { DEFAULT_LINE, type Line, type Need } from "@/components/Heatma
 import NextRound from "@/components/NextRound";
 import Season from "@/components/Season";
 import Top from "@/components/Top";
-import { loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { gameKey } from "@/lib/challenger";
+import { loadChallenger, loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { nextRound, scoreboard } from "@/lib/fixtures";
 import { TEAMS, fi, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
@@ -14,8 +15,8 @@ import { STATIC } from "@/lib/target";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim] = await Promise.all([
-    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(),
+  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger] = await Promise.all([
+    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(), loadChallenger(),
   ]);
   // Jokaisessa ovessa elävä nosto -- ovi kertoo jo mitä sen takana on.
   const table = seasonTable(log, teams);
@@ -44,7 +45,8 @@ export default async function Page() {
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front">
         {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
-        <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))} />
+        <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))}
+          challenger={new Map(challenger.map((c) => [gameKey(c.date, c.home, c.away), c]))} />
         <div className="pick-row">
           <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
           <div className="line-note" title="Todennäköinen: riittää 14 parhaan joukkoon puolessa simulaatioista. Varma: 95 %:ssa. Nyt: 14. sijan pisteet sarjataulukossa.">

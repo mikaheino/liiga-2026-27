@@ -734,3 +734,43 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .nr-game { grid-template-columns: 38px minmax(0, 1fr); gap: 3px 8px; padding: 8px 0; }
   .nr-name { font-size: 13px; } .nr-side img { width: 18px; height: 18px; }
 }
+
+/* --- Uutiset ja haastaja (27.10.) ----------------------------------------- */
+.ab { margin-bottom: 26px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--r); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.ab .label { margin-bottom: 10px; }
+.ab-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ab-grid div { display: grid; gap: 4px; }
+.ab-k { font: 400 9.5px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ab-grid b { font: 800 17px var(--mono); color: var(--ink); }
+.ab-grid small { font-size: 12px; color: var(--faint); }
+.ab-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ab-game { font-weight: 600; color: var(--ink); }
+.ab-p { font: 12.5px var(--mono); color: var(--muted); } .ab-p b { color: var(--gold-hi); }
+.ab-notes { grid-column: 1 / -1; font-size: 12px; color: var(--faint); }
+.nr-ch { grid-column: 2; font: 11.5px var(--sans); color: var(--gold); }
+.nw-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 12.5px; }
+.nw-list { display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.nw-item { padding: 12px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.nw-item:last-child { border-bottom: 0; }
+.nw-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: 11.5px var(--mono); color: var(--faint); }
+.nw-flag { font: 400 9px var(--pixel); letter-spacing: .05em; text-transform: uppercase; font-style: normal; padding: 2px 6px; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
+.nw-flag.f-loukkaantuminen, .nw-flag.f-pelikielto { background: var(--danger-dim); color: #f0b3ac; }
+.nw-flag.f-paluu { background: rgba(204,167,82,.16); color: var(--gold-hi); }
+.nw-title { font: 600 14px/1.35 var(--sans); color: var(--ink); text-decoration: none; }
+.nw-title:hover { color: var(--gold-hi); }
+.nw-done { font-size: 12.5px; color: var(--gold-hi); }
+.nw-approve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
+.nw-player { font-weight: 600; color: var(--ink); } .nw-player small { color: var(--faint); font-weight: 400; }
+.nw-dur { grid-template-columns: repeat(4, auto); } .nw-dur button { padding: 6px 8px; font-size: 10px; }
+.btn.sm { padding: 6px 12px; font-size: 11px; }
+.nw-sent { font-size: 12.5px; color: var(--gold-hi); }
+.nw-err { font-size: 12px; color: var(--danger); }
+.nw-settings { margin-top: 18px; font-size: 12.5px; color: var(--muted); }
+.nw-settings summary { cursor: pointer; font: 400 10.5px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+.nw-token { display: flex; gap: 8px; flex-wrap: wrap; }
+.nw-token input { flex: 1; min-width: 180px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); font: 13px var(--mono); }
+@media (max-width: 860px) {
+  .ab { padding: 12px 14px; } .ab-grid b { font-size: 14px; }
+  .nw-item { padding: 10px 12px; } .nw-title { font-size: 13.5px; }
+}
+.nw-auto { font-size: 12px; color: var(--faint); }

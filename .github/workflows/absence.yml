@@ -1,0 +1,73 @@
+# Sovelluksen OK-nappi (27.10.; docs/uutismalli_suunnitelma.md, vaihe 3):
+# kirjaa poissaolon tai paluun news-data-haaraan, laskee haastajan uudelleen ja
+# julkaisee sivun. Käynnistyy vain workflow_dispatchilla käyttäjän tokenilla
+# (fine-grained, tämä repo, Actions: write; tallennettu vain puhelimen selaimeen).
+# Syöte kulkee ympäristömuuttujina, ei ${{ }}-lausekkeina komentoriville, ja
+# approve.py hylkää kaiken, mikä ei löydy uutisista ja rosterista.
+name: absence
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Uutisen osoite (news_items.csv)
+        required: true
+      player:
+        description: Pelaaja rosterista
+        required: true
+      team:
+        description: Joukkue
+        required: true
+      kind:
+        description: out = poissa, back = palaa
+        required: true
+        type: choice
+        options: [out, back]
+      duration:
+        description: Kesto (out)
+        required: false
+        type: choice
+        options: [1ott, 1vko, 3vko, kausi]
+        default: 1vko
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: news
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Riippuvuudet
+        run: pip install -q -e .
+      - name: Kirjaus ja haastaja
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          NEWS_URL: ${{ inputs.url }}
+          PLAYER: ${{ inputs.player }}
+          TEAM: ${{ inputs.team }}
+          KIND: ${{ inputs.kind }}
+          DURATION: ${{ inputs.duration }}
+        run: |
+          git clone -q --depth 1 --branch news-data "$URL" .news-data
+          git clone -q --depth 1 --branch pages-data "$URL" .pages-data
+          python scripts/news/approve.py .news-data | tee -a "$GITHUB_STEP_SUMMARY"
+          python scripts/news/challenger.py .news-data .pages-data | tee -a "$GITHUB_STEP_SUMMARY"
+          cd .news-data
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "OK: $PLAYER ($KIND)"
+          git push -q origin news-data
+      - name: Sivu uudelleen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "${{ github.repository }}" -f history=false

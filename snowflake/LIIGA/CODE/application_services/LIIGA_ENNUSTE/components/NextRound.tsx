@@ -2,6 +2,8 @@
 // puhelimesta yhdellä silmäyksellä kuka on suosikki. Palkki = kotivoiton
 // todennäköisyys (jatkoaika mukaan lukien) vs. vierasvoitto; suosikin nimi kirkas.
 import Link from "next/link";
+import { fixtureKey } from "@/lib/challenger";
+import type { Challenger } from "@/lib/data";
 import { type Fixture } from "@/lib/fixtures";
 import { logo } from "@/lib/table";
 
@@ -20,7 +22,7 @@ function Side({ team, p, fav, away }: { team: string; p: number; fav: boolean; a
   );
 }
 
-export default function NextRound({ games }: { games: Fixture[] }) {
+export default function NextRound({ games, challenger }: { games: Fixture[]; challenger?: Map<string, Challenger> }) {
   if (!games.length) return null;
   const days = [...new Set(games.map((g) => dayName.format(new Date(g.start_ts))))];
   return (
@@ -49,6 +51,11 @@ export default function NextRound({ games }: { games: Fixture[] }) {
                     <i className={h < 50 ? "fav" : ""} style={{ width: `${(100 - h).toFixed(1)}%` }} />
                   </div>
                   {g.pOt != null && <span className="nr-ot">JA {Math.round(100 * g.pOt)} %</span>}
+                  {(() => {
+                    const c = challenger?.get(fixtureKey(g));
+                    if (!c || (Math.abs(c.pHome - c.base) < 0.005 && !c.notes)) return null;
+                    return <span className="nr-ch">Haastaja {Math.round(100 * c.pHome)} – {Math.round(100 * (1 - c.pHome))} %{c.notes ? ` · ${c.notes}` : ""}</span>;
+                  })()}
                 </>)}
               </div>
             );

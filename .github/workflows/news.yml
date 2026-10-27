@@ -4,7 +4,10 @@
 #     maalivahdit liiga.fi:stä (myös "ei vielä valmis" kirjataan: ajoituksen mittaus)
 #   - scripts/news/collect.py: Ylen SM-liiga-aihesyöte ja seurojen omat sivut
 #     (otsikko, linkki, joukkue, avainsanaliput; ei kielimallia)
-# Tulos news-data-haaraan. Ei vielä vaikutusta ennusteeseen.
+#   - scripts/news/challenger.py: uutishaastajan ennuste päivän otteluille
+#     (aloittavat maalivahdit, pelikiellot, hyväksytyt poissaolot); lukittu
+#     malli ei muutu, haastaja kirjataan erikseen A/B-vertailua varten
+# Tulos news-data-haaraan, sitten Pages-julkaisu.
 name: news
 
 on:
@@ -17,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  actions: write               # Pages-julkaisun käynnistys lopuksi
 
 concurrency:
   group: news
@@ -43,7 +47,7 @@ jobs:
           python-version: "3.13"
       - if: steps.gate.outputs.run == '1'
         name: Riippuvuudet
-        run: pip install -q requests pyyaml
+        run: pip install -q -e .
       - if: steps.gate.outputs.run == '1'
         name: Kokoonpanot ja uutiset
         env:
@@ -54,9 +58,16 @@ jobs:
           else
             git init -q -b news-data .news-data && git -C .news-data remote add origin "$URL"
           fi
-          { echo '```'; python scripts/news/lineups.py .news-data; echo; python scripts/news/collect.py .news-data; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          git clone -q --depth 1 --branch pages-data "$URL" .pages-data
+          { echo '```'; python scripts/news/lineups.py .news-data; echo; python scripts/news/collect.py .news-data
+            echo; python scripts/news/challenger.py .news-data .pages-data; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
           cd .news-data
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Kokoonpanot ja uutiset $(TZ=Europe/Helsinki date +%F)" || { echo "ei muutoksia"; exit 0; }
           git push -q origin news-data
+      - if: steps.gate.outputs.run == '1'
+        name: Sivu uudelleen (haastaja näkyviin)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "${{ github.repository }}" -f history=false

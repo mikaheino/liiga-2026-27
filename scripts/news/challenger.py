@@ -1,0 +1,192 @@
+"""Uutishaastaja: päivän otteluiden ennuste, kun tiedetään poissaolot ja aloittava
+maalivahti (27.10.2026; docs/uutismalli_suunnitelma.md, vaihe 3).
+
+Ajetaan klo 14 -ajon lopussa (news.yml) ja jokaisen OK-painalluksen jälkeen
+(absence.yml). Lukittu malli ei muutu (AGENTS.md §10): haastaja kirjataan
+erikseen prediction_games_news.csv:hen ennen ottelua, ja sovellus vertaa niitä
+lukittuun malliin pelattujen otteluiden log-lossilla.
+
+Perusta = Pagesin aamun ennuste (pages-data/prediction_games.csv). Muutokset:
+- Poissaolot: hyväksytyt (absences.csv, OK-nappi) + liiga.fi:n pelikiellot
+  (kokoonpanon `suspended`). Pelaaja, joka on päivän kokoonpanossa, ei ole
+  poissa. Vaikutus skenaariotyökalun apply_injuries-funktiolla (sama kuin
+  agentin liiga_skenaario): Poisson-osan muutos painolla 0,4.
+- Aloittava maalivahti: taso (pelastetut maalit yli odotetun / ottelu, vain
+  aiemmilta kausilta) - joukkueen kauden aiempien aloittajien keskitaso ->
+  vastustajan maaliodottama. Menetelmä ja paino scripts/experiments/
+  starting_goalie.py:n historiatestistä (GOALIE_WEIGHT alla).
+
+    python scripts/news/challenger.py NEWSDIR PAGESDIR [YYYY-MM-DD]
+"""
+from __future__ import annotations
+
+import csv
+import datetime as dt
+import importlib.util
+import sys
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import duckdb
+
+ROOT = Path(__file__).resolve().parents[2]
+LEVELS = ROOT / "data" / "goalie_levels_2027.csv"
+FIELDS = ["snapshot_date", "game_id", "home_team", "away_team", "base_p_home_win",
+          "p_home_reg", "p_away_reg", "p_overtime", "p_home_win", "notes"]
+
+_spec = importlib.util.spec_from_file_location(
+    "simulate_scenario", ROOT / "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py")
+sim = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(sim)
+
+# Maalivahtimuutoksen paino ensembleen: vain Poisson-osa (0,4), kuten poissaoloissa.
+# Historiatesti 27.10. (starting_goalie.py, esikauden taso, n0 = 20, 1 999 ottelua
+# 2023-2027): Poisson-osa log-loss -0,0006 ± 0,0003 (t = -2,15); koko ensembleen
+# -0,0012 ± 0,0007 (t = -1,66). Pienempi mutta erottuva valittiin.
+GOALIE_WEIGHT = sim.POISSON_WEIGHT
+
+
+def _read(path: Path) -> list[dict]:
+    return list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
+
+
+def _model(con) -> dict:
+    players = con.execute("SELECT name, team, position_group, projected_goals_per_game FROM player_rates").df()
+    goalies = con.execute("SELECT team, name, proj_save_pct, wt FROM team_goalie_weights").df()
+    goalies["proj_save_pct"] = goalies["proj_save_pct"].astype(object).where(goalies["proj_save_pct"].notna(), None)
+    strength = {t: {"off_rating": o, "def_rating": d}
+                for t, o, d in con.execute("SELECT team, off_rating, def_rating FROM team_strength").fetchall()}
+    return {"players": players.to_dict("records"), "goalies": goalies.to_dict("records"), "strength": strength}
+
+
+def _base(pages: Path, day: str, ids: set[str]) -> dict[str, dict]:
+    rows = [r for r in _read(pages / "prediction_games.csv") if r["game_id"] in ids and r["snapshot_date"] <= day]
+    snap = max((r["snapshot_date"] for r in rows), default=None)
+    return {r["game_id"]: r for r in rows if r["snapshot_date"] == snap}
+
+
+def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[str]]:
+    """(hyväksytyt poissaolijat, pelikiellossa olevat) päivän otteluista."""
+    lineup = [r for r in _read(news / "lineup_players.csv") if r["game_id"] in game_ids]
+    latest = max((r["fetched_at"] for r in lineup), default="")
+    lineup = [r for r in lineup if r["fetched_at"] == latest]
+    playing = {f"{r['first_name']} {r['last_name']}" for r in lineup if r["line"] not in ("", None)}
+    approved = [r["player"] for r in _read(news / "absences.csv")
+                if r["kind"] == "out" and r["start"] <= day < r["until"] and r["player"] not in playing]
+    suspended = [f"{r['first_name']} {r['last_name']}" for r in lineup if r["suspended"] == "1"]
+    return sorted(set(approved)), sorted(set(suspended) - set(approved))
+
+
+def _goalie_diffs(con, news: Path, day: str, game_ids: set[str]) -> tuple[dict[tuple[str, str], float], dict]:
+    """(game_id, joukkue) -> aloittajan taso - joukkueen kauden aiempien aloittajien keskitaso."""
+    levels = {r["player_id"]: float(r["level"]) for r in _read(LEVELS)}
+    if not levels:
+        return {}, {}
+    prev: dict[str, list[str]] = {}
+    for team, pid in con.execute("""SELECT team, CAST(player_id AS VARCHAR) FROM game_goalies
+                                    WHERE season = 2027 AND started""").fetchall():
+        prev.setdefault(team, []).append(pid)
+    lineup = _read(news / "lineup_players.csv")
+    games = {r["game_id"]: r for r in _read(news / "lineup_games.csv")}
+    seen = {(t, p) for t, ps in prev.items() for p in ps}
+    for r in lineup:                       # aloitukset kokoonpanoista ennen tätä päivää
+        g = games.get(r["game_id"])
+        if g and g["date"] < day and r["role"] == "MV" and r["line"] == "1" and (r["team"], r["player_id"]) not in seen:
+            prev.setdefault(r["team"], []).append(r["player_id"])
+    latest = max((r["fetched_at"] for r in lineup if r["game_id"] in game_ids), default="")
+    diffs, names = {}, {}
+    for r in lineup:
+        if r["game_id"] in game_ids and r["fetched_at"] == latest and r["role"] == "MV" and r["line"] == "1":
+            own = levels.get(r["player_id"], 0.0)
+            team_prev = [levels.get(p, 0.0) for p in prev.get(r["team"], [])]
+            default = sum(team_prev) / len(team_prev) if team_prev else own
+            diffs[(r["game_id"], r["team"])] = own - default
+            names[(r["game_id"], r["team"])] = f"{r['last_name']} {own - default:+.2f}"
+    return diffs, names
+
+
+def _apply_goalies(g: dict, strength: dict, d_home: float, d_away: float) -> dict:
+    """Aloittajien ero -> vastustajien maaliodottamat -> todennäköisyysmuutos."""
+    h, a = strength[g["home_team"]], strength[g["away_team"]]
+    lh = sim.LEAGUE_AVG * h["off_rating"] * a["def_rating"] * sim.HOME_ICE
+    la = sim.LEAGUE_AVG * a["off_rating"] * h["def_rating"]
+    o = sim._poisson(lh, la)
+    n = sim._poisson(max(0.2, lh - d_away), max(0.2, la - d_home))
+    w = GOALIE_WEIGHT
+    hreg = max(0.0, g["p_home_reg"] + w * (n[0] - o[0]))
+    ot = max(0.0, g["p_overtime"] + w * (n[2] - o[2]))
+    areg = max(0.0, 1 - g["p_home_reg"] - g["p_overtime"] + w * (n[1] - o[1]))
+    tot = hreg + ot + areg
+    return {**g, "p_home_reg": hreg / tot, "p_overtime": ot / tot,
+            "p_home_ot_win": min(1.0, max(0.0, g["p_home_ot_win"] + w * (n[3] - o[3])))}
+
+
+def main(news: Path, pages: Path, day: str | None = None) -> int:
+    now = dt.datetime.now(dt.UTC)
+    day = day or now.astimezone(ZoneInfo("Europe/Helsinki")).date().isoformat()
+    # Vain alkamattomat ottelut: ennuste ottelun jo alettua vääristäisi A/B-vertailun
+    # (OK-nappia voi painaa illalla, kun päivän ottelut ovat käynnissä).
+    todays = {r["game_id"]: r for r in _read(news / "lineup_games.csv")
+              if r["date"] == day and dt.datetime.fromisoformat(r["start"].replace("Z", "+00:00")) > now}
+    base = _base(pages, day, set(todays))
+    if not base:
+        print(f"{day}: ei otteluita tai aamun ennustetta")
+        return 0
+    con = duckdb.connect(str(ROOT / "data" / "liiga.duckdb"), read_only=True)
+    try:
+        model = _model(con)
+        approved, suspended = _absent(news, day, set(base))
+        diffs, gnames = _goalie_diffs(con, news, day, set(base))
+    finally:
+        con.close()
+
+    games = [{"game_id": gid, "date": day, "iso": day, "home_team": b["home_team"], "away_team": b["away_team"],
+              "p_home_reg": float(b["p_home_reg"]), "p_overtime": float(b["p_overtime"]),
+              "p_home_ot_win": float(b["p_home_ot_win"])} for gid, b in sorted(base.items())]
+    items, notes = [], {}
+    for name in approved + suspended:
+        try:
+            p = sim.find_player(name, model["players"], model["goalies"])
+        except sim.ScenarioError as e:
+            print(f"ohitettu: {e}")
+            continue
+        items.append({"injury": p["name"]})
+        tag = "pelikielto" if name in suspended else "poissa"
+        for g in games:
+            if p["team"] in (g["home_team"], g["away_team"]):
+                notes.setdefault(g["game_id"], []).append(f"{p['name']} {tag}")
+    changed, _ = sim.apply_injuries(items, games, model, day) if items else (games, [])
+
+    out = []
+    for g0, g in zip(games, changed):
+        dh, da = diffs.get((g0["game_id"], g0["home_team"]), 0.0), diffs.get((g0["game_id"], g0["away_team"]), 0.0)
+        if dh or da:
+            g = _apply_goalies(g, model["strength"], dh, da)
+        for side in ("home_team", "away_team"):
+            if (g0["game_id"], g0[side]) in gnames:
+                notes.setdefault(g0["game_id"], []).append("MV " + gnames[(g0["game_id"], g0[side])])
+        ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
+        out.append({"snapshot_date": day, "game_id": g0["game_id"], "home_team": g0["home_team"],
+                    "away_team": g0["away_team"], "base_p_home_win": round(float(base[g0["game_id"]]["p_home_win"]), 6),
+                    "p_home_reg": round(g["p_home_reg"], 6), "p_away_reg": round(1 - g["p_home_reg"] - g["p_overtime"], 6),
+                    "p_overtime": round(g["p_overtime"], 6), "p_home_win": round(ph, 6),
+                    "notes": "; ".join(notes.get(g0["game_id"], []))})
+
+    path = news / "prediction_games_news.csv"
+    # Päivän uusi ajo korvaa saman päivän aiemman ennusteen vain alkamattomille otteluille.
+    redo = {r["game_id"] for r in out}
+    keep = [r for r in _read(path) if not (r["snapshot_date"] == day and r["game_id"] in redo)]
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows(keep + out)
+    for r in out:
+        print(f"{r['home_team']} – {r['away_team']}: {float(r['base_p_home_win']):.1%} -> {r['p_home_win']:.1%}"
+              f"{'  (' + r['notes'] + ')' if r['notes'] else ''}")
+    return 0
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (3, 4):
+        sys.exit(__doc__)
+    sys.exit(main(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3] if len(sys.argv) == 4 else None))

@@ -11,6 +11,14 @@ on:
   schedule:
     - cron: "15 5 * * *"       # 07.15 / 08.15 Suomen aikaa, pelit ovat päättyneet
   workflow_dispatch:
+    inputs:
+      history:
+        # news.yml (klo 14) ja absence.yml (OK-nappi) julkaisevat sivun uudelleen
+        # arvolla false: illalla pelattujen otteluiden jälkeen laskettu ajo ei saa
+        # korvata päivän ennustehistoriaa (ennen ottelua tehty ennuste katoaisi).
+        description: Tallenna päivän ennustehistoria pages-data-haaraan
+        type: boolean
+        default: true
 
 permissions:
   contents: write              # pages-data-haaran päivitys
@@ -55,6 +63,7 @@ jobs:
         run: .venv/bin/python scripts/local/daily_update.py --no-sync
 
       - name: Tallenna historia
+        if: github.event_name == 'schedule' || inputs.history
         run: |
           .venv/bin/python scripts/deploy/pages_history.py save .pages-data
           cd .pages-data
@@ -62,6 +71,15 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Pages-ennuste $(date -u +%F)" || echo "ei muutoksia"
           git push -q origin pages-data
+
+      - name: Uutiset ja haastaja (news-data)
+        # Uutiset, hyväksytyt poissaolot ja haastajan ennusteet sovelluksen tauluiksi
+        # (scripts/news/load_news.py); haaraa ei vielä ole -> tyhjät taulut.
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          git clone -q --depth 1 --branch news-data "$URL" .news-data || mkdir -p .news-data
+          .venv/bin/python scripts/news/load_news.py .news-data
 
       - name: Staattinen sivu
         run: BASE_PATH="/${{ github.event.repository.name }}" scripts/deploy/pages_build.sh

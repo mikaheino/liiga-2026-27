@@ -11,7 +11,7 @@ export function stamp(iso: string) {
 // Pagesissa ei LinkedIn-osiota, ja Mouho-peli avautuu omasta reposta.
 export const SECTIONS = [
   ["/sarjataulukko", "Sarjataulukko"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"], ["/liike", "Liike"],
-  ...(STATIC ? [] : [["/linkedin", "LinkedIn"]]), [STATIC ? MOUHO_PAGES : "/mouho", "Mouho 2026"],
+  ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/linkedin", "LinkedIn"]]), [STATIC ? MOUHO_PAGES : "/mouho", "Mouho 2026"],
 ] as const;
 
 export default function Top({ updatedAt, active }: { updatedAt?: string; active: string }) {

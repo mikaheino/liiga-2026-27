@@ -173,6 +173,43 @@ lähteitä ei louhita.
       haastajan log-loss-ero erottuu? (99 ottelun jälkeen mikään malli ei
       erottunut vakiosta, `model_improvement_ideas.md` §2.)
 
+## Tila 27.10. illalla: vaiheet 1–3 käytössä
+
+**Historiatesti, aloittava maalivahti** (`scripts/experiments/starting_goalie.py`,
+2 308 ottelun tiedot liiga.fi:stä `.cache/`-hakemistoon; walk-forward kuten
+`liiga.inseason`). Taso = vastustajan xG - päästetyt per aloitus, aiemmat kaudet
+(decay 0,7), regressio n0 näennäisottelulla; ero joukkueen kauden aiempien
+aloittajien keskitasoon -> vastustajan maaliodottama. 12 muunnelmaa, kaikki
+paransivat. Lukittu malli ll2 0,6623 (2023–26) / 0,6934 (2027).
+
+| muunnelma (esikauden taso, n0 = 20) | ll2-muutos 2023–27 (1 999 ott.) | t |
+|---|---:|---:|
+| vain Poisson-osa (paino 0,4) — **valittu** | -0,0006 ± 0,0003 | -2,15 |
+| koko ensembleen | -0,0012 ± 0,0007 | -1,66 |
+| koko, otteluissa joissa aloittaja poikkeaa ≥ 0,15 maalia (270) | -0,0057 | |
+
+Kausittain parannus 2023, 2024, 2026 ja 2027, ~0 kaudella 2025. Valittiin
+pienempi mutta erottuva, samalla painolla kuin poissaolot. Tasot kaudelle
+2026–27: `data/goalie_levels_2027.csv` (`--levels`; 114 vahtia, kärjessä
+Randelin, Saarinen, Bartosak).
+
+**Haastaja** (`scripts/news/challenger.py`, klo 14 -ajossa ja jokaisen OK:n
+jälkeen): Pagesin aamun ennuste + aloittavat maalivahdit + liiga.fi:n pelikiellot
+(`suspended`, näkyy jo päivää ennen kenttäjakoa) + hyväksytyt poissaolot
+(`apply_injuries`, sama kuin agentin skenaariotyökalu). Vain alkamattomat
+ottelut. Kirjataan `news-data/prediction_games_news.csv`. Esimerkki 28.10.:
+K-Espoo–TPS 58,6 -> 59,1 % (Wernblom ja Öberg pelikiellossa), HIFK–Ilves
+50,2 -> 48,9 %, jos Huuhtanen kirjataan poissaolevaksi.
+
+**Sovellus (Pages):** Uutiset-sivu (alavalikko): Haastaja vs. lukittu malli
+(log-loss, osumat pelatuista), päivän haastajaennusteet, uutiset suodatettuna
+("vain olennaiset", joukkueen korostus). OK-napit näkyvät vain selaimessa, johon
+on tallennettu token (fine-grained, vain tämä repo, Actions: Read and write):
+`absence.yml` validoi (`approve.py`), kirjaa `absences.csv`:hen, laskee
+haastajan ja julkaisee sivun arvolla `history=false` (illalla laskettu ajo ei
+korvaa päivän ennustehistoriaa). Etusivun kierroskortissa haastajan rivi, kun
+se poikkeaa tai sillä on huomioita.
+
 ### Vaihe 1: aloittava maalivahti (ei uutisia, ei kielimallia)
 
 - [x] **Klo 14.00 -ajo** (27.10.): `scripts/news/lineups.py` + `collect.py` samassa

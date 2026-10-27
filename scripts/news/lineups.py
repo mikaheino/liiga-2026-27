@@ -4,8 +4,9 @@ docs/uutismalli_suunnitelma.md).
 Ajetaan klo 14.00 Suomen aikaa samassa ajossa kuin uutiskeräin (news.yml).
 Jokaisesta päivän ottelusta kirjataan, oliko kokoonpano valmis (kenttäjako
 `line` asetettu) ja kuka aloittaa maalilla (maalivahti `MV`, `line 1`).
-Valmiista kokoonpanoista talteen myös pelaajarivit: niistä haastaja näkee, onko
-poissaolevaksi kirjattu pelaaja mukana (poissaolo päättyy) vai ei (vahvistuu).
+Pelaajarivit talteen aina: valmiista kokoonpanosta haastaja näkee, onko
+poissaolevaksi kirjattu pelaaja mukana (`line` asetettu: poissaolo päättyy), ja
+pelikielto (`suspended`) näkyy jo ennen kenttäjakoa.
 
 Valmiusrivi tallentuu myös silloin, kun kokoonpanoa ei vielä ole: se on
 ajoituksen mittaus. 27.10. havainto: edellisenä päivänä kenttäjako puuttuu;
@@ -71,8 +72,6 @@ def collect(day: str, now: str) -> tuple[list[dict], list[dict]]:
         games.append({"fetched_at": now, "date": day, "game_id": g["id"], "start": g["start"],
                       "home": g["homeTeamName"], "away": g["awayTeamName"], "lineup_ready": int(ok),
                       "home_starter": starter(home), "away_starter": starter(away)})
-        if not ok:
-            continue
         for team, side in ((g["homeTeamName"], home), (g["awayTeamName"], away)):
             for p in side:
                 players.append({"fetched_at": now, "game_id": g["id"], "team": team, "player_id": p.get("id"),

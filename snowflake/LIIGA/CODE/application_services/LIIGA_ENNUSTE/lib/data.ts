@@ -152,6 +152,39 @@ export const loadFixtures = memo("loadFixtures", async (): Promise<Fixture[]> =>
   }));
 });
 
+// Uutishaastaja (27.10.): taulut syntyvät vain Pages-käännöksessä
+// (scripts/news/load_news.py news-data-haarasta). Snowflakessa ja ilman tauluja
+// tyhjä lista, jotta sivut toimivat silti.
+const optional = <T>(f: () => Promise<T[]>): Promise<T[]> =>
+  DATA_MODE === "duckdb" ? f().catch(() => [] as T[]) : Promise.resolve([]);
+export type NewsItem = { published: string; fetched: string; source: string; team: string; flags: string; title: string; url: string };
+export type Candidate = { url: string; player: string; team: string; position: string };
+export type Absence = { url: string; player: string; team: string; kind: string; start: string; until: string };
+export type Challenger = { date: string; home: string; away: string; base: number; pHome: number; pOt: number; notes: string };
+
+export const loadNews = memo("loadNews", async () => {
+  const [items, cands, abs] = await Promise.all([
+    optional(() => query(`SELECT published, fetched_at, source, team, flags, title, url FROM news_items
+                          ORDER BY COALESCE(NULLIF(published, ''), fetched_at) DESC LIMIT 300`)),
+    optional(() => query(`SELECT url, player, team, position FROM news_candidates`)),
+    optional(() => query(`SELECT url, player, team, kind, start, until FROM news_absences`)),
+  ]);
+  const s = (v: unknown) => (v == null ? "" : String(v));
+  return {
+    items: items.map((r): NewsItem => ({ published: s(r.PUBLISHED), fetched: s(r.FETCHED_AT), source: s(r.SOURCE), team: s(r.TEAM),
+      flags: s(r.FLAGS), title: s(r.TITLE), url: s(r.URL) })),
+    candidates: cands.map((r): Candidate => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), position: s(r.POSITION) })),
+    absences: abs.map((r): Absence => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), kind: s(r.KIND), start: s(r.START), until: s(r.UNTIL) })),
+  };
+});
+
+export const loadChallenger = memo("loadChallenger", async (): Promise<Challenger[]> => {
+  const rows = await optional(() => query(`SELECT snapshot_date, home_team, away_team, base_p_home_win, p_home_win, p_overtime, notes
+                                           FROM prediction_games_news ORDER BY snapshot_date, game_id`));
+  return rows.map((r) => ({ date: String(r.SNAPSHOT_DATE), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM),
+    base: Number(r.BASE_P_HOME_WIN), pHome: Number(r.P_HOME_WIN), pOt: Number(r.P_OVERTIME), notes: r.NOTES == null ? "" : String(r.NOTES) }));
+});
+
 export { type Params, highlightOf, hrefWith } from "@/lib/params";
 
 export const teamHref = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
