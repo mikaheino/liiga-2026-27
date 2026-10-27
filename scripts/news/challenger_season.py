@@ -44,37 +44,55 @@ def active_absences(news: Path, today: str) -> list[dict]:
             if r["kind"] == "out" and r["until"] > today]
 
 
+TEAM_COLS = ["team", "points_now", "points_scenario", "p_title_now", "p_title_scenario",
+             "p_top6_now", "p_top6_scenario", "p_relegation_now", "p_relegation_scenario"]
+
+
+def forecast(con, items: list[dict], today: str) -> tuple[pd.DataFrame, pd.DataFrame, str]:
+    """(joukkueet, muuttuneet ottelut, ennusteen päivä) poissaoloilla."""
+    games, banked, published, w, snap, played = sk.load(con)
+    teams_df = pd.DataFrame(columns=TEAM_COLS)
+    games_df = pd.DataFrame(columns=["date", "home_team", "away_team", "p_home_win"])
+    if not items:
+        return teams_df, games_df, snap
+    model = {**sk.load_model(con), "today": today}
+    valid = []
+    for it in items:
+        try:
+            sim.find_player(it["injury"], model["players"], model["goalies"])
+            valid.append(it)
+        except sim.ScenarioError as e:
+            print(f"ohitettu: {e}")
+    if not valid:
+        return teams_df, games_df, snap
+    res = sim.compute(valid, games, banked, published, w, played, model)
+    changed, _ = sim.apply_injuries(valid, games, model, today)
+    games_df = pd.DataFrame([
+        {"date": c["iso"], "home_team": c["home_team"], "away_team": c["away_team"],
+         "p_home_win": c["p_home_reg"] + c["p_overtime"] * c["p_home_ot_win"]}
+        for g, c in zip(games, changed) if abs(c["p_home_reg"] - g["p_home_reg"]) > 1e-9],
+        columns=games_df.columns)
+    for x in res["injuries"]:
+        print(f"{x['name']} ({x['team']}): {x['n_games']} ottelua, voitto {x['win_before']:.1%} -> {x['win_after']:.1%}")
+    return pd.DataFrame(res["teams"])[TEAM_COLS], games_df, snap
+
+
 def main(news: Path) -> int:
     today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
     items = active_absences(news, today)
-    con = duckdb.connect(str(sk.ROOT / "data/liiga.duckdb"))
+    db = str(sk.ROOT / "data/liiga.duckdb")
+    # Luku ja kirjoitus eri yhteyksillä: DuckDB 2.0 ei salli kirjoitusta yhteydellä,
+    # jolla on kesken jäänyt tulos (skenaariotyökalun fetchone-kyselyt).
+    con = duckdb.connect(db, read_only=True)
     try:
-        games, banked, published, w, snap, played = sk.load(con)
-        teams_df = pd.DataFrame(columns=["team", "points_now", "points_scenario", "p_title_now", "p_title_scenario",
-                                         "p_top6_now", "p_top6_scenario", "p_relegation_now", "p_relegation_scenario"])
-        games_df = pd.DataFrame(columns=["date", "home_team", "away_team", "p_home_win"])
-        if items:
-            model = {**sk.load_model(con), "today": today}
-            valid = []
-            for it in items:
-                try:
-                    sim.find_player(it["injury"], model["players"], model["goalies"])
-                    valid.append(it)
-                except sim.ScenarioError as e:
-                    print(f"ohitettu: {e}")
-            if valid:
-                res = sim.compute(valid, games, banked, published, w, played, model)
-                teams_df = pd.DataFrame(res["teams"])[list(teams_df.columns)]
-                changed, _ = sim.apply_injuries(valid, games, model, today)
-                games_df = pd.DataFrame([
-                    {"date": c["iso"], "home_team": c["home_team"], "away_team": c["away_team"],
-                     "p_home_win": c["p_home_reg"] + c["p_overtime"] * c["p_home_ot_win"]}
-                    for g, c in zip(games, changed) if abs(c["p_home_reg"] - g["p_home_reg"]) > 1e-9])
-                for x in res["injuries"]:
-                    print(f"{x['name']} ({x['team']}): {x['n_games']} ottelua, voitto {x['win_before']:.1%} -> {x['win_after']:.1%}")
+        teams_df, games_df, snap = forecast(con, items, today)
+    finally:
+        con.close()
+    con = duckdb.connect(db)
+    try:
         for name, df in (("challenger_teams", teams_df), ("challenger_games", games_df)):
             con.register("_df", df)
-            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df")
+            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df").fetchall()
             con.unregister("_df")
     finally:
         con.close()
