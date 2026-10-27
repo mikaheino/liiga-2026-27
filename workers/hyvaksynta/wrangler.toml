@@ -1,0 +1,17 @@
+# Liiga Ennuste: GitHub-kirjautuminen ja OK-napin välitys (worker.js).
+# Julkaisu: cd workers/hyvaksynta && npx wrangler deploy
+# Salaisuudet kerran (kysyy arvon, ei näy komentorivillä):
+#   npx wrangler secret put GITHUB_CLIENT_SECRET   # GitHub OAuth App
+#   npx wrangler secret put GITHUB_PAT             # fine-grained, vain tämä repo, Actions: Read and write
+#   npx wrangler secret put SESSION_SECRET         # satunnainen, esim. openssl rand -hex 32
+name = "liiga-hyvaksynta"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+SITE_URL = "https://mikaheino.github.io/liiga-2026-27/"
+SITE_ORIGIN = "https://mikaheino.github.io"
+REPO = "mikaheino/liiga-2026-27"
+ALLOWED_LOGINS = "mikaheino"
+# GitHub OAuth Appin Client ID (julkinen tieto, ei salaisuus): täytetään, kun sovellus on luotu.
+GITHUB_CLIENT_ID = ""

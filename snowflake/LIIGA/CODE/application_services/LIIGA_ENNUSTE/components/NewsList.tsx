@@ -1,16 +1,17 @@
 "use client";
 // Uutiset ja OK-nappi (27.10.). Kaikki näkevät uutiset (otsikko + linkki lähteeseen)
-// ja kirjatut poissaolot. OK-napit näkyvät vain, kun tähän selaimeen on tallennettu
-// hyväksyjän token (fine-grained, vain tämä repo, Actions: write): painallus
-// käynnistää absence.yml-ajon, joka kirjaa poissaolon, laskee haastajan ja
-// julkaisee sivun (~3 min). Token ei lähde muualle kuin api.github.comiin.
+// ja kirjatut poissaolot. Lomakkeet vain kirjautuneelle: kirjautumislinkki näkyy
+// vain uutisessa, jossa on annettavaa (käyttäjä 27.10.: ei vie tilaa UI:lta).
+// Kirjautuminen ja OK kulkevat välipalvelimen kautta (workers/hyvaksynta): GitHub
+// tunnistaa, palvelin hyväksyy vain sallitun tunnuksen ja käynnistää absence.yml-
+// ajon omalla avaimellaan. Selaimessa on vain 30 päivän istunto.
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import type { Absence, Candidate, NewsEffect, NewsItem, Player } from "@/lib/data";
 import { fi, logo } from "@/lib/table";
-import { GH_REPO } from "@/lib/target";
+import { APPROVE_URL } from "@/lib/target";
 
-const KEY = "liiga-gh-token";
+const KEY = "liiga-istunto";
 // Uutissovellus (käyttäjä 27.10.): luokat liputuksen mukaan. "Olennaiset" = kaikki
 // paitsi liputtamattomat ja pelkät kokoonpanojutut.
 const CATS: [string, string, RegExp][] = [
@@ -59,23 +60,36 @@ const label = (d: string) => (d === "kausi" ? "loppukauden" : d.replace(/^(\d+)(
 const day = (iso: string) => (iso ? new Date(iso).toLocaleDateString("fi-FI", { timeZone: "Europe/Helsinki", day: "numeric", month: "numeric" }) : "");
 const fiDate = (d: string) => `${Number(d.slice(8, 10))}.${Number(d.slice(5, 7))}.`;
 
-function readToken() { try { return localStorage.getItem(KEY) ?? ""; } catch { return ""; } }
+const store = (v: string | null) => { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch { /* yksityinen ikkuna */ } };
 
-async function dispatch(token: string, inputs: Record<string, string>): Promise<string> {
+// Istunto: kirjautumisen jälkeen palvelin palauttaa sivulle #istunto=...; talteen
+// ja osoiteriviltä pois. #kirjautuminen=ei-oikeutta, jos tunnus ei ole sallittu.
+function readSession(): { session: string; note: string } {
+  let note = "";
   try {
-    const r = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/absence.yml/dispatches`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-      body: JSON.stringify({ ref: "main", inputs }),
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("istunto")) store(h.get("istunto"));
+    if (h.get("kirjautuminen")) note = h.get("kirjautuminen") === "ei-oikeutta" ? "Tällä GitHub-tunnuksella ei ole muokkausoikeutta." : "Kirjautuminen epäonnistui.";
+    if (h.get("istunto") || h.get("kirjautuminen")) history.replaceState(null, "", location.pathname + location.search);
+    return { session: localStorage.getItem(KEY) ?? "", note };
+  } catch { return { session: "", note }; }
+}
+const loginHref = () => `${APPROVE_URL}/login?return=${encodeURIComponent(location.href.split("#")[0])}`;
+
+async function dispatch(session: string, inputs: Record<string, string>): Promise<string> {
+  try {
+    const r = await fetch(`${APPROVE_URL}/absence`, {
+      method: "POST", headers: { Authorization: `Bearer ${session}`, "Content-Type": "application/json" }, body: JSON.stringify(inputs),
     });
+    if (r.status === 401) { store(null); return "istunto vanhentui: kirjaudu uudelleen"; }
     return r.status === 204 ? "ok" : `virhe ${r.status}`;
   } catch { return "verkkovirhe"; }
 }
 
 // Poissaolon kirjaus: pelaaja (ehdotus tai valinta rosterista), kesto ja OK.
 // Paluu-uutisessa "Palaa" päättää pelaajan poissaolon.
-function AbsenceForm({ url, title, preset, teams, roster, token, allowBack }: {
-  url: string; title: string; preset?: Candidate; teams: string[]; roster: Player[]; token: string; allowBack: boolean;
+function AbsenceForm({ url, title, preset, teams, roster, session, allowBack }: {
+  url: string; title: string; preset?: Candidate; teams: string[]; roster: Player[]; session: string; allowBack: boolean;
 }) {
   const [g0, u0] = guess(title);
   const [n, setN] = useState(g0);
@@ -88,7 +102,7 @@ function AbsenceForm({ url, title, preset, teams, roster, token, allowBack }: {
   const duration = unit === "kausi" ? "kausi" : `${Math.min(Math.max(n, 1), max)}${unit}`;
   const send = async (kind: "out" | "back") => {
     setState("busy");
-    setState(await dispatch(token, { url, player, team, kind, duration: kind === "out" ? duration : "1ott" }));
+    setState(await dispatch(session, { url, player, team, kind, duration: kind === "out" ? duration : "1ott" }));
   };
   if (state === "ok") return <div className="nw-sent">✓ Lähetetty: {player}. Sivu päivittyy noin 3 minuutissa.</div>;
   return (
@@ -136,12 +150,13 @@ function Effect({ e }: { e: NewsEffect }) {
 function List({ items, candidates, absences, teams, roster, effects }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[] }) {
   const sp = useSearchParams();
   const pick = new Set((sp.get("joukkue") ?? "").split(",").filter((t) => teams.includes(t)));
-  const [token, setToken] = useState("");
-  const [draft, setDraft] = useState("");
+  const [session, setSession] = useState("");
+  const [note, setNote] = useState("");
   const [cat, setCat] = useState("olennaiset");
   const [open, setOpen] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
-  useEffect(() => { setToken(readToken()); }, []);
-  const save = (v: string) => { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch { /* yksityinen ikkuna */ } setToken(v); setDraft(""); };
+  useEffect(() => { const r = readSession(); setSession(r.session); setNote(r.note); }, []);
+  const logout = () => { store(null); setSession(""); };
+  const editable = (flags: string) => /loukkaantuminen|paluu|pelikielto/.test(flags);
 
   const rx = (CATS.find((c) => c[0] === cat) ?? CATS[0])[2];
   const shown = items.filter((it) => (!pick.size || it.team.split(",").some((t) => pick.has(t))) && (cat === "kaikki" || rx.test(it.flags)));
@@ -151,6 +166,7 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
         {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
       </nav>
       <div className="nw-tools"><span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span></div>
+      {note && <div className="nw-err">{note}</div>}
       <div className="nw-list">
         {shown.map((it) => {
           const cands = candidates.filter((c) => c.url === it.url);
@@ -177,33 +193,26 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
                   ? `Rosterissa: ${cands.map((c) => `${c.player} (${c.team})`).join(", ")}`
                   : "Ei rosterissa: uusi nimi? Tee pelaajalisäys."}</div>
               )}
-              {token && /loukkaantuminen|paluu|pelikielto/.test(it.flags) && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
-                <AbsenceForm key={c.player} url={it.url} title={it.title} preset={c} teams={teams} roster={roster} token={token}
+              {!session && APPROVE_URL && editable(it.flags) && <a className="nw-other" href={loginHref()}>Kirjaudu antaaksesi poissaolon ▸</a>}
+              {session && editable(it.flags) && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
+                <AbsenceForm key={c.player} url={it.url} title={it.title} preset={c} teams={teams} roster={roster} session={session}
                   allowBack={/palaa|paluu|kokoonpanoon|tervehty/i.test(it.title) && !/sivuun|sivussa|loukkaant/i.test(it.title)} />
               ))}
-              {token && (open === it.url
-                ? <AbsenceForm url={it.url} title={it.title} teams={it.team.split(",").filter(Boolean)} roster={roster} token={token} allowBack />
+              {session && (open === it.url
+                ? <AbsenceForm url={it.url} title={it.title} teams={it.team.split(",").filter(Boolean)} roster={roster} session={session} allowBack />
                 : <button className="nw-other" onClick={() => setOpen(it.url)}>+ {cands.length ? "muu pelaaja" : "kirjaa poissaolo"}</button>)}
             </article>
           );
         })}
       </div>
-      {token && (
+      {session && (<>
         <details className="nw-settings">
           <summary>Poissaolo ilman uutista</summary>
           <p>Tieto muualta (esim. lehden juttu, jota keräin ei lue): valitse pelaaja ja kesto.</p>
-          <AbsenceForm url="" title="" teams={teams} roster={roster} token={token} allowBack />
+          <AbsenceForm url="" title="" teams={teams} roster={roster} session={session} allowBack />
         </details>
-      )}
-      <details className="nw-settings">
-        <summary>Hyväksyjän asetukset {token ? "· avain tallennettu" : ""}</summary>
-        <p>OK-napit näkyvät vain selaimessa, johon on tallennettu GitHub-avain: fine-grained token, vain repo {GH_REPO}, oikeus <b>Actions: Read and write</b>. Avain tallentuu vain tähän selaimeen.</p>
-        <div className="nw-token">
-          <input type="password" placeholder="github_pat_…" value={draft} onChange={(e) => setDraft(e.target.value)} autoComplete="off" />
-          <button className="btn sm" onClick={() => save(draft.trim())} disabled={!draft.trim()}>Tallenna</button>
-          {token && <button className="btn sm" onClick={() => save("")}>Poista</button>}
-        </div>
-      </details>
+        <button className="nw-other nw-logout" onClick={logout}>Kirjaudu ulos</button>
+      </>)}
     </>
   );
 }

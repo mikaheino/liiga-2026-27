@@ -35,6 +35,7 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 | `scripts/deploy/` | Snowflake-julkaisu: `deploy_views.py`, `semantic_views.py` (+ `_en`), `deploy_tools.py`, `deploy_knowledge.py`, `deploy_agent.py`, `agent_eval.py`, `sync_to_snowflake.py`, `snow_conn.py` | GitHub Actions (`deploy.yml`) ja kehittäjä DEV-aliakselle |
 | `scripts/deploy/pages_build.sh`, `pages_history.py` | GitHub Pages -kopio sovelluksesta (ei Snowflake-objekti): staattinen vienti ja Pagesin oma ennustehistoria `pages-data`-haarassa | GitHub Actions (`pages.yml`) |
 | `scripts/news/collect.py`, `lineups.py`, `challenger.py` | Uutiskeräin, päivän kokoonpanot/aloittavat maalivahdit ja uutishaastaja (ei Snowflake-objekti) -> `news-data`-haara | GitHub Actions (`news.yml`, klo 14.00 Suomen aikaa) |
+| `workers/hyvaksynta/` | Kirjautuminen (GitHub OAuth) ja OK-napin välitys absence.yml:lle; vain tunnus `mikaheino` (ei Snowflake-objekti) | Cloudflare Worker (`npx wrangler deploy`) |
 | `scripts/news/approve.py` | Sovelluksen OK-napin kirjaus (`absences.csv`), syötteen validointi | GitHub Actions (`absence.yml`, workflow_dispatch) |
 | `scripts/news/load_news.py` | news-data-haaran CSV:t Pages-käännöksen DuckDB-tauluiksi | GitHub Actions (`pages.yml`) |
 | `scripts/experiments/starting_goalie.py` | Aloittavan maalivahdin historiatesti, `data/goalie_levels_2027.csv` | käsin |

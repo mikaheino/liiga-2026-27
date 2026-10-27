@@ -84,6 +84,10 @@ jobs:
           .venv/bin/python scripts/news/challenger_season.py .news-data
 
       - name: Staattinen sivu
+        env:
+          # Kirjautumisen välipalvelin (workers/hyvaksynta); repon muuttuja APPROVE_URL.
+          # Tyhjä = kirjautumislinkkiä ei näytetä.
+          NEXT_PUBLIC_APPROVE_URL: ${{ vars.APPROVE_URL }}
         run: BASE_PATH="/${{ github.event.repository.name }}" scripts/deploy/pages_build.sh
 
       - uses: actions/upload-pages-artifact@v4

@@ -6,5 +6,6 @@ export const STATIC = process.env.NEXT_PUBLIC_LIIGA_STATIC === "1";
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // Mouho-peli on Pagesissa omassa repossaan.
 export const MOUHO_PAGES = "https://mikaheino.github.io/mouhon-salaisuus-peli/";
-// Uutishaastajan OK-nappi käynnistää tämän repon absence.yml-ajon (vain Pages).
-export const GH_REPO = "mikaheino/liiga-2026-27";
+// Uutishaastajan kirjautuminen ja OK-nappi (vain Pages): välipalvelin
+// workers/hyvaksynta (Cloudflare Worker). Tyhjä = ei vielä julkaistu, linkkiä ei näytetä.
+export const APPROVE_URL = process.env.NEXT_PUBLIC_APPROVE_URL ?? "";

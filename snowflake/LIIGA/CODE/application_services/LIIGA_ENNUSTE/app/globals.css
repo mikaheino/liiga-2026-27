@@ -792,3 +792,4 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .nw-cats .chip { flex: none; padding: 6px 10px; }
 .nw-effect { font-size: 12.5px; color: var(--gold-hi); } .nw-effect small { color: var(--faint); }
 .nw-roster { font-size: 12.5px; color: var(--muted); }
+.nw-logout { margin-top: 10px; }

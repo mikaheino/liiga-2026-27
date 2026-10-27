@@ -229,6 +229,15 @@ peräkkäin -> enintään kaksi laskentaa, viimeinen lukee kaikki kirjaukset.
 recompute = päivän haastaja (`challenger.py`) + sivu (kausiennuste
 `challenger_season.py`:ssä). Pushit `.github/scripts/push-retry.sh`:lla.
 
+**Kirjautuminen** (27.10., käyttäjä: "sivusto toimii normaalisti, kirjautuminen
+erillinen nappi, joka näkyy vasta kun on uutinen, jota muokata"): Cloudflare
+Worker `workers/hyvaksynta` (GitHub OAuth -tunnistus ilman oikeuksia; sallittu
+tunnus `ALLOWED_LOGINS`; selaimeen 30 päivän HMAC-istunto; OK välitetään
+absence.yml:lle palvelimen fine-grained-avaimella, joka ei koskaan ole selaimessa).
+Linkki "Kirjaudu antaaksesi poissaolon" vain loukkaantumis-, paluu- ja
+pelikieltouutisissa; osoite repon muuttujasta `APPROVE_URL` (tyhjä = ei linkkiä).
+Ei enää selaimeen liitettävää GitHub-avainta.
+
 **Uutissovellus** (27.10.): luokat Olennaiset / Loukkaantumiset / Pelikiellot /
 Siirrot ja hankinnat / Valmentajat / Kaikki. Pelikieltouutisessa vaikutus
 ennusteeseen (`news_effects`: hyväksytty kesto tai otsikon kesto, "arvio" kunnes
