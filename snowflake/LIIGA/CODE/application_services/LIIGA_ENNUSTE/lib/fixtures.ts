@@ -76,3 +76,17 @@ export function defaultMonth(fx: Fixture[], today: string): string {
   if (played.length) return played[played.length - 1];
   return months.includes(now) ? now : months[0];
 }
+
+// Seuraava kierros (27.10., käyttäjä: "seuraavan pelikierroksen ennuste" etusivulle):
+// pelaamattomat ottelut alkaen tästä päivästä, kunnes jokin joukkue tulisi toiseen
+// kertaan. Kierros jakautuu usein kahdelle päivälle (27.10. yksi siirretty ottelu,
+// 28.10. loput seitsemän), joten pelkkä seuraava pelipäivä näyttäisi vajaan kierroksen.
+export function nextRound(fx: Fixture[], today: string): Fixture[] {
+  const round: Fixture[] = [];
+  const seen = new Set<string>();
+  for (const f of fx.filter((g) => !g.ended && g.start_ts.slice(0, 10) >= today).sort((a, b) => a.start_ts.localeCompare(b.start_ts))) {
+    if (seen.has(f.home) || seen.has(f.away)) break;
+    seen.add(f.home); seen.add(f.away); round.push(f);
+  }
+  return round;
+}

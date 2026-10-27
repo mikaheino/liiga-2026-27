@@ -703,3 +703,32 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .hr:not(.hh) .hc:hover { transform: none; filter: none; }
   .door:hover, .jumps a:hover, .chat-q:hover { transform: none; }
 }
+
+/* --- Seuraava kierros etusivulla (27.10.) ---------------------------------- */
+.nround { margin: -28px 0 40px; padding: 16px 18px 12px; border: 1px solid var(--line); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.nr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.nr-head .label { margin: 0; }
+.nr-days { font: 400 10.5px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.nr-day { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 28px; }
+.nr-date { grid-column: 1 / -1; margin: 12px 0 2px; font: 400 10px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+.nr-game { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.nr-time { grid-row: span 2; font: 600 11.5px var(--mono); color: var(--faint); }
+.nr-match { display: flex; justify-content: space-between; gap: 10px; min-width: 0; }
+.nr-side { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--muted); }
+.nr-side.away { flex-direction: row-reverse; }
+.nr-name { font: 600 13.5px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nr-side b { font: 700 12.5px var(--mono); }
+.nr-side.fav { color: var(--ink); } .nr-side.fav b { color: var(--gold-hi); }
+.nr-bar { display: flex; gap: 2px; height: 6px; border-radius: 99px; overflow: hidden; }
+.nr-bar i { display: block; height: 100%; background: var(--gold-dim); transform-origin: left; animation: grow .8s cubic-bezier(.2,.8,.2,1) both; }
+.nr-bar i.fav { background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi)); }
+.nr-ot { grid-column: 2; justify-self: center; margin-top: -2px; font: 400 9px var(--pixel); letter-spacing: .06em; color: var(--faint); }
+.nr-all { display: inline-block; margin-top: 10px; font: 400 10.5px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--gold); text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .nr-bar i { animation: none; } }
+@media (max-width: 860px) {
+  .nround { margin: -10px 0 26px; padding: 12px 14px 10px; }
+  .nr-day { grid-template-columns: 1fr; }
+  .nr-game { grid-template-columns: 38px minmax(0, 1fr); gap: 3px 8px; padding: 8px 0; }
+  .nr-name { font-size: 13px; } .nr-side img { width: 18px; height: 18px; }
+}

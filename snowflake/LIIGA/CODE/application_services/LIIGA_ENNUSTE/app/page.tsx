@@ -3,10 +3,11 @@
 // muut osiot eivät näy oletuksena, mutta demossa niihin hypätään täältä.
 import Link from "next/link";
 import Heatmap, { DEFAULT_LINE, type Line, type Need } from "@/components/Heatmap";
+import NextRound from "@/components/NextRound";
 import Season from "@/components/Season";
 import Top from "@/components/Top";
 import { loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
-import { scoreboard } from "@/lib/fixtures";
+import { nextRound, scoreboard } from "@/lib/fixtures";
 import { TEAMS, fi, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
 
@@ -43,6 +44,7 @@ export default async function Page() {
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front">
         {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
+        <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))} />
         <div className="pick-row">
           <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
           <div className="line-note" title="Todennäköinen: riittää 14 parhaan joukkoon puolessa simulaatioista. Varma: 95 %:ssa. Nyt: 14. sijan pisteet sarjataulukossa.">
