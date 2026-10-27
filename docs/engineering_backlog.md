@@ -174,3 +174,40 @@ kauden jälkeen.
 ## 5.–6. Mouho-peli
 
 Siirretty 23.10.2026 omaan repoon `/Users/mika.heino/prod/mouho_2026` (docs/backlog.md).
+
+---
+
+## 7. LIIGA_DAILY-notebookin nopeutus: 205 s, josta laskentaa muutama sekunti (lisätty 2026-10-27)
+
+**Mitattu 27.10.** (ajo 24.10. 20:00:08–20:03:33, `snowflake.account_usage.query_history`,
+kyselyt ja niiden väliset tauot rinnastettu notebookin koodiin):
+
+| vaihe | kesto | mitä |
+|---|---|---|
+| käynnistys | 15 s | ennen ensimmäistä kyselyä |
+| git fetch + `config.yaml` | 15 s | `ALTER GIT REPOSITORY … FETCH` 6,9 s |
+| **`src/liiga/`-kansion kopiointi** | **76 s** | `session.file.get(REPO + "/src/liiga/", …)` solussa 1 |
+| 12 SQL- ja datatiedostoa | 27 s | ~2–3 s/tiedosto, yksi kerrallaan |
+| varsinainen ajo | 72 s | ~20 taulua `write_pandas`illa, ~3–3,5 s/taulu (temp stage, file format, CREATE, COPY, DROP, RENAME); mallin laskennan tauot < 1 s |
+
+Vertailu: sama malli GitHub Actionsissa (Pages, `pages.yml`) 3,6 s, koska koodi on
+jo levyllä ja kirjoitus menee paikalliseen DuckDB:hen. Kopioinnin 76 s ei näy
+kyselyinä; päätelty siitä, että tauko osuu tarkalleen `src/liiga/`-listauksen ja
+seuraavan tiedoston väliin eikä koodissa ole siinä muuta.
+
+**Ehdotukset, isoin säästö ensin:**
+
+1. **Koodi yhtenä tiedostona** (~1 min): kansion sijaan yksi paketti (zip/wheel
+   repossa tai stagella), tai vain tarvittavat moduulit nimeltä. Datatiedostot samaan
+   pakettiin, jolloin myös 27 s:n tiedostokohtainen haku poistuu.
+2. **Taulujen kirjoitus** (~30–40 s): `write_pandas(..., overwrite=True)` tai
+   `auto_create_table` ilman erillistä DROP/RENAME-kierrosta; tarkista, että
+   atominen vaihto (ei puolikasta taulua lukijalle) säilyy.
+3. Git fetch vain kun main on muuttunut (pieni, 7 s).
+
+**Rajoite:** ei koske mallia (AGENTS.md §10 ei estä), mutta Snowflaken Python on
+< 3.11 (CLAUDE.md) ja notebookin ipynb on luontihetken kopio: muutos vaatii
+notebookin uudelleenluonnin. Todenna tulos samalla mittauksella ja vertaa
+ennusteen taulut ennen/jälkeen (ero 0).
+
+**Milloin:** kun halutaan; ei kiire, ajo on ajastettu iltaan.
