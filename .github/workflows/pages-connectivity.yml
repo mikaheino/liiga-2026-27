@@ -20,7 +20,7 @@ jobs:
           fail=0
           for url in \
             "$API/games?tournament=runkosarja&season=2027" \
-            "$API/games/2027/1" \
+            "$API/games/2027/2701274" \
             "$API/standings?season=2027"; do
             code=$(curl -s -o body.json -w '%{http_code}' -H "User-Agent: $UA" -H "Accept: application/json" "$url")
             size=$(wc -c < body.json)
