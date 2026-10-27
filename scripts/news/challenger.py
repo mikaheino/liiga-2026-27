@@ -77,31 +77,41 @@ def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[s
     return sorted(set(approved)), sorted(set(suspended) - set(approved))
 
 
+def _is_starter(r: dict) -> bool:
+    return r["role"] == "MV" and r["line"] == "1"
+
+
+def _previous_starters(con, news: Path, day: str) -> dict[str, list[str]]:
+    """Joukkueen kauden aiemmat aloittajat: game_goalies (repon kanta) + kokoonpanot
+    ennen tätä päivää (news-data), sama aloitus kerran."""
+    prev: dict[str, list[str]] = {}
+    for team, pid in con.execute("""SELECT team, CAST(player_id AS VARCHAR) FROM game_goalies
+                                    WHERE season = 2027 AND started""").fetchall():
+        prev.setdefault(team, []).append(pid)
+    seen = {(t, p) for t, ps in prev.items() for p in ps}
+    games = {r["game_id"]: r for r in _read(news / "lineup_games.csv")}
+    for r in _read(news / "lineup_players.csv"):
+        g = games.get(r["game_id"])
+        if g and g["date"] < day and _is_starter(r) and (r["team"], r["player_id"]) not in seen:
+            prev.setdefault(r["team"], []).append(r["player_id"])
+    return prev
+
+
 def _goalie_diffs(con, news: Path, day: str, game_ids: set[str]) -> tuple[dict[tuple[str, str], float], dict]:
     """(game_id, joukkue) -> aloittajan taso - joukkueen kauden aiempien aloittajien keskitaso."""
     levels = {r["player_id"]: float(r["level"]) for r in _read(LEVELS)}
     if not levels:
         return {}, {}
-    prev: dict[str, list[str]] = {}
-    for team, pid in con.execute("""SELECT team, CAST(player_id AS VARCHAR) FROM game_goalies
-                                    WHERE season = 2027 AND started""").fetchall():
-        prev.setdefault(team, []).append(pid)
-    lineup = _read(news / "lineup_players.csv")
-    games = {r["game_id"]: r for r in _read(news / "lineup_games.csv")}
-    seen = {(t, p) for t, ps in prev.items() for p in ps}
-    for r in lineup:                       # aloitukset kokoonpanoista ennen tätä päivää
-        g = games.get(r["game_id"])
-        if g and g["date"] < day and r["role"] == "MV" and r["line"] == "1" and (r["team"], r["player_id"]) not in seen:
-            prev.setdefault(r["team"], []).append(r["player_id"])
-    latest = max((r["fetched_at"] for r in lineup if r["game_id"] in game_ids), default="")
+    prev = _previous_starters(con, news, day)
+    lineup = [r for r in _read(news / "lineup_players.csv") if r["game_id"] in game_ids]
+    latest = max((r["fetched_at"] for r in lineup), default="")
     diffs, names = {}, {}
-    for r in lineup:
-        if r["game_id"] in game_ids and r["fetched_at"] == latest and r["role"] == "MV" and r["line"] == "1":
-            own = levels.get(r["player_id"], 0.0)
-            team_prev = [levels.get(p, 0.0) for p in prev.get(r["team"], [])]
-            default = sum(team_prev) / len(team_prev) if team_prev else own
-            diffs[(r["game_id"], r["team"])] = own - default
-            names[(r["game_id"], r["team"])] = f"{r['last_name']} {own - default:+.2f}"
+    for r in (r for r in lineup if r["fetched_at"] == latest and _is_starter(r)):
+        own = levels.get(r["player_id"], 0.0)
+        team_prev = [levels.get(p, 0.0) for p in prev.get(r["team"], [])]
+        d = own - (sum(team_prev) / len(team_prev) if team_prev else own)
+        diffs[(r["game_id"], r["team"])] = d
+        names[(r["game_id"], r["team"])] = f"{r['last_name']} {d:+.2f}"
     return diffs, names
 
 
@@ -121,16 +131,55 @@ def _apply_goalies(g: dict, strength: dict, d_home: float, d_away: float) -> dic
             "p_home_ot_win": min(1.0, max(0.0, g["p_home_ot_win"] + w * (n[3] - o[3])))}
 
 
+def _todays_base(news: Path, pages: Path, day: str, now: dt.datetime) -> dict[str, dict]:
+    """Päivän alkamattomat ottelut aamun ennusteineen. Ennuste ottelun jo alettua
+    vääristäisi A/B-vertailun (OK-nappia voi painaa illalla otteluiden aikana)."""
+    todays = {r["game_id"] for r in _read(news / "lineup_games.csv")
+              if r["date"] == day and dt.datetime.fromisoformat(r["start"].replace("Z", "+00:00")) > now}
+    return _base(pages, day, todays)
+
+
+def _absence_items(names: list[str], suspended: list[str], model: dict, games: list[dict]) -> tuple[list[dict], dict]:
+    """Poissaolijat skenaariotyökalun muotoon + huomiot otteluittain."""
+    items, notes = [], {}
+    for name in names:
+        try:
+            p = sim.find_player(name, model["players"], model["goalies"])
+        except sim.ScenarioError as e:
+            print(f"ohitettu: {e}")
+            continue
+        items.append({"injury": p["name"]})
+        tag = "pelikielto" if name in suspended else "poissa"
+        for g in games:
+            if p["team"] in (g["home_team"], g["away_team"]):
+                notes.setdefault(g["game_id"], []).append(f"{p['name']} {tag}")
+    return items, notes
+
+
+def _row(day: str, g0: dict, g: dict, base: dict, notes: list[str]) -> dict:
+    ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
+    return {"snapshot_date": day, "game_id": g0["game_id"], "home_team": g0["home_team"], "away_team": g0["away_team"],
+            "base_p_home_win": round(float(base["p_home_win"]), 6), "p_home_reg": round(g["p_home_reg"], 6),
+            "p_away_reg": round(1 - g["p_home_reg"] - g["p_overtime"], 6), "p_overtime": round(g["p_overtime"], 6),
+            "p_home_win": round(ph, 6), "notes": "; ".join(notes)}
+
+
+def _write(path: Path, day: str, out: list[dict]) -> None:
+    """Päivän uusi ajo korvaa saman päivän aiemman ennusteen vain näille otteluille."""
+    redo = {r["game_id"] for r in out}
+    keep = [r for r in _read(path) if not (r["snapshot_date"] == day and r["game_id"] in redo)]
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows(keep + out)
+
+
 def main(news: Path, pages: Path, day: str | None = None) -> int:
     now = dt.datetime.now(dt.UTC)
     day = day or now.astimezone(ZoneInfo("Europe/Helsinki")).date().isoformat()
-    # Vain alkamattomat ottelut: ennuste ottelun jo alettua vääristäisi A/B-vertailun
-    # (OK-nappia voi painaa illalla, kun päivän ottelut ovat käynnissä).
-    todays = {r["game_id"]: r for r in _read(news / "lineup_games.csv")
-              if r["date"] == day and dt.datetime.fromisoformat(r["start"].replace("Z", "+00:00")) > now}
-    base = _base(pages, day, set(todays))
+    base = _todays_base(news, pages, day, now)
     if not base:
-        print(f"{day}: ei otteluita tai aamun ennustetta")
+        print(f"{day}: ei alkamattomia otteluita tai aamun ennustetta")
         return 0
     con = duckdb.connect(str(ROOT / "data" / "liiga.duckdb"), read_only=True)
     try:
@@ -143,43 +192,17 @@ def main(news: Path, pages: Path, day: str | None = None) -> int:
     games = [{"game_id": gid, "date": day, "iso": day, "home_team": b["home_team"], "away_team": b["away_team"],
               "p_home_reg": float(b["p_home_reg"]), "p_overtime": float(b["p_overtime"]),
               "p_home_ot_win": float(b["p_home_ot_win"])} for gid, b in sorted(base.items())]
-    items, notes = [], {}
-    for name in approved + suspended:
-        try:
-            p = sim.find_player(name, model["players"], model["goalies"])
-        except sim.ScenarioError as e:
-            print(f"ohitettu: {e}")
-            continue
-        items.append({"injury": p["name"]})
-        tag = "pelikielto" if name in suspended else "poissa"
-        for g in games:
-            if p["team"] in (g["home_team"], g["away_team"]):
-                notes.setdefault(g["game_id"], []).append(f"{p['name']} {tag}")
+    items, notes = _absence_items(approved + suspended, suspended, model, games)
     changed, _ = sim.apply_injuries(items, games, model, day) if items else (games, [])
 
     out = []
     for g0, g in zip(games, changed):
-        dh, da = diffs.get((g0["game_id"], g0["home_team"]), 0.0), diffs.get((g0["game_id"], g0["away_team"]), 0.0)
-        if dh or da:
-            g = _apply_goalies(g, model["strength"], dh, da)
-        for side in ("home_team", "away_team"):
-            if (g0["game_id"], g0[side]) in gnames:
-                notes.setdefault(g0["game_id"], []).append("MV " + gnames[(g0["game_id"], g0[side])])
-        ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
-        out.append({"snapshot_date": day, "game_id": g0["game_id"], "home_team": g0["home_team"],
-                    "away_team": g0["away_team"], "base_p_home_win": round(float(base[g0["game_id"]]["p_home_win"]), 6),
-                    "p_home_reg": round(g["p_home_reg"], 6), "p_away_reg": round(1 - g["p_home_reg"] - g["p_overtime"], 6),
-                    "p_overtime": round(g["p_overtime"], 6), "p_home_win": round(ph, 6),
-                    "notes": "; ".join(notes.get(g0["game_id"], []))})
-
-    path = news / "prediction_games_news.csv"
-    # Päivän uusi ajo korvaa saman päivän aiemman ennusteen vain alkamattomille otteluille.
-    redo = {r["game_id"] for r in out}
-    keep = [r for r in _read(path) if not (r["snapshot_date"] == day and r["game_id"] in redo)]
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=FIELDS)
-        w.writeheader()
-        w.writerows(keep + out)
+        keys = [(g0["game_id"], g0[side]) for side in ("home_team", "away_team")]
+        if any(diffs.get(k) for k in keys):
+            g = _apply_goalies(g, model["strength"], diffs.get(keys[0], 0.0), diffs.get(keys[1], 0.0))
+        extra = [f"MV {gnames[k]}" for k in keys if k in gnames]
+        out.append(_row(day, g0, g, base[g0["game_id"]], notes.get(g0["game_id"], []) + extra))
+    _write(news / "prediction_games_news.csv", day, out)
     for r in out:
         print(f"{r['home_team']} – {r['away_team']}: {float(r['base_p_home_win']):.1%} -> {r['p_home_win']:.1%}"
               f"{'  (' + r['notes'] + ')' if r['notes'] else ''}")

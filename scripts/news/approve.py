@@ -59,11 +59,7 @@ def until_for(duration: str, team: str, today: str) -> str:
     raise ValueError(f"tuntematon kesto: {duration!r}")
 
 
-def main(folder: Path) -> int:
-    url, player, team = os.environ.get("NEWS_URL", ""), os.environ.get("PLAYER", ""), os.environ.get("TEAM", "")
-    kind, duration = os.environ.get("KIND", ""), os.environ.get("DURATION", "")
-    news = folder / "news_items.csv"
-    urls = {r["url"] for r in csv.DictReader(news.open(encoding="utf-8"))} if news.exists() else set()
+def validate(url: str, player: str, team: str, kind: str, duration: str, urls: set[str]) -> list[str]:
     errors = []
     if url not in urls:
         errors.append("uutista ei löydy news_items.csv:stä")
@@ -73,26 +69,37 @@ def main(folder: Path) -> int:
         errors.append("KIND on out tai back")
     if kind == "out" and duration not in ("1ott", "1vko", "3vko", "kausi"):
         errors.append("DURATION on 1ott, 1vko, 3vko tai kausi")
-    if errors:
-        print("EI KIRJATTU: " + "; ".join(errors))
-        return 1
+    return errors
 
-    today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
-    path = folder / "absences.csv"
+
+def record(path: Path, url: str, player: str, team: str, kind: str, duration: str, today: str) -> dict:
     rows = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
-    now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     if kind == "back":
         # Paluu päättää pelaajan avoimet poissaolot tähän päivään.
         for r in rows:
             if r["player"] == player and r["kind"] == "out" and r["until"] > today:
                 r["until"] = today
-    rows.append({"approved_at": now, "url": url, "player": player, "team": team, "kind": kind, "start": today,
-                 "until": until_for(duration, team, today) if kind == "out" else today})
+    new = {"approved_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "url": url, "player": player,
+           "team": team, "kind": kind, "start": today,
+           "until": until_for(duration, team, today) if kind == "out" else today}
     with path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()
-        w.writerows(rows)
-    print(f"kirjattu: {player} ({team}) {'poissa ' + rows[-1]['start'] + ' – ' + rows[-1]['until'] if kind == 'out' else 'palaa ' + today}")
+        w.writerows(rows + [new])
+    return new
+
+
+def main(folder: Path) -> int:
+    env = {k: os.environ.get(k, "") for k in ("NEWS_URL", "PLAYER", "TEAM", "KIND", "DURATION")}
+    news = folder / "news_items.csv"
+    urls = {r["url"] for r in csv.DictReader(news.open(encoding="utf-8"))} if news.exists() else set()
+    errors = validate(env["NEWS_URL"], env["PLAYER"], env["TEAM"], env["KIND"], env["DURATION"], urls)
+    if errors:
+        print("EI KIRJATTU: " + "; ".join(errors))
+        return 1
+    today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
+    r = record(folder / "absences.csv", env["NEWS_URL"], env["PLAYER"], env["TEAM"], env["KIND"], env["DURATION"], today)
+    print(f"kirjattu: {r['player']} ({r['team']}) " + (f"poissa {r['start']} – {r['until']}" if r["kind"] == "out" else f"palaa {today}"))
     return 0
 
 
