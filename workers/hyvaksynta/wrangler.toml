@@ -14,4 +14,4 @@ SITE_ORIGIN = "https://mikaheino.github.io"
 REPO = "mikaheino/liiga-2026-27"
 ALLOWED_LOGINS = "mikaheino"
 # GitHub OAuth Appin Client ID (julkinen tieto, ei salaisuus): täytetään, kun sovellus on luotu.
-GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_ID = "Ov23li5ZEA5JMkRq1AKz"
