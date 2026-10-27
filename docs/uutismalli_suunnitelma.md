@@ -43,25 +43,73 @@ RSS (Iltalehti, IS, Yle) → suodatus → poiminta → PR ──→ hyväksyntä
 
 ## Datalähteet: tila 27.10.2026
 
-Tarkistettu käsin 27.10. (curl, sama User-Agent kuin putkessa). ✓ = vastaa ja
-sisältää tarvittavan, ? = vastaa mutta käyttö varmistamatta, ✗ = ei käytettävissä.
+Tarkistettu käsin 27.10. (curl, sama User-Agent kuin putkessa; kokeiluskriptit
+istunnon scratchpadissa). ✓ = vastaa ja sisältää tarvittavan, ? = vastaa mutta
+käyttö varmistamatta, ✗ = ei käytettävissä. "AI-kielto" = robots.txt kieltää
+AI-botit (GPTBot, ClaudeBot, anthropic-ai, CCBot ym.).
+
+### liiga.fi (virallinen, AI-kieltoja ei ole)
 
 | lähde | tila | havainto |
 |---|---|---|
-| liiga.fi `games/{season}/{id}`: kokoonpano ennen ottelua | ✓ | KalPa–Sport 27.10. klo 18.30: kokoonpano (28 + 31 pelaajaa, `line`, `roleCode`) näkyi jo klo 15.27. Maalivahdit `MV`, `line 1` = aloittaja (Korhonen / Härkönen). GitHubin runner pääsee rajapintaan (`pages-connectivity.yml`). |
-| liiga.fi pelaajakenttä `injured` | ✗ | 0 / 520 pelaajariviä 10 välimuistin ottelussa. Kenttä on olemassa, mutta sitä ei näytä käytettävän. |
-| liiga.fi pelaajakenttä `suspended` | ? | 6 / 520 riviä: käytössä, merkitys (pelikielto tässä ottelussa?) varmistettava. |
-| liiga.fi uutisrajapinta | ✗ | `api/v2/news` 400, `articles` ja `injuries` 403. Ei RSS:ää (`/fi/uutiset/rss` palauttaa HTML:n). |
-| Iltalehti, jääkiekko-RSS | ? | `iltalehti.fi/rss/jaakiekko.xml`: 20 juttua. robots.txt kieltää AI-botit (`AI2Bot` ym.): käyttöehdot tarkistettava ennen kielimallia. |
-| Ilta-Sanomat, urheilu-RSS | ? | `is.fi/rss/urheilu.xml`: 100 juttua, kaikki lajit (suodatus tarpeen). robots.txt kieltää mm. `anthropic-ai` ja `Claude-SearchBot`. |
-| Yle, urheilu-RSS | ✓? | `yle.fi/rss/urheilu`: 20 juttua; robots.txt:ssä ei AI-kieltoja. Kaikki lajit. |
-| Jatkoaika | ✗ | `/rss` ja `/feed` 404; ei löytynyt syötettä. |
-| Seurojen sivut (17) | – | Tarkistamatta. |
-| GitHub Models (kielimalli) | ? | Toimii Actionsista ilman avainta, ilmaiset rajat (~50–150 kyselyä/vrk) vain kolmansien osapuolten lähteistä. Voi muuttua. |
+| `games/{season}/{id}`: kokoonpano ennen ottelua | ✓ | KalPa–Sport 27.10. klo 18.30: kokoonpano (28 + 31 pelaajaa, `line`, `roleCode`) näkyi jo klo 15.27. Maalivahdit `MV`, `line 1` = aloittaja. GitHubin runner pääsee rajapintaan. |
+| pelaajakenttä `injured` | ✗ | 0 / 520 pelaajariviä 10 välimuistin ottelussa: kenttä on, mutta tyhjä. |
+| pelaajakenttä `suspended` | ? | 6 / 520 riviä: käytössä, merkitys varmistettava. |
+| `teams/info` | ✓ | 16 joukkuetta: seurojen viralliset osoitteet, **hallien koordinaatit** (karttalinkeissä) ja kausitilastot (corsi, PDO, alivoima/ylivoima, `distance_travelled` kausittain). Koordinaateista + otteluohjelmasta saa matkat ottelukohtaisesti väsymyssignaaliin (vaihe 3). Jokerit puuttuu. |
+| `schedule`, `standings`, `players/stats/summed/...` | ✓ | 418 kt / 45 kt / 431 kt. |
+| `news`, `articles`, `injuries`, `transfers`, `players`, `teams/stats`, `games/stats` | ✗ | 400 / 403. Ei uutis-RSS:ää. |
 
-**Johtopäätös:** aloittava maalivahti on saatavilla virallisesta lähteestä ilman
-uutisia. Loukkaantumisille ei ole virallista lähdettä, joten ne tulevat
-uutisista. Uutislähteiden käyttöehdot ovat avoin kysymys.
+### Seurojen omat sivut (ensikäden lähde loukkaantumisille ja siirroille)
+
+| seura | tila | havainto |
+|---|---|---|
+| HIFK, HPK, Ilves, JYP, K-Espoo, KooKoo, Lukko, Sport, Ässät | ✓ | RSS (`/feed` tai `/rss`, WordPress), ei AI-kieltoja. 9 / 17. |
+| Kärpät, SaiPa, Jukurit | ✓? | Ei RSS:ää; `/uutiset/`-sivu (Kärpät 9 artikkelilinkkiä) ja SaiPa/Jukurit sivukartta. Ei AI-kieltoja. Tarvitsee HTML-jäsennyksen. |
+| Jokerit | ? | `/uutiset` 20 linkkiä + sivukartta, mutta **AI-kielto**. Julkaisee mm. "Kokoonpano"-jutut. |
+| Tappara, Pelicans, TPS (`hc.tps.fi`), KalPa (`kalpa.fi`) | ? | Etusivu vastaa, syötettä tai uutislistaa ei löytynyt tavallisista poluista. Selvitettävä käsin. |
+
+### Media
+
+| lähde | tila | havainto |
+|---|---|---|
+| Yle urheilu-RSS (`yle.fi/rss/urheilu`, `feeds.yle.fi/.../YLE_URHEILU.rss`) | ✓ | 20 juttua, ei AI-kieltoja; kaikki lajit, suodatus tarpeen. |
+| Iltalehti jääkiekko-RSS | ? | 20 juttua, **AI-kielto**. |
+| Ilta-Sanomat urheilu-RSS | ? | 100 juttua, **AI-kielto**. |
+| Maakuntalehdet (Keskisuomalainen-konserni: ESS, Etelä-Saimaa, Hämeen Sanomat, Keskisuomalainen, Kouvolan Sanomat, Länsi-Savo, Savon Sanomat; Ilkka-Pohjalainen, Turun Sanomat) | ? | RSS löytyy, kaikilla **AI-kielto**. |
+| HS, Aamulehti, Satakunnan Kansa, MTV, Kaleva | ? | Ei RSS:ää tavallisista poluista; uutissivukartat; **AI-kielto**. |
+| Jatkoaika | ✗ | Ei syötettä, **AI-kielto**. |
+| Google News RSS -haku | ✗ | Toimisi erinomaisesti ("Liiga loukkaantui" 100 juttua, "Kärpät" 61 / 7 vrk), mutta robots.txt kieltää `/rss/`-polut kaikilta. |
+| Bing News RSS | ? | 7 juttua; ehdot tarkistamatta. |
+| Leijonat | ✗ | 403. |
+
+### Kielimalli
+
+| lähde | tila | havainto |
+|---|---|---|
+| GitHub Models | ? | Actionsista ilman avainta; ilmaiset rajat (~50–150 kyselyä/vrk) vain kolmansien osapuolten lähteistä. |
+
+**Johtopäätökset:**
+
+1. **Aloittava maalivahti** saadaan virallisesta lähteestä ilman uutisia.
+2. **Loukkaantumisille ja siirroille riittää ilman AI-kieltoja olevat lähteet:**
+   seurojen omat sivut (9 RSS:llä + 3 uutissivulla = 12 / 17) ja Yle. Seura
+   julkaisee loukkaantumis- ja siirtotiedon usein ensimmäisenä.
+3. **AI-kiellolliset mediat** (iltapäivälehdet, maakuntalehdet, Jatkoaika,
+   Jokerit): korkeintaan otsikko + linkki ihmiselle ilman tekstin käsittelyä,
+   tai ei lainkaan. Ks. "robots.txt ja laki" alla.
+4. **Väsymys/matkat** (vaihe 3) saadaan kokonaan liiga.fi:stä: hallien
+   koordinaatit `teams/info`:sta + otteluohjelma.
+
+### robots.txt ja laki
+
+robots.txt ei sinänsä ole sitova, mutta EU:ssa sillä on oikeudellinen merkitys:
+tekstin- ja tiedonlouhinnan poikkeus (DSM-direktiivi 2019/790 art. 4,
+tekijänoikeuslaki 13 b §) ei ole voimassa, jos oikeudenhaltija on kieltänyt
+louhinnan koneluettavasti, ja robots.txt:n AI-kielto on juuri sellainen
+varaus. Tutkimuslaitosten poikkeus (art. 3) ei koske harrasteprojektia.
+Lisäksi: repo on julkinen ja nimelläsi, ja estetty lähde voi estää GitHubin
+IP-osoitteet koko putkelta. Ei oikeudellinen neuvo; linjaus: AI-kiellollisia
+lähteitä ei louhita.
 
 ## Todo
 
@@ -81,8 +129,12 @@ uutisista. Uutislähteiden käyttöehdot ovat avoin kysymys.
 - [ ] **Uutismäärä ja osuvuus:** kerää RSS:t 2 viikon ajan ilman poimintaa.
       Kuinka monta Liiga-juttua päivässä, monessako loukkaantuminen/paluu,
       montako niistä olisi muuttanut kokoonpanoa? Tämä kertoo, kannattaako vaihe 2.
-- [ ] **Seurojen sivut:** onko RSS:ää tai uutislistaa; kuka julkaisee
-      loukkaantumiset ensimmäisenä?
+- [ ] **Seurojen sivut, loput 5:** Tappara, Pelicans, TPS, KalPa (syöte tai
+      uutislista käsin) ja Jokerit (AI-kielto: kysy seuralta tai jätä pois).
+- [ ] **Kuka julkaisee ensin:** vertaa 2 viikkoa seuran sivua, Yleä ja
+      iltapäivälehtien otsikoita samoista loukkaantumisista.
+- [ ] **Hallien koordinaatit:** pura `teams/info`:n karttalinkeistä; Jokerit
+      puuttuu (lisää käsin).
 - [ ] **GitHub Models:** kokeile Actionsista yhdellä jutulla; kirjaa rajat ja
       vasteaika. Varasuunnitelma: sääntöpohjainen poiminta (avainsanat
       loukkaantui, sivussa, palaa, siirtyy, erotettiin).
