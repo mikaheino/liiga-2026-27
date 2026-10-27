@@ -62,6 +62,38 @@ def missing_regulars(team: str, gid: int, history: list[int], lineups: pd.DataFr
     return sorted(regulars - set(sk[sk["game_id"] == gid]["name"]))
 
 
+def _goalie_diffs(g, starters: pd.DataFrame, levels: dict, team_starts: dict) -> dict[str, float]:
+    diffs = {}
+    for t in (g.home_team, g.away_team):
+        s = starters[(starters["game_id"] == g.game_id) & (starters["team"] == t)]["pid"]
+        prev = [levels.get(p, 0.0) for p in team_starts.get(t, [])]
+        if len(s) and prev:
+            diffs[t] = levels.get(s.iloc[0], 0.0) - float(np.mean(prev))
+    return diffs
+
+
+def challenge(g, lineups, starters, model, levels, team_games, team_starts) -> dict:
+    """Yhden ottelun haastaja ottelua edeltävillä tiedoilla."""
+    names = {p["name"] for p in model["players"]}
+    base = {"game_id": g.game_id, "date": g.d, "iso": g.d, "home_team": g.home_team, "away_team": g.away_team,
+            "p_home_reg": g.p_home_reg, "p_overtime": g.p_overtime, "p_home_ot_win": g.p_home_ot_win}
+    miss = {t: [n for n in missing_regulars(t, g.game_id, team_games.get(t, []), lineups) if n in names]
+            for t in (g.home_team, g.away_team)}
+    items = [{"injury": n} for t in miss for n in miss[t]]
+    try:
+        new = sim.apply_injuries(items, [base], model, g.d)[0][0] if items else base
+    except sim.ScenarioError:
+        new = base
+    diffs = _goalie_diffs(g, starters, levels, team_starts)
+    if diffs:
+        new = ch._apply_goalies(new, model["strength"], diffs.get(g.home_team, 0.0), diffs.get(g.away_team, 0.0))
+    return {"date": g.d, "game": f"{g.home_team}–{g.away_team}", "y": int(g.home_goals > g.away_goals),
+            "p_base": g.p_home_win, "p_ch": new["p_home_reg"] + new["p_overtime"] * new["p_home_ot_win"],
+            "n_missing": sum(len(v) for v in miss.values()),
+            "missing": "; ".join(f"{t}: {', '.join(v)}" for t, v in miss.items() if v),
+            "goalie": "; ".join(f"{t} {d:+.2f}" for t, d in diffs.items() if abs(d) >= 0.05)}
+
+
 def main() -> None:
     levels = {r["player_id"]: float(r["level"]) for r in ch._read(ch.LEVELS)}
     con = duckdb.connect(str(ROOT / "data" / "liiga.duckdb"), read_only=True)
@@ -70,33 +102,11 @@ def main() -> None:
         games, lineups, starters = load(con)
     finally:
         con.close()
-    names = {p["name"] for p in model["players"]}
     team_games: dict[str, list[int]] = {}
     team_starts: dict[str, list[str]] = {}
     rows = []
     for g in games.itertuples(index=False):
-        base = {"game_id": g.game_id, "date": g.d, "iso": g.d, "home_team": g.home_team, "away_team": g.away_team,
-                "p_home_reg": g.p_home_reg, "p_overtime": g.p_overtime, "p_home_ot_win": g.p_home_ot_win}
-        miss = {t: [n for n in missing_regulars(t, g.game_id, team_games.get(t, []), lineups) if n in names]
-                for t in (g.home_team, g.away_team)}
-        items = [{"injury": n} for t in miss for n in miss[t]]
-        try:
-            new = sim.apply_injuries(items, [base], model, g.d)[0][0] if items else base
-        except sim.ScenarioError:
-            new = base
-        diffs = {}
-        for t in (g.home_team, g.away_team):
-            s = starters[(starters["game_id"] == g.game_id) & (starters["team"] == t)]["pid"]
-            prev = [levels.get(p, 0.0) for p in team_starts.get(t, [])]
-            if len(s) and prev:
-                diffs[t] = levels.get(s.iloc[0], 0.0) - float(np.mean(prev))
-        if diffs:
-            new = ch._apply_goalies(new, model["strength"], diffs.get(g.home_team, 0.0), diffs.get(g.away_team, 0.0))
-        p_ch = new["p_home_reg"] + new["p_overtime"] * new["p_home_ot_win"]
-        rows.append({"date": g.d, "game": f"{g.home_team}–{g.away_team}", "y": int(g.home_goals > g.away_goals),
-                     "p_base": g.p_home_win, "p_ch": p_ch, "n_missing": sum(len(v) for v in miss.values()),
-                     "missing": "; ".join(f"{t}: {', '.join(v)}" for t, v in miss.items() if v),
-                     "goalie": "; ".join(f"{t} {d:+.2f}" for t, d in diffs.items() if abs(d) >= 0.05)})
+        rows.append(challenge(g, lineups, starters, model, levels, team_games, team_starts))
         for t in (g.home_team, g.away_team):
             team_games.setdefault(t, []).append(g.game_id)
             team_starts.setdefault(t, []).extend(starters[(starters["game_id"] == g.game_id) & (starters["team"] == t)]["pid"])
