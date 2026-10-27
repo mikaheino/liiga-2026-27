@@ -11,7 +11,8 @@ const SKIP = ".tabs, .nw-cats, .months, .heat, .strip, .seg, .nw-step, input, se
 const THRESHOLD = 0.28;                       // osuus ruudun leveydestä
 const FLICK = 0.6;                            // px/ms: nopea heilautus riittää lyhyemmälläkin
 
-export default function SwipeBack({ children }: { children: React.ReactNode }) {
+// onBack: korvaa sivuhistorian (esim. ottelukortin sulkeminen samalla sivulla).
+export default function SwipeBack({ children, onBack, className = "" }: { children: React.ReactNode; onBack?: () => void; className?: string }) {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const s = useRef<{ x: number; y: number; t: number; lock: "" | "x" | "y"; dx: number } | null>(null);
@@ -24,6 +25,7 @@ export default function SwipeBack({ children }: { children: React.ReactNode }) {
     el.style.opacity = dx ? String(Math.max(0.35, 1 - dx / window.innerWidth)) : "";
   };
   const back = () => {
+    if (onBack) { onBack(); return; }
     const same = document.referrer.startsWith(location.origin);
     if (same && history.length > 1) router.back(); else router.push("/");
   };
@@ -31,7 +33,7 @@ export default function SwipeBack({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={ref}
-      className="swipe"
+      className={`swipe ${className}`}
       onTouchStart={(e) => {
         const t = e.touches[0];
         // Vasen reuna jää selaimen omalle takaisin-eleelle (iOS), muuten molemmat laukeaisivat.

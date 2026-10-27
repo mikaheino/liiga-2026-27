@@ -1,5 +1,6 @@
 // Yhteinen taulukkopohja kaikille osioille: sama muotokieli kuin
 // sarjataulukossa, ja korostus haalentaa muut rivit (Streamlitin dim_class).
+import Link from "next/link";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, logo } from "@/lib/table";
 
 // sm = piilotetaan puhelimessa; wsm = leveys puhelimessa (oletus: kiinteät leveydet
@@ -11,13 +12,14 @@ const narrow = (w: string) =>
 
 export const zoneOf = (rank: number) => (rank <= PLAYOFF_CUT ? "z-top" : rank <= QUALI_CUT ? "z-quali" : rank > RELEGATION_CUT ? "z-down" : "z-mid");
 
+// Joukkueen nimi avaa joukkuekortin kaikissa taulukoissa (korttiteema 27.10.).
 export function Team({ name, size = 20 }: { name: string; size?: number }) {
   return (
-    <span className="team">
+    <Link href={`/joukkue/${encodeURIComponent(name)}`} className="team team-link">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={logo(name)} alt="" width={size} height={size} />
       <span className="name">{name}</span>
-    </span>
+    </Link>
   );
 }
 

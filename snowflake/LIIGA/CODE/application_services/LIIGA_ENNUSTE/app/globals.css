@@ -810,3 +810,41 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .hs-src { font-size: 12px; color: var(--faint); text-decoration: none; }
 .nw-flag.hs-voimassa { background: rgba(204,167,82,.16); color: var(--gold-hi); }
 .swipe { will-change: transform; touch-action: pan-y; }
+
+/* --- Korttiteema puhelimessa (27.10.): vähemmän mutta selkeämmin, napautus avaa,
+   pyyhkäisy palaa. Sijaintitaulukko etusivulla vain tietokoneella. ---------- */
+.phone-only { display: none !important; }
+@media (max-width: 860px) {
+  .desk-only { display: none !important; }
+  .phone-only { display: grid !important; }
+  /* Sijaintisivu: samat tiedot kuin webissä, molemmat rajat pistetahteineen. */
+  .pos-full .heat .hr, .pos-full .heat.with-need2 .hr { grid-template-columns: 80px repeat(17, minmax(0, 1fr)) 44px 44px; }
+  .pos-full .heat .hr > .hn + .hn { display: flex; }
+  .pos-full .hn { padding: 0 4px 0 0; } .pos-full .hn b { font-size: 11px; }
+  .pos-full .hn span { display: block; font-size: 8.5px; } .pos-full .hh .hn span { font-size: 7px; }
+  .pos-full .ht { padding-left: 6px; gap: 4px; } .pos-full .ht .name { font-size: 11.5px; }
+  .pos-full .ht img { width: 14px; height: 14px; }
+}
+/* Ottelukortti (MatchCard.tsx) */
+.mc-tap { all: unset; display: block; width: 100%; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mc-tap:active .nr-game { background: var(--surface-2); }
+.mc-tap .nr-game::after { content: "▸"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--gold); font-size: 11px; }
+.mc-tap .nr-game { position: relative; padding-right: 14px; }
+.mc-wrap { position: fixed; inset: 0; z-index: 60; background: rgba(5,4,3,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow-y: auto; }
+.mc { min-height: 100%; max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, var(--surface-2), var(--bg)); border-left: 1px solid var(--line-2); border-right: 1px solid var(--line-2); display: grid; gap: 14px; align-content: start; }
+.mc-back { all: unset; cursor: pointer; font: 400 11px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+.mc-when { font: 400 10.5px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mc-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mc-team { display: grid; justify-items: center; gap: 6px; text-decoration: none; color: var(--ink); }
+.mc-team b { font: 800 18px var(--sans); } .mc-p { font: 800 26px var(--mono); color: var(--gold-hi); }
+.mc-bar { height: 8px; } .mc-ot { justify-self: center; font: 400 10px var(--pixel); color: var(--faint); letter-spacing: .06em; }
+.mc-box { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); display: grid; gap: 6px; }
+.mc-box .label { margin: 0; } .mc-box b { color: var(--ink); } .mc-box p { margin: 0; font-size: 12.5px; color: var(--muted); }
+.mc-form { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--ink); }
+.mc-h2h { display: flex; gap: 12px; font-size: 13px; } .mc-h2h span { color: var(--faint); font-family: var(--mono); }
+.mc-news { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--body); text-decoration: none; }
+.mc-hint { justify-self: center; font-size: 11px; color: var(--faint); }
+.team-link { color: inherit; text-decoration: none; }
+.team-link:hover .name { color: var(--gold-hi); }
+@media (max-width: 860px) { .team-link .name::after { content: " ▸"; font-size: 9px; color: var(--gold-dim); } }

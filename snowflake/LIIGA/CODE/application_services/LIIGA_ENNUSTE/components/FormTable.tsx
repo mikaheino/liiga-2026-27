@@ -1,6 +1,7 @@
 // "Kuka on kuumana?" -sarjataulukko. Laskenta on sama kuin streamlit_app.py:n
 // render_form_table (lib/table.ts); ulkoasu on oma: logot, vyöhykkeet rivin
 // reunassa, animoidut pistepalkit ja korostuksen hehku.
+import Link from "next/link";
 import { Game, PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, logo, rankMovement, rolling, seasonTable, teamPoints } from "@/lib/table";
 
 const BRAND_DARK = "#EBCA68", MUTED = "#8f8573";
@@ -82,12 +83,12 @@ export default function FormTable({ log, teams, window, highlight, showSpark, sh
             className={`tr ${zoneOf(rank)} ${hl ? "hl" : ""} ${sep ? "sep" : ""} ${showXg ? "with-xg" : ""} ${showSpark ? "" : "no-spark"}`}
             style={{ animationDelay: `${i * 18}ms` }}>
             <div className="rank">{rank}</div>
-            <div className="team">
+            <Link href={`/joukkue/${encodeURIComponent(r.team)}`} className="team team-link">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logo(r.team)} alt="" width={22} height={22} />
               <span className="name">{r.team}</span>
               <Move mv={moves.get(r.team)} window={window} />
-            </div>
+            </Link>
             <div className="num dim">{r.gp}</div>
             <div className="num dim hide-sm">{r.w}–{r.otw}–{r.otl}–{r.l}</div>
             {showXg && <div className="num hide-sm">{r.xgShare == null ? "–" : fmt(r.xgShare)}</div>}

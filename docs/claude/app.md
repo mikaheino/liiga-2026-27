@@ -125,3 +125,12 @@ tauluja, jotka syntyvät vain Pages-käännöksessä (`load_news.py`); muualla
 `LIIGA_DUCKDB=<kopio> scripts/deploy/pages_build.sh` (duckdb_query.py lukee
 muuttujan). Suunnitelma ja tulokset: `docs/uutismalli_suunnitelma.md`.
 
+**Korttiteema puhelimessa (27.10.):** vähemmän mutta selkeämmin, napautus avaa, pyyhkäisy
+palaa. `SwipeBack` (Tinder-tyylinen veto oikealle; ei vieritettävistä riveistä, lomakkeista
+eikä iOS:n reunaeleestä) osiosivuilla, joukkuesivulla ja ottelukortissa (`onBack`).
+Sijaintitaulukko `PositionBoard`: etusivulla vain tietokoneella (`desk-only`), puhelimessa
+`/sijainti` molemmilla rajoilla ja pistetahdeilla (`pos-full`). Kierroksen ottelu avaa
+`MatchCard`in (ennuste, haastaja, vire, keskinäiset, uutiset). Joukkueen nimi avaa
+joukkuekortin kaikissa taulukoissa (`Team` = Link). Testaus kosketuksella: CDP:n
+touch-tapahtumat eivät laukaise Reactin käsittelijöitä, käytä `new TouchEvent(...)`.
+
