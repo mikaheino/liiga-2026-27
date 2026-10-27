@@ -19,27 +19,48 @@ dokumentti on suunnitelma, ja vaihe 0 varmistaa ensin, että data on saatavilla.
 - **Ei Snowflakea, ei Macia:** kolmas ajopaikka pysyy itsenäisenä
   (CLAUDE.md: kolme erillistä ajopaikkaa).
 
-## Arkkitehtuuri
+## Arkkitehtuuri (tarkennettu 27.10. illalla)
+
+Käyttäjän linjaukset 27.10.:
+- **Uutiset ja kokoonpanot luetaan samassa ajossa kerran päivässä klo 14.00
+  Suomen aikaa**, jolloin aloittava maalivahti on mukana samassa ennusteessa.
+- **Haastaja reagoi lyhyisiinkin poissaoloihin**, ei vain pitkiin.
+- **Hyväksyntä sovelluksessa yhdellä OK-painalluksella**, ei GitHubin PR:iä.
+- **Tavoite: nähdä, paraneeko haastaja** näillä tiedoilla lukittuun malliin verrattuna.
 
 ```
-liiga.fi API (kokoonpanot) ──────────────────────────────┐
-RSS (Iltalehti, IS, Yle) → suodatus → poiminta → PR ──→ hyväksyntä (puhelin)
-                                                          ↓
-                                   data/events/*.csv (pages-data-haara)
-                                                          ↓
-                 perusennuste + tapahtumat → haastajaennuste → Pages
+klo 14.00 (Actions)
+  liiga.fi: päivän otteluiden kokoonpanot ─┐  aloittava MV (line 1), kenttäjako
+  Yle + seurojen sivut: uudet jutut ───────┤  liput, pelaajaehdotus rosterista
+                                           ↓
+  sovellus (puhelin): uutinen + pelaaja + kesto [1 ott · 1 vko · 2–4 vko · loppukausi]
+                      OK → workflow_dispatch (token vain puhelimen selaimessa)
+                                           ↓
+  poissaolot.csv (news-data)  +  päivän aloittajat
+                                           ↓
+  haastaja: ottelukohtaiset todennäköisyydet ennen ottelua (poissaolijat pois,
+  aloittajan esikauden torjuntaennuste) → prediction_games_news
+                                           ↓
+  Pages: virallinen ennuste ennallaan, haastajan ero otteluittain;
+         A/B-näkymä: haastaja vs. lukittu malli (log-loss, osumat) kauden alusta
 ```
 
-- **Poiminta** tuottaa vain rakenteen
-  `{tyyppi, pelaaja, joukkue, kesto, julkaistu, haettu, lähde-url, lainaus ≤ 1 lause}`.
-  Pelaaja yhdistetään rosteriin koodilla (`player_id`), ei kielimallilla.
-- **Vaikutus** lasketaan nykyisellä skenaariologiikalla (`apply_injuries`,
-  `SIMULATE_SCENARIO`, `scripts/tools/skenaario.py`): pelaaja pois joukkueen
-  vahvuudesta. Uutta on vain havaitseminen.
-- **Turvallisuus** (tapaus 18.8.: uutissivuja lukenut agentti injektoitiin ja
-  muokkasi tiedostoja): uutisteksti on epäluotettavaa syötettä. Poimijalla ei
-  työkaluja eikä kirjoitusoikeutta, tulos skeemaan validoituna, crawler
-  kirjoittaa vain yhteen datatiedostoon PR:n kautta, ei koskaan koodiin.
+- **OK-nappi:** fine-grained token vain tähän repoon, oikeus *Actions: write*
+  (ei koodin muokkausta), tallennettu kerran puhelimen selaimeen; julkisella
+  sivulla nappeja ei näy ilman tokenia. Ajo validoi syötteen datana: uutinen
+  löytyy `news_items.csv`:stä, pelaaja rosterista, kesto listasta; syöte
+  ympäristömuuttujina, ei `${{ }}`-lausekkeina komentoriville (workflow-injektio).
+- **Kokoonpano tarkistaa poissaolot:** jos "poissa oleva" pelaaja on päivän
+  kokoonpanossa, poissaolo päättyy; jos ei ole, se vahvistuu.
+- **Vaikutus** lasketaan skenaariologiikalla (`SIMULATE_SCENARIO`). Mittakaava
+  27.10.: Huuhtanen (HIFK) poissa -> HIFK:n voittotodennäköisyys 51,9 -> 50,5 %
+  per ottelu; koko loppukausi -2,0 p, top 6 23,5 -> 17,9 %. Lyhyt poissaolo on
+  ~1–2 %-yks. per ottelu, joten haastaja mitataan otteluittain.
+- **Maalivahtiosan voi testata heti historiassa** (kaudet 2022–26: kuka
+  aloitti, `game_goalies`), uutisosaa ei (historiallisia uutisia ei ole) --
+  se mitataan vain eteenpäin.
+- **Turvallisuus** (tapaus 18.8.): uutisteksti on epäluotettavaa syötettä; ei
+  kielimallia tässä vaiheessa, ei kirjoitusta koodiin.
 
 ## Datalähteet: tila 27.10.2026
 
@@ -115,7 +136,13 @@ lähteitä ei louhita.
 
 ### Vaihe 0: varmistukset ennen rakentamista
 
-- [ ] **Kokoonpanon ajoitus:** milloin kokoonpano ilmestyy rajapintaan? Kirjaa
+- [ ] **Kokoonpanon ajoitus, ratkaiseva klo 14:lle:** 27.10. klo 16.31 seuraavan päivän
+      otteluilla pelaajalista oli rajapinnassa mutta `line` tyhjä (aloittaja tuntematon);
+      saman päivän 18.30-ottelulla kokoonpano oli valmis viimeistään klo 15.27.
+      14.00-ajo kirjaa joka ottelulle, oliko kokoonpano valmis -> kattavuus
+      viikonloppujen 15.00/17.00-otteluissa erikseen. Jos ei riitä: toinen ajo
+      myöhemmin ottelupäivänä.
+- [ ] (vanha) **Kokoonpanon ajoitus:** milloin kokoonpano ilmestyy rajapintaan? Kirjaa
       tunneittain yhden viikon ajan (kaikki ottelupäivät), ja näytä myöhäiset muutokset
       (aloittaja vaihtuu viime hetkellä?). Tavoite: luotettava aikaraja.
 - [ ] **Aloittajan tunnistus:** `MV` + `line 1` = aloittaja? Vertaa kauden
