@@ -1,0 +1,198 @@
+"""Uutiskeräin, uutismallin vaihe 0 (27.10.2026; docs/uutismalli_suunnitelma.md).
+
+Hakee Ylen urheilu-RSS:n ja seurojen omat sivut -- vain lähteet, joiden
+robots.txt ei kiellä tekoälyä -- ja kirjaa uudet jutut CSV:hen: otsikko,
+linkki, joukkue ja avainsanaliput. Ei kielimallia, ei artikkelitekstiä talteen
+(vain otsikko ja linkki), ei vaikutusta ennusteeseen. Tarkoitus on mitata
+kahden viikon ajan, kuinka paljon loukkaantumis-, siirto- ja valmentajatietoa
+näistä lähteistä oikeasti tulee ja kuka julkaisee ensin.
+
+Ajaa .github/workflows/news.yml tunneittain (Ylen syötteessä on vain 20
+viimeisintä urheilujuttua); tulos news-data-haaraan. Paikallisesti:
+
+    python scripts/news/collect.py OUTDIR
+"""
+from __future__ import annotations
+
+import csv
+import datetime as dt
+import re
+import sys
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.parse import urljoin
+
+import requests
+
+UA = "liiga-predict/0.1 (personal hobby project)"
+FIELDS = ["fetched_at", "published", "source", "team", "flags", "title", "url"]
+
+# (lähde, joukkue, muoto, osoite). Joukkue None = päätellään Ylen kategorioista.
+# Tarkistettu 27.10.: ei AI-kieltoja robots.txt:ssä. Puuttuu: Tappara, Pelicans,
+# TPS, KalPa (ei löytynyt syötettä) ja Jokerit (AI-kielto).
+SOURCES = [
+    ("Yle", None, "rss", "https://yle.fi/rss/urheilu"),
+    ("HIFK", "HIFK", "rss", "https://hifk.fi/feed/"),
+    ("HPK", "HPK", "rss", "https://hpk.fi/feed/"),
+    ("Ilves", "Ilves", "rss", "https://www.ilves.com/feed/"),
+    ("JYP", "JYP", "rss", "https://www.jypliiga.fi/feed/"),
+    ("K-Espoo", "K-Espoo", "rss", "https://kiekko-espoo.fi/feed/"),
+    ("KooKoo", "KooKoo", "rss", "https://www.kookoo.fi/feed/"),
+    ("Lukko", "Lukko", "rss", "https://www.raumanlukko.fi/rss.xml"),
+    ("Sport", "Sport", "rss", "https://vaasansport.fi/feed/"),
+    ("Ässät", "Ässät", "rss", "https://assat.com/feed/"),
+    ("Kärpät", "Kärpät", "html", "https://www.karpat.fi/uutiset/"),
+    ("SaiPa", "SaiPa", "html", "https://saipa.fi/uutiset/"),
+    ("Jukurit", "Jukurit", "html", "https://jukurit.fi/uutiset/"),
+]
+
+# Ylen kategoria "KooKoo (Jääkiekon Miesten Liiga)" -> KooKoo. Erottaa Liigan
+# jalkapallon Ilveksestä, HIFK:sta ja TPS:stä.
+LIIGA_TAG = re.compile(r"^(.+?) \(Jääkiekon Miesten Liiga\)$")
+YLE_ALIASES = {"Kiekko-Espoo": "K-Espoo", "Vaasan Sport": "Sport", "Porin Ässät": "Ässät", "Rauman Lukko": "Lukko"}
+
+# Liput otsikosta ja ingressistä (ingressiä ei tallenneta). Karkea tarkoituksella:
+# vaihe 0 mittaa, montako osumaa tulee ja montako niistä on oikeasti olennaisia.
+FLAGS = {
+    "loukkaantuminen": r"loukkaant|sivussa|vamma|leikkau|kuntoutu|sairasluet",
+    "paluu": r"palaa kokoonpano|paluu|palaa kaukalo|tervehty",
+    "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim|hankki|jättää|lähtee",
+    "valmentaja": r"päävalmentaj|valmentaj|erotet|irtisano|potku",
+    "pelikielto": r"pelikielt|kurinpito|ottelun pelikiel",
+    "kokoonpano": r"kokoonpano|maalivahti|aloittaa maalilla",
+}
+
+
+def _get(url: str) -> bytes:
+    r = requests.get(url, headers={"User-Agent": UA}, timeout=20)
+    r.raise_for_status()
+    return r.content
+
+
+def _iso(text: str | None) -> str:
+    if not text:
+        return ""
+    try:
+        return parsedate_to_datetime(text).astimezone(dt.UTC).isoformat(timespec="seconds")
+    except (TypeError, ValueError):
+        return text.strip()
+
+
+def flags_of(text: str) -> str:
+    low = text.lower()
+    return ";".join(k for k, rx in FLAGS.items() if re.search(rx, low))
+
+
+def parse_rss(data: bytes) -> list[dict]:
+    """RSS 2.0 ja Atom: otsikko, linkki, aika, ingressi ja kategoriat."""
+    root = ET.fromstring(data)
+    out = []
+    for it in root.iter("item"):
+        out.append({"title": (it.findtext("title") or "").strip(), "url": (it.findtext("link") or "").strip(),
+                    "published": _iso(it.findtext("pubDate")), "text": it.findtext("description") or "",
+                    "tags": [c.text or "" for c in it.findall("category")]})
+    atom = "{http://www.w3.org/2005/Atom}"
+    for e in root.iter(f"{atom}entry"):
+        link = e.find(f"{atom}link")
+        out.append({"title": (e.findtext(f"{atom}title") or "").strip(), "url": link.get("href", "") if link is not None else "",
+                    "published": e.findtext(f"{atom}updated") or "", "text": e.findtext(f"{atom}summary") or "", "tags": []})
+    return out
+
+
+class _Links(HTMLParser):
+    """Uutislistasivun artikkelilinkit: href, jonka polussa on uutiset/article
+    ja pitkä tunniste, sekä linkin teksti otsikoksi."""
+
+    ARTICLE = re.compile(r"/(uutiset|article)/[^?#]{8,}")
+
+    def __init__(self, base: str):
+        super().__init__()
+        self.base, self.href, self.buf, self.links = base, None, [], {}
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            href = dict(attrs).get("href") or ""
+            self.href = urljoin(self.base, href) if self.ARTICLE.search(href) else None
+            self.buf = []
+
+    def handle_data(self, data):
+        if self.href:
+            self.buf.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self.href:
+            title = " ".join(" ".join(self.buf).split())
+            if len(title) > len(self.links.get(self.href, "")):
+                self.links[self.href] = title
+            self.href = None
+
+
+def parse_html(data: bytes, base: str) -> list[dict]:
+    p = _Links(base)
+    p.feed(data.decode("utf-8", errors="replace"))
+    return [{"title": t, "url": u, "published": "", "text": "", "tags": []} for u, t in p.links.items() if len(t) >= 12]
+
+
+def yle_teams(tags: list[str]) -> list[str]:
+    teams = []
+    for t in tags:
+        m = LIIGA_TAG.match(t.strip())
+        if m:
+            teams.append(YLE_ALIASES.get(m.group(1), m.group(1)))
+    return teams
+
+
+def collect(seen: set[str], now: str) -> tuple[list[dict], dict[str, str]]:
+    rows, status = [], {}
+    for source, team, kind, url in SOURCES:
+        try:
+            data = _get(url)
+            items = parse_rss(data) if kind == "rss" else parse_html(data, url)
+        except (requests.RequestException, ET.ParseError) as e:
+            status[source] = f"virhe: {type(e).__name__}"
+            continue
+        new = 0
+        for it in items:
+            if not it["url"] or it["url"] in seen:
+                continue
+            if team is None:
+                teams = yle_teams(it["tags"])
+                if not teams and "SM-liiga" not in it["tags"]:
+                    continue                      # ei Liigaa: jalkapallo, NHL, muut lajit
+                row_team = ",".join(teams)
+            else:
+                row_team = team
+            seen.add(it["url"])
+            rows.append({"fetched_at": now, "published": it["published"], "source": source, "team": row_team,
+                         "flags": flags_of(f"{it['title']} {it['text']}"), "title": it["title"], "url": it["url"]})
+            new += 1
+        status[source] = f"{len(items)} juttua, {new} uutta"
+    return rows, status
+
+
+def main(out_dir: Path) -> int:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "news_items.csv"
+    old = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
+    now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    rows, status = collect({r["url"] for r in old}, now)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows(old + rows)
+    for source, s in status.items():
+        print(f"{source:8} {s}")
+    flagged = [r for r in rows if r["flags"]]
+    print(f"uusia {len(rows)}, joista liputettuja {len(flagged)}; yhteensä {len(old) + len(rows)}")
+    for r in flagged:
+        print(f"  [{r['flags']}] {r['team']}: {r['title']}")
+    # Kaatuu vain, jos mikään lähde ei vastannut: yksittäinen katkos ei pysäytä keräystä.
+    return 1 if all(s.startswith("virhe") for s in status.values()) else 0
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    sys.exit(main(Path(sys.argv[1])))

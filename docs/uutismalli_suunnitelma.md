@@ -126,7 +126,9 @@ lähteitä ei louhita.
 - [ ] **Käyttöehdot:** Iltalehti, IS ja Yle: saako RSS:n otsikkoa ja ingressiä
       käsitellä automaattisesti ja kielimallilla? Jos ei, vain otsikko + linkki
       sääntöpohjaisesti tai vain Yle.
-- [ ] **Uutismäärä ja osuvuus:** kerää RSS:t 2 viikon ajan ilman poimintaa.
+- [ ] **Uutismäärä ja osuvuus** (keräin käynnissä 27.10. alkaen: `scripts/news/collect.py`,
+      `news.yml` tunneittain, tulos `news-data`-haaran `news_items.csv`; ensimmäinen ajo
+      246 juttua 13 lähteestä, 68 liputettua): kerää 2 viikon ajan ilman poimintaa.
       Kuinka monta Liiga-juttua päivässä, monessako loukkaantuminen/paluu,
       montako niistä olisi muuttanut kokoonpanoa? Tämä kertoo, kannattaako vaihe 2.
 - [ ] **Seurojen sivut, loput 5:** Tappara, Pelicans, TPS, KalPa (syöte tai
