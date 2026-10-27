@@ -1,0 +1,81 @@
+# GitHub Pages: Liiga Ennuste ilman agenttia ja LinkedIn-osiota (27.10.).
+#
+# Kolmas, itsenäinen ajopaikka Macin (launchd) ja Snowflaken (LIIGA_DAILY) rinnalla:
+# hakee tulokset itse liiga.fi:stä, laskee ennusteen kertakäyttöisessä runnerissa ja
+# julkaisee staattisen sivun. Yhteistä muiden kanssa on vain koodi gitissä.
+# Repon data/liiga.duckdb on lähtöpiste; Pagesin oma ennustehistoria säilyy
+# pages-data-haarassa (scripts/deploy/pages_history.py). Main-haaraan ei kirjoiteta.
+name: pages
+
+on:
+  schedule:
+    - cron: "15 5 * * *"       # 07.15 / 08.15 Suomen aikaa, pelit ovat päättyneet
+  workflow_dispatch:
+
+permissions:
+  contents: write              # pages-data-haaran päivitys
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/package-lock.json
+
+      - name: Riippuvuudet
+        # .venv, koska sovelluksen DuckDB-silta (lib/snowflake.ts) ajaa .venv/bin/pythonia.
+        run: python -m venv .venv && .venv/bin/pip install -q -e .
+
+      - name: Pagesin ennustehistoria (pages-data)
+        env:
+          URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$URL" pages-data >/dev/null; then
+            git clone -q --depth 1 --branch pages-data "$URL" .pages-data
+          else
+            git init -q -b pages-data .pages-data && git -C .pages-data remote add origin "$URL"
+          fi
+          .venv/bin/python scripts/deploy/pages_history.py restore .pages-data
+
+      - name: Tulokset liiga.fi:stä ja ennuste
+        run: .venv/bin/python scripts/local/daily_update.py --no-sync
+
+      - name: Tallenna historia
+        run: |
+          .venv/bin/python scripts/deploy/pages_history.py save .pages-data
+          cd .pages-data
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Pages-ennuste $(date -u +%F)" || echo "ei muutoksia"
+          git push -q origin pages-data
+
+      - name: Staattinen sivu
+        run: BASE_PATH="/${{ github.event.repository.name }}" scripts/deploy/pages_build.sh
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .pages/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

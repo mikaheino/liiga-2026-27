@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Hanken_Grotesk, Roboto_Mono, Silkscreen } from "next/font/google";
 import Chat from "@/components/Chat";
 import { AGENT_SOURCE } from "@/lib/agent";
+import { STATIC } from "@/lib/target";
 import "./globals.css";
 
 // Fontit käännösvaiheessa sovellukseen (next/font): ei ulkoista hakua ajon
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "Liiga 2026-27 -ennuste", description
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fi" className={`${hanken.variable} ${mono.variable} ${pixel.variable}`}>
-      <body>{children}<Chat source={AGENT_SOURCE} /></body>
+      <body>{children}{!STATIC && <Chat source={AGENT_SOURCE} />}</body>
     </html>
   );
 }

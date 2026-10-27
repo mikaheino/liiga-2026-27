@@ -96,3 +96,25 @@ suunnitteilla, siksi TypeScript.
   Lukee **paikallista DuckDB:tä** (sivu näyttää sen aikaleiman), toimii vain läppärillä
   ja sanoo sen Snowflakessa ääneen. DuckDB:n lukko: tilakysely ei saa avata kantaa
   renderöinnin aikana (`currentStamp()` käyttää silloin talletettua aikaleimaa).
+
+## GitHub Pages -kopio (27.10.2026)
+
+Käyttäjä: "kolme paikkaa, jokainen erillinen kokonaisuutensa": **Mac** (launchd, dev),
+**GitHub Pages** (Actions, ei Macia), **Snowflake** (LIIGA_DAILY). Yhteistä vain koodi gitissä.
+`.github/workflows/pages.yml` (päivittäin 05.15 UTC + käsin): `daily_update.py --no-sync`
+runnerissa repon `data/liiga.duckdb`:stä eteenpäin -> `scripts/deploy/pages_build.sh` ->
+Pages. Main-haaraan ei kirjoiteta. Ennustehistoriaa (`prediction_history`,
+`prediction_games`) ei voi laskea jälkikäteen, joten Pagesin oma historia säilyy CSV:nä
+haarassa **`pages-data`** (`scripts/deploy/pages_history.py restore|save`); ensimmäinen
+ajo alkaa repon tietokannan historiasta. liiga.fi vastaa GitHubin runnereille
+(`pages-connectivity.yml`, 27.10.).
+
+Pagesissa ei agenttia (Chat, /api/chat), LinkedIn-osiota eikä Mouho-ilmoittautumista;
+Mouho-linkki vie pelin omaan Pagesiin. Lähdekoodissa vain liput (`lib/target.ts`:
+`NEXT_PUBLIC_LIIGA_STATIC`, `NEXT_PUBLIC_BASE_PATH`); käännösskripti tekee kopion, josta
+reitit poistetaan, `force-dynamic` -> `force-static` ja joukkueille `generateStaticParams`.
+⚠️ Älä lisää `generateStaticParams`ia lähteeseen: Snowflake-käännöksessä se teki
+joukkuesivusta staattisen (● eikä ƒ), eli ensimmäisen haun data olisi jäänyt voimaan.
+URL-valinnoista riippuvat näkymät ovat `components/Views.tsx`:ssä selaimessa
+(`useSearchParams` + Suspense, fallback = oletusnäkymä), jotta sama koodi toimii molemmissa.
+

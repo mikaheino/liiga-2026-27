@@ -87,3 +87,4 @@ CLAUDE.md pidetään lyhyenä, koska se ladataan jokaiseen istuntoon ja jokaisel
 - Sovellus ja agentti julkaistaan vain CI/CD-putken kautta, ei omalta koneelta; push käynnistää putken.
 - Mallia ei viritetä kesken kauden (AGENTS.md §10).
 - Mouho-peli on omassa repossaan `/Users/mika.heino/prod/mouho_2026`.
+- **Kolme erillistä ajopaikkaa** (27.10.): Mac, GitHub Pages (`pages.yml`, oma historia `pages-data`-haarassa) ja Snowflake (app.md).

@@ -39,3 +39,6 @@ releases/app/
 
 # Mouho 2027 -ilmoittautumiset (henkilötietoja, ei julkiseen repoon)
 data/mouho_2027_ilmoittautumiset.csv
+
+# GitHub Pages -käännös (scripts/deploy/pages_build.sh), syntyy joka ajossa
+.pages/

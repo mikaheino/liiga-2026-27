@@ -1,5 +1,6 @@
 // Sarjataulukon laskenta: suora käännös streamlit_app.py:n funktioista
 // season_table, rank_movement, form_cells ja _spark, jotta luvut ovat samat.
+import { BASE } from "@/lib/target";
 
 export const TEAMS = 17;
 export const PLAYOFF_CUT = 6;          // 1.-6. suoraan puolivälieriin
@@ -65,7 +66,7 @@ export function rolling(points: number[], window: number): number[] {
 
 // Joukkueen logo: public/logos/<nimi ilman ääkkösiä>.png (sama kuin site/assets/logos).
 export function logo(team: string): string {
-  return `/logos/${team.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}.png`;
+  return `${BASE}/logos/${team.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}.png`;
 }
 
 // Nostokortit: kärki, kuumin ja kylmin vire (pisteet/ottelu ikkunassa) ja

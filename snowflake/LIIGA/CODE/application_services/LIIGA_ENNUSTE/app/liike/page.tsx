@@ -1,16 +1,15 @@
 // Miten ennuste on liikkunut: pieni paneeli per joukkue.
-import History from "@/components/History";
 import Shell from "@/components/Shell";
-import { type Params, highlightOf, loadHistory, loadPosition, loadTeams } from "@/lib/data";
+import { MotionView } from "@/components/Views";
+import { loadHistory, loadPosition, loadTeams } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
-  const sp = await searchParams;
+export default async function Page() {
   const [{ history, preseason }, pos, teams] = await Promise.all([loadHistory(), loadPosition(), loadTeams()]);
   return (
     <Shell active="/liike" title="Ennusteen liike">
-      <History history={history} order={pos.map((r) => r.team)} highlight={highlightOf(sp, teams)} preseason={preseason} />
+      <MotionView history={history} order={pos.map((r) => r.team)} teams={teams} preseason={preseason} />
     </Shell>
   );
 }
