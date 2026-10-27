@@ -74,7 +74,8 @@ function readSession(): { session: string; note: string } {
     return { session: localStorage.getItem(KEY) ?? "", note };
   } catch { return { session: "", note }; }
 }
-const loginHref = () => `${APPROVE_URL}/login?return=${encodeURIComponent(location.href.split("#")[0])}`;
+// Paluuosoite vasta selaimessa (useEffect): staattisessa käännöksessä ei ole locationia.
+const loginHref = (ret: string) => `${APPROVE_URL}/login${ret ? `?return=${encodeURIComponent(ret)}` : ""}`;
 
 async function dispatch(session: string, inputs: Record<string, string>): Promise<string> {
   try {
@@ -154,7 +155,8 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
   const [note, setNote] = useState("");
   const [cat, setCat] = useState("olennaiset");
   const [open, setOpen] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
-  useEffect(() => { const r = readSession(); setSession(r.session); setNote(r.note); }, []);
+  const [ret, setRet] = useState("");
+  useEffect(() => { const r = readSession(); setSession(r.session); setNote(r.note); setRet(location.href.split("#")[0]); }, []);
   const logout = () => { store(null); setSession(""); };
   const editable = (flags: string) => /loukkaantuminen|paluu|pelikielto/.test(flags);
 
@@ -193,7 +195,7 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
                   ? `Rosterissa: ${cands.map((c) => `${c.player} (${c.team})`).join(", ")}`
                   : "Ei rosterissa: uusi nimi? Tee pelaajalisäys."}</div>
               )}
-              {!session && APPROVE_URL && editable(it.flags) && <a className="nw-other" href={loginHref()}>Kirjaudu antaaksesi poissaolon ▸</a>}
+              {!session && APPROVE_URL && editable(it.flags) && <a className="nw-other" href={loginHref(ret)}>Kirjaudu antaaksesi poissaolon ▸</a>}
               {session && editable(it.flags) && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
                 <AbsenceForm key={c.player} url={it.url} title={it.title} preset={c} teams={teams} roster={roster} session={session}
                   allowBack={/palaa|paluu|kokoonpanoon|tervehty/i.test(it.title) && !/sivuun|sivussa|loukkaant/i.test(it.title)} />
