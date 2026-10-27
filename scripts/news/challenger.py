@@ -69,12 +69,24 @@ def _base(pages: Path, day: str, ids: set[str]) -> dict[str, dict]:
 
 
 def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[str]]:
-    """(hyväksytyt poissaolijat, pelikiellossa olevat) päivän otteluista."""
+    """(hyväksytyt poissaolijat, pelikiellossa olevat) päivän otteluista.
+
+    Todellisuus voittaa arvion (käyttäjä 27.10.): jos poissaolevaksi kirjattu
+    pelaaja on päivän kokoonpanossa, kirjataan paluu itse (url "kokoonpano"),
+    jolloin myös kausiennuste lopettaa poissaolon."""
     lineup = [r for r in _read(news / "lineup_players.csv") if r["game_id"] in game_ids]
     latest = max((r["fetched_at"] for r in lineup), default="")
     lineup = [r for r in lineup if r["fetched_at"] == latest]
     playing = {f"{r['first_name']} {r['last_name']}" for r in lineup if r["line"] not in ("", None)}
-    approved = [r["player"] for r in absences.active(news, day) if r["player"] not in playing]
+    now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    approved = []
+    for r in absences.active(news, day):
+        if r["player"] in playing:
+            absences.write(news, {"approved_at": now, "url": "kokoonpano", "player": r["player"], "team": r["team"],
+                                  "kind": "back", "games": "", "start": day, "until": day})
+            print(f"{r['player']} on kokoonpanossa: poissaolo päättyi ({r['games']} kirjattu {r['start']})")
+        else:
+            approved.append(r["player"])
     suspended = [f"{r['first_name']} {r['last_name']}" for r in lineup if r["suspended"] == "1"]
     return sorted(set(approved)), sorted(set(suspended) - set(approved))
 

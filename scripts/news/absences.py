@@ -4,7 +4,10 @@ Jokainen OK-painallus on oma tiedostonsa news-data/absences/<aika>-<pelaaja>.csv
 (yksi rivi): rinnakkaiset kirjaukset eivät törmää gitissä, eikä GitHubin jono
 voi hävittää niitä (jono pitää vain yhden odottavan ajon). Pelaajan voimassa
 oleva tila = hänen viimeisin kirjauksensa: "out" alku- ja paluupäivineen tai
-"back" (palasi). Vanha yhteinen absences.csv luetaan myös.
+"back" (palasi; url "kokoonpano" = haastaja huomasi pelaajan päivän
+kokoonpanossa ja lopetti poissaolon itse). "dismiss" = uutinen ohitettu (EI OK):
+ei koske pelaajan tilaa, mutta poistaa uutisen kirjattavista ja on oppimisdataa.
+Vanha yhteinen absences.csv luetaan myös.
 """
 from __future__ import annotations
 
@@ -24,10 +27,11 @@ def events(folder: Path) -> list[dict]:
 
 
 def latest(folder: Path) -> dict[str, dict]:
-    """Pelaajan viimeisin kirjaus (paluu korvaa poissaolon)."""
+    """Pelaajan viimeisin kirjaus (paluu korvaa poissaolon); ohitukset eivät koske tilaa."""
     out: dict[str, dict] = {}
     for r in events(folder):
-        out[r["player"]] = r
+        if r["kind"] in ("out", "back"):
+            out[r["player"]] = r
     return out
 
 
@@ -39,7 +43,7 @@ def active(folder: Path, day: str) -> list[dict]:
 def write(folder: Path, row: dict) -> Path:
     d = folder / "absences"
     d.mkdir(parents=True, exist_ok=True)
-    slug = "".join(c if c.isalnum() else "-" for c in row["player"].lower())
+    slug = "".join(c if c.isalnum() else "-" for c in (row["player"] or row["kind"]).lower())
     path = d / f"{row['approved_at'].replace(':', '')}-{slug}.csv"
     with path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)

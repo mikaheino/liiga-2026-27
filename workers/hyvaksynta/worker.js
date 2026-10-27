@@ -84,14 +84,14 @@ async function absence(req, env) {
   let b;
   try { b = await req.json(); } catch { return json(env, 400, { error: "virheellinen pyyntö" }); }
   const str = (v, n = 300) => typeof v === "string" && v.length <= n;
-  if (!str(b.url ?? "") || !str(b.player, 80) || !str(b.team, 40) || !["out", "back"].includes(b.kind)
+  if (!str(b.url ?? "") || !str(b.player ?? "", 80) || !str(b.team ?? "", 40) || !["out", "back", "dismiss"].includes(b.kind)
       || (b.kind === "out" && !DURATION.test(String(b.duration)))) return json(env, 400, { error: "virheelliset tiedot" });
   // Lopullinen tarkistus (uutinen, rosteri, rajat) tehdään absence.yml:ssä (approve.py).
   const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/absence.yml/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.GITHUB_PAT}`, Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "liiga-hyvaksynta" },
-    body: JSON.stringify({ ref: "main", inputs: { url: b.url ?? "", player: b.player, team: b.team, kind: b.kind,
+    body: JSON.stringify({ ref: "main", inputs: { url: b.url ?? "", player: b.player ?? "", team: b.team ?? "", kind: b.kind,
       duration: b.kind === "out" ? String(b.duration) : "1ott" } }),
   });
   return r.status === 204 ? new Response(null, { status: 204, headers: cors(env) }) : json(env, 502, { error: `GitHub ${r.status}` });

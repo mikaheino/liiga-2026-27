@@ -238,6 +238,19 @@ Linkki "Kirjaudu antaaksesi poissaolon" vain loukkaantumis-, paluu- ja
 pelikieltouutisissa; osoite repon muuttujasta `APPROVE_URL` (tyhjä = ei linkkiä).
 Ei enää selaimeen liitettävää GitHub-avainta.
 
+**Uutiset-sivun välilehdet** (27.10. illalla, käyttäjä: "relevantteja liikaa, kirjatut
+samassa; en pysty lukemaan ja kirjaamaan yhtä aikaa; historiasivu muutoksille"):
+*Kirjattavat* = loukkaantumis- ja pelikieltouutiset ilman kirjausta tai ohitusta,
+enintään 21 vrk; paluu-uutinen vain, jos pelaajalla on voimassa oleva kirjaus.
+Jokaisessa *Ohita – ei vaikuta* (kind `dismiss` = EI OK, oppimisdata). Otsikko avaa
+ingressin samaan näkymään (`summary`, vain Yle ja seurat, ≤ 400 merkkiä), koko juttu
+"Avaa juttu ↗". *Historia* = `challenger_events`: jokainen kirjaus tilan (voimassa /
+päättyi / lopetettu / kokoonpano lopetti / ohitettu) ja voimassa olevan vaikutuksen
+kanssa. **Todellisuus voittaa arvion:** jos poissaolevaksi kirjattu pelaaja on
+päivän kokoonpanossa, `challenger.py` kirjaa paluun itse (url `kokoonpano`), ja
+kausiennuste lopettaa poissaolon. Kestoarvaus otsikosta + ingressistä
+("huilaa kuusi ottelua" -> 6 ott, "2-4 viikkoa" -> 4 vko).
+
 **Uutissovellus** (27.10.): luokat Olennaiset / Loukkaantumiset / Pelikiellot /
 Siirrot ja hankinnat / Valmentajat / Kaikki. Pelikieltouutisessa vaikutus
 ennusteeseen (`news_effects`: hyväksytty kesto tai otsikon kesto, "arvio" kunnes

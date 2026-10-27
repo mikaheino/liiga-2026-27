@@ -11,6 +11,8 @@ Ajetaan Pages-käännöksessä aamun ennusteen jälkeen (pages.yml), tulos sovel
 tauluihin:
   challenger_teams   joukkueittain virallinen vs. haastaja (pisteet, voitto, top 6, putoaminen)
   challenger_games   tulevien otteluiden haastajatodennäköisyydet (vain muuttuneet)
+  challenger_events  kirjaushistoria (historiasivu): jokainen kirjaus tilan ja,
+                     voimassa olevalle, vaikutuksen kanssa
   news_effects       uutiskohtainen vaikutus (pelikielto, loukkaantuminen): hyväksytystä
                      kirjattu kesto, muuten otsikosta arvattu -- "paljonko tämä muuttaa"
 
@@ -44,9 +46,12 @@ def active_absences(news: Path, today: str) -> list[dict]:
             if r["kind"] == "out" and r["until"] > today]
 
 
+# Lukusanat genetiivissä ("kuuden ottelun") ja perusmuodossa ("kuusi ottelua");
+# väli "2-4 viikkoa" -> suurempi. Sama sääntö kuin sovelluksen lomakkeessa.
 NUMERALS = {"yhden": 1, "kahden": 2, "kolmen": 3, "neljän": 4, "viiden": 5, "kuuden": 6,
-            "seitsemän": 7, "kahdeksan": 8, "yhdeksän": 9, "kymmenen": 10}
-NUM = r"(\d+|" + "|".join(NUMERALS) + ")"
+            "seitsemän": 7, "kahdeksan": 8, "yhdeksän": 9, "kymmenen": 10,
+            "yksi": 1, "kaksi": 2, "kolme": 3, "neljä": 4, "viisi": 5, "kuusi": 6}
+NUM = r"(?:\d+\s*[-–]\s*)?(\d+|" + "|".join(NUMERALS) + ")"
 EFFECT_COLS = ["url", "player", "team", "n_games", "win_before", "win_after", "xp_delta", "approved"]
 
 
@@ -77,7 +82,7 @@ def news_effects(con, news: Path, games: list[dict], model: dict, today: str) ->
     approved = {(r["url"], r["player"]): r for r in absences.latest(news).values() if r["kind"] == "out" and r["url"]}
     since = (dt.date.fromisoformat(today) - dt.timedelta(days=14)).isoformat()
     rows = con.execute("""
-        SELECT c.url, c.player, n.title, n.flags FROM news_candidates c JOIN news_items n USING (url)
+        SELECT c.url, c.player, n.title || ' ' || COALESCE(n.summary, ''), n.flags FROM news_candidates c JOIN news_items n USING (url)
         WHERE regexp_matches(n.flags, 'pelikielto|loukkaantuminen')
           AND COALESCE(NULLIF(n.published, ''), n.fetched_at) >= ?""", [since]).fetchall()
     per_url: dict[str, list] = {}
@@ -104,6 +109,43 @@ def news_effects(con, news: Path, games: list[dict], model: dict, today: str) ->
     return pd.DataFrame(out, columns=EFFECT_COLS)
 
 
+EVENT_COLS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until", "status",
+              "n_games", "win_before", "win_after", "xp_delta"]
+
+
+def _status(r: dict, later: list[dict], today: str) -> str:
+    if r["kind"] == "dismiss":
+        return "ohitettu"
+    if r["kind"] == "back":
+        return "kokoonpano lopetti" if r["url"] == "kokoonpano" else "palasi"
+    if any(x["kind"] == "back" for x in later):
+        return "lopetettu"
+    if any(x["kind"] == "out" for x in later):
+        return "korvattu"
+    return "voimassa" if r["until"] > today else "päättyi"
+
+
+def event_history(news: Path, games: list[dict], model: dict, today: str) -> pd.DataFrame:
+    """Kaikki kirjaukset uusimmasta vanhimpaan; voimassa olevalle poissaololle
+    vaikutus jäljellä oleviin otteluihin (pelaaja yksin)."""
+    ev = absences.events(news)
+    out = []
+    for i, r in enumerate(ev):
+        later = [x for x in ev[i + 1:] if r["player"] and x["player"] == r["player"]]
+        row = {k: r.get(k, "") for k in EVENT_COLS[:8]} | {"status": _status(r, later, today),
+                                                           "n_games": None, "win_before": None, "win_after": None, "xp_delta": None}
+        if row["status"] == "voimassa":
+            try:
+                _, info = sim.apply_injuries([{"injury": r["player"], "until": r["until"]}], games, model, today)
+                x = info[0]
+                row |= {"n_games": x["n_games"], "win_before": x["win_before"], "win_after": x["win_after"],
+                        "xp_delta": x["xp_window_after"] - x["xp_window_before"]}
+            except sim.ScenarioError:
+                pass
+        out.append(row)
+    return pd.DataFrame(out[::-1], columns=EVENT_COLS)
+
+
 TEAM_COLS = ["team", "points_now", "points_scenario", "p_title_now", "p_title_scenario",
              "p_top6_now", "p_top6_scenario", "p_relegation_now", "p_relegation_scenario"]
 
@@ -118,6 +160,7 @@ def forecast(con, news: Path, items: list[dict], today: str) -> tuple[pd.DataFra
         effects = news_effects(con, news, games, model, today)
     except duckdb.Error:                          # uutistauluja ei ole (ennen load_news-ajoa)
         effects = pd.DataFrame(columns=EFFECT_COLS)
+    effects.attrs["history"] = event_history(news, games, model, today)
     if not items:
         return teams_df, games_df, effects, snap
     valid = []
@@ -154,7 +197,9 @@ def main(news: Path) -> int:
         con.close()
     con = duckdb.connect(db)
     try:
-        for name, df in (("challenger_teams", teams_df), ("challenger_games", games_df), ("news_effects", effects)):
+        history = effects.attrs.get("history", pd.DataFrame(columns=EVENT_COLS))
+        for name, df in (("challenger_teams", teams_df), ("challenger_games", games_df), ("news_effects", effects),
+                         ("challenger_events", history)):
             con.register("_df", df)
             con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df").fetchall()
             con.unregister("_df")

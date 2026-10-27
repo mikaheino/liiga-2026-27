@@ -7,7 +7,7 @@
 // ajon omalla avaimellaan. Selaimessa on vain 30 päivän istunto.
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { Absence, Candidate, NewsEffect, NewsItem, Player } from "@/lib/data";
+import type { Absence, Candidate, HistoryEvent, NewsEffect, NewsItem, Player } from "@/lib/data";
 import { fi, logo } from "@/lib/table";
 import { APPROVE_URL } from "@/lib/target";
 
@@ -31,10 +31,11 @@ type Unit = "ott" | "vko" | "kk" | "kausi";
 const UNITS: [Unit, string][] = [["ott", "ottelua"], ["vko", "viikkoa"], ["kk", "kuukautta"], ["kausi", "loppukausi"]];
 const MAX: Record<Exclude<Unit, "kausi">, number> = { ott: 60, vko: 30, kk: 7 };
 const NUMERALS: Record<string, number> = { yhden: 1, kahden: 2, kolmen: 3, neljän: 4, viiden: 5, kuuden: 6,
-  seitsemän: 7, kahdeksan: 8, yhdeksän: 9, kymmenen: 10 };
+  seitsemän: 7, kahdeksan: 8, yhdeksän: 9, kymmenen: 10, yksi: 1, kaksi: 2, kolme: 3, neljä: 4, viisi: 5, kuusi: 6 };
 const MONTHS = ["tammikuun", "helmikuun", "maaliskuun", "huhtikuun", "toukokuun", "kesäkuun",
   "heinäkuun", "elokuun", "syyskuun", "lokakuun", "marraskuun", "joulukuun"];
-const NUM = "(\\d+|yhden|kahden|kolmen|neljän|viiden|kuuden|seitsemän|kahdeksan|yhdeksän|kymmenen)";
+// Väli "2-4 viikkoa" -> suurempi (sama sääntö kuin challenger_season.py).
+const NUM = `(?:\\d+\\s*[-–]\\s*)?(\\d+|${Object.keys(NUMERALS).join("|")})`;
 
 // Otsikon arvaus: "kuuden ottelun pelikielto" -> 6 ott, "kahden viikon" -> 2 vko,
 // "kuukauden" -> 1 kk, "lokakuun sivussa" -> viikot kuun loppuun, "pitkään" -> kausi.
@@ -163,90 +164,180 @@ function Effect({ e }: { e: NewsEffect }) {
   );
 }
 
-function List({ items, candidates, absences, teams, roster, effects, builtAt }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[]; builtAt: string }) {
+const EDITABLE = /loukkaantuminen|paluu|pelikielto/;
+const NEEDS_DAYS = 21;
+const isBack = (t: string) => /palaa|paluu|kokoonpanoon|tervehty/i.test(t) && !/sivuun|sivussa|loukkaant/i.test(t);
+
+// Yksi uutinen: otsikon napautus avaa ingressin samaan näkymään (käyttäjä 27.10.:
+// "en pysty samaan aikaan kirjaamaan ja lukemaan uutista"); koko juttu erikseen.
+function Item({ it, open, onToggle, children }: { it: NewsItem; open: boolean; onToggle: () => void; children?: React.ReactNode }) {
+  return (
+    <article className={`nw-item ${open ? "open" : ""}`}>
+      <div className="nw-meta">
+        <span>{day(it.published || it.fetched)}</span>
+        {it.team.split(",").filter(Boolean).map((t) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={t} src={logo(t)} alt={t} width={16} height={16} />
+        ))}
+        <span>{it.source}</span>
+        {it.flags.split(";").filter((f) => FLAG_FI[f] && f !== "kokoonpano").map((f) => <i key={f} className={`nw-flag f-${f}`}>{FLAG_FI[f]}</i>)}
+      </div>
+      <button className="nw-title" onClick={onToggle} aria-expanded={open}>{it.title}</button>
+      {open && (
+        <div className="nw-body">
+          {it.summary ? <p>{it.summary}</p> : <p className="dim">Lähde ei anna ingressiä.</p>}
+          <a href={it.url} target="_blank" rel="noopener noreferrer">Avaa juttu ↗</a>
+        </div>
+      )}
+      {children}
+    </article>
+  );
+}
+
+function History({ events, items }: { events: HistoryEvent[]; items: NewsItem[] }) {
+  const title = new Map(items.map((i) => [i.url, i.title]));
+  if (!events.length) return <p className="dim">Ei vielä kirjauksia.</p>;
+  const what = (e: HistoryEvent) => e.kind === "out" ? `poissa ${label(e.games)} · ${fiDate(e.start)}–${fiDate(e.until)}`
+    : e.kind === "dismiss" ? "uutinen ohitettu" : `palasi ${fiDate(e.start)}`;
+  return (
+    <div className="nw-list">
+      {events.map((e) => (
+        <div key={e.approvedAt + e.player} className="hs-row">
+          <div className="nw-meta">
+            <span>{day(e.approvedAt)}</span>
+            {e.team && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo(e.team)} alt={e.team} width={16} height={16} />
+            )}
+            <i className={`nw-flag hs-${e.status.replace(/\s/g, "-")}`}>{e.status}</i>
+          </div>
+          <div className="hs-main"><b>{e.player || "—"}</b> {what(e)}</div>
+          {e.nGames != null && e.winBefore != null && (
+            <div className="nw-effect">Vaikutus jäljellä oleviin {e.nGames} otteluun: voitto {fi(100 * e.winBefore, 1)} → {fi(100 * e.winAfter!, 1)} %, odotetut pisteet {e.xp! < 0 ? "−" : "+"}{fi(Math.abs(e.xp!), 2)}</div>
+          )}
+          {e.url && e.url !== "kokoonpano" && title.get(e.url) && <a className="hs-src" href={e.url} target="_blank" rel="noopener noreferrer">{title.get(e.url)} ↗</a>}
+          {e.url === "kokoonpano" && <div className="hs-src">Pelaaja oli ottelun kokoonpanossa, joten haastaja lopetti poissaolon itse.</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function List({ items, candidates, absences, teams, roster, effects, events, builtAt }: {
+  items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[];
+  effects: NewsEffect[]; events: HistoryEvent[]; builtAt: string;
+}) {
   const sp = useSearchParams();
   const pick = new Set((sp.get("joukkue") ?? "").split(",").filter((t) => teams.includes(t)));
   const [session, setSession] = useState("");
   const [note, setNote] = useState("");
-  const [cat, setCat] = useState("olennaiset");
-  const [open, setOpen] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
   const [ret, setRet] = useState("");
   const [pending, setPending] = useState<Pending[]>([]);
+  const [tab, setTab] = useState<"input" | "news" | "history">("news");
+  const [cat, setCat] = useState("olennaiset");
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [other, setOther] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   useEffect(() => {
     const r = readSession(); setSession(r.session); setNote(r.note); setRet(location.href.split("#")[0]);
-    // Julkaistu data sisältää jo kirjauksen -> odotus pois.
-    const left = readPending().filter((p) => !absences.some((a) => a.url === p.url && a.player === p.player));
+    const left = readPending().filter((p) => !absences.some((a) => a.url === p.url && (a.player === p.player || a.kind === "dismiss")));
     try { localStorage.setItem(PENDING, JSON.stringify(left)); } catch { /* yksityinen ikkuna */ }
     setPending(left);
+    if (r.session) setTab("input");
   }, [absences]);
   const logout = () => { store(null); setSession(""); };
-  const editable = (flags: string) => /loukkaantuminen|paluu|pelikielto/.test(flags);
+  const toggle = (u: string) => setOpen((s) => { const n = new Set(s); if (n.has(u)) n.delete(u); else n.add(u); return n; });
 
+  // Kirjattavat (käyttäjä 27.10.: "relevantteja uutisia liikaa, kirjatut samassa"):
+  // loukkaantumis- ja pelikieltouutiset, joita ei ole kirjattu eikä ohitettu, enintään
+  // kolme viikkoa vanhat; paluu-uutinen vain, jos se koskee voimassa olevaa kirjausta.
+  const handled = new Set([...absences.map((a) => a.url), ...pending.map((p) => p.url), ...dismissed]);
+  const since = new Date(Date.now() - NEEDS_DAYS * 864e5).toISOString();
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
+  const state = new Map<string, Absence>();
+  for (const a of absences) if (a.kind === "out" || a.kind === "back") state.set(a.player, a);
+  const out = new Set([...state.values()].filter((a) => a.kind === "out" && a.until > today).map((a) => a.player));
+  const relevant = (it: NewsItem) => /loukkaantuminen|pelikielto/.test(it.flags)
+    || (/paluu/.test(it.flags) && candidates.some((c) => c.url === it.url && out.has(c.player)));
+  const needs = items.filter((it) => relevant(it) && !handled.has(it.url) && (it.published || it.fetched) >= since);
   const rx = (CATS.find((c) => c[0] === cat) ?? CATS[0])[2];
-  const shown = items.filter((it) => (!pick.size || it.team.split(",").some((t) => pick.has(t))) && (cat === "kaikki" || rx.test(it.flags)));
+  const byTeam = (it: NewsItem) => !pick.size || it.team.split(",").some((t) => pick.has(t));
+  const shown = (tab === "input" ? needs : items.filter((it) => cat === "kaikki" || rx.test(it.flags))).filter(byTeam);
+  const dismiss = async (u: string) => {
+    const r = await dispatch(session, { url: u, player: "", team: "", kind: "dismiss", duration: "1ott" });
+    if (r === "ok") { addPending({ url: u, player: "", at: Date.now() }); setDismissed((s) => new Set(s).add(u)); } else setNote(r);
+  };
+
   return (
     <>
-      <nav className="nw-cats" aria-label="Uutisluokka">
-        {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
+      <nav className="tabs nw-tabs" aria-label="Uutisnäkymä">
+        <a className={tab === "input" ? "on" : ""} onClick={() => setTab("input")}>Kirjattavat{needs.length ? ` (${needs.length})` : ""}</a>
+        <a className={tab === "news" ? "on" : ""} onClick={() => setTab("news")}>Uutiset</a>
+        <a className={tab === "history" ? "on" : ""} onClick={() => setTab("history")}>Historia</a>
       </nav>
-      <div className="nw-tools">
-        <span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span>
-        <span className="dim">sivu päivitetty {builtAt}</span>
-      </div>
       {note && <div className="nw-err">{note}</div>}
-      <div className="nw-list">
-        {shown.map((it) => {
-          const cands = candidates.filter((c) => c.url === it.url);
-          const done = absences.filter((a) => a.url === it.url);
-          return (
-            <article key={it.url} className="nw-item">
-              <div className="nw-meta">
-                <span>{day(it.published || it.fetched)}</span>
-                {it.team.split(",").filter(Boolean).map((t) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={t} src={logo(t)} alt={t} width={16} height={16} />
+      {tab === "history" ? <History events={events} items={items} /> : (<>
+        {tab === "news" && (
+          <nav className="nw-cats" aria-label="Uutisluokka">
+            {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
+          </nav>
+        )}
+        <div className="nw-tools">
+          <span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span>
+          <span className="dim">sivu päivitetty {builtAt}</span>
+        </div>
+        {tab === "input" && !session && APPROVE_URL && <a className="btn sm nw-login" href={loginHref(ret)}>Kirjaudu antaaksesi poissaolot</a>}
+        {tab === "input" && shown.length === 0 && <p className="dim">Ei kirjattavaa: kaikki loukkaantumis-, paluu- ja pelikieltouutiset on käsitelty.</p>}
+        <div className="nw-list">
+          {shown.map((it) => {
+            const cands = candidates.filter((c) => c.url === it.url);
+            const done = absences.filter((a) => a.url === it.url && a.kind !== "dismiss");
+            const text = `${it.title} ${it.summary}`;
+            const form = tab === "input" && session;
+            return (
+              <Item key={it.url} it={it} open={tab === "input" || open.has(it.url)} onToggle={() => toggle(it.url)}>
+                {done.map((a) => (
+                  <div key={a.player + a.start} className="nw-done">✓ {a.player}: {a.kind === "out"
+                    ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}</div>
                 ))}
-                <span>{it.source}</span>
-                {it.flags.split(";").filter((f) => FLAG_FI[f] && f !== "kokoonpano").map((f) => <i key={f} className={`nw-flag f-${f}`}>{FLAG_FI[f]}</i>)}
-              </div>
-              <a className="nw-title" href={it.url} target="_blank" rel="noopener noreferrer">{it.title}</a>
-              {done.map((a) => (
-                <div key={a.player + a.start} className="nw-done">✓ {a.player}: {a.kind === "out"
-                  ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}</div>
-              ))}
-              {pending.filter((p) => p.url === it.url).map((p) => (
-                <div key={p.player + p.at} className="nw-sent">⏳ {p.player}: kirjattu klo {clock(p.at)}, odottaa julkaisua</div>
-              ))}
-              {effects.filter((e) => e.url === it.url).map((e) => <Effect key={e.player} e={e} />)}
-              {/siirto/.test(it.flags) && !/loukkaantuminen|paluu|pelikielto/.test(it.flags) && (
-                <div className="nw-roster">{cands.length
-                  ? `Rosterissa: ${cands.map((c) => `${c.player} (${c.team})`).join(", ")}`
-                  : "Ei rosterissa: uusi nimi? Tee pelaajalisäys."}</div>
-              )}
-              {!session && APPROVE_URL && editable(it.flags) && <a className="nw-other" href={loginHref(ret)}>Kirjaudu antaaksesi poissaolon ▸</a>}
-              {session && editable(it.flags) && cands.filter((c) => !done.some((a) => a.player === c.player)).map((c) => (
-                <AbsenceForm key={c.player} url={it.url} title={it.title} preset={c} teams={teams} roster={roster} session={session}
-                  allowBack={/palaa|paluu|kokoonpanoon|tervehty/i.test(it.title) && !/sivuun|sivussa|loukkaant/i.test(it.title)} />
-              ))}
-              {session && (open === it.url
-                ? <AbsenceForm url={it.url} title={it.title} teams={it.team.split(",").filter(Boolean)} roster={roster} session={session} allowBack />
-                : <button className="nw-other" onClick={() => setOpen(it.url)}>+ {cands.length ? "muu pelaaja" : "kirjaa poissaolo"}</button>)}
-            </article>
-          );
-        })}
-      </div>
-      {session && (<>
-        <details className="nw-settings">
-          <summary>Poissaolo ilman uutista</summary>
-          <p>Tieto muualta (esim. lehden juttu, jota keräin ei lue): valitse pelaaja ja kesto.</p>
-          <AbsenceForm url="" title="" teams={teams} roster={roster} session={session} allowBack />
-        </details>
-        <button className="nw-other nw-logout" onClick={logout}>Kirjaudu ulos</button>
+                {pending.filter((p) => p.url === it.url).map((p) => (
+                  <div key={p.player + p.at} className="nw-sent">⏳ {p.player || "ohitus"}: kirjattu klo {clock(p.at)}, odottaa julkaisua</div>
+                ))}
+                {effects.filter((e) => e.url === it.url).map((e) => <Effect key={e.player} e={e} />)}
+                {/siirto/.test(it.flags) && !EDITABLE.test(it.flags) && (
+                  <div className="nw-roster">{cands.length
+                    ? `Rosterissa: ${cands.map((c) => `${c.player} (${c.team})`).join(", ")}`
+                    : "Ei rosterissa: uusi nimi? Tee pelaajalisäys."}</div>
+                )}
+                {form && cands.map((c) => (
+                  <AbsenceForm key={c.player} url={it.url} title={text} preset={c} teams={teams} roster={roster} session={session} allowBack={isBack(it.title)} />
+                ))}
+                {form && (other === it.url
+                  ? <AbsenceForm url={it.url} title={text} teams={it.team.split(",").filter(Boolean)} roster={roster} session={session} allowBack />
+                  : <span className="nw-actions">
+                      <button className="nw-other" onClick={() => setOther(it.url)}>+ {cands.length ? "muu pelaaja" : "valitse pelaaja"}</button>
+                      <button className="nw-other nw-skip" onClick={() => dismiss(it.url)}>Ohita – ei vaikuta</button>
+                    </span>)}
+              </Item>
+            );
+          })}
+        </div>
+        {tab === "input" && session && (<>
+          <details className="nw-settings">
+            <summary>Poissaolo ilman uutista</summary>
+            <p>Tieto muualta (esim. lehden juttu, jota keräin ei lue): valitse pelaaja ja kesto.</p>
+            <AbsenceForm url="" title="" teams={teams} roster={roster} session={session} allowBack />
+          </details>
+          <button className="nw-other nw-logout" onClick={logout}>Kirjaudu ulos</button>
+        </>)}
       </>)}
     </>
   );
 }
 
-export default function NewsList(props: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[]; builtAt: string }) {
+export default function NewsList(props: {
+  items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[];
+  effects: NewsEffect[]; events: HistoryEvent[]; builtAt: string;
+}) {
   return <Suspense><List {...props} /></Suspense>;
 }

@@ -88,10 +88,12 @@ def validate(url: str, player: str, team: str, kind: str, duration: str, urls: s
     errors = []
     if url and url not in urls:              # tyhjä = kirjattu ilman uutista (tieto muualta)
         errors.append("uutista ei löydy news_items.csv:stä")
+    if kind == "dismiss":                    # ohitus (EI OK): uutinen pakollinen, pelaaja ei
+        return errors + ([] if url else ["ohitus tarvitsee uutisen"])
     if (player, team) not in _roster():
         errors.append("pelaajaa ei löydy joukkueen rosterista")
     if kind not in ("out", "back"):
-        errors.append("KIND on out tai back")
+        errors.append("KIND on out, back tai dismiss")
     if kind == "out" and not valid_duration(duration):
         errors.append("DURATION on esim. 6ott, 3vko, 2kk tai kausi")
     return errors
@@ -102,6 +104,8 @@ def record(folder: Path, url: str, player: str, team: str, kind: str, duration: 
     new = {"approved_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "url": url, "player": player,
            "team": team, "kind": kind, "games": duration if kind == "out" else "", "start": today,
            "until": until_for(duration, team, today) if kind == "out" else today}
+    if kind == "dismiss":
+        new.update(player=player or "", team=team or "", until="")
     absences.write(folder, new)
     return new
 
@@ -116,7 +120,8 @@ def main(folder: Path) -> int:
         return 1
     today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
     r = record(folder, env["NEWS_URL"], env["PLAYER"], env["TEAM"], env["KIND"], env["DURATION"], today)
-    print(f"kirjattu: {r['player']} ({r['team']}) " + (f"poissa {r['start']} – {r['until']}" if r["kind"] == "out" else f"palaa {today}"))
+    what = {"out": f"poissa {r['start']} – {r['until']}", "back": f"palaa {today}", "dismiss": "uutinen ohitettu"}[r["kind"]]
+    print(f"kirjattu: {r['player'] or '-'} ({r['team'] or '-'}) {what}")
     return 0
 
 

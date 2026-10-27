@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import html
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -29,7 +30,18 @@ from urllib.parse import urljoin
 import requests
 
 UA = "liiga-predict/0.1 (personal hobby project)"
-FIELDS = ["fetched_at", "published", "source", "team", "flags", "title", "url"]
+FIELDS = ["fetched_at", "published", "source", "team", "flags", "title", "url", "summary"]
+SUMMARY_MAX = 400
+
+
+def summary_of(text: str) -> str:
+    """Syötteen ingressi lyhyenä (käyttäjä 27.10.: uutisen pitää voida lukea ja
+    kirjata samassa näkymässä). Vain lähteet ilman AI-kieltoa (Yle, seurat), ja
+    vain alku kuten syötteenlukijassa; koko artikkelia ei tallenneta."""
+    plain = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text or "")).split())
+    if len(plain) <= SUMMARY_MAX:
+        return plain
+    return plain[:SUMMARY_MAX].rsplit(" ", 1)[0] + " …"
 
 # (lähde, joukkue, muoto, osoite). Joukkue None = päätellään Ylen kategorioista.
 # Tarkistettu 27.10.: ei AI-kieltoja robots.txt:ssä. Puuttuu: Tappara, Pelicans,
@@ -61,7 +73,9 @@ YLE_ALIASES = {"Kiekko-Espoo": "K-Espoo", "Vaasan Sport": "Sport", "Porin Ässä
 # vaihe 0 mittaa, montako osumaa tulee ja montako niistä on oikeasti olennaisia.
 FLAGS = {
     "loukkaantuminen": r"loukkaant|sivussa|vamma|leikkau|kuntoutu|sairasluet",
-    "paluu": r"palaa|paluu|tervehty",
+    # Pelaajan paluu, ei kotiinpaluuta eikä "perhepeli tekee paluun" (27.10.).
+    "paluu": r"palaa(?:vat)? (?:kokoonpano|kaukalo|peli|kentäl|harjoitu|riveihin)|paluu (?:kokoonpano|kaukalo|peli)"
+             r"|tervehty|takaisin kokoonpano|palaa\b(?!.*(?:kotiin|kotikentälle))",
     # Siirrot ja hankinnat (käyttäjä 27.10.: tieto pelaajalisäyksiä varten); seurojen
     # tapa: "Hyökkääjä X Kouvolaan", "Y Stadiin!", "vahvistamaan", "kiinnitti".
     "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim"
@@ -92,12 +106,14 @@ def _iso(text: str | None) -> str:
 # Siirtolippu ei koske otteluohjelmaa eikä maajoukkueita ("kotiottelua siirtyy uuteen
 # ajankohtaan", "Floris Slovakian U20-maajoukkueeseen").
 NOT_TRANSFER = r"otteluohjelm|ajankoh|maajoukku|ottelusiir|pelattavaksi"
+NOT_RETURN = r"kotiinpaluu|tekee paluun|perhepeli|paluutaan|vieraskiertuee"
 
 
 def flags_of(text: str) -> str:
     low = text.lower()
     return ";".join(k for k, rx in FLAGS.items()
-                    if re.search(rx, low) and not (k == "siirto" and re.search(NOT_TRANSFER, low)))
+                    if re.search(rx, low) and not (k == "siirto" and re.search(NOT_TRANSFER, low))
+                    and not (k == "paluu" and re.search(NOT_RETURN, low)))
 
 
 def parse_rss(data: bytes) -> list[dict]:
@@ -159,7 +175,9 @@ def yle_teams(tags: list[str]) -> list[str]:
     return teams
 
 
-def collect(seen: set[str], now: str) -> tuple[list[dict], dict[str, str]]:
+def collect(seen: set[str], now: str, summaries: dict[str, str]) -> tuple[list[dict], dict[str, str]]:
+    """Uudet jutut; `summaries` täyttyy kaikkien haettujen juttujen ingresseillä
+    (myös jo nähtyjen, jotta vanhoille riveille saadaan ingressi jälkikäteen)."""
     rows, status = [], {}
     for source, team, kind, url in SOURCES:
         try:
@@ -170,6 +188,8 @@ def collect(seen: set[str], now: str) -> tuple[list[dict], dict[str, str]]:
             continue
         new = 0
         for it in items:
+            if it["url"] and it["text"]:
+                summaries[it["url"]] = summary_of(it["text"])
             if not it["url"] or it["url"] in seen:
                 continue
             if team is None:
@@ -181,7 +201,8 @@ def collect(seen: set[str], now: str) -> tuple[list[dict], dict[str, str]]:
                 row_team = team
             seen.add(it["url"])
             rows.append({"fetched_at": now, "published": it["published"], "source": source, "team": row_team,
-                         "flags": flags_of(f"{it['title']} {it['text']}"), "title": it["title"], "url": it["url"]})
+                         "flags": flags_of(f"{it['title']} {it['text']}"), "title": it["title"], "url": it["url"],
+                         "summary": summary_of(it["text"])})
             new += 1
         status[source] = f"{len(items)} juttua, {new} uutta"
     return rows, status
@@ -197,9 +218,15 @@ def main(out_dir: Path) -> int:
         keep = set(filter(None, r["flags"].split(";"))) | set(filter(None, flags_of(r["title"]).split(";")))
         if re.search(NOT_TRANSFER, r["title"].lower()):
             keep.discard("siirto")
+        if re.search(NOT_RETURN, r["title"].lower()) or "paluu" not in flags_of(f"{r['title']} {r.get('summary', '')}"):
+            keep.discard("paluu")
         r["flags"] = ";".join(k for k in FLAGS if k in keep)
     now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
-    rows, status = collect({r["url"] for r in old}, now)
+    summaries: dict[str, str] = {}
+    rows, status = collect({r["url"] for r in old}, now, summaries)
+    for r in old:
+        if not r.get("summary"):
+            r["summary"] = summaries.get(r["url"], "")
     with path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()

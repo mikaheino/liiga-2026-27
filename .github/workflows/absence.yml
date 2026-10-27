@@ -15,16 +15,18 @@ on:
         required: false
         default: ""
       player:
-        description: Pelaaja rosterista
-        required: true
+        description: Pelaaja rosterista (ohituksessa voi olla tyhjä)
+        required: false
+        default: ""
       team:
         description: Joukkue
-        required: true
+        required: false
+        default: ""
       kind:
-        description: out = poissa, back = palaa
+        description: out = poissa, back = palaa, dismiss = uutinen ohitettu (EI OK)
         required: true
         type: choice
-        options: [out, back]
+        options: [out, back, dismiss]
       duration:
         description: Kesto, esim. 6ott, 3vko, 2kk tai kausi (out); approve.py validoi
         required: false
@@ -59,7 +61,7 @@ jobs:
           cd .news-data
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "OK: $PLAYER ($KIND)"
+            commit -q -m "OK: ${PLAYER:-uutinen} ($KIND)"
           ../.github/scripts/push-retry.sh news-data
       - name: Uudelleenlaskenta
         env:
