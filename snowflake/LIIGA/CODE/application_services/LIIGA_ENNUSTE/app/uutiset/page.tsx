@@ -61,7 +61,8 @@ export default async function Page() {
         </>)}
       </section>
       <div className="label sub">Uutiset</div>
-      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} roster={news.roster} effects={news.effects} />
+      <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} roster={news.roster} effects={news.effects}
+        builtAt={new Date().toLocaleString("fi-FI", { timeZone: "Europe/Helsinki", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })} />
     </Shell>
   );
 }

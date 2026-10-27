@@ -60,6 +60,19 @@ const label = (d: string) => (d === "kausi" ? "loppukauden" : d.replace(/^(\d+)(
 const day = (iso: string) => (iso ? new Date(iso).toLocaleDateString("fi-FI", { timeZone: "Europe/Helsinki", day: "numeric", month: "numeric" }) : "");
 const fiDate = (d: string) => `${Number(d.slice(8, 10))}.${Number(d.slice(5, 7))}.`;
 
+// Lähetetyt mutta vielä julkaisemattomat kirjaukset (käyttäjä 27.10.: "en tiedä
+// menikö muutos sisään"): näkyvät uutisessa päivityksen yli, kunnes sivun data
+// sisältää ne tai tunti on kulunut. Pages-sivu on selaimen välimuistissa 10 min.
+const PENDING = "liiga-odottaa";
+type Pending = { url: string; player: string; at: number };
+function readPending(): Pending[] {
+  try { return (JSON.parse(localStorage.getItem(PENDING) ?? "[]") as Pending[]).filter((p) => Date.now() - p.at < 3600e3); } catch { return []; }
+}
+function addPending(p: Pending) {
+  try { localStorage.setItem(PENDING, JSON.stringify([...readPending(), p])); } catch { /* yksityinen ikkuna */ }
+}
+const clock = (ms: number) => new Date(ms).toLocaleTimeString("fi-FI", { timeZone: "Europe/Helsinki", hour: "2-digit", minute: "2-digit" });
+
 const store = (v: string | null) => { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch { /* yksityinen ikkuna */ } };
 
 // Istunto: kirjautumisen jälkeen palvelin palauttaa sivulle #istunto=...; talteen
@@ -103,9 +116,11 @@ function AbsenceForm({ url, title, preset, teams, roster, session, allowBack }: 
   const duration = unit === "kausi" ? "kausi" : `${Math.min(Math.max(n, 1), max)}${unit}`;
   const send = async (kind: "out" | "back") => {
     setState("busy");
-    setState(await dispatch(session, { url, player, team, kind, duration: kind === "out" ? duration : "1ott" }));
+    const r = await dispatch(session, { url, player, team, kind, duration: kind === "out" ? duration : "1ott" });
+    if (r === "ok") addPending({ url, player, at: Date.now() });
+    setState(r);
   };
-  if (state === "ok") return <div className="nw-sent">✓ Lähetetty: {player}. Sivu päivittyy noin 3 minuutissa.</div>;
+  if (state === "ok") return <div className="nw-sent">⏳ Kirjattu klo {clock(Date.now())}: {player}. Sivu päivittyy noin 3–4 minuutissa; päivitä sivu sen jälkeen.</div>;
   return (
     <div className="nw-approve">
       {preset ? <span className="nw-player">{preset.player} <small>{preset.team}</small></span> : (
@@ -148,7 +163,7 @@ function Effect({ e }: { e: NewsEffect }) {
   );
 }
 
-function List({ items, candidates, absences, teams, roster, effects }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[] }) {
+function List({ items, candidates, absences, teams, roster, effects, builtAt }: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[]; builtAt: string }) {
   const sp = useSearchParams();
   const pick = new Set((sp.get("joukkue") ?? "").split(",").filter((t) => teams.includes(t)));
   const [session, setSession] = useState("");
@@ -156,7 +171,14 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
   const [cat, setCat] = useState("olennaiset");
   const [open, setOpen] = useState<string | null>(null);      // uutinen, jolle valitaan pelaaja itse
   const [ret, setRet] = useState("");
-  useEffect(() => { const r = readSession(); setSession(r.session); setNote(r.note); setRet(location.href.split("#")[0]); }, []);
+  const [pending, setPending] = useState<Pending[]>([]);
+  useEffect(() => {
+    const r = readSession(); setSession(r.session); setNote(r.note); setRet(location.href.split("#")[0]);
+    // Julkaistu data sisältää jo kirjauksen -> odotus pois.
+    const left = readPending().filter((p) => !absences.some((a) => a.url === p.url && a.player === p.player));
+    try { localStorage.setItem(PENDING, JSON.stringify(left)); } catch { /* yksityinen ikkuna */ }
+    setPending(left);
+  }, [absences]);
   const logout = () => { store(null); setSession(""); };
   const editable = (flags: string) => /loukkaantuminen|paluu|pelikielto/.test(flags);
 
@@ -167,7 +189,10 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
       <nav className="nw-cats" aria-label="Uutisluokka">
         {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
       </nav>
-      <div className="nw-tools"><span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span></div>
+      <div className="nw-tools">
+        <span className="dim">{shown.length} juttua{pick.size ? ` · ${[...pick].join(", ")}` : ""}</span>
+        <span className="dim">sivu päivitetty {builtAt}</span>
+      </div>
       {note && <div className="nw-err">{note}</div>}
       <div className="nw-list">
         {shown.map((it) => {
@@ -188,6 +213,9 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
               {done.map((a) => (
                 <div key={a.player + a.start} className="nw-done">✓ {a.player}: {a.kind === "out"
                   ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}</div>
+              ))}
+              {pending.filter((p) => p.url === it.url).map((p) => (
+                <div key={p.player + p.at} className="nw-sent">⏳ {p.player}: kirjattu klo {clock(p.at)}, odottaa julkaisua</div>
               ))}
               {effects.filter((e) => e.url === it.url).map((e) => <Effect key={e.player} e={e} />)}
               {/siirto/.test(it.flags) && !/loukkaantuminen|paluu|pelikielto/.test(it.flags) && (
@@ -219,6 +247,6 @@ function List({ items, candidates, absences, teams, roster, effects }: { items: 
   );
 }
 
-export default function NewsList(props: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[] }) {
+export default function NewsList(props: { items: NewsItem[]; candidates: Candidate[]; absences: Absence[]; teams: string[]; roster: Player[]; effects: NewsEffect[]; builtAt: string }) {
   return <Suspense><List {...props} /></Suspense>;
 }
