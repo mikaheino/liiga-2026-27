@@ -208,19 +208,24 @@ def collect(seen: set[str], now: str, summaries: dict[str, str]) -> tuple[list[d
     return rows, status
 
 
-def main(out_dir: Path) -> int:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "news_items.csv"
-    old = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
-    # Korjatut säännöt koskevat myös vanhoja rivejä: otsikosta lasketut liput
-    # lisätään entisiin (ingressiä ei ole tallessa, joten sen liput säilyvät).
-    for r in old:
+def reflag(rows: list[dict]) -> None:
+    """Korjatut säännöt koskevat myös vanhoja rivejä: otsikosta lasketut liput
+    lisätään entisiin (ingressin liput säilyvät); poissulkevat säännöt (siirto,
+    paluu) poistavat lipun myös vanhoilta."""
+    for r in rows:
         keep = set(filter(None, r["flags"].split(";"))) | set(filter(None, flags_of(r["title"]).split(";")))
         if re.search(NOT_TRANSFER, r["title"].lower()):
             keep.discard("siirto")
         if re.search(NOT_RETURN, r["title"].lower()) or "paluu" not in flags_of(f"{r['title']} {r.get('summary', '')}"):
             keep.discard("paluu")
         r["flags"] = ";".join(k for k in FLAGS if k in keep)
+
+
+def main(out_dir: Path) -> int:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "news_items.csv"
+    old = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
+    reflag(old)
     now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     summaries: dict[str, str] = {}
     rows, status = collect({r["url"] for r in old}, now, summaries)
