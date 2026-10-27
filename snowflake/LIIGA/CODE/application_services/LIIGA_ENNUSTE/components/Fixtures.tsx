@@ -52,9 +52,9 @@ export function Months({ months, chosen, href }: { months: string[]; chosen: str
 
 export function FixtureList({ fixtures, highlight }: { fixtures: Fixture[]; highlight: Set<string> }) {
   return (
-    <Grid label="Ottelut" cols={[{ h: "Pvm", w: "56px", num: true }, { h: "Ottelu", w: "minmax(200px, 1.6fr)" },
-      { h: "Koti", w: "minmax(90px, 1fr)" }, { h: "Vieras", w: "minmax(90px, 1fr)" }, { h: "JA", w: "52px", num: true, sm: true },
-      { h: "Tulos", w: "70px", num: true }, { h: "Voittajalle", w: "100px", num: true }]}
+    <Grid label="Ottelut" cols={[{ h: "Pvm", w: "56px", wsm: "40px", num: true }, { h: "Ottelu", w: "minmax(200px, 1.6fr)", wsm: "minmax(0, 1fr)" },
+      { h: "Koti", w: "minmax(90px, 1fr)", wsm: "52px" }, { h: "Vieras", w: "minmax(90px, 1fr)", sm: true }, { h: "JA", w: "52px", num: true, sm: true },
+      { h: "Tulos", w: "70px", wsm: "46px", num: true }, { h: "Voittajalle", w: "100px", wsm: "60px", num: true }]}
       rows={fixtures.map((f) => {
         const p = f.pHome == null ? null : f.pHome * 100;
         return {

@@ -2,8 +2,10 @@
 // Ohjaimet: ikkuna, korostetut joukkueet ja kytkimet. Jokainen valinta päivittää
 // URL:n heti (router.replace), joten näkymä on aina jaettava linkki -- sama
 // muoto jonka agentti antaa: ?joukkue=KooKoo,Jokerit&ikkuna=10&xg=1&kayra=0
+// Puhelimessa (27.10.) paneeli on kiinni ja sen tilalla yksi rivi, joka kertoo
+// voimassa olevat valinnat: muuten valinnat veivät koko ensimmäisen ruudun.
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { logo } from "@/lib/table";
 
 export default function Controls({ teams }: { teams: string[] }) {
@@ -11,6 +13,7 @@ export default function Controls({ teams }: { teams: string[] }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
 
   const window = sp.get("ikkuna") ?? "10";
   const picked = new Set((sp.get("joukkue") ?? "").split(",").filter(Boolean));
@@ -29,8 +32,17 @@ export default function Controls({ teams }: { teams: string[] }) {
     set("joukkue", [...s].join(","));
   };
 
+  const names = [...picked].filter((t) => teams.includes(t));
+  const summary = [`ikkuna ${window}`, names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", "), xg ? "xG" : ""]
+    .filter(Boolean).join(" · ");
+
   return (
-    <div className={`ctl ${pending ? "is-pending" : ""}`}>
+    <div className={`ctl ${pending ? "is-pending" : ""} ${open ? "open" : ""}`}>
+      <button className="ctl-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="ctl-label">Valinnat</span>
+        <span className="ctl-sum">{summary}</span>
+        <span aria-hidden>{open ? "▴" : "▾"}</span>
+      </button>
       <div className="ctl-group">
         <div className="ctl-label">Muotoikkuna</div>
         <div className="seg" role="radiogroup" aria-label="Muotoikkuna">

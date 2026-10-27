@@ -31,7 +31,7 @@ export default function Season({ played, total, nextDate, nextGames }: {
         <div className="sh-next">
           <div className="sh-next-k"><span className="blink">▶</span> Seuraava pelipäivä</div>
           <div className="sh-next-d">{day}</div>
-          <div className="sh-next-s">{nextGames} ottelua</div>
+          <div className="sh-next-s">{nextGames} {nextGames === 1 ? "ottelu" : "ottelua"}</div>
         </div>
       )}
     </section>

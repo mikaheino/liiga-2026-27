@@ -591,3 +591,115 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 /* Striimattava vastaus: kursori lopussa kertoo että teksti on vielä tulossa. */
 .msg.streaming > div > :last-child::after { content: "▍"; margin-left: 2px; color: var(--gold-hi); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* =========================================================================
+   Puhelin (27.10., käyttäjä: "hyvä mobiilikäyttöliittymä"; mitattu iPhone 13
+   -emulaatiolla 390 px). Pääkäyttäjä lukee sovellusta puhelimella: alavalikko,
+   kokoontaitettavat valinnat ja taulukot, jotka mahtuvat ruutuun ilman
+   sivuttaisvieritystä.
+   ========================================================================= */
+.g .tr { grid-template-columns: var(--cols); }
+.ctl-toggle { display: none; }
+.bnav { display: none; }
+
+@media (max-width: 860px) {
+  /* Alavalikko ja tila sen alla; kotipalkki ja lovi väistetään. */
+  .bnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); background: rgba(5,4,3,.94); backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line-2); }
+  .bnav a { display: grid; justify-items: center; gap: 3px; padding: 7px 0 5px; border-radius: 10px; color: var(--muted); text-decoration: none;
+    font: 400 9px var(--pixel); letter-spacing: .04em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; }
+  .bnav a.on { color: var(--gold-hi); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2), 2px 2px 0 var(--gold-dim); }
+  .bnav svg { width: 22px; height: 22px; }
+  body { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .top { padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+  .main { padding: 18px 16px 28px; }
+  .crumb { margin: 0 0 16px; }
+
+  /* Agentin nappi alavalikon yläpuolelle, keskustelu koko leveydelle. */
+  .chat-fab { right: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); padding: 9px 12px; font-size: 10.5px; }
+  .chat { left: 8px; right: 8px; width: auto; bottom: calc(126px + env(safe-area-inset-bottom)); height: calc(100dvh - 210px); }
+  .mouho-frame { height: calc(100dvh - 60px - 66px - env(safe-area-inset-bottom)); }
+
+  /* Valinnat: yksi rivi, avautuu napautuksesta. */
+  .rail { padding: 0 16px; }
+  .rail-foot { display: none; }
+  .ctl { gap: 18px; }
+  .ctl-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border: 0; background: none; cursor: pointer; text-align: left; }
+  .ctl-toggle .ctl-label { margin: 0; color: var(--gold); }
+  .ctl-sum { flex: 1; min-width: 0; font: 12px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ctl:not(.open) > .ctl-group { display: none; }
+  .ctl.open { padding-bottom: 18px; }
+
+  /* Kauden tilanne tiiviinä: luku ja seuraava pelipäivä rinnakkain, palkki alla. */
+  .season-hero { grid-template-columns: minmax(0, 1fr) auto; gap: 14px 12px; padding: 16px; margin-bottom: 22px; align-items: start; }
+  .sh-main .eyebrow { display: none; }
+  .sh-big { margin-top: 0; gap: 10px; } .sh-num { font-size: 54px; } .sh-unit { font-size: 11px; }
+  .sh-sub { margin-top: 6px; font-size: 12px; }
+  .sh-track { grid-column: 1 / -1; padding-bottom: 0; } .sh-ticks, .sh-scale { display: none; }
+  .sh-next { text-align: right; } .sh-next-k { font-size: 9px; } .sh-next-d { margin-top: 6px; font-size: 16px; } .sh-next-s { font-size: 12px; }
+
+  /* Sijaintijakauma koko leveydelle: 17 sijaa väriraitana ilman lukuja (luvut
+     joukkuesivulla), yksi rajasarake (+pisteet todennäköiseen rajaan). */
+  .heat { overflow: hidden; }
+  .heat .hr, .heat.with-need .hr, .heat.with-need2 .hr { min-width: 0; grid-template-columns: 98px repeat(17, minmax(0, 1fr)) 42px; }
+  .heat .hr > .hn + .hn { display: none; }
+  .hrank { display: none; }
+  .ht { gap: 6px; padding: 0 4px 0 8px; min-height: 30px; } .ht img { width: 16px; height: 16px; } .ht .name { font-size: 12.5px; }
+  .hc { min-height: 30px; font-size: 0; border-left-color: rgba(0,0,0,.18); }
+  .hh .hc { font-size: 8px; letter-spacing: 0; }
+  /* Otsikkoon vain rajasijat (1, 4, 6, 10, 12, 14, 17): kaikki 17 eivät mahdu. */
+  .hh .hc:not(:nth-child(2)):not(:nth-child(5)):not(:nth-child(7)):not(:nth-child(11)):not(:nth-child(13)):not(:nth-child(15)):not(:nth-child(18)) { font-size: 0; }
+  .hn, .hp { padding: 0 6px 0 0; border-left: 0; } .hn b, .hp b { font-size: 12px; } .hn span, .hp span { display: none; }
+  .hh .hn span { display: block; font-size: 7px; }
+  .hr.go .ht::before { content: none; }
+  .line-note { gap: 4px 10px; font-size: 10.5px; }
+  .doors { gap: 10px; margin-top: 22px; } .door { padding: 14px 14px 12px; } .door-v { font-size: 16px; } .door-go { right: 12px; top: 12px; }
+
+  /* Välilehdet vierivät omassa rivissään, sivu ei. */
+  .tabs { width: auto; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a { flex: none; white-space: nowrap; padding: 7px 10px; font-size: 10.5px; }
+  .kpis { gap: 8px; margin-bottom: 20px; }
+
+  /* Sarjataulukko: #, joukkue, O, viisi viimeistä, pisteet. */
+  .tr, .tr.with-xg, .tr.no-spark, .tr.with-xg.no-spark { grid-template-columns: 26px minmax(0, 1fr) 22px 90px 30px; gap: 0 6px; padding-right: 10px; }
+  .team { gap: 7px; } .team img { width: 20px; height: 20px; } .name { font-size: 13.5px; }
+  .form { gap: 2px; } .tr .form .res { width: 16px; height: 18px; font-size: 9px; border-radius: 4px; }
+  .pts .bar { display: none; } .pts b { font-size: 14px; }
+  .tbl:not(.g) .th > :last-child { justify-self: end; white-space: nowrap; }
+
+  /* Yhteinen taulukko: puhelimen sarakepohja (Grid.tsx: --cols-sm). */
+  .g .tr { grid-template-columns: var(--cols-sm); gap: 0 6px; padding-right: 8px; }
+  .g .tr > div:first-child:not(:has(> .rank-n)) { padding-left: 10px; }
+  .g .match { flex-direction: column; align-items: flex-start; gap: 2px; } .g .match .dash { display: none; }
+  .g .match .name { font-size: 12.5px; } .g .match img { width: 16px; height: 16px; }
+  .g .tr > .num b { white-space: nowrap; font-size: 12px; } .g .tr > .num .dim { font-size: 11.5px; }
+  .g .th > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .verdict { padding: 2px 4px; font-size: 10.5px; white-space: nowrap; }
+  .pbar span { left: 5px; font-size: 10.5px; }
+
+  /* Voittaja: piilotettu Kerätty-sarake ei saa siirtää palkkia väärään sarakkeeseen. */
+  .race-r { grid-template-columns: 26px minmax(0, 1fr) minmax(92px, 1.2fr) 58px; gap: 0 8px; }
+  .race-r > :nth-child(3) { display: none; }
+  .split { height: 20px; } .split span { font-size: 11px; right: 6px; }
+  .tag { padding: 2px 6px; font-size: 11.5px; white-space: nowrap; } .race-r .num { white-space: nowrap; }
+
+  /* Ennusteen liike kahdessa sarakkeessa, joukkuesivulla yksi iso. */
+  .multiples { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .multiples.big { grid-template-columns: 1fr; }
+  .panel { padding: 8px 10px 6px; } .panel figcaption .name { font-size: 12px; }
+
+  /* Joukkuesivu. */
+  .team-hero { gap: 14px; padding: 18px 16px; }
+  .team-id h1 { font-size: 34px; } .team-logo { width: 64px; height: 64px; }
+  .team-odds { gap: 14px; } .team-odds span { font-size: 19px; }
+  .dist { height: 170px; gap: 3px; padding: 12px 10px 8px; margin-bottom: 22px; }
+  .dv { font-size: 8.5px; } .dk { font-size: 8px; }
+  .score-vs { padding-left: 16px; }
+}
+/* Kosketusnäytöllä hover jää päälle napautuksen jälkeen: ei suurennuksia. */
+@media (hover: none) {
+  .hr:not(.hh) .hc:hover { transform: none; filter: none; }
+  .door:hover, .jumps a:hover, .chat-q:hover { transform: none; }
+}
