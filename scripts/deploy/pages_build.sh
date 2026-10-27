@@ -17,6 +17,9 @@ WORK="$REPO/.pages"
 BUILD="$WORK/build"
 OUT="$WORK/out"
 export NEXT_PUBLIC_BASE_PATH="${BASE_PATH-/liiga-2026-27}"
+# Käännöksen tunnus: sovellus vertaa sitä julkaistuun version.json:iin ja lataa
+# itsensä uudelleen, kun uudempi on julkaistu (components/VersionCheck.tsx).
+export NEXT_PUBLIC_BUILD_ID="$(date -u +%Y%m%dT%H%M%S)"
 
 rm -rf "$BUILD" "$OUT"
 mkdir -p "$BUILD"
@@ -44,4 +47,5 @@ fi
 (cd "$BUILD" && LIIGA_DATA=duckdb LIIGA_REPO="$REPO" NEXT_PUBLIC_LIIGA_STATIC=1 npx next build)
 mv "$BUILD/out" "$OUT"
 touch "$OUT/.nojekyll"     # _next/-hakemisto: Jekyll jättäisi alaviivalliset pois
+printf '{"build":"%s"}\n' "$NEXT_PUBLIC_BUILD_ID" > "$OUT/version.json"
 echo "valmis: $OUT ($(du -sh "$OUT" | cut -f1))"

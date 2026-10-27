@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Roboto_Mono, Silkscreen } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import Chat from "@/components/Chat";
+import VersionCheck from "@/components/VersionCheck";
 import { AGENT_SOURCE } from "@/lib/agent";
 import { STATIC } from "@/lib/target";
 import "./globals.css";
@@ -22,7 +23,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fi" className={`${hanken.variable} ${mono.variable} ${pixel.variable}`}>
-      <body>{children}<BottomNav />{!STATIC && <Chat source={AGENT_SOURCE} />}</body>
+      <body>{children}<BottomNav /><VersionCheck />{!STATIC && <Chat source={AGENT_SOURCE} />}</body>
     </html>
   );
 }
