@@ -175,6 +175,10 @@ lähteitä ei louhita.
 
 ### Vaihe 1: aloittava maalivahti (ei uutisia, ei kielimallia)
 
+- [x] **Klo 14.00 -ajo** (27.10.): `scripts/news/lineups.py` + `collect.py` samassa
+      `news.yml`-ajossa; `news-data`-haaraan `lineup_games.csv` (valmius + aloittajat,
+      myös "ei valmis" -rivit) ja `lineup_players.csv` (valmiit kokoonpanot).
+
 - [ ] Actions-ajo ottelupäivinä vaiheen 0 aikarajan jälkeen: hae kokoonpanot,
       tallenna aloittaja `pages-data`-haaraan aikaleimoineen.
 - [ ] Haastaja: joukkueen painotetun maalivahtikeskiarvon tilalle aloittajan

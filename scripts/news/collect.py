@@ -7,7 +7,8 @@ linkki, joukkue ja avainsanaliput. Ei kielimallia, ei artikkelitekstiä talteen
 kahden viikon ajan, kuinka paljon loukkaantumis-, siirto- ja valmentajatietoa
 näistä lähteistä oikeasti tulee ja kuka julkaisee ensin.
 
-Ajaa .github/workflows/news.yml kerran päivässä (käyttäjä 27.10.); Ylen
+Ajaa .github/workflows/news.yml kerran päivässä klo 14.00 Suomen aikaa yhdessä
+kokoonpanojen kanssa (scripts/news/lineups.py; käyttäjä 27.10.); Ylen
 SM-liiga-aihesyötteen 20 juttua kattavat noin viikon, seurojen syötteet 10-100
 juttua. Tulos news-data-haaraan. Paikallisesti:
 

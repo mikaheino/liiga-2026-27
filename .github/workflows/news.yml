@@ -1,12 +1,18 @@
-# Uutiskeräin, uutismallin vaihe 0 (27.10.; docs/uutismalli_suunnitelma.md).
-# Kerran päivässä (käyttäjä 27.10.): Ylen SM-liiga-aihesyöte (~7 vrk) ja seurojen
-# omat sivut -> news-data-haaran news_items.csv. Ei kielimallia, ei vaikutusta
-# ennusteeseen; vain otsikko, linkki, joukkue ja avainsanaliput.
+# Uutiset ja kokoonpanot klo 14.00 Suomen aikaa (käyttäjä 27.10.;
+# docs/uutismalli_suunnitelma.md). Samassa ajossa:
+#   - scripts/news/lineups.py: päivän otteluiden kokoonpanot ja aloittavat
+#     maalivahdit liiga.fi:stä (myös "ei vielä valmis" kirjataan: ajoituksen mittaus)
+#   - scripts/news/collect.py: Ylen SM-liiga-aihesyöte ja seurojen omat sivut
+#     (otsikko, linkki, joukkue, avainsanaliput; ei kielimallia)
+# Tulos news-data-haaraan. Ei vielä vaikutusta ennusteeseen.
 name: news
 
 on:
   schedule:
-    - cron: "50 4 * * *"       # ennen Pages-ajoa (05.15 UTC)
+    # 14.00 Suomen aikaa on talvella 12 UTC ja kesällä 11 UTC: molemmat
+    # ajastetaan, ja vartija päästää läpi vain sen, jossa Helsingissä on klo 14.
+    - cron: "0 11 * * *"
+    - cron: "0 12 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,13 +26,26 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - name: Onko Helsingissä klo 14
+        id: gate
+        run: |
+          h=$(TZ=Europe/Helsinki date +%H)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$h" != "14" ]; then
+            echo "Helsingissä klo $h, ohitetaan"; echo "run=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=1" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.run == '1'
+        uses: actions/checkout@v7
+      - if: steps.gate.outputs.run == '1'
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Riippuvuudet
-        run: pip install -q requests
-      - name: Keräys
+      - if: steps.gate.outputs.run == '1'
+        name: Riippuvuudet
+        run: pip install -q requests pyyaml
+      - if: steps.gate.outputs.run == '1'
+        name: Kokoonpanot ja uutiset
         env:
           URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
         run: |
@@ -35,9 +54,9 @@ jobs:
           else
             git init -q -b news-data .news-data && git -C .news-data remote add origin "$URL"
           fi
-          python scripts/news/collect.py .news-data | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo '```'; python scripts/news/lineups.py .news-data; echo; python scripts/news/collect.py .news-data; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
           cd .news-data
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "Uutiset $(date -u +%FT%H:%MZ)" || { echo "ei uusia"; exit 0; }
+            commit -q -m "Kokoonpanot ja uutiset $(TZ=Europe/Helsinki date +%F)" || { echo "ei muutoksia"; exit 0; }
           git push -q origin news-data
