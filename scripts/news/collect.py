@@ -7,8 +7,9 @@ linkki, joukkue ja avainsanaliput. Ei kielimallia, ei artikkelitekstiä talteen
 kahden viikon ajan, kuinka paljon loukkaantumis-, siirto- ja valmentajatietoa
 näistä lähteistä oikeasti tulee ja kuka julkaisee ensin.
 
-Ajaa .github/workflows/news.yml tunneittain (Ylen syötteessä on vain 20
-viimeisintä urheilujuttua); tulos news-data-haaraan. Paikallisesti:
+Ajaa .github/workflows/news.yml kerran päivässä (käyttäjä 27.10.); Ylen
+SM-liiga-aihesyötteen 20 juttua kattavat noin viikon, seurojen syötteet 10-100
+juttua. Tulos news-data-haaraan. Paikallisesti:
 
     python scripts/news/collect.py OUTDIR
 """
@@ -33,7 +34,9 @@ FIELDS = ["fetched_at", "published", "source", "team", "flags", "title", "url"]
 # Tarkistettu 27.10.: ei AI-kieltoja robots.txt:ssä. Puuttuu: Tappara, Pelicans,
 # TPS, KalPa (ei löytynyt syötettä) ja Jokerit (AI-kielto).
 SOURCES = [
-    ("Yle", None, "rss", "https://yle.fi/rss/urheilu"),
+    # Ylen SM-liiga-aihe (18-188906): 20 juttua ~7 vrk. Yleinen urheilusyöte
+    # kattoi 20 jutulla vain ~15 h, mikä olisi vaatinut tunneittaisen haun.
+    ("Yle", None, "rss", "https://yle.fi/rss/t/18-188906/fi"),
     ("HIFK", "HIFK", "rss", "https://hifk.fi/feed/"),
     ("HPK", "HPK", "rss", "https://hpk.fi/feed/"),
     ("Ilves", "Ilves", "rss", "https://www.ilves.com/feed/"),

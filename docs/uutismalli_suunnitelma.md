@@ -127,7 +127,7 @@ lähteitä ei louhita.
       käsitellä automaattisesti ja kielimallilla? Jos ei, vain otsikko + linkki
       sääntöpohjaisesti tai vain Yle.
 - [ ] **Uutismäärä ja osuvuus** (keräin käynnissä 27.10. alkaen: `scripts/news/collect.py`,
-      `news.yml` tunneittain, tulos `news-data`-haaran `news_items.csv`; ensimmäinen ajo
+      `news.yml` kerran päivässä (Ylen SM-liiga-aihesyöte kattaa ~7 vrk), tulos `news-data`-haaran `news_items.csv`; ensimmäinen ajo
       246 juttua 13 lähteestä, 68 liputettua): kerää 2 viikon ajan ilman poimintaa.
       Kuinka monta Liiga-juttua päivässä, monessako loukkaantuminen/paluu,
       montako niistä olisi muuttanut kokoonpanoa? Tämä kertoo, kannattaako vaihe 2.
