@@ -1,0 +1,32 @@
+# Pääseekö GitHubin runner liiga.fi:n rajapintaan? Pages-putken edellytys:
+# sama kolme ovea kuin daily_update.py:llä (otteluluettelo, ottelun tiedot,
+# sarjataulukko), sama User-Agent kuin config.yaml:ssa. Ajetaan käsin.
+name: pages-connectivity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  liiga-fi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kysy liiga.fi:n rajapinnalta
+        run: |
+          UA="liiga-predict/0.1 (personal hobby project)"
+          API="https://www.liiga.fi/api/v2"
+          fail=0
+          for url in \
+            "$API/games?tournament=runkosarja&season=2027" \
+            "$API/games/2027/1" \
+            "$API/standings?season=2027"; do
+            code=$(curl -s -o body.json -w '%{http_code}' -H "User-Agent: $UA" -H "Accept: application/json" "$url")
+            size=$(wc -c < body.json)
+            echo "$code  ${size} tavua  $url"
+            echo "| \`$url\` | $code | $size |" >> rows.md
+            [ "$code" = "200" ] && [ "$size" -gt 100 ] || fail=1
+          done
+          { echo "| osoite | HTTP | tavua |"; echo "|---|---|---|"; cat rows.md; } >> "$GITHUB_STEP_SUMMARY"
+          exit $fail
