@@ -7,7 +7,7 @@ import NextRound from "@/components/NextRound";
 import Season from "@/components/Season";
 import Top from "@/components/Top";
 import { gameKey } from "@/lib/challenger";
-import { loadChallenger, loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { loadChallenger, loadChallengerSeason, loadFixtures, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { nextRound, scoreboard } from "@/lib/fixtures";
 import { TEAMS, fi, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
@@ -15,9 +15,14 @@ import { STATIC } from "@/lib/target";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger] = await Promise.all([
-    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(), loadChallenger(),
+  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger, season] = await Promise.all([
+    loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(), loadChallenger(), loadChallengerSeason(),
   ]);
+  // Haastaja kierroskorttiin: päivän ajo (maalivahdit + poissaolot) ohittaa kausiennusteen
+  // otteluarvion (vain poissaolot), joka kattaa myös tulevat päivät.
+  const chMap = new Map(season.games.map((g) => [gameKey(g.date, g.home, g.away),
+    { date: g.date, home: g.home, away: g.away, base: NaN, pHome: g.pHome, pOt: NaN, notes: "" }]));
+  for (const c of challenger) chMap.set(gameKey(c.date, c.home, c.away), c);
   // Jokaisessa ovessa elävä nosto -- ovi kertoo jo mitä sen takana on.
   const table = seasonTable(log, teams);
   const leader = table[0];
@@ -46,7 +51,7 @@ export default async function Page() {
       <main className="main front">
         {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
         <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))}
-          challenger={new Map(challenger.map((c) => [gameKey(c.date, c.home, c.away), c]))} />
+          challenger={chMap} />
         <div className="pick-row">
           <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
           <div className="line-note" title="Todennäköinen: riittää 14 parhaan joukkoon puolessa simulaatioista. Varma: 95 %:ssa. Nyt: 14. sijan pisteet sarjataulukossa.">

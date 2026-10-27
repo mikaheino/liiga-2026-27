@@ -80,6 +80,8 @@ jobs:
         run: |
           git clone -q --depth 1 --branch news-data "$URL" .news-data || mkdir -p .news-data
           .venv/bin/python scripts/news/load_news.py .news-data
+          # Haastajan kausiennuste: voimassa olevat poissaolot niiden otteluihin, kausi uudelleen.
+          .venv/bin/python scripts/news/challenger_season.py .news-data
 
       - name: Staattinen sivu
         run: BASE_PATH="/${{ github.event.repository.name }}" scripts/deploy/pages_build.sh

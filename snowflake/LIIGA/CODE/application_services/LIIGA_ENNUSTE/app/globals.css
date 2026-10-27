@@ -761,7 +761,7 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .nw-done { font-size: 12.5px; color: var(--gold-hi); }
 .nw-approve { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
 .nw-player { font-weight: 600; color: var(--ink); } .nw-player small { color: var(--faint); font-weight: 400; }
-.nw-dur { grid-template-columns: repeat(4, auto); } .nw-dur button { padding: 6px 8px; font-size: 10px; }
+.nw-dur { grid-template-columns: repeat(9, auto); } .nw-dur button { padding: 6px 8px; font-size: 10px; }
 .btn.sm { padding: 6px 12px; font-size: 11px; }
 .nw-sent { font-size: 12.5px; color: var(--gold-hi); }
 .nw-err { font-size: 12px; color: var(--danger); }
@@ -774,3 +774,8 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .nw-item { padding: 10px 12px; } .nw-title { font-size: 13.5px; }
 }
 .nw-auto { font-size: 12px; color: var(--faint); }
+.nw-unit { font-size: 12px; }
+.chs-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.chs-row b { font: 700 13px var(--mono); color: var(--ink); } .chs-row span { font: 12px var(--mono); color: var(--muted); }
+.chs-abs { margin: 6px 0 0; font-size: 12.5px; color: var(--faint); }
+.team-ch { margin-top: 4px; font-size: 12.5px; color: var(--gold); }

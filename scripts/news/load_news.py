@@ -29,7 +29,7 @@ SUGGEST = ("loukkaantuminen", "paluu", "pelikielto")
 
 FILES = {
     "news_items": ("news_items.csv", ["fetched_at", "published", "source", "team", "flags", "title", "url"]),
-    "news_absences": ("absences.csv", ["approved_at", "url", "player", "team", "kind", "start", "until"]),
+    "news_absences": ("absences.csv", ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]),
     "news_lineups": ("lineup_games.csv", ["fetched_at", "date", "game_id", "start", "home", "away",
                                            "lineup_ready", "home_starter", "away_starter"]),
     "prediction_games_news": ("prediction_games_news.csv", ["snapshot_date", "game_id", "home_team", "away_team",

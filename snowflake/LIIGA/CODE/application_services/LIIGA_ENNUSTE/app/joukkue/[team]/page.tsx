@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
 import Shell from "@/components/Shell";
-import { loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +15,10 @@ const zone = (k: number) => (k <= PLAYOFF_CUT ? "z-top" : k <= QUALI_CUT ? "z-qu
 
 export default async function Page({ params }: { params: Promise<{ team: string }> }) {
   const team = decodeURIComponent((await params).team);
-  const [pos, log, teams, fixtures, { history, preseason }] = await Promise.all([
-    loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(),
+  const [pos, log, teams, fixtures, { history, preseason }, season] = await Promise.all([
+    loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadChallengerSeason(),
   ]);
+  const ch = season.teams.find((t) => t.team === team && Math.abs(t.points - t.pointsNow) >= 0.3);
   const i = pos.findIndex((r) => r.team === team);
   if (i < 0) notFound();
   const r = pos[i];
@@ -46,6 +47,7 @@ export default async function Page({ params }: { params: Promise<{ team: string 
             {base != null && <> · esikaudesta {r.points - base > 0 ? "+" : ""}{fi(r.points - base)}</>}
             {now >= 0 && <> · sarjassa nyt {now + 1}. ({table[now].pts} p)</>}
           </div>
+          {ch && <div className="team-ch">Haastaja poissaoloilla: {fi(ch.points)} p · top 6 {fi(100 * ch.top, 0)} %</div>}
         </div>
         <div className="team-odds">
           <div><span>{fi(r.pTitle)} %</span>voittaa</div>

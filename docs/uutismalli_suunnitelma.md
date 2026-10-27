@@ -201,6 +201,16 @@ ottelut. Kirjataan `news-data/prediction_games_news.csv`. Esimerkki 28.10.:
 K-Espoo–TPS 58,6 -> 59,1 % (Wernblom ja Öberg pelikiellossa), HIFK–Ilves
 50,2 -> 48,9 %, jos Huuhtanen kirjataan poissaolevaksi.
 
+**Kausiennuste poissaoloilla** (käyttäjä 27.10.: "jos Wernblom on poissa kuusi
+ottelua, noille kuudelle ottelulle uusi ennuste, mikä vaikuttaa koko kauden
+ennusteeseen"; sama loukkaantumisille): kesto kirjataan otteluina 1–10 tai
+loppukausi (`approve.py` laskee paluupäivän joukkueen otteluohjelmasta), ja
+`scripts/news/challenger_season.py` vie voimassa olevat poissaolot juuri niihin
+otteluihin ja simuloi kauden skenaariotyökalun `compute`-funktiolla (samat
+satunnaisluvut). Esimerkki: Wernblom 6 ottelua -> TPS:n voitto noissa
+otteluissa 47,2 -> 45,0 %, kausi 89,8 -> 89,5 p, top 6 14,5 -> 13,6 %. Näkyy
+Uutiset-sivulla, joukkuesivulla ja kierroskortissa (myös tulevat päivät).
+
 **Sovellus (Pages):** Uutiset-sivu (alavalikko): Haastaja vs. lukittu malli
 (log-loss, osumat pelatuista), päivän haastajaennusteet, uutiset suodatettuna
 ("vain olennaiset", joukkueen korostus). OK-napit näkyvät vain selaimessa, johon

@@ -6,7 +6,7 @@ token vain käyttäjän puhelimen selaimessa). Syöte tulee ympäristömuuttujis
 käsitellään pelkkänä datana: uutisen on löydyttävä news_items.csv:stä, pelaajan
 rosterista samasta joukkueesta ja keston sallituista arvoista. Muuten ei kirjata.
 
-    NEWS_URL=... PLAYER=... TEAM=... KIND=out|back DURATION=1ott|1vko|3vko|kausi \\
+    NEWS_URL=... PLAYER=... TEAM=... KIND=out|back DURATION=1..10|kausi \\
         python scripts/news/approve.py NEWSDIR
 """
 from __future__ import annotations
@@ -21,9 +21,11 @@ from zoneinfo import ZoneInfo
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[2]
-FIELDS = ["approved_at", "url", "player", "team", "kind", "start", "until"]
+FIELDS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]
 SEASON_END = "2027-03-31"            # runkosarjan viimeinen kierros (544 ottelua)
-DAYS = {"1vko": 7, "3vko": 21}
+# Kesto otteluina (käyttäjä 27.10.: "Wernblom poissa kuusi ottelua" -> juuri ne
+# kuusi ottelua lasketaan uudelleen) tai loppukausi.
+DURATIONS = {str(n) for n in range(1, 11)} | {"kausi"}
 
 
 def _roster() -> set[tuple[str, str]]:
@@ -35,28 +37,28 @@ def _roster() -> set[tuple[str, str]]:
         con.close()
 
 
-def _next_game_after(team: str, today: str) -> str:
-    """Päivä, jona joukkueen seuraava ottelu on pelattu (yhden ottelun poissaolo)."""
+def _team_dates(team: str, today: str) -> list[str]:
+    """Joukkueen pelaamattomien otteluiden päivät tästä päivästä alkaen."""
     con = duckdb.connect(str(ROOT / "data" / "liiga.duckdb"), read_only=True)
     try:
-        row = con.execute("""
-            SELECT MIN(SUBSTR(start_ts, 1, 10)) FROM stg_games
-            WHERE season = (SELECT MAX(season) FROM stg_games)
-              AND (home_team = ? OR away_team = ?) AND SUBSTR(start_ts, 1, 10) >= ?""", [team, team, today]).fetchone()
+        return [r[0] for r in con.execute("""
+            SELECT SUBSTR(start_ts, 1, 10) AS d FROM stg_games
+            WHERE season = (SELECT MAX(season) FROM stg_games) AND NOT ended
+              AND (home_team = ? OR away_team = ?) AND SUBSTR(start_ts, 1, 10) >= ?
+            ORDER BY start_ts""", [team, team, today]).fetchall()]
     finally:
         con.close()
-    day = row[0] if row and row[0] else today
-    return (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
 
 
 def until_for(duration: str, team: str, today: str) -> str:
-    if duration == "1ott":
-        return _next_game_after(team, today)
-    if duration in DAYS:
-        return (dt.date.fromisoformat(today) + dt.timedelta(days=DAYS[duration])).isoformat()
+    """Paluupäivä: päivä N:nnen ottelun jälkeen (sinä päivänä jo pelaa)."""
     if duration == "kausi":
         return SEASON_END
-    raise ValueError(f"tuntematon kesto: {duration!r}")
+    dates = _team_dates(team, today)
+    n = int(duration)
+    if n > len(dates):
+        return SEASON_END
+    return (dt.date.fromisoformat(dates[n - 1]) + dt.timedelta(days=1)).isoformat()
 
 
 def validate(url: str, player: str, team: str, kind: str, duration: str, urls: set[str]) -> list[str]:
@@ -67,8 +69,8 @@ def validate(url: str, player: str, team: str, kind: str, duration: str, urls: s
         errors.append("pelaajaa ei löydy joukkueen rosterista")
     if kind not in ("out", "back"):
         errors.append("KIND on out tai back")
-    if kind == "out" and duration not in ("1ott", "1vko", "3vko", "kausi"):
-        errors.append("DURATION on 1ott, 1vko, 3vko tai kausi")
+    if kind == "out" and duration not in DURATIONS:
+        errors.append("DURATION on 1-10 (ottelua) tai kausi")
     return errors
 
 
@@ -80,7 +82,7 @@ def record(path: Path, url: str, player: str, team: str, kind: str, duration: st
             if r["player"] == player and r["kind"] == "out" and r["until"] > today:
                 r["until"] = today
     new = {"approved_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "url": url, "player": player,
-           "team": team, "kind": kind, "start": today,
+           "team": team, "kind": kind, "games": duration if kind == "out" else "", "start": today,
            "until": until_for(duration, team, today) if kind == "out" else today}
     with path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)

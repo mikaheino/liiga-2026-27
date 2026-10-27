@@ -24,11 +24,9 @@ on:
         type: choice
         options: [out, back]
       duration:
-        description: Kesto (out)
+        description: Kesto otteluina 1-10 tai kausi (out); approve.py validoi
         required: false
-        type: choice
-        options: [1ott, 1vko, 3vko, kausi]
-        default: 1vko
+        default: "1"
 
 permissions:
   contents: write

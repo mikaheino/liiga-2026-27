@@ -53,7 +53,8 @@ export default function NextRound({ games, challenger }: { games: Fixture[]; cha
                   {g.pOt != null && <span className="nr-ot">JA {Math.round(100 * g.pOt)} %</span>}
                   {(() => {
                     const c = challenger?.get(fixtureKey(g));
-                    if (!c || (Math.abs(c.pHome - c.base) < 0.005 && !c.notes)) return null;
+                    const base = h == null ? null : h / 100;
+                    if (!c || base == null || (Math.abs(c.pHome - base) < 0.005 && !c.notes)) return null;
                     return <span className="nr-ch">Haastaja {Math.round(100 * c.pHome)} – {Math.round(100 * (1 - c.pHome))} %{c.notes ? ` · ${c.notes}` : ""}</span>;
                   })()}
                 </>)}

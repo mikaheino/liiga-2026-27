@@ -4,7 +4,7 @@
 import NewsList from "@/components/NewsList";
 import Shell from "@/components/Shell";
 import { abScore, fixtureKey, gameKey } from "@/lib/challenger";
-import { loadChallenger, loadFixtures, loadNews, loadTeams } from "@/lib/data";
+import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadTeams } from "@/lib/data";
 import { fi } from "@/lib/table";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,12 @@ export const dynamic = "force-dynamic";
 const pct = (p: number) => `${fi(100 * p, 0)} %`;
 
 export default async function Page() {
-  const [news, ch, fixtures, teams] = await Promise.all([loadNews(), loadChallenger(), loadFixtures(), loadTeams()]);
+  const [news, ch, fixtures, teams, season] = await Promise.all([loadNews(), loadChallenger(), loadFixtures(), loadTeams(), loadChallengerSeason()]);
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
+  // Viimeisin kirjaus pelaajaa kohden (paluu korvaa poissaolon).
+  const latest = new Map(news.absences.map((a) => [a.player, a]));
+  const active = [...latest.values()].filter((a) => a.kind === "out" && a.until > today);
+  const moved = season.teams.filter((t) => Math.abs(t.points - t.pointsNow) >= 0.3).sort((a, b) => a.points - a.pointsNow - (b.points - b.pointsNow));
   const ab = abScore(ch, fixtures);
   const ended = new Set(fixtures.filter((f) => f.ended).map(fixtureKey));
   const upcoming = ch.filter((c) => !ended.has(gameKey(c.date, c.home, c.away)));
@@ -43,6 +48,17 @@ export default async function Page() {
             ))}
           </div>
         )}
+        <div className="label sub">Haastajan kausiennuste</div>
+        {active.length === 0 ? <p className="dim">Ei voimassa olevia poissaoloja: kausiennuste on sama kuin virallinen.</p> : (<>
+          {moved.map((t) => (
+            <div key={t.team} className="chs-row">
+              <span className="ab-game">{t.team}</span>
+              <b>{fi(t.pointsNow)} → {fi(t.points)} p</b>
+              <span>top 6 {pct(t.topNow)} → {pct(t.top)}</span>
+            </div>
+          ))}
+          <p className="chs-abs">Poissa: {active.map((a) => `${a.player} (${a.team}, ${a.games === "kausi" ? "loppukausi" : `${a.games} ott.`}, palaa ${Number(a.until.slice(8, 10))}.${Number(a.until.slice(5, 7))}.)`).join(" · ")}</p>
+        </>)}
       </section>
       <div className="label sub">Uutiset</div>
       <NewsList items={news.items} candidates={news.candidates} absences={news.absences} teams={teams} />

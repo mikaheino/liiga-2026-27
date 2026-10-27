@@ -159,7 +159,7 @@ const optional = <T>(f: () => Promise<T[]>): Promise<T[]> =>
   DATA_MODE === "duckdb" ? f().catch(() => [] as T[]) : Promise.resolve([]);
 export type NewsItem = { published: string; fetched: string; source: string; team: string; flags: string; title: string; url: string };
 export type Candidate = { url: string; player: string; team: string; position: string };
-export type Absence = { url: string; player: string; team: string; kind: string; start: string; until: string };
+export type Absence = { url: string; player: string; team: string; kind: string; games: string; start: string; until: string };
 export type Challenger = { date: string; home: string; away: string; base: number; pHome: number; pOt: number; notes: string };
 
 export const loadNews = memo("loadNews", async () => {
@@ -167,14 +167,14 @@ export const loadNews = memo("loadNews", async () => {
     optional(() => query(`SELECT published, fetched_at, source, team, flags, title, url FROM news_items
                           ORDER BY COALESCE(NULLIF(published, ''), fetched_at) DESC LIMIT 300`)),
     optional(() => query(`SELECT url, player, team, position FROM news_candidates`)),
-    optional(() => query(`SELECT url, player, team, kind, start, until FROM news_absences`)),
+    optional(() => query(`SELECT url, player, team, kind, games, start, until FROM news_absences ORDER BY approved_at`)),
   ]);
   const s = (v: unknown) => (v == null ? "" : String(v));
   return {
     items: items.map((r): NewsItem => ({ published: s(r.PUBLISHED), fetched: s(r.FETCHED_AT), source: s(r.SOURCE), team: s(r.TEAM),
       flags: s(r.FLAGS), title: s(r.TITLE), url: s(r.URL) })),
     candidates: cands.map((r): Candidate => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), position: s(r.POSITION) })),
-    absences: abs.map((r): Absence => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), kind: s(r.KIND), start: s(r.START), until: s(r.UNTIL) })),
+    absences: abs.map((r): Absence => ({ url: s(r.URL), player: s(r.PLAYER), team: s(r.TEAM), kind: s(r.KIND), games: s(r.GAMES), start: s(r.START), until: s(r.UNTIL) })),
   };
 });
 
@@ -183,6 +183,22 @@ export const loadChallenger = memo("loadChallenger", async (): Promise<Challenge
                                            FROM prediction_games_news ORDER BY snapshot_date, game_id`));
   return rows.map((r) => ({ date: String(r.SNAPSHOT_DATE), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM),
     base: Number(r.BASE_P_HOME_WIN), pHome: Number(r.P_HOME_WIN), pOt: Number(r.P_OVERTIME), notes: r.NOTES == null ? "" : String(r.NOTES) }));
+});
+
+// Haastajan kausiennuste (scripts/news/challenger_season.py): voimassa olevat
+// poissaolot niihin otteluihin, joita ne koskevat, ja kausi simuloituna uudelleen.
+export type ChallengerTeam = { team: string; pointsNow: number; points: number; topNow: number; top: number; relNow: number; rel: number; titleNow: number; title: number };
+export const loadChallengerSeason = memo("loadChallengerSeason", async () => {
+  const [t, g] = await Promise.all([
+    optional(() => query(`SELECT * FROM challenger_teams`)),
+    optional(() => query(`SELECT date, home_team, away_team, p_home_win FROM challenger_games`)),
+  ]);
+  return {
+    teams: t.map((r): ChallengerTeam => ({ team: String(r.TEAM), pointsNow: Number(r.POINTS_NOW), points: Number(r.POINTS_SCENARIO),
+      topNow: Number(r.P_TOP6_NOW), top: Number(r.P_TOP6_SCENARIO), relNow: Number(r.P_RELEGATION_NOW), rel: Number(r.P_RELEGATION_SCENARIO),
+      titleNow: Number(r.P_TITLE_NOW), title: Number(r.P_TITLE_SCENARIO) })),
+    games: g.map((r) => ({ date: String(r.DATE), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM), pHome: Number(r.P_HOME_WIN) })),
+  };
 });
 
 export { type Params, highlightOf, hrefWith } from "@/lib/params";
