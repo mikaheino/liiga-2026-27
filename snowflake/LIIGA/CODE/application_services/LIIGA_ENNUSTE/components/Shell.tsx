@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import Controls from "@/components/Controls";
+import SwipeBack from "@/components/SwipeBack";
 import Top from "@/components/Top";
 import { loadMeta, loadTeams } from "@/lib/data";
 import { STATIC } from "@/lib/target";
@@ -21,8 +22,10 @@ export default async function Shell({ active, title, children, rail = true }: {
           </aside>
         )}
         <main className="main">
-          <div className="crumb"><Link href="/">◀ Etusivu</Link><span>{title}</span></div>
-          {children}
+          <SwipeBack>
+            <div className="crumb"><Link href="/">◀ Etusivu</Link><span>{title}</span></div>
+            {children}
+          </SwipeBack>
         </main>
       </div>
     </div>

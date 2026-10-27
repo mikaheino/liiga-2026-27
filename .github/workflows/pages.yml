@@ -81,7 +81,13 @@ jobs:
           git clone -q --depth 1 --branch news-data "$URL" .news-data || mkdir -p .news-data
           .venv/bin/python scripts/news/load_news.py .news-data
           # Haastajan kausiennuste: voimassa olevat poissaolot niiden otteluihin, kausi uudelleen.
-          .venv/bin/python scripts/news/challenger_season.py .news-data
+          .venv/bin/python scripts/news/challenger_season.py .news-data .pages-data
+          # Haastajan kausiennuste talteen joka ajossa (päivän rivit korvautuvat).
+          cd .pages-data
+          git add challenger_history.csv
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Haastajan kausiennuste $(TZ=Europe/Helsinki date +%F\ %H:%M)" || echo "ei muutoksia"
+          ../.github/scripts/push-retry.sh pages-data
 
       - name: Staattinen sivu
         env:

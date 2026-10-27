@@ -16,7 +16,7 @@ tauluihin:
   news_effects       uutiskohtainen vaikutus (pelikielto, loukkaantuminen): hyväksytystä
                      kirjattu kesto, muuten otsikosta arvattu -- "paljonko tämä muuttaa"
 
-    python scripts/news/challenger_season.py NEWSDIR
+    python scripts/news/challenger_season.py NEWSDIR [HISTORYDIR]   # HISTORYDIR = pages-data
 """
 from __future__ import annotations
 
@@ -186,7 +186,21 @@ def forecast(con, news: Path, items: list[dict], today: str) -> tuple[pd.DataFra
     return pd.DataFrame(res["teams"])[TEAM_COLS], games_df, effects, snap
 
 
-def main(news: Path) -> int:
+def save_history(teams_df: pd.DataFrame, today: str, folder: Path | None) -> None:
+    """Haastajan kausiennuste talteen päivittäin (käyttäjä 27.10.: "tallentuuhan
+    haastaja, jotta voimme harkita käyttöönottoa"): pages-data/challenger_history.csv,
+    päivän ajo korvaa saman päivän rivit. Ilman poissaoloja haastaja = virallinen."""
+    if folder is None:
+        return
+    path = folder / "challenger_history.csv"
+    old = pd.read_csv(path, dtype={"snapshot_date": str}) if path.exists() else pd.DataFrame()
+    if len(old):
+        old = old[old["snapshot_date"] != today]
+    new = teams_df.assign(snapshot_date=today)[["snapshot_date", *TEAM_COLS]] if len(teams_df) else pd.DataFrame()
+    pd.concat([old, new], ignore_index=True).to_csv(path, index=False, float_format="%.5f")
+
+
+def main(news: Path, history_dir: Path | None = None) -> int:
     today = dt.datetime.now(ZoneInfo("Europe/Helsinki")).date().isoformat()
     items = active_absences(news, today)
     db = str(sk.ROOT / "data/liiga.duckdb")
@@ -197,6 +211,7 @@ def main(news: Path) -> int:
         teams_df, games_df, effects, snap = forecast(con, news, items, today)
     finally:
         con.close()
+    save_history(teams_df, today, history_dir)
     con = duckdb.connect(db)
     try:
         history = effects.attrs.get("history", pd.DataFrame(columns=EVENT_COLS))
@@ -218,6 +233,6 @@ def main(news: Path) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         sys.exit(__doc__)
-    sys.exit(main(Path(sys.argv[1])))
+    sys.exit(main(Path(sys.argv[1]), Path(sys.argv[2]) if len(sys.argv) == 3 else None))
