@@ -75,7 +75,7 @@ AI-botit (GPTBot, ClaudeBot, anthropic-ai, CCBot ym.).
 |---|---|---|
 | `games/{season}/{id}`: kokoonpano ennen ottelua | ✓ | KalPa–Sport 27.10. klo 18.30: kokoonpano (28 + 31 pelaajaa, `line`, `roleCode`) näkyi jo klo 15.27. Maalivahdit `MV`, `line 1` = aloittaja. GitHubin runner pääsee rajapintaan. |
 | pelaajakenttä `injured` | ✗ | 0 / 520 pelaajariviä 10 välimuistin ottelussa: kenttä on, mutta tyhjä. |
-| pelaajakenttä `suspended` | ? | 6 / 520 riviä: käytössä, merkitys varmistettava. |
+| pelaajakenttä `suspended` | ✓ | Pelikielto ennen ottelua: 27.10. TPS:n seuraavassa ottelussa Lukas Wernblom (pitkä pelikielto, Yle 25.10.) ja vastustajan Linus Öberg `suspended: true`. Pelikiellot virallisesta lähteestä ilman uutisia; `lineups.py` kirjaa kentän. |
 | `teams/info` | ✓ | 16 joukkuetta: seurojen viralliset osoitteet, **hallien koordinaatit** (karttalinkeissä) ja kausitilastot (corsi, PDO, alivoima/ylivoima, `distance_travelled` kausittain). Koordinaateista + otteluohjelmasta saa matkat ottelukohtaisesti väsymyssignaaliin (vaihe 3). Jokerit puuttuu. |
 | `schedule`, `standings`, `players/stats/summed/...` | ✓ | 418 kt / 45 kt / 431 kt. |
 | `news`, `articles`, `injuries`, `transfers`, `players`, `teams/stats`, `games/stats` | ✗ | 400 / 403. Ei uutis-RSS:ää. |

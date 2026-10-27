@@ -64,7 +64,9 @@ FLAGS = {
     "paluu": r"palaa kokoonpano|paluu|palaa kaukalo|tervehty",
     "siirto": r"(?<!ottelu)(?<!yhteistyö)sopimu|(?<!ottelu)siirty(?!y pelattavaksi)|liittyy|vahvistamaan|lainasopim|hankki|jättää|lähtee",
     "valmentaja": r"päävalmentaj|valmentaj|erotet|irtisano|potku",
-    "pelikielto": r"pelikielt|kurinpito|ottelun pelikiel",
+    # "pelikiel": taivutukset pelikielto / pelikiellon / pelikieltoa (27.10.: "pelikielt"
+    # ohitti Ylen otsikon "Lukas Wernblom sai pitkän pelikiellon").
+    "pelikielto": r"pelikiel|kurinpito|jäähyttäj",
     "kokoonpano": r"kokoonpano|maalivahti|aloittaa maalilla",
 }
 
@@ -180,6 +182,10 @@ def main(out_dir: Path) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "news_items.csv"
     old = list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
+    # Korjatut säännöt koskevat myös vanhoja rivejä: otsikosta lasketut liput
+    # lisätään entisiin (ingressiä ei ole tallessa, joten sen liput säilyvät).
+    for r in old:
+        r["flags"] = ";".join(k for k in FLAGS if k in set(filter(None, r["flags"].split(";"))) | set(filter(None, flags_of(r["title"]).split(";"))))
     now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     rows, status = collect({r["url"] for r in old}, now)
     with path.open("w", encoding="utf-8", newline="") as fh:
