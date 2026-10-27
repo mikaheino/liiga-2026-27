@@ -238,6 +238,20 @@ Linkki "Kirjaudu antaaksesi poissaolon" vain loukkaantumis-, paluu- ja
 pelikieltouutisissa; osoite repon muuttujasta `APPROVE_URL` (tyhjä = ei linkkiä).
 Ei enää selaimeen liitettävää GitHub-avainta.
 
+**Automaattinen haastaja** (27.10., käyttäjä: "eikö haastajan pitänyt ottaa asioita
+automaattisesti mukaan? Olen lisännyt käsin enemmän kuin oletin"). Ilman käyttäjää:
+1. aloittava maalivahti (kokoonpano), 2. pelikielto päivän otteluun (`suspended`),
+3. **puuttuva vakiopelaaja**: kenttäpelaaja, joka on ollut kokoonpanossa ≥ 7 joukkueen
+10 edellisestä ottelusta (`game_lineups` + `lineup_players`), mutta puuttuu päivän
+valmiista kokoonpanosta -> poissa tästä ottelusta (27.10.: KalPa–Sport, Somppi,
+Lyytinen, Levänen), 4. **yksiselitteinen uutinen** (`auto_absences.py`, recompute):
+pelikielto/loukkaantuminen ≤ 21 vrk, yksi pelaaja jonka nimi on otsikossa, kesto
+lukuna otsikossa tai ingressissä -> kirjaus `source=auto` koko jaksolle, ellei pelaaja
+ole pelannut uutisen jälkeen (Huuhtanen 16.10. -> pelasi 24.10. -> ei kirjausta),
+5. paluu, kun kirjattu pelaaja on kokoonpanossa. Käyttäjälle jäävät epämääräiset
+("pitkään sivussa") ja monitulkintaiset; automaattisen voi perua historiasta
+(ohitus samalle uutiselle -> tila "peruttu").
+
 **Uutiset-sivun välilehdet** (27.10. illalla, käyttäjä: "relevantteja liikaa, kirjatut
 samassa; en pysty lukemaan ja kirjaamaan yhtä aikaa; historiasivu muutoksille"):
 *Kirjattavat* = loukkaantumis- ja pelikieltouutiset ilman kirjausta tai ohitusta,

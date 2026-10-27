@@ -14,7 +14,9 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-FIELDS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until"]
+# source: "" = käyttäjän OK, "auto" = haastaja kirjasi itse (auto_absences.py,
+# challenger.py); käyttäjän ohitus (dismiss) samalle uutiselle perua automaattisen.
+FIELDS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until", "source"]
 
 
 def events(folder: Path) -> list[dict]:
@@ -22,15 +24,18 @@ def events(folder: Path) -> list[dict]:
     legacy = folder / "absences.csv"
     rows = []
     for p in ([legacy] if legacy.exists() else []) + paths:
-        rows += list(csv.DictReader(p.open(encoding="utf-8")))
+        rows += [{**{k: "" for k in FIELDS}, **{k: v or "" for k, v in r.items() if k}}
+                 for r in csv.DictReader(p.open(encoding="utf-8"))]
     return sorted(rows, key=lambda r: r["approved_at"])
 
 
 def latest(folder: Path) -> dict[str, dict]:
     """Pelaajan viimeisin kirjaus (paluu korvaa poissaolon); ohitukset eivät koske tilaa."""
+    ev = events(folder)
     out: dict[str, dict] = {}
-    for r in events(folder):
-        if r["kind"] in ("out", "back"):
+    for i, r in enumerate(ev):
+        cancelled = r["url"] and any(x["kind"] == "dismiss" and x["url"] == r["url"] for x in ev[i + 1:])
+        if r["kind"] in ("out", "back") and not cancelled:
             out[r["player"]] = r
     return out
 
@@ -48,5 +53,5 @@ def write(folder: Path, row: dict) -> Path:
     with path.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()
-        w.writerow(row)
+        w.writerow({"source": "", **row})
     return path

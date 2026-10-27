@@ -1,5 +1,5 @@
-# Haastajan uudelleenlaskenta (27.10.): päivän otteluiden haastajaennuste
-# (challenger.py -> news-data) ja sivun julkaisu, jossa kausiennuste
+# Haastajan uudelleenlaskenta (27.10.): automaattiset kirjaukset (auto_absences.py),
+# päivän otteluiden haastajaennuste (challenger.py -> news-data) ja sivun julkaisu, jossa kausiennuste
 # (pages.yml: challenger_season.py). Käynnistyy OK-painalluksista (absence.yml)
 # ja klo 14 -ajosta (news.yml).
 #
@@ -36,6 +36,8 @@ jobs:
         run: |
           git clone -q --branch news-data "$URL" .news-data
           git clone -q --depth 1 --branch pages-data "$URL" .pages-data
+          # Yksiselitteiset uutiset kirjataan itse (auto_absences.py), sitten päivän haastaja.
+          python scripts/news/auto_absences.py .news-data | tee -a "$GITHUB_STEP_SUMMARY"
           python scripts/news/challenger.py .news-data .pages-data | tee -a "$GITHUB_STEP_SUMMARY"
           cd .news-data
           git add -A

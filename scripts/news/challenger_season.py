@@ -109,13 +109,15 @@ def news_effects(con, news: Path, games: list[dict], model: dict, today: str) ->
     return pd.DataFrame(out, columns=EFFECT_COLS)
 
 
-EVENT_COLS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until", "status",
+EVENT_COLS = ["approved_at", "url", "player", "team", "kind", "games", "start", "until", "source", "status",
               "n_games", "win_before", "win_after", "xp_delta"]
 
 
-def _status(r: dict, later: list[dict], today: str) -> str:
+def _status(r: dict, later: list[dict], today: str, after: list[dict] = ()) -> str:
     if r["kind"] == "dismiss":
         return "ohitettu"
+    if r["url"] and any(x["kind"] == "dismiss" and x["url"] == r["url"] for x in after):
+        return "peruttu"
     if r["kind"] == "back":
         return "kokoonpano lopetti" if r["url"] == "kokoonpano" else "palasi"
     if any(x["kind"] == "back" for x in later):
@@ -132,7 +134,7 @@ def event_history(news: Path, games: list[dict], model: dict, today: str) -> pd.
     out = []
     for i, r in enumerate(ev):
         later = [x for x in ev[i + 1:] if r["player"] and x["player"] == r["player"]]
-        row = {k: r.get(k, "") for k in EVENT_COLS[:8]} | {"status": _status(r, later, today),
+        row = {k: r.get(k, "") for k in EVENT_COLS[:9]} | {"status": _status(r, later, today, ev[i + 1:]),
                                                            "n_games": None, "win_before": None, "win_after": None, "xp_delta": None}
         if row["status"] == "voimassa":
             try:

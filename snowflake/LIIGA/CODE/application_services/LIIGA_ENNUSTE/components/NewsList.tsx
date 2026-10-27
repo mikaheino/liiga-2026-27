@@ -194,8 +194,9 @@ function Item({ it, open, onToggle, children }: { it: NewsItem; open: boolean; o
   );
 }
 
-function History({ events, items }: { events: HistoryEvent[]; items: NewsItem[] }) {
+function History({ events, items, session, onUndo }: { events: HistoryEvent[]; items: NewsItem[]; session: string; onUndo: (url: string) => void }) {
   const title = new Map(items.map((i) => [i.url, i.title]));
+  const [undone, setUndone] = useState<Set<string>>(new Set());
   if (!events.length) return <p className="dim">Ei vielä kirjauksia.</p>;
   const what = (e: HistoryEvent) => e.kind === "out" ? `poissa ${label(e.games)} · ${fiDate(e.start)}–${fiDate(e.until)}`
     : e.kind === "dismiss" ? "uutinen ohitettu" : `palasi ${fiDate(e.start)}`;
@@ -210,6 +211,7 @@ function History({ events, items }: { events: HistoryEvent[]; items: NewsItem[] 
               <img src={logo(e.team)} alt={e.team} width={16} height={16} />
             )}
             <i className={`nw-flag hs-${e.status.replace(/\s/g, "-")}`}>{e.status}</i>
+            {e.source === "auto" && <i className="nw-flag">automaattinen</i>}
           </div>
           <div className="hs-main"><b>{e.player || "—"}</b> {what(e)}</div>
           {e.nGames != null && e.winBefore != null && (
@@ -217,6 +219,9 @@ function History({ events, items }: { events: HistoryEvent[]; items: NewsItem[] 
           )}
           {e.url && e.url !== "kokoonpano" && title.get(e.url) && <a className="hs-src" href={e.url} target="_blank" rel="noopener noreferrer">{title.get(e.url)} ↗</a>}
           {e.url === "kokoonpano" && <div className="hs-src">Pelaaja oli ottelun kokoonpanossa, joten haastaja lopetti poissaolon itse.</div>}
+          {session && e.source === "auto" && e.status === "voimassa" && (undone.has(e.url)
+            ? <div className="nw-sent">⏳ Peruttu, sivu päivittyy noin 3–4 minuutissa</div>
+            : <button className="nw-other nw-skip" onClick={() => { onUndo(e.url); setUndone((s) => new Set(s).add(e.url)); }}>Peru – tulkinta väärin</button>)}
         </div>
       ))}
     </div>
@@ -276,7 +281,7 @@ function List({ items, candidates, absences, teams, roster, effects, events, bui
         <a className={tab === "history" ? "on" : ""} onClick={() => setTab("history")}>Historia</a>
       </nav>
       {note && <div className="nw-err">{note}</div>}
-      {tab === "history" ? <History events={events} items={items} /> : (<>
+      {tab === "history" ? <History events={events} items={items} session={session} onUndo={dismiss} /> : (<>
         {tab === "news" && (
           <nav className="nw-cats" aria-label="Uutisluokka">
             {CATS.map(([k, l]) => <button key={k} className={`chip ${cat === k ? "on" : ""}`} aria-pressed={cat === k} onClick={() => setCat(k)}>{l}</button>)}
@@ -298,7 +303,7 @@ function List({ items, candidates, absences, teams, roster, effects, events, bui
               <Item key={it.url} it={it} open={tab === "input" || open.has(it.url)} onToggle={() => toggle(it.url)}>
                 {done.map((a) => (
                   <div key={a.player + a.start} className="nw-done">✓ {a.player}: {a.kind === "out"
-                    ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}</div>
+                    ? `poissa ${label(a.games)}, palaa ${fiDate(a.until)}` : `palasi ${fiDate(a.start)}`}{a.source === "auto" ? " · kirjattu automaattisesti" : ""}</div>
                 ))}
                 {pending.filter((p) => p.url === it.url).map((p) => (
                   <div key={p.player + p.at} className="nw-sent">⏳ {p.player || "ohitus"}: kirjattu klo {clock(p.at)}, odottaa julkaisua</div>

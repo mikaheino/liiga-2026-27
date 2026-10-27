@@ -68,8 +68,48 @@ def _base(pages: Path, day: str, ids: set[str]) -> dict[str, dict]:
     return {r["game_id"]: r for r in rows if r["snapshot_date"] == snap}
 
 
-def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[str]]:
-    """(hyväksytyt poissaolijat, pelikiellossa olevat) päivän otteluista.
+REGULAR_LAST, REGULAR_MIN = 10, 7          # vakiopelaaja: kokoonpanossa 7 joukkueen 10 edellisestä
+
+
+def _missing_regulars(con, news: Path, day: str, lineup: list[dict]) -> list[str]:
+    """Kenttäpelaajat, jotka ovat pelanneet vakituisesti mutta puuttuvat päivän
+    valmiista kokoonpanosta (käyttäjä 27.10.: automaattisesti, ilman uutista).
+    Vain tämän päivän otteluun: kestoa ei tiedetä, ja seuraava kokoonpano kertoo taas."""
+    ready = {r["team"] for r in lineup if r["line"] not in ("", None)}
+    if not ready:
+        return []
+    games = _recent_lineups(con, news, day)
+    playing = {f"{r['first_name']} {r['last_name']}" for r in lineup if r["line"] not in ("", None)}
+    missing = []
+    for team in ready:
+        last = [games[team][k] for k in sorted(games.get(team, {}))[-REGULAR_LAST:]]
+        counts: dict[str, int] = {}
+        for g in last:
+            for n in g:
+                counts[n] = counts.get(n, 0) + 1
+        missing += [n for n, c in counts.items() if c >= REGULAR_MIN and n not in playing]
+    return sorted(missing)
+
+
+def _recent_lineups(con, news: Path, day: str) -> dict[str, dict[str, set[str]]]:
+    """Joukkue -> ottelu (päivä|id) -> kokoonpanon kenttäpelaajat ennen päivää `day`."""
+    games: dict[str, dict[str, set[str]]] = {}
+    for team, gid, d, name in con.execute("""
+            SELECT l.team, CAST(l.game_id AS VARCHAR), SUBSTR(g.start_ts, 1, 10), l.first_name || ' ' || l.last_name
+            FROM game_lineups l JOIN stg_games g ON g.season = l.season AND g.game_id = l.game_id
+            WHERE l.season = (SELECT MAX(season) FROM stg_games) AND l.line IS NOT NULL AND l.position_group <> 'G'
+              AND SUBSTR(g.start_ts, 1, 10) < ?""", [day]).fetchall():
+        games.setdefault(team, {}).setdefault(f"{d}|{gid}", set()).add(name)
+    dates = {r["game_id"]: r["date"] for r in _read(news / "lineup_games.csv")}
+    for r in _read(news / "lineup_players.csv"):
+        d = dates.get(r["game_id"], "")
+        if d and d < day and r["line"] and r["role"] != "MV":
+            games.setdefault(r["team"], {}).setdefault(f"{d}|{r['game_id']}", set()).add(f"{r['first_name']} {r['last_name']}")
+    return games
+
+
+def _absent(news: Path, day: str, game_ids: set[str], con=None) -> tuple[list[str], list[str], list[str]]:
+    """(kirjatut poissaolijat, pelikiellossa olevat, puuttuvat vakiopelaajat) päivän otteluista.
 
     Todellisuus voittaa arvion (käyttäjä 27.10.): jos poissaolevaksi kirjattu
     pelaaja on päivän kokoonpanossa, kirjataan paluu itse (url "kokoonpano"),
@@ -88,7 +128,9 @@ def _absent(news: Path, day: str, game_ids: set[str]) -> tuple[list[str], list[s
         else:
             approved.append(r["player"])
     suspended = [f"{r['first_name']} {r['last_name']}" for r in lineup if r["suspended"] == "1"]
-    return sorted(set(approved)), sorted(set(suspended) - set(approved))
+    missing = _missing_regulars(con, news, day, lineup) if con is not None else []
+    known = set(approved) | set(suspended)
+    return sorted(set(approved)), sorted(set(suspended) - set(approved)), [m for m in missing if m not in known]
 
 
 def _is_starter(r: dict) -> bool:
@@ -153,7 +195,8 @@ def _todays_base(news: Path, pages: Path, day: str, now: dt.datetime) -> dict[st
     return _base(pages, day, todays)
 
 
-def _absence_items(names: list[str], suspended: list[str], model: dict, games: list[dict]) -> tuple[list[dict], dict]:
+def _absence_items(names: list[str], suspended: list[str], model: dict, games: list[dict],
+                   missing: list[str] = ()) -> tuple[list[dict], dict]:
     """Poissaolijat skenaariotyökalun muotoon + huomiot otteluittain."""
     items, notes = [], {}
     for name in names:
@@ -163,7 +206,7 @@ def _absence_items(names: list[str], suspended: list[str], model: dict, games: l
             print(f"ohitettu: {e}")
             continue
         items.append({"injury": p["name"]})
-        tag = "pelikielto" if name in suspended else "poissa"
+        tag = "pelikielto" if name in suspended else "puuttuu kokoonpanosta" if name in missing else "poissa"
         for g in games:
             if p["team"] in (g["home_team"], g["away_team"]):
                 notes.setdefault(g["game_id"], []).append(f"{p['name']} {tag}")
@@ -198,7 +241,7 @@ def main(news: Path, pages: Path, day: str | None = None) -> int:
     con = duckdb.connect(str(ROOT / "data" / "liiga.duckdb"), read_only=True)
     try:
         model = _model(con)
-        approved, suspended = _absent(news, day, set(base))
+        approved, suspended, missing = _absent(news, day, set(base), con)
         diffs, gnames = _goalie_diffs(con, news, day, set(base))
     finally:
         con.close()
@@ -206,7 +249,7 @@ def main(news: Path, pages: Path, day: str | None = None) -> int:
     games = [{"game_id": gid, "date": day, "iso": day, "home_team": b["home_team"], "away_team": b["away_team"],
               "p_home_reg": float(b["p_home_reg"]), "p_overtime": float(b["p_overtime"]),
               "p_home_ot_win": float(b["p_home_ot_win"])} for gid, b in sorted(base.items())]
-    items, notes = _absence_items(approved + suspended, suspended, model, games)
+    items, notes = _absence_items(approved + suspended + missing, suspended, model, games, missing)
     changed, _ = sim.apply_injuries(items, games, model, day) if items else (games, [])
 
     out = []
