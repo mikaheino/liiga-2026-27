@@ -6,6 +6,7 @@
 // pystysuuntaisesta vierityksestä: suunta lukitaan ensimmäisen 10 px:n perusteella.
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
+import { readStack } from "@/components/NavTrack";
 
 const SKIP = ".tabs, .nw-cats, .months, .heat, .strip, .seg, .nw-step, input, select, textarea, [data-noswipe]";
 const THRESHOLD = 0.28;                       // osuus ruudun leveydestä
@@ -26,8 +27,8 @@ export default function SwipeBack({ children, onBack, className = "" }: { childr
   };
   const back = () => {
     if (onBack) { onBack(); return; }
-    const same = document.referrer.startsWith(location.origin);
-    if (same && history.length > 1) router.back(); else router.push("/");
+    // Edellinen sovelluksen sivu (NavTrack); suoraan avattu sivu -> etusivu.
+    if (readStack().length > 1) router.back(); else router.push("/");
   };
 
   return (
