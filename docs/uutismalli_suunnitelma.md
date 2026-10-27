@@ -238,6 +238,14 @@ Linkki "Kirjaudu antaaksesi poissaolon" vain loukkaantumis-, paluu- ja
 pelikieltouutisissa; osoite repon muuttujasta `APPROVE_URL` (tyhjä = ei linkkiä).
 Ei enää selaimeen liitettävää GitHub-avainta.
 
+**Automaattinen haastaja takautuvasti kaudella 2026–27** (27.10.,
+`scripts/experiments/challenger_2027.py`: vain ottelua edeltävä tieto; puuttuvat
+vakiopelaajat ≥ 70 % viimeisistä 5–10 ottelusta + aloittava maalivahti; ei käyttäjän
+eikä uutisten kirjauksia): 139 ottelua, haastaja poikkesi ≥ 0,5 %-yks. 85:ssä,
+|ero| keskimäärin 0,92 %-yks. (mediaani 0,71, 90 % 2,28, suurin 4,22). Puuttuvia
+vakiopelaajia 2,0 / ottelu. Log-loss 0,6891 -> 0,6871 (-0,0020 ± 0,0022, t = -0,92):
+oikea suunta, ei vielä erottuva. Voittaja oikein 77 vs. 76, eri suosikki 3 ottelussa.
+
 **Automaattinen haastaja** (27.10., käyttäjä: "eikö haastajan pitänyt ottaa asioita
 automaattisesti mukaan? Olen lisännyt käsin enemmän kuin oletin"). Ilman käyttäjää:
 1. aloittava maalivahti (kokoonpano), 2. pelikielto päivän otteluun (`suspended`),
