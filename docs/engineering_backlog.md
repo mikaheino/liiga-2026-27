@@ -211,3 +211,32 @@ notebookin uudelleenluonnin. Todenna tulos samalla mittauksella ja vertaa
 ennusteen taulut ennen/jälkeen (ero 0).
 
 **Milloin:** kun halutaan; ei kiire, ajo on ajastettu iltaan.
+
+---
+
+## 8. Haastajamallien vertailu ja yhdistäminen (lisätty 2026-10-27)
+
+Käyttäjä 27.10.: "muistuta minua joskus, kuinka monta haastajamallia meillä on ja
+miten ne vertautuvat toisiinsa". Tilanne 27.10.:
+
+| malli | mitä lisää päämalliin | käynnissä | historiatesti 2023–26 (2-way LL-ero, t) | tämä kausi takautuvasti | live A/B |
+|---|---|---|---|---|---|
+| päämalli (lukittu) | – | koko kausi | LL 0,6623 | LL 0,6891, voittaja 77/139 | vertailukohta |
+| xG-haastaja | joukkuevahvuus kohti kauden xG:tä (n0 = 20) | 25.10. Mac + Snowflake | −0,0021 ± 0,0013 (t −1,6); 3-way t −2,1 | ei ajettu | 0 ottelua |
+| uutishaastaja, automaattinen | aloittava MV + puuttuvat vakiopelaajat + pelikiellot | 27.10. Pages | MV yksin: −0,0006 ± 0,0003 (t −2,15, 1 999 ott.) | −0,0020 ± 0,0022 (t −0,92, 139 ott.) | 1 ennuste, 0 pelattu |
+| uutishaastaja, kirjaukset | OK-napilla kirjatut poissaolot (kausiennuste) | 27.10. Pages | ei mahdollinen (ei historiallisia uutisia) | – | 2 kirjausta (Wernblom, Hämäläinen) |
+| yhdistelmä xG + uutiset | molemmat | ei rakennettu | – | – | – |
+
+**Tehtävät:**
+1. **xG-haastajan historia talteen Pagesissa.** Pages-ajo laskee `prediction_games_challenger`in
+   (daily_update), mutta `pages_history.py` tallentaa vain lukitun mallin taulut -> lisää se.
+2. **Yksi tulostaulu sovellukseen:** kaikki haastajat samoista otteluista (paritettu log-loss,
+   osumat, kumulatiivinen ero ajassa) Uutiset-sivun A/B-näkymän tilalle.
+3. **Yhdistelmähaastaja:** xG-sulatus + uutishaastajan muutokset; historiatesti ensin
+   (`liiga.inseason` + `starting_goalie.py`), sitten live.
+4. **xG-haastaja tämän kauden takautuvalla ajolla** samaan tapaan kuin
+   `scripts/experiments/challenger_2027.py`.
+5. **Katselmointi:** puolivälissä (~15.12.) ja kauden lopussa: mikä haastaja otetaan
+   ensi kaudeksi päämalliksi (AGENTS.md §10: ei kesken kauden ilman erillistä päätöstä).
+
+**Milloin:** 1 heti kun ehditään (data katoaa joka päivä), 2–4 ennen 15.12., 5 15.12. ja kauden lopussa.
