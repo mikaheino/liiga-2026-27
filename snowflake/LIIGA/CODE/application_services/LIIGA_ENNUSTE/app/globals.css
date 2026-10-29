@@ -344,6 +344,8 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .verdict { display: inline-block; padding: 2px 7px; border-radius: 6px; font: 700 12px var(--mono); }
 .verdict.hit { color: var(--gold-hi); background: rgba(235,202,104,.12); }
 .verdict.miss { color: var(--danger); background: rgba(224,87,75,.12); }
+.mc-why { margin: 4px 0 0; padding-left: 18px; }
+.mc-why li { margin: 2px 0; }
 .verdicts { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .verdict.ch { font-weight: 500; opacity: .85; }
 .tr:not(.played):not(.th) .pbar i { background: rgba(204,167,82,.2); }

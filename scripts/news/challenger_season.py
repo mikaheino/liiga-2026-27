@@ -152,11 +152,32 @@ TEAM_COLS = ["team", "points_now", "points_scenario", "p_title_now", "p_title_sc
              "p_top6_now", "p_top6_scenario", "p_relegation_now", "p_relegation_scenario"]
 
 
+def _pc(p: float) -> str:
+    return f"{100 * p:.1f} %".replace(".", ",")
+
+
+def _why(info: list[dict], g: dict) -> str:
+    """Ottelukortin selitys (käyttäjä 29.10.: "miksi haastaja eroaa"): otteluun osuvat
+    poissaolot joukkueittain ja joukkueen voittotodennäköisyys ennen ja jälkeen.
+    game_rows kantaa kaikkien poissaolojen yhteisvaikutuksen, ei pelaajakohtaista,
+    joten vaikutus kerrotaan kerran joukkuetta kohden."""
+    by_team: dict[str, dict] = {}
+    for x in info:
+        for r in x["game_rows"]:
+            opp = g["away_team"] if r["home"] else g["home_team"]
+            if r["date"] == g["date"] and x["team"] in (g["home_team"], g["away_team"]) and r["opponent"] == opp:
+                t = by_team.setdefault(x["team"], {"names": [], "r": r})
+                t["names"].append(x["name"] + ("" if r["phase"] == "poissa" else " (palaa, osittain)"))
+    return "; ".join(f"Poissa {', '.join(t['names'])} ({team}): {team} voitto "
+                     f"{_pc(t['r']['win_before'])} → {_pc(t['r']['win_after'])}"
+                     for team, t in by_team.items())
+
+
 def forecast(con, news: Path, items: list[dict], today: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str]:
     """(joukkueet, muuttuneet ottelut, uutisten vaikutukset, ennusteen päivä) poissaoloilla."""
     games, banked, published, w, snap, played = sk.load(con)
     teams_df = pd.DataFrame(columns=TEAM_COLS)
-    games_df = pd.DataFrame(columns=["date", "home_team", "away_team", "p_home_win"])
+    games_df = pd.DataFrame(columns=["date", "home_team", "away_team", "p_home_win", "notes"])
     model = {**sk.load_model(con), "today": today}
     try:
         effects = news_effects(con, news, games, model, today)
@@ -175,10 +196,10 @@ def forecast(con, news: Path, items: list[dict], today: str) -> tuple[pd.DataFra
     if not valid:
         return teams_df, games_df, effects, snap
     res = sim.compute(valid, games, banked, published, w, played, model)
-    changed, _ = sim.apply_injuries(valid, games, model, today)
+    changed, info = sim.apply_injuries(valid, games, model, today)
     games_df = pd.DataFrame([
         {"date": c["iso"], "home_team": c["home_team"], "away_team": c["away_team"],
-         "p_home_win": c["p_home_reg"] + c["p_overtime"] * c["p_home_ot_win"]}
+         "p_home_win": c["p_home_reg"] + c["p_overtime"] * c["p_home_ot_win"], "notes": _why(info, g)}
         for g, c in zip(games, changed) if abs(c["p_home_reg"] - g["p_home_reg"]) > 1e-9],
         columns=games_df.columns)
     for x in res["injuries"]:

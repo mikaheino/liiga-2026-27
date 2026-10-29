@@ -205,13 +205,14 @@ export type ChallengerTeam = { team: string; pointsNow: number; points: number; 
 export const loadChallengerSeason = memo("loadChallengerSeason", async () => {
   const [t, g] = await Promise.all([
     optional(() => query(`SELECT * FROM challenger_teams`)),
-    optional(() => query(`SELECT date, home_team, away_team, p_home_win FROM challenger_games`)),
+    optional(() => query(`SELECT * FROM challenger_games`)),
   ]);
   return {
     teams: t.map((r): ChallengerTeam => ({ team: String(r.TEAM), pointsNow: Number(r.POINTS_NOW), points: Number(r.POINTS_SCENARIO),
       topNow: Number(r.P_TOP6_NOW), top: Number(r.P_TOP6_SCENARIO), relNow: Number(r.P_RELEGATION_NOW), rel: Number(r.P_RELEGATION_SCENARIO),
       titleNow: Number(r.P_TITLE_NOW), title: Number(r.P_TITLE_SCENARIO) })),
-    games: g.map((r) => ({ date: String(r.DATE), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM), pHome: Number(r.P_HOME_WIN) })),
+    games: g.map((r) => ({ date: String(r.DATE), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM), pHome: Number(r.P_HOME_WIN),
+      notes: r.NOTES == null ? "" : String(r.NOTES) })),
   };
 });
 

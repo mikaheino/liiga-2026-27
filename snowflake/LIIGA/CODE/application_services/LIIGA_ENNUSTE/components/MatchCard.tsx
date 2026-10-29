@@ -17,6 +17,17 @@ export type MatchDetail = {
 
 const pct = (p: number) => `${fi(100 * p, 0)} %`;
 
+// Haastajan huomio ihmisen kielelle (käyttäjä 29.10.: "miksi haastaja eroaa").
+// challenger.py kirjoittaa maalivahdin muodossa "MV Sukunimi +0.05" = torjutut maalit
+// ottelua kohden verrattuna joukkueen kauden aiempiin aloittajiin.
+function why(note: string): string {
+  const m = note.match(/^MV (.+) ([+-]\d+(?:\.\d+)?)$/);
+  if (!m) return note;
+  const d = Number(m[2]);
+  if (Math.abs(d) < 0.005) return `Aloittava maalivahti ${m[1]}: sama taso kuin joukkueen aiemmat aloittajat`;
+  return `Aloittava maalivahti ${m[1]}: ${d > 0 ? "parempi" : "heikompi"} kuin joukkueen aiemmat aloittajat (${d > 0 ? "−" : "+"}${fi(Math.abs(d), 2)} päästettyä maalia / ottelu)`;
+}
+
 function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -49,7 +60,11 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
           <div className="mc-box">
             <div className="label">Haastaja</div>
             <b>{d.home} {pct(d.ch.pHome)} – {pct(1 - d.ch.pHome)} {d.away}</b>
-            {d.ch.notes && <p>{d.ch.notes}</p>}
+            {h != null && <div className="mc-ot">Virallinen {pct(h)} → haastaja {pct(d.ch.pHome)} ({d.home})</div>}
+            {d.ch.notes ? (<>
+              <div className="label sub">Miksi eroaa</div>
+              <ul className="mc-why">{d.ch.notes.split("; ").map((n) => <li key={n}>{why(n)}</li>)}</ul>
+            </>) : <p className="dim">Haastaja ei kirjannut syytä tälle ottelulle.</p>}
           </div>
         )}
         <div className="mc-box">

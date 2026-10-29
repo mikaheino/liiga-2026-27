@@ -22,7 +22,7 @@ export default async function Page() {
   // Haastaja kierroskorttiin: päivän ajo (maalivahdit + poissaolot) ohittaa kausiennusteen
   // otteluarvion (vain poissaolot), joka kattaa myös tulevat päivät.
   const chMap = new Map(season.games.map((g) => [gameKey(g.date, g.home, g.away),
-    { date: g.date, home: g.home, away: g.away, base: NaN, pHome: g.pHome, pOt: NaN, notes: "" }]));
+    { date: g.date, home: g.home, away: g.away, base: NaN, pHome: g.pHome, pOt: NaN, notes: g.notes }]));
   for (const c of challenger) chMap.set(gameKey(c.date, c.home, c.away), c);
   // Jokaisessa ovessa elävä nosto -- ovi kertoo jo mitä sen takana on.
   const table = seasonTable(log, teams);
