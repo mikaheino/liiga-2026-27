@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Grid, { Team } from "@/components/Grid";
 import { CountUp } from "@/components/Motion";
-import { type Fixture, MONTHS_FI, misses, modelSaid, resultText, scoreboard } from "@/lib/fixtures";
+import { type Fixture, MONTHS_FI, challengerSaid, misses, modelSaid, resultText, scoreboard } from "@/lib/fixtures";
 import { fi } from "@/lib/table";
 
 const day = (ts: string) => `${Number(ts.slice(8, 10))}.${Number(ts.slice(5, 7))}.`;
@@ -18,7 +18,14 @@ function Prob({ p }: { p: number | null }) {
 function Verdict({ f }: { f: Fixture }) {
   const s = modelSaid(f);
   if (s == null) return null;
-  return <span className={`verdict ${s >= 50 ? "hit" : "miss"}`}>{s >= 50 ? "✓" : "✗"} {Math.round(s)} %</span>;
+  const c = challengerSaid(f);
+  return (
+    <span className="verdicts">
+      <span className={`verdict ${s >= 50 ? "hit" : "miss"}`}>{s >= 50 ? "✓" : "✗"} {Math.round(s)} %</span>
+      {/* Haastaja (H) vain kun se oli kirjannut ottelun; näkyy myös, kun se ei muuttanut mitään. */}
+      {c != null && <span className={`verdict ch ${c >= 50 ? "hit" : "miss"}`} title="Haastaja">H {Math.round(c)} %</span>}
+    </span>
+  );
 }
 
 export function Score({ fixtures }: { fixtures: Fixture[] }) {

@@ -6,6 +6,8 @@ export type Fixture = {
   start_ts: string; home: string; away: string; ended: boolean;
   hg: number | null; ag: number | null; category: string | null;
   pHome: number | null; pOt: number | null;
+  // Uutishaastajan kotivoitto, kun se on kirjannut ottelun (vain Pages; app/ottelut).
+  chHome?: number | null;
 };
 
 // Todennäköisyys jonka malli antoi lopulliselle voittajalle (0-100). Rehellinen
@@ -15,6 +17,12 @@ export function modelSaid(f: Fixture): number | null {
   if (!f.ended || f.pHome == null || f.hg == null || f.ag == null) return null;
   const p = f.pHome * 100;
   return f.hg > f.ag ? p : 100 - p;
+}
+
+// Sama haastajan ennusteelle: mitä se antoi lopulliselle voittajalle.
+export function challengerSaid(f: Fixture): number | null {
+  if (f.chHome == null || f.pHome == null) return null;
+  return modelSaid({ ...f, pHome: f.chHome });
 }
 
 export function resultText(f: Fixture): string {
