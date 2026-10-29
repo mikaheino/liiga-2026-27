@@ -240,3 +240,26 @@ miten ne vertautuvat toisiinsa". Tilanne 27.10.:
    ensi kaudeksi päämalliksi (AGENTS.md §10: ei kesken kauden ilman erillistä päätöstä).
 
 **Milloin:** 1 heti kun ehditään (data katoaa joka päivä), 2–4 ennen 15.12., 5 15.12. ja kauden lopussa.
+
+## 9. CI punainen: npm audit, `@azure/msal-node` (lisätty 2026-10-29)
+
+`ci.yml`:n app-työ kaatuu vaiheeseen `npm audit --omit=dev --audit-level=high`: **2 high**.
+Kaatanut jokaisen pushin 27.10. alkaen (ensimmäinen havaittu ajo 40568232899, viimeisin
+40849354185 / `571f972`). Testit ja Python-portti menevät läpi; typecheck ja `next build`
+jäävät ajamatta, koska audit pysäyttää työn ennen niitä.
+
+- **Löydös:** [GHSA-xcx6-jx8p-x3h5](https://github.com/advisories/GHSA-xcx6-jx8p-x3h5) –
+  MSAL Node authorization code flow may disclose parameters to an attacker-controlled endpoint.
+  Haavoittuvat versiot `@azure/msal-node` 5.0.0-beta.0 – 7.0.2.
+- **Ketju:** `snowflake-sdk@3.4.0` -> `@azure/identity@4.14.0` -> `@azure/msal-node@6.0.1`
+  (toinen löydös on `@azure/identity`, joka vain riippuu siitä). Suora riippuvuus ei ole meidän.
+- **Altistus (arvio, ei todennettu):** sovellus todentaa sessiotokenilla (`OAUTH`,
+  `lib/snowflake.ts`) tai `liiga_ci`-avainparilla, ei Azuren authorization code flow'lla,
+  joten haavoittuva polku ei liene käytössä. Audit kaataa CI:n silti, ja putki on
+  julkaisun portti.
+- **Korjaus:** npm ehdottaa `npm audit fix`. Kokeile ensin se; jos `snowflake-sdk` lukitsee
+  vanhan version, `overrides` (`@azure/msal-node` korjattuun versioon) `package.json`:iin.
+  Sen jälkeen `npm run typecheck`, `next build`, paikallinen ajo (:3010) ja Pages-käännös.
+  Älä laske `--audit-level`ia tai ohita löydöstä.
+
+**Milloin:** pian. Niin kauan kuin audit kaatuu, CI ei kerro, menevätkö tyypit ja käännös läpi.
