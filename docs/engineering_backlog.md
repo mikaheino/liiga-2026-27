@@ -270,3 +270,47 @@ jäävät ajamatta, koska audit pysäyttää työn ennen niitä.
   Älä laske `--audit-level`ia tai ohita löydöstä.
 
 **Milloin:** pian. Niin kauan kuin audit kaatuu, CI ei kerro, menevätkö tyypit ja käännös läpi.
+
+## 10. Mitkä Snowflake-julkaisut tarvitsevat hyväksynnän? (lisätty 2026-10-29)
+
+Käyttäjä 29.10.: "laita backlogille mietintää, mitä Snowflake-ajot tulee hyväksyä".
+
+**Nyt:** jokainen push, joka koskee sovelluksen kansiota, käynnistää `deploy-app.yml`:n:
+STAGING-käännös (~3 min lämpimänä) -> tuotantovaihe odottaa production-hyväksyntää.
+Jono on yksi (`concurrency: deploy-app`), ja hyväksyntää odottava ajo pitää sen varattuna.
+
+**Mitä 27.–29.10. tapahtui:**
+- 27.10. ajo jäi odottamaan hyväksyntää, ja kaikki myöhemmät ajot olivat kaksi päivää
+  `pending`-tilassa ilman töitä. Snowflaken sovellus jäi 24.10. versioon, vaikka Pages ja
+  lokaali etenivät. Huomattiin vasta, kun tarkistettiin ympäristöjen synkka.
+- 29.10. viisi sovelluspushia -> viisi julkaisuajoa. Jokainen uusi korvasi edellisen
+  jonossa odottaneen, mutta hyväksyntää odottava ajo jäi aina jonon kärkeen. Käyttäjän
+  piti peruuttaa vanha ja hyväksyä uusi käsin. Claude ei voi tehdä kumpaakaan
+  (automaattisen tilan luvitus estää tuotantoon vaikuttavat toimet).
+- Suuri osa muutoksista ei muuttanut Snowflaken sovellusta lainkaan: uutiset, uutishaastaja
+  ja haastajan selitykset näkyvät vain Pagesissa (`optional()` palauttaa Snowflakessa
+  tyhjän), ja silti jokainen niistä käynnisti Snowflake-julkaisun.
+
+**Kysymykset:**
+1. **Mikä muutos ylipäätään vaatii Snowflake-julkaisun?** Esimerkiksi Pages-only-ominaisuus,
+   CSS-säätö tai teksti ei välttämättä. Vaihtoehto: julkaisu vain käsin
+   (`workflow_dispatch`) tai tagista (`app-vN`), ei jokaisesta pushista.
+2. **Mikä vaatii ihmisen hyväksynnän?** Agentti (näkymät, semanttiset mallit, oikeudet)
+   selvästi. Sovelluksen pelkkä käyttöliittymä mahdollisesti ei; STAGING-tarkistus ja
+   tyyppitarkistus voisivat riittää (vrt. kohta 1, automaattihyväksyntä pienille).
+3. **Vanhentuneet hyväksyntäpyynnöt:** uuden ajon pitäisi perua vanha odottava ajo
+   itse, ettei jono jumiudu (esim. ensimmäinen vaihe `gh run cancel` aiemmille
+   odottaville; vaatii `actions: write`). Vaihtoehtoisesti `cancel-in-progress: true`, jos
+   keskeytetty STAGING-käännös ei jätä palvelua rikki (tarkistettava).
+4. **Kuka huomaa, että Snowflake jää jälkeen?** `scripts/dev/status.sh` voisi näyttää
+   tuotannossa olevan sovellusversion ja hyväksyntää odottavat ajot (nyt ei näytä).
+5. **Julkaisutahti:** kerran päivässä tai viikossa koottuna vs. jokainen muutos heti.
+   Käyttäjä lukee sovellusta puhelimella Pagesista, joten Snowflaken sovelluksen ei
+   tarvitse olla minuutin perässä.
+
+**Ehdotus pohdinnan pohjaksi:** sovellus Snowflakeen kerran päivässä (tai käsin), hyväksyntä
+vain jos agenttiin, oikeuksiin tai putkeen liittyvä polku muuttui; uusi ajo peruu vanhat
+odottavat; `status.sh` näyttää tuotannon version. Agentin putki (`deploy.yml`) ennallaan.
+
+**Milloin:** ennen seuraavaa isoa sovellusmuutosta; nykyinen tapa vaatii käyttäjältä
+toimen jokaisen pushin jälkeen.
