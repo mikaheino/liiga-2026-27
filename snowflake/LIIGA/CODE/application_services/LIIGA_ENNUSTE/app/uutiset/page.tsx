@@ -36,6 +36,23 @@ export default async function Page() {
             <div><span className="ab-k">Voittaja oikein</span><b>{ab.hitsBase} → {ab.hitsNews}</b><small>/ {ab.n}</small></div>
           </div>
         )}
+        {ab.rows.length > 0 && (
+          <div className="ab-today">
+            <div className="label sub">Pelatut</div>
+            {/* Uusin ensin; kotivoiton todennäköisyys lukittu -> haastaja, ja kumpi osui lähemmäs. */}
+            {[...ab.rows].reverse().slice(0, 12).map((r) => {
+              const g = r.llBase - r.llNews;
+              return (
+                <div key={r.date + r.home} className="ab-row">
+                  <span className="ab-game">{Number(r.date.slice(8, 10))}.{Number(r.date.slice(5, 7))}. {r.home} – {r.away} {r.hg}–{r.ag}</span>
+                  <span className="ab-p">{pct(r.base)} → <b>{pct(r.pHome)}</b>{" "}
+                    <small className={g > 0.0005 ? "up" : g < -0.0005 ? "down" : ""}>{g > 0.0005 ? "haastaja lähempänä" : g < -0.0005 ? "lukittu lähempänä" : "sama"}</small></span>
+                  {r.notes && <span className="ab-notes">{r.notes}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {upcoming.length > 0 && (
           <div className="ab-today">
             <div className="label sub">Haastajan ennusteet</div>

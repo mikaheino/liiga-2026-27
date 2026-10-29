@@ -8,7 +8,7 @@ const hkiDay = (ts: string) => new Date(ts).toLocaleDateString("sv-SE", { timeZo
 export const gameKey = (date: string, home: string, away: string) => `${date}|${home}|${away}`;
 export const fixtureKey = (f: Fixture) => gameKey(hkiDay(f.start_ts), f.home, f.away);
 
-export type AbRow = Challenger & { y: number; llBase: number; llNews: number };
+export type AbRow = Challenger & { y: number; hg: number; ag: number; llBase: number; llNews: number };
 export type Ab = { n: number; llBase: number; llNews: number; hitsBase: number; hitsNews: number; changed: number; rows: AbRow[] };
 
 const ll = (y: number, p: number) => { const q = Math.min(Math.max(p, 1e-9), 1 - 1e-9); return -(y * Math.log(q) + (1 - y) * Math.log(1 - q)); };
@@ -20,7 +20,7 @@ export function abScore(ch: Challenger[], fixtures: Fixture[]): Ab {
     const f = done.get(gameKey(c.date, c.home, c.away));
     if (!f) continue;
     const y = f.hg! > f.ag! ? 1 : 0;
-    rows.push({ ...c, y, llBase: ll(y, c.base), llNews: ll(y, c.pHome) });
+    rows.push({ ...c, y, hg: f.hg!, ag: f.ag!, llBase: ll(y, c.base), llNews: ll(y, c.pHome) });
   }
   const n = rows.length, mean = (k: "llBase" | "llNews") => (n ? rows.reduce((s, r) => s + r[k], 0) / n : 0);
   const hits = (k: "base" | "pHome") => rows.filter((r) => (r[k] >= 0.5 ? 1 : 0) === r.y).length;

@@ -10,10 +10,15 @@ name: news
 
 on:
   schedule:
-    # 14.00 Suomen aikaa on talvella 12 UTC ja kesällä 11 UTC: molemmat
-    # ajastetaan, ja vartija päästää läpi vain sen, jossa Helsingissä on klo 14.
+    # 14.00 Suomen aikaa on talvella 12 UTC ja kesällä 11 UTC. GitHubin ajastus
+    # myöhästyy tunteja (28.10.: klo 14 -ajo lähti 19.53), ja tarkka klo 14 -vartija
+    # ohitti silloin koko päivän. Siksi lisäajot ja vartija klo 14-21: uusintaajo on
+    # turvallinen, koska challenger.py ennustaa vain alkamattomat ottelut ja korvaa
+    # saman päivän rivit (myöhempi ajo näkee useamman aloittavan maalivahdin).
     - cron: "0 11 * * *"
     - cron: "0 12 * * *"
+    - cron: "0 13 * * *"
+    - cron: "0 14 * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,11 +33,11 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - name: Onko Helsingissä klo 14
+      - name: Onko Helsingissä klo 14-21
         id: gate
         run: |
-          h=$(TZ=Europe/Helsinki date +%H)
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "$h" != "14" ]; then
+          h=$((10#$(TZ=Europe/Helsinki date +%H)))
+          if [ "${{ github.event_name }}" = "schedule" ] && { [ "$h" -lt 14 ] || [ "$h" -gt 21 ]; }; then
             echo "Helsingissä klo $h, ohitetaan"; echo "run=0" >> "$GITHUB_OUTPUT"
           else
             echo "run=1" >> "$GITHUB_OUTPUT"

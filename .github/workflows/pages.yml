@@ -10,6 +10,9 @@ name: pages
 on:
   schedule:
     - cron: "15 5 * * *"       # 07.15 / 08.15 Suomen aikaa, pelit ovat päättyneet
+    # Iltaajo (käyttäjä 29.10.): illan tulokset ja tilanne sivulle klo 22 (kesäaikana 23).
+    # Ei tallenna ennustehistoriaa, ks. history alla; aamuajo tekee sen.
+    - cron: "0 20 * * *"
   workflow_dispatch:
     inputs:
       history:
@@ -63,7 +66,8 @@ jobs:
         run: .venv/bin/python scripts/local/daily_update.py --no-sync
 
       - name: Tallenna historia
-        if: github.event_name == 'schedule' || inputs.history
+        # Vain aamuajo: illan ajo laskee ennusteen pelattujen otteluiden jälkeen.
+        if: (github.event_name == 'schedule' && github.event.schedule == '15 5 * * *') || inputs.history
         run: |
           .venv/bin/python scripts/deploy/pages_history.py save .pages-data
           cd .pages-data
