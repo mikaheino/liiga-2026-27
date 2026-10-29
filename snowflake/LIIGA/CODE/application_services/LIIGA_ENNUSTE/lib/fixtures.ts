@@ -40,11 +40,15 @@ export function scoreboard(fx: Fixture[]) {
   return { n: scored.length, hits, home };
 }
 
-// Viimeiset N pelattua (käyttäjä 29.10.: "onko luku parantunut"): sama osumaehto
-// kuin koko kaudella, uusin ottelu viimeisenä aloitusajan mukaan.
+// Viimeiset N pelattua (käyttäjä 29.10.: "onko luku parantunut", "näytä kierroksina"):
+// sama osumaehto kuin koko kaudella, ja vertailukohta on ikkunaa EDELTÄVÄT ottelut,
+// ei koko kausi -- muuten ikkuna olisi mukana omassa vertailukohdassaan.
+export const ROUND = 7;                                   // 14 joukkuetta -> 7 ottelua kierroksella
 export function recentHits(fx: Fixture[], n: number) {
-  const scored = fx.filter((f) => modelSaid(f) != null).sort((a, b) => a.start_ts.localeCompare(b.start_ts)).slice(-n);
-  return { n: scored.length, hits: scored.filter((f) => modelSaid(f)! >= 50).length };
+  const scored = fx.filter((f) => modelSaid(f) != null).sort((a, b) => a.start_ts.localeCompare(b.start_ts));
+  const hit = (xs: Fixture[]) => xs.filter((f) => modelSaid(f)! >= 50).length;
+  const last = scored.slice(-n), before = scored.slice(0, -n);
+  return { n: last.length, hits: hit(last), nBefore: before.length, hitsBefore: hit(before) };
 }
 
 // Joukkueittain: odotetut voitot vs. toteutuneet. Voitot ovat riippumattomien
