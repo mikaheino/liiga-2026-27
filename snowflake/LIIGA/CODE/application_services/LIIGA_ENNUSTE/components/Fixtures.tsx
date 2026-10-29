@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Grid, { Team } from "@/components/Grid";
 import { CountUp } from "@/components/Motion";
-import { type Fixture, MONTHS_FI, challengerSaid, misses, modelSaid, resultText, scoreboard } from "@/lib/fixtures";
+import { type Fixture, MONTHS_FI, challengerSaid, misses, modelSaid, recentHits, resultText, scoreboard } from "@/lib/fixtures";
 import { fi } from "@/lib/table";
 
 const day = (ts: string) => `${Number(ts.slice(8, 10))}.${Number(ts.slice(5, 7))}.`;
@@ -42,6 +42,19 @@ export function Score({ fixtures }: { fixtures: Fixture[] }) {
         <span className="score-k">aina kotijoukkue</span>
         <span className="score-b">{Math.round(base)} %</span>
         <span className="score-k">{gap === 0 ? "tasoissa" : `${gap > 0 ? "+" : "−"}${Math.abs(gap)} osumaa`}</span>
+      </div>
+      {/* Viimeiset 30/20/10: nuoli kertoo, onko tahti koko kautta parempi vai heikompi. */}
+      <div className="score-recent">
+        {[30, 20, 10].filter((k) => s.n > k).map((k) => {
+          const r = recentHits(fixtures, k), pct = (100 * r.hits) / r.n, d = pct - rate;
+          return (
+            <div key={k} className="score-r">
+              <span className="score-k">viim. {k}</span>
+              <span className={`score-rp ${d >= 0.5 ? "up" : d <= -0.5 ? "down" : ""}`}>{Math.round(pct)} %{d >= 0.5 ? <small>▲</small> : d <= -0.5 ? <small>▼</small> : null}</span>
+              <span className="score-k"><b>{r.hits}/{r.n}</b></span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

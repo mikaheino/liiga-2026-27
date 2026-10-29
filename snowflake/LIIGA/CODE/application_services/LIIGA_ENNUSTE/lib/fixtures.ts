@@ -40,6 +40,13 @@ export function scoreboard(fx: Fixture[]) {
   return { n: scored.length, hits, home };
 }
 
+// Viimeiset N pelattua (käyttäjä 29.10.: "onko luku parantunut"): sama osumaehto
+// kuin koko kaudella, uusin ottelu viimeisenä aloitusajan mukaan.
+export function recentHits(fx: Fixture[], n: number) {
+  const scored = fx.filter((f) => modelSaid(f) != null).sort((a, b) => a.start_ts.localeCompare(b.start_ts)).slice(-n);
+  return { n: scored.length, hits: scored.filter((f) => modelSaid(f)! >= 50).length };
+}
+
 // Joukkueittain: odotetut voitot vs. toteutuneet. Voitot ovat riippumattomien
 // Bernoulli-kokeiden summa mallin omilla todennäköisyyksillä, joten hajonta on
 // sqrt(sum p(1-p)); yli kahden hajonnan ero tuskin on pelkkää sattumaa.

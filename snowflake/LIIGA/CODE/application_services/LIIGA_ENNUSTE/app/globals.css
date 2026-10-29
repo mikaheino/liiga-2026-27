@@ -335,6 +335,12 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
 .score-k b { font: 700 14px var(--mono); color: var(--body); letter-spacing: 0; }
 .score-vs { display: flex; flex-direction: column; gap: 4px; padding-left: 24px; border-left: 1px solid var(--line-2); }
 .score-b { font: 800 26px/1 var(--mono); color: var(--body); }
+.score-recent { display: flex; gap: 18px; padding-left: 24px; border-left: 1px solid var(--line-2); }
+.score-r { display: flex; flex-direction: column; gap: 4px; }
+.score-rp { font: 800 26px/1 var(--mono); color: var(--body); white-space: nowrap; }
+.score-rp.up { color: var(--gold-hi); }
+.score-rp.down { color: var(--danger); }
+.score-rp small { font: 700 .6em var(--sans); margin-left: 3px; }
 .match { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .match .team { gap: 7px; min-width: 0; } .dash { color: var(--faint); }
 .pair { font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
@@ -703,6 +709,12 @@ h2 { margin: 10px 0 6px; font: 800 32px/1.1 var(--sans); letter-spacing: -.03em;
   .dist { height: 170px; gap: 3px; padding: 12px 10px 8px; margin-bottom: 22px; }
   .dv { font-size: 8.5px; } .dk { font-size: 8px; }
   .score-vs { padding-left: 16px; }
+  .score { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 14px; width: 100%; }
+  .score-main { min-width: 0; } .score-vs { min-width: 0; }
+  .score .score-k { letter-spacing: .06em; }
+  .score-recent { grid-column: 1 / -1; }
+  .score-recent { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--line-2); }
+  .score-rp { font-size: 20px; }
 }
 /* Kosketusnäytöllä hover jää päälle napautuksen jälkeen: ei suurennuksia. */
 @media (hover: none) {
