@@ -243,6 +243,13 @@ miten ne vertautuvat toisiinsa". Tilanne 27.10.:
 
 ## 9. CI punainen: npm audit, `@azure/msal-node` (lisätty 2026-10-29)
 
+**✅ Korjattu 29.10. (`265a645`, CI-ajo 40853113587 vihreä: audit, tyypit ja käännös).**
+`npm audit fix` ei auttanut: uusin `@azure/identity` 4.14.0 vaatii `msal-node` ^6, ja koko 6.x on
+haavoittuvaa. Ratkaisu `package.json`:n `overrides`: `"@azure/msal-node": "^7.1.2"`
+(pääversion nosto epäsuorassa riippuvuudessa). Poista override, kun `snowflake-sdk`/`@azure/identity`
+vaatii itse korjatun version. Snowflake-yhteyttä uudella versiolla ei testattu paikallisesti
+(paikallinen ajo käyttää DuckDB:tä); se todentuu STAGING-julkaisussa.
+
 `ci.yml`:n app-työ kaatuu vaiheeseen `npm audit --omit=dev --audit-level=high`: **2 high**.
 Kaatanut jokaisen pushin 27.10. alkaen (ensimmäinen havaittu ajo 40568232899, viimeisin
 40849354185 / `571f972`). Testit ja Python-portti menevät läpi; typecheck ja `next build`
