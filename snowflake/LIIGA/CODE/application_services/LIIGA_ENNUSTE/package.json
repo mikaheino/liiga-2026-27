@@ -19,5 +19,8 @@
     "@types/node": "22.18.6",
     "@types/react": "19.1.13",
     "typescript": "5.9.2"
+  },
+  "overrides": {
+    "@azure/msal-node": "^7.1.2"
   }
 }
