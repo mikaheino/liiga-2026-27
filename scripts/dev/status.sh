@@ -8,9 +8,10 @@ f=$(grep -E 'snowflake sync:' logs/daily_update.log | tail -1); echo "synkka: ${
 .venv/bin/python - <<'PY'
 import duckdb
 c = duckdb.connect("data/liiga.duckdb", read_only=True)
-r = c.sql("""select count(*) filter (where ended), max(start_time) filter (where ended),
+# execute(...).fetchone(), ei sql(...).fetchone(): duckdb 2.0 poisti sen relaatioilta.
+r = c.execute("""select count(*) filter (where ended), max(start_time) filter (where ended),
              min(start_time) filter (where not ended) from raw_games where season = (select max(season) from raw_games)""").fetchone()
-u = c.sql("select max(updated_at) from prediction_meta").fetchone()[0]
+u = c.execute("select max(updated_at) from prediction_meta").fetchone()[0]
 print(f"data: {r[0]} pelattu, viimeisin {r[1]}, seuraava {r[2]}; ennuste päivitetty {u}")
 PY
 curl -s -o /dev/null -w "sovellus :3010 %{http_code}\n" --max-time 3 http://localhost:3010/ || echo "sovellus :3010 ei käynnissä"
