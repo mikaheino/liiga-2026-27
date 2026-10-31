@@ -40,7 +40,8 @@ GAME_COLUMNS = ["snapshot_date", "game_id", "home_team", "away_team",
                 "p_home_win"]
 
 
-def refresh_results(season: int | None = None, con=None) -> dict:
+def refresh_results(season: int | None = None, con=None, *,
+                    grace_hours: int = 8) -> dict:
     """Pull in what has happened since the last run. The in-season step.
 
     Two layers:
@@ -62,6 +63,18 @@ def refresh_results(season: int | None = None, con=None) -> dict:
     `ingest.refresh_schedule()` moves the unplayed games when it happens.
     (Not `ingest_all`: it reads the disk cache from the first load.)
 
+    `grace_hours` only decides **when we start asking** about a game; whether
+    it is over comes from the payload's own `ended` flag (`ingest._flatten_
+    games`), never from the clock. A smaller value therefore cannot invent a
+    result, it can only spend a request on a game still in progress -- and
+    that is what lets a result reach the site minutes after the final buzzer
+    instead of the next morning (31.10.2026).
+
+    The default stays 8 so the in-Snowflake notebook keeps its own cadence:
+    the app's freshness is the app's business, and `LIIGA_DAILY` must not
+    change because the website wanted to be quicker. Only the Pages workflow
+    passes a smaller value, through `daily_update.py --grace`.
+
     Called by both the local daily run and the in-Snowflake notebook, so this
     must stay free of anything laptop-specific.
     """
@@ -79,7 +92,7 @@ def refresh_results(season: int | None = None, con=None) -> dict:
         # what lets a result be recovered when the per-game endpoint serves a
         # partial payload, and a snapshot taken after the fact is too late.
         snapshot_standings(con, season)
-        detail = ingest_results(season, con=con)
+        detail = ingest_results(season, con=con, grace_hours=grace_hours)
         # Anything the per-game endpoint could not deliver, try to derive
         # from the standings movement instead.
         rebuilt = reconstruct_games(con, season)

@@ -9,10 +9,17 @@ name: pages
 
 on:
   schedule:
-    - cron: "15 5 * * *"       # 07.15 / 08.15 Suomen aikaa, pelit ovat päättyneet
-    # Iltaajo (käyttäjä 29.10.): illan tulokset ja tilanne sivulle klo 22 (kesäaikana 23).
-    # Ei tallenna ennustehistoriaa, ks. history alla; aamuajo tekee sen.
-    - cron: "0 20 * * *"
+    # Parittomat minuutit (käyttäjä 31.10.): tasatunnit ja -vartit ovat GitHubin
+    # ajastimen ruuhkaisimmat hetket. Mitatut viiveet 28.-31.10. olivat aamuajossa
+    # 6 h ja iltaajossa 3,5 h. Siirto ei poista viivettä -- ajastus ei ole lupaus,
+    # ks. docs/claude/app.md -- mutta ei myöskään osu pahimpaan jonoon.
+    - cron: "17 5 * * *"       # 07.17 Suomen aikaa: yön tulokset + ennustehistoria
+    # Illan tulokset samana iltana (31.10.). Ottelut alkavat 15.00-17.30 UTC ja
+    # päättyvät 17.00-20.15 UTC, joten puolen tunnin tahti tuossa ikkunassa vie
+    # tuloksen sivulle n. 15 min loppusireenin jälkeen -- ennen tätä se ehti
+    # sivulle vasta seuraavana aamuna, koska `grace_hours` esti hakemisen.
+    # Nämä eivät tallenna ennustehistoriaa, ks. "Tallenna historia" alla.
+    - cron: "9,39 17-20 * * *"
   workflow_dispatch:
     inputs:
       history:
@@ -63,11 +70,15 @@ jobs:
           .venv/bin/python scripts/deploy/pages_history.py restore .pages-data
 
       - name: Tulokset liiga.fi:stä ja ennuste
-        run: .venv/bin/python scripts/local/daily_update.py --no-sync
+        # --grace 2: aletaan kysyä ottelua kahden tunnin kuluttua sen alusta, eikä
+        # kahdeksan. Lopputulos tulee silti liiga.fi:n omasta `ended`-lipusta, ei
+        # kellosta, joten lyhyempi odotus ei voi keksiä tulosta -- se vain näkee
+        # sen heti. Snowflaken notebook pitää oletuksensa 8 (pipeline.py).
+        run: .venv/bin/python scripts/local/daily_update.py --no-sync --grace 2
 
       - name: Tallenna historia
         # Vain aamuajo: illan ajo laskee ennusteen pelattujen otteluiden jälkeen.
-        if: (github.event_name == 'schedule' && github.event.schedule == '15 5 * * *') || inputs.history
+        if: (github.event_name == 'schedule' && github.event.schedule == '17 5 * * *') || inputs.history
         run: |
           .venv/bin/python scripts/deploy/pages_history.py save .pages-data
           cd .pages-data

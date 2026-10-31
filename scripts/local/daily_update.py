@@ -38,13 +38,13 @@ from liiga.team_strength import build_team_strength
 _POISSON_WEIGHT = 0.4   # keep in sync with scripts/local/refresh_standings.py
 
 
-def main(sync: bool = True) -> None:
+def main(sync: bool = True, grace_hours: int = 8) -> None:
     cfg = load_config()
     target = cfg["ingestion"]["target_season"]
 
     # Results, transforms and per-game detail -- the same call the
     # in-Snowflake notebook makes, so the two cannot drift apart.
-    got = refresh_results(target)
+    got = refresh_results(target, grace_hours=grace_hours)
     print(f"season {target}: {got['games_played']}/{got['games_total']} played, "
           f"detail fetched for {got['detail_games']} new game(s)")
     build_team_strength()     # roster-based prior (also rebuilds team_goaltending)
@@ -71,4 +71,11 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-sync", action="store_true",
                     help="skip the Snowflake publish (local-only run)")
-    main(sync=not ap.parse_args().no_sync)
+    # Kuinka kauan ottelun alusta odotetaan ennen kuin sitä aletaan kysyä.
+    # Oletus 8 pitää Snowflaken notebookin ennallaan; Pages antaa 2, jotta
+    # illan tulos ehtii sivulle samana iltana (31.10.2026).
+    ap.add_argument("--grace", type=int, default=8, metavar="H",
+                    help="hours after face-off before a game is asked about "
+                         "(default 8; the Pages workflow passes 2)")
+    args = ap.parse_args()
+    main(sync=not args.no_sync, grace_hours=args.grace)

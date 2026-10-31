@@ -1,0 +1,48 @@
+# Koetin liveveikkausta varten (31.10.2026). Väliaikainen: poistetaan kun
+# tiedämme mitä liiga.fi:n vastaus sisältää kesken olevasta ottelusta.
+#
+# Liveveikkaus tarvitsee tilanteen ja jäljellä olevan peliajan. Maalitapahtumissa
+# on `gameTime`, mutta kesken olevaa ottelua ei ole koskaan haettu (grace_hours
+# esti sen), joten kukaan ei tiedä onko vastauksessa kelloa. Tämä katsoo sen.
+#
+# Lukee vain: ei kirjoita kantaan, ei käännä sivua, ei koske malliin.
+name: live-probe
+
+on:
+  schedule:
+    # Otteluaika on 15.00-20.00 UTC; parittomat minuutit, useita yrityksiä, koska
+    # yksikään ajastettu laukaisu ei ole luotettava. Riittää että yksi osuu
+    # kesken olevaan otteluun -- koetin poistuu siististi jos ei osu.
+    - cron: "23 16-19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Riippuvuudet
+        run: pip install -q -e .
+      - name: Koetin
+        run: |
+          { echo '```'
+            python scripts/live/probe.py --out probe-out
+            echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Vastaukset talteen
+        if: hashFiles('probe-out/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-payload-${{ github.run_id }}
+          path: probe-out/
+          retention-days: 7

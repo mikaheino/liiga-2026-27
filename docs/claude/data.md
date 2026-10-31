@@ -278,3 +278,53 @@ Tunnistat sen tästä: **`prediction_meta.updated_at` ei päivity**, koska
 Kauden aikana aja aina **`python scripts/local/daily_update.py`**. CLAUDE.md:n
 kohta "Adding new players" askel 7 neuvoo yhä `refresh_standings.py`:tä —
 se neuvo pätee vain ennen kauden avausta.
+
+## `grace_hours`: milloin ottelua aletaan kysyä (31.10.2026)
+
+`results.games_needing_update()` ei kysy ottelua ennen kuin **`grace_hours`
+tuntia** sen alkamisesta. Lopputulos ei silti tule kellosta vaan liiga.fi:n
+omasta `ended`-lipusta (`ingest._flatten_games`), joten lyhyempi odotus **ei
+voi keksiä tulosta** — se voi korkeintaan käyttää yhden kutsun otteluun joka
+on yhä kesken.
+
+Oletus **8** oli syy siihen, ettei illan tulos koskaan ehtinyt sivulle samana
+iltana: klo 18.30 alkanut ottelu tuli haettavaksi vasta klo 02.30. Ilta-ajo
+(klo 22) ei voinut nähdä sitä rakenteellisesti, ja 30.10. myöhästynytkin
+01.31 ajettu ilta-ajo jäi 59 minuuttia liian aikaiseksi — sivulla luki
+"seuraava pelipäivä perjantaina 30.10." vielä lauantaiaamuna.
+
+- **Pages: 2** (`daily_update.py --grace 2`, `pages.yml`). Tulos sivulle n.
+  15 min loppusireenin jälkeen.
+- **Snowflake ja Mac: 8** (oletus `pipeline.refresh_results`). Käyttäjä
+  31.10.: "on myös järkevää erottaa Snowflake ajastukset tästä
+  applikaatiosta" — sovelluksen tuoreus ei saa muuttaa `LIIGA_DAILY`:ä.
+
+Kesken olevan ottelun hakeminen on turvallista: `raw_games` saa tilanteen
+mutta `winner` jää tyhjäksi, `team_game_log` suodattaa `WHERE ended`, ja
+tapahtumat, kokoonpanot ja maalivahdit kirjoitetaan vain päättyneille
+otteluille (`ingest.py:120,163,200,233`). Sovellus vartioi `ended`-lippua
+(`lib/fixtures.ts:17,29`), joten kesken oleva ottelu ei näytä tulosta.
+
+⚠️ **Pages-runner aloittaa aina repoon kirjatusta `data/liiga.duckdb`:stä** ja
+hakee kaiken sen jälkeen pelatun joka ajossa. 31.10. kirjattu kanta oli
+24.10:stä, joten jokainen ajo haki 15 ottelua uudelleen. Kustannus kasvaa
+joka päivä — kirjaa kanta ajoittain, muuten kevään ajot hakevat satoja
+otteluita kerrallaan. (Tämä on myös selitys lokirivin "detail fetched for N
+new game(s)" kasvaville luvuille; ne eivät ole jumittuneita otteluita.)
+
+## Liveveikkauksen kentät vastauksessa (31.10.2026)
+
+`game`-objekti sisältää valmiina sen mitä kesken olevan ottelun ennuste
+tarvitsee — todettu koettimella (`scripts/live/probe.py`):
+
+| kenttä | esimerkki | merkitys |
+|---|---|---|
+| `gameTime` | `3600` | kulunut peliaika sekunteina |
+| `currentPeriod` | `3` | menossa oleva erä |
+| `stale` | `False` | liiga.fi:n oma tuoreuslippu |
+| `periods[]` | `{index, homeTeamGoals, awayTeamGoals, category, startTime, endTime}` | eräkohtainen tilanne sekunteina |
+
+Maalitapahtumat ovat `game.homeTeam.goalEvents` / `game.awayTeam.goalEvents`,
+**eivät** `game`-objektin juuressa. Avoin kysymys: päivittyvätkö `gameTime` ja
+`currentPeriod` ottelun aikana vai vasta lopuksi. `live-probe.yml` vastaa
+siihen seuraavan ottelun aikana.

@@ -15,10 +15,8 @@ on:
     # ohitti silloin koko päivän. Siksi lisäajot ja vartija klo 14-21: uusintaajo on
     # turvallinen, koska challenger.py ennustaa vain alkamattomat ottelut ja korvaa
     # saman päivän rivit (myöhempi ajo näkee useamman aloittavan maalivahdin).
-    - cron: "0 11 * * *"
-    - cron: "0 12 * * *"
-    - cron: "0 13 * * *"
-    - cron: "0 14 * * *"
+    # Minuutti 11 eikä 0 (käyttäjä 31.10.): tasatunti on ajastimen ruuhkaisin hetki.
+    - cron: "11 11-14 * * *"
   workflow_dispatch:
 
 permissions:

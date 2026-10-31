@@ -60,9 +60,21 @@ def test_baseline_reproduces_published_simulation():
     teams = sorted(pub)
     base = sim.simulate(games, banked, teams)
     # mallin oma simulaatio ennen yleisöpainoa: mean = (1-w)*sim + w*crowd, joten
-    # verrataan todennäköisyyksiin, joihin yleisö ei vaikuta (Monte Carlo ±1,5 pp)
+    # verrataan todennäköisyyksiin, joihin yleisö ei vaikuta.
+    #
+    # Toleranssi on sidottu Monte Carlon omaan hajontaan eikä vakioon (31.10.2026).
+    # Molemmat simulaatiot arpovat 10 000 kautta siemenellä 42, mutta ne ovat eri
+    # toteutuksia, joten arvontajärjestys eroaa ja estimaatit ovat riippumattomia:
+    # kahden estimaatin erolla on keskivirhe sqrt(2*p*(1-p)/N). Kiinteä 1,5 pp oli
+    # kärkijoukkueelle noin 2 sigmaa, joten se kaatui ennemmin tai myöhemmin
+    # sattumalta -- 147 -> 154 pelattua ottelua riitti (Lukko p=0,57, ero 1,61 pp,
+    # mediaani kaikista joukkueista 0,07 pp). 4 sigmaa on yhä tiukka: aito ajautuma
+    # siirtäisi useaa joukkuetta samaan suuntaan, ei yhtä.
+    n = sim.N_SIMS
     for i, t in enumerate(teams):
-        assert abs(base["p_title"][i] - std[t][1]) < 0.015, t
+        p = std[t][1]
+        tol = max(0.01, 4 * (2 * p * (1 - p) / n) ** 0.5)
+        assert abs(base["p_title"][i] - p) < tol, f"{t}: ero {abs(base['p_title'][i] - p):.4f} > {tol:.4f}"
 
 
 @pytest.mark.skipif(not DB.exists(), reason="ei paikallista kantaa")

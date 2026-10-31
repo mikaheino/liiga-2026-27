@@ -134,3 +134,17 @@ Sijaintitaulukko `PositionBoard`: etusivulla vain tietokoneella (`desk-only`), p
 joukkuekortin kaikissa taulukoissa (`Team` = Link). Testaus kosketuksella: CDP:n
 touch-tapahtumat eivät laukaise Reactin käsittelijöitä, käytä `new TouchEvent(...)`.
 
+
+**Ajastus ei ole lupaus (31.10.2026).** Mitatut viiveet: `pages` aamuajo 6 h 07–6 h 17,
+ilta-ajo 3 h 31–3 h 51; `news` klo 14 -ajo jäi 30.10. kokonaan väliin (ensimmäinen ajo
+tuli käsin klo 16.47). GitHubin dokumentaatio sanoo suoraan että `schedule` voi myöhästyä
+kuormassa, eikä SLA:ta ole. Siksi:
+
+- cronit siirretty pois tasatunneilta ja -varteilta (`17 5`, `9,39 17-20`, `11 11-14`)
+- `pages.yml`:lle otteluikkuna 17–20 UTC puolen tunnin välein, `--grace 2` (data.md)
+- `news.yml`:n malli — useita laukaisuja + kellonaikavartija — on oikea rakenne;
+  yksi cron ei riitä mihinkään aikakriittiseen
+
+Julkisen repon vakiorunnerit ovat ilmaisia eivätkä kuluta kiintiötä, joten tiheys ei maksa
+mitään. Pagesin 10 käännöstä/tunti **ei koske omaa Actions-workflowia**. Todelliset rajat
+ovat `GITHUB_TOKEN` 1 000 API-kutsua/tunti/repo ja liiga.fi:n kuormittaminen.
