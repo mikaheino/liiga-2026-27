@@ -13,7 +13,14 @@ on:
     # ajastimen ruuhkaisimmat hetket. Mitatut viiveet 28.-31.10. olivat aamuajossa
     # 6 h ja iltaajossa 3,5 h. Siirto ei poista viivettä -- ajastus ei ole lupaus,
     # ks. docs/claude/app.md -- mutta ei myöskään osu pahimpaan jonoon.
+    # Aamuajo tallentaa päivän ennustehistorian -- ennen ottelua annettua ennustetta
+    # ei voi laskea jälkikäteen, joten yksi laukaisu ei riitä: 31.10. klo 05.17 UTC:n
+    # laukaisu jäi kokonaan tulematta ja aamun ajo tehtiin käsin. Kolme aamulaukaisua,
+    # kaikki ennen sunnuntain aikaisinta aloitusta (15.00 Suomen aikaa = 13 UTC).
+    # Uusinta on turvallinen: persist() korvaa saman päivän tilannekuvan.
     - cron: "17 5 * * *"       # 07.17 Suomen aikaa: yön tulokset + ennustehistoria
+    - cron: "43 6 * * *"       # 08.43 varalaukaisu
+    - cron: "27 8 * * *"       # 10.27 varalaukaisu
     # Illan tulokset samana iltana (31.10.). Ottelut alkavat 15.00-17.30 UTC ja
     # päättyvät 17.00-20.15 UTC, joten puolen tunnin tahti tuossa ikkunassa vie
     # tuloksen sivulle n. 15 min loppusireenin jälkeen -- ennen tätä se ehti
@@ -76,9 +83,43 @@ jobs:
         # sen heti. Snowflaken notebook pitää oletuksensa 8 (pipeline.py).
         run: .venv/bin/python scripts/local/daily_update.py --no-sync --grace 2
 
+      - name: Onko päivän ensimmäinen ottelu jo alkanut
+        # Myöhästynyt aamuajo on vaarallinen, ei vain myöhäinen: persist() korvaa
+        # päivän tilannekuvan, ja alkaneet ottelut eivät ole siinä mukana -- tallennus
+        # pyyhkisi juuri sen ennusteen, jota varten historia on olemassa. Mitatut
+        # myöhästymiset ovat tunteja, joten kellonaika ei riitä: kysytään kannasta.
+        # start_ts on UTC-merkkijono ja kaikki otteluajat osuvat samalle UTC-päivälle
+        # kuin Suomen päivä (aikaisin aloitus 15.00 = 13 UTC), joten UTC-päivä riittää.
+        id: pre
+        run: |
+          .venv/bin/python - <<'PY'
+          import datetime as dt
+          import os
+
+          import duckdb
+
+          now = dt.datetime.now(dt.timezone.utc)
+          today = now.date().isoformat()
+          con = duckdb.connect("data/liiga.duckdb", read_only=True)
+          first = con.execute(
+              "SELECT MIN(start_ts) FROM stg_games WHERE season = (SELECT MAX(season) FROM stg_games) "
+              "AND SUBSTR(start_ts, 1, 10) = ?", [today]).fetchall()[0][0]
+          con.close()
+          started = bool(first) and dt.datetime.fromisoformat(first.replace("Z", "+00:00")) <= now
+          print(f"{today}: ensimmäinen ottelu {first or '-'}, nyt {now.isoformat(timespec='seconds')} "
+                f"-> {'alkanut, historiaa ei tallenneta' if started else 'ei ole alkanut'}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"started={'1' if started else '0'}\n")
+          PY
+
       - name: Tallenna historia
-        # Vain aamuajo: illan ajo laskee ennusteen pelattujen otteluiden jälkeen.
-        if: (github.event_name == 'schedule' && github.event.schedule == '17 5 * * *') || inputs.history
+        # Vain aamuajo ennen ottelujen alkua: illan ajo laskee ennusteen pelattujen
+        # otteluiden jälkeen, ja myöhästynyt aamuajo on sama asia.
+        if: >-
+          steps.pre.outputs.started == '0' &&
+          ((github.event_name == 'schedule' &&
+            contains(fromJSON('["17 5 * * *","43 6 * * *","27 8 * * *"]'), github.event.schedule))
+           || inputs.history)
         run: |
           .venv/bin/python scripts/deploy/pages_history.py save .pages-data
           cd .pages-data

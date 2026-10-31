@@ -140,10 +140,30 @@ ilta-ajo 3 h 31–3 h 51; `news` klo 14 -ajo jäi 30.10. kokonaan väliin (ensim
 tuli käsin klo 16.47). GitHubin dokumentaatio sanoo suoraan että `schedule` voi myöhästyä
 kuormassa, eikä SLA:ta ole. Siksi:
 
-- cronit siirretty pois tasatunneilta ja -varteilta (`17 5`, `9,39 17-20`, `11 11-14`)
+- cronit siirretty pois tasatunneilta ja -varteilta (`17 5`, `9,39 17-20`, `11 9-14`)
 - `pages.yml`:lle otteluikkuna 17–20 UTC puolen tunnin välein, `--grace 2` (data.md)
 - `news.yml`:n malli — useita laukaisuja + kellonaikavartija — on oikea rakenne;
   yksi cron ei riitä mihinkään aikakriittiseen
+
+**Ennen ottelua annettavat ennusteet (31.10. ilta).** Kaksi niistä on sellaisia, ettei
+niitä voi laskea jälkikäteen: Pagesin oma ennustehistoria (`pages.yml`, aamuajo) ja
+uutishaastajan otteluennuste (`news.yml` → `recompute.yml`). 31.10. kumpikaan ajastettu
+laukaisu ei tullut lainkaan — illan kuuden ottelun haastajarivi puuttui vielä klo 14.42,
+kaksi tuntia ennen aloitusta, ja aamun Pages-ajo oli tehty käsin. Siksi:
+
+- `news.yml`: ikkuna `11 9-14` UTC ja vartija klo 11–21 Suomen aikaa (ennen `11 11-14`
+  ja klo 14). Kuusi laukaisua kolmen sijaan ja ensimmäinen neljä tuntia aiemmin.
+  Aikainen ajo kirjaa rivin perusennusteesta ja myöhempi korvaa sen paremmalla
+  (`challenger.py` ennustaa vain alkamattomat ottelut ja korvaa saman päivän rivit)
+  — rivin olemassaolo on tärkeämpi kuin sen tarkkuus.
+- `pages.yml`: aamulaukaisuja kolme (`17 5`, `43 6`, `27 8`), kaikki ennen sunnuntain
+  aikaisinta aloitusta (15.00 = 13 UTC), ja historia tallennetaan **vain jos päivän
+  ensimmäinen ottelu ei ole alkanut** (askel "Onko päivän ensimmäinen ottelu jo
+  alkanut"). Myöhästynyt aamuajo ei ole vain myöhäinen: `persist()` korvaa päivän
+  tilannekuvan eikä alkaneita otteluita ole siinä mukana, joten tallennus pyyhkisi
+  juuri sen ennusteen, jota varten historia on olemassa.
+- Käsin: `gh workflow run news.yml` (vartija ei koske `workflow_dispatch`iin) laskee
+  haastajan ja julkaisee sivun; `gh workflow run pages.yml -f history=true` aamulle.
 
 Julkisen repon vakiorunnerit ovat ilmaisia eivätkä kuluta kiintiötä, joten tiheys ei maksa
 mitään. Pagesin 10 käännöstä/tunti **ei koske omaa Actions-workflowia**. Todelliset rajat

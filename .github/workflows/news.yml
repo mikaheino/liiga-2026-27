@@ -12,11 +12,20 @@ on:
   schedule:
     # 14.00 Suomen aikaa on talvella 12 UTC ja kesällä 11 UTC. GitHubin ajastus
     # myöhästyy tunteja (28.10.: klo 14 -ajo lähti 19.53), ja tarkka klo 14 -vartija
-    # ohitti silloin koko päivän. Siksi lisäajot ja vartija klo 14-21: uusintaajo on
+    # ohitti silloin koko päivän. Siksi lisäajot ja vartija: uusintaajo on
     # turvallinen, koska challenger.py ennustaa vain alkamattomat ottelut ja korvaa
     # saman päivän rivit (myöhempi ajo näkee useamman aloittavan maalivahdin).
     # Minuutti 11 eikä 0 (käyttäjä 31.10.): tasatunti on ajastimen ruuhkaisin hetki.
-    - cron: "11 11-14 * * *"
+    #
+    # Ikkuna alkaa klo 11 Suomen aikaa (31.10.): haastajan ennuste on annettava
+    # ENNEN ottelua tai se on menetetty, eikä sitä voi laskea jälkikäteen.
+    # 31.10. klo 12 UTC:n laukaisu jäi tulematta ja illan kuuden ottelun haastajarivi
+    # puuttui vielä klo 14.42; 30.10. koko päivän ajo piti laukaista käsin klo 16.47.
+    # Aikainen ajo kirjaa rivin perusennusteesta (kokoonpano ei ole vielä julki) ja
+    # myöhempi ajo korvaa sen paremmalla -- rivin olemassaolo on tärkeämpi kuin
+    # sen tarkkuus. Kuusi laukaisua kolmen sijaan, ja ensimmäinen neljä tuntia
+    # aiemmin, kestää usean tunnin myöhästymisen.
+    - cron: "11 9-14 * * *"
   workflow_dispatch:
 
 permissions:
@@ -31,11 +40,11 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - name: Onko Helsingissä klo 14-21
+      - name: Onko Helsingissä klo 11-21
         id: gate
         run: |
           h=$((10#$(TZ=Europe/Helsinki date +%H)))
-          if [ "${{ github.event_name }}" = "schedule" ] && { [ "$h" -lt 14 ] || [ "$h" -gt 21 ]; }; then
+          if [ "${{ github.event_name }}" = "schedule" ] && { [ "$h" -lt 11 ] || [ "$h" -gt 21 ]; }; then
             echo "Helsingissä klo $h, ohitetaan"; echo "run=0" >> "$GITHUB_OUTPUT"
           else
             echo "run=1" >> "$GITHUB_OUTPUT"
