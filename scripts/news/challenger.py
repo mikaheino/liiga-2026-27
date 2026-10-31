@@ -195,9 +195,19 @@ def _todays_base(news: Path, pages: Path, day: str, now: dt.datetime) -> dict[st
     return _base(pages, day, todays)
 
 
+# Huomion syy kerran, sitten pelaajat, ja joukkue näkyviin (käyttäjä 31.10.):
+# "Axel Skinnari puuttuu kokoonpanosta; Balazs Sebok puuttuu kokoonpanosta; ..."
+# toisti syyn turhaan eikä kertonut kummalta joukkueelta pelaajat puuttuvat.
+# Syy kerran, sitten joukkueittain: "Puuttuu kokoonpanosta: Ilves – A, B · KalPa – C".
+# Koti ensin. "·" erottaa joukkueet, "; " huomiot (sovellus jakaa rivit sillä).
+# Järjestys on sama kuin ennen: kirjatut poissaolot, pelikiellot, puuttuvat vakiopelaajat.
+TAGS = ("poissa", "pelikielto", "puuttuu kokoonpanosta")
+LABELS = {"poissa": "Poissa", "pelikielto": "Pelikielto", "puuttuu kokoonpanosta": "Puuttuu kokoonpanosta"}
+
+
 def _absence_items(names: list[str], suspended: list[str], model: dict, games: list[dict],
                    missing: list[str] = ()) -> tuple[list[dict], dict]:
-    """Poissaolijat skenaariotyökalun muotoon + huomiot otteluittain."""
+    """Poissaolijat skenaariotyökalun muotoon + huomiot otteluittain (syy -> pelaajat)."""
     items, notes = [], {}
     for name in names:
         try:
@@ -209,8 +219,20 @@ def _absence_items(names: list[str], suspended: list[str], model: dict, games: l
         tag = "pelikielto" if name in suspended else "puuttuu kokoonpanosta" if name in missing else "poissa"
         for g in games:
             if p["team"] in (g["home_team"], g["away_team"]):
-                notes.setdefault(g["game_id"], []).append(f"{p['name']} {tag}")
+                notes.setdefault(g["game_id"], {}).setdefault(tag, {}).setdefault(p["team"], []).append(p["name"])
     return items, notes
+
+
+def _absence_notes(by_tag: dict[str, dict[str, list[str]]], home: str, away: str) -> list[str]:
+    """{"puuttuu kokoonpanosta": {"Ilves": ["A", "B"], "KalPa": ["C"]}} ->
+    ["Puuttuu kokoonpanosta: Ilves – A, B · KalPa – C"]."""
+    out = []
+    for t in TAGS:
+        teams = [f"{team} – {', '.join(by_tag[t][team])}"
+                 for team in (home, away) if by_tag.get(t, {}).get(team)]
+        if teams:
+            out.append(f"{LABELS[t]}: {' · '.join(teams)}")
+    return out
 
 
 def _row(day: str, g0: dict, g: dict, base: dict, notes: list[str]) -> dict:
@@ -258,7 +280,8 @@ def main(news: Path, pages: Path, day: str | None = None) -> int:
         if any(diffs.get(k) for k in keys):
             g = _apply_goalies(g, model["strength"], diffs.get(keys[0], 0.0), diffs.get(keys[1], 0.0))
         extra = [f"MV {gnames[k]}" for k in keys if k in gnames]
-        out.append(_row(day, g0, g, base[g0["game_id"]], notes.get(g0["game_id"], []) + extra))
+        absences_ = _absence_notes(notes.get(g0["game_id"], {}), g0["home_team"], g0["away_team"])
+        out.append(_row(day, g0, g, base[g0["game_id"]], absences_ + extra))
     _write(news / "prediction_games_news.csv", day, out)
     for r in out:
         print(f"{r['home_team']} – {r['away_team']}: {float(r['base_p_home_win']):.1%} -> {r['p_home_win']:.1%}"
