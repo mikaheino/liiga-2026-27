@@ -150,7 +150,6 @@ JOKERIT, Helsinki
 + Emil Kuusla / lh (SaiPa)
 + Teemu Turunen / lh (Örebro SWE)
 + Eetu Tuulola / lh (Tappara)
-+ Oliver Suni / lh (Jokerit FIN-2)
 + Andrew Lucas / p (Banska Bystrica SVK)
 – Henri Risikko / mv
 – Eetu Anttila / mv (TUTO Hockey FIN-2)
@@ -186,7 +185,6 @@ JUKURIT, Mikkeli
 + Jesper Myrenberg / mv (Linköping SWE)
 + Elias Ruusu / p (Marseille FRA), tryout
 + Patrik Satosaari / p (Bemidji State U. NCAA), tryout
-+ Sebastian Soini / p (Ilves)
 + Andrej Sustr / p (Kalmar SWE-2)
 + Justin Addamo / kh (Tappara)
 + Connor Ford / kh (Lukko)
@@ -206,11 +204,12 @@ JUKURIT, Mikkeli
 – Aaron Hakala / lh (Ketterä FIN-2)
 – Lari Heikkinen / lh (Sport)
 – Sakke Hämäläinen / lh (Pelicans)
+– Sebastian Soini / p (Visby/Roma SWE-2)
 Sopimuspelaajat
 
 Maalivahdit (5): Matthieu Herpin (2027), Ville Kolehmainen (2027), Jesper Myrenberg (2027), Aleksandr Osipov, Emils Vitols
 
-Puolustajat (14): Johan Fisk (2027+1), Niko Korkola (2027), Arttu Kärki (2027), Elias Ruusu (tryout), Eemeli Saari (2028), Patrik Satosaari (2027+1), Alberts Smits (NHL), Sebastian Soini (2027), Andrej Sustr (2027), Luka Tiihonen (2027), Alex Lintuniemi, Christoffer Sedoff, Bogdans Hodass, Aapo Kurri
+Puolustajat (13): Johan Fisk (2027+1), Niko Korkola (2027), Arttu Kärki (2027), Elias Ruusu (tryout), Eemeli Saari (2028), Patrik Satosaari (2027+1), Alberts Smits (NHL), Andrej Sustr (2027), Luka Tiihonen (2027), Alex Lintuniemi, Christoffer Sedoff, Bogdans Hodass, Aapo Kurri
 
 Keskushyökkääjät (6): Justin Addamo (2027), Louis Boudon (2028), Connor Ford (2027), Elias Koponen (2028), Oskari Remes (2027), Viljam Sandvik (2027)
 
@@ -561,7 +560,6 @@ TAPPARA, Tampere
 + Jonne Tammela / lh (Ässät)
 + William Wiå / lh (Södertälje SWE-2)
 + Tommi Kivistö / p (Hradec Kralove CZE)
-+ Alex Mäkelä / mv (Nokian Pyry FIN-2)
 – Rikard Grönborg / päävalmentaja (SWE mj, pv)
 – Anders Karlsson / valmentaja (Linköping SWE, pv)
 – Peter Popovic / valmentaja (Västerås SWE-2, uj)
@@ -579,7 +577,7 @@ TAPPARA, Tampere
 – Eetu Tuulola / lh (Jokerit)
 Sopimuspelaajat
 
-Maalivahdit (5): William Gammals (2028), Christian Heljanko (2029), Juha Metsola (2027), Niko Hovinen, Alex Mäkelä
+Maalivahdit (4): William Gammals (2028), Christian Heljanko (2029), Juha Metsola (2027), Niko Hovinen
 
 Puolustajat (11): Niclas Almari (2028), Jyrki Jokipakka (2027), Joona Karvonen (2027), Kasper Kulonummi (2028), Jesper Mattila (2028), Juho Piiparinen (NHL), Iivari Räsänen (2027), Olle Strandell (2027), Joni Tuulola (2027), Markus Niemeläinen, Tommi Kivistö
 
@@ -609,11 +607,12 @@ TPS, Turku
 – Eetu Päkkilä / lh (Kärpät)
 – Miro Ruokonen / lh (Katowice POL)
 – Aleksi Saarela / lh (Lukko)
+– Petteri Lindbohm / p (Färjestad SWE)
 Sopimuspelaajat
 
 Maalivahdit (4): Eetu Mäkiniemi (2027), Aatu Niittymäki (2028), Markus Ruusu (2027), Noa Vali (2027)
 
-Puolustajat (14): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1), Petteri Lindbohm, Axel Landen
+Puolustajat (13): Alexis Binner (2027), Gabriel Chicoine (2027), Niklas Friman (2028), Luca Laine (2027), Axel Landén (2027), Oliver Lauridsen (2027), Sisu-Petteri Lehtonen (2027+1), Ruben Rafkin (2028), Arttu Tuhkala (2027), Eetu Vahalahti (2027+1), Pyry Vilhunen (2027+1), Verneri Virkkunen (2027+1), Axel Landen
 
 Keskushyökkääjät (7): Lukas Haudum (2027), Aatos Koivu (2027), Hannu Kuru (2028), Vili Munkki (2027), Joel Määttä (2027), Otto Paajanen (2028), Atte Uusikartano (2027+1)
 
