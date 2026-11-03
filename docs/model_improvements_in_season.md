@@ -219,6 +219,10 @@ ykkösvahtia. Kun tämä kohta ratkaistaan, painon pitäisi tulla
 **saman sarjan** otteluista tai kuluvan kauden aloituksista, ei kaikesta
 pelatusta. Ei korjata kesken kauden (AGENTS.md §10).
 
+Mäkelä poistettiin rosterista samana päivänä (hän ei ole Tapparan vahti), ja
+Tappara palasi 0,9033:een — mutta **vika on yhä paikallaan**: seuraava
+Mestiksestä nostettu vahti tekee saman uudelleen.
+
 ## TODO — decide the in-season roster policy (opened 2026-09-15)
 
 Nothing here is decided. It needs deciding before the next roster batch,

@@ -7,6 +7,27 @@ Siirretty CLAUDE.md:stä 23.10.2026 sanasta sanaan (tokenisäästö). Lue kun ai
 `game_lineups` kertoo ketkä oikeasti pukeutuivat. Se on parempi lähde kuin
 mikään siirtosivusto, ja se on jo kannassa. Täsmäytys:
 
+⚠️ **`line IS NULL` ei ole pukeutuminen vaan joukkuelistaus (3.11.2026).**
+Kaudella 2027 tällaisia rivejä on 2126 eikä yhdessäkään ole maalitapahtumaa,
+kun taas `line IS NOT NULL` antaa siistit 20–22 pelaajaa per joukkue per
+ottelu. Laske pukeutumiset **aina** `count(*) filter (where line is not null)`,
+ei `count(distinct game_id)` — jälkimmäinen laskee listaukset mukaan.
+
+Kaksi seurausta, molemmat koettu samana päivänä:
+
+- **Listaus jää päälle pelaajan lähdön jälkeen.** Sebastian Soini oli Jukurien
+  listalla vielä 31.10. vaikka hänet lainattiin Ruotsiin 19.10. Sama rivi
+  paljasti virheen: 3.10. hän oli *yhtä aikaa* Jukurien ja Ässien listalla.
+  Kaksi joukkuetta samana päivänä = ainakin toinen on pelkkä listaus.
+- **Pukeutumattomuus ei silti ole peruste poistolle.** 68 rosteroitua ei ole
+  pukeutunut kertaakaan, ja heistä 13 on listattu 20 kertaa — varavahteja ja
+  ylimääräisiä, täysin aitoja rosteripelaajia. Poistoon tarvitaan ulkoinen
+  tieto lähdöstä, ei pelkkä nollarivi. (Poistin Sunin ja Suoniemen tällä
+  perusteella ja jouduin palauttamaan heidät.)
+
+Rosterista poistetaan siis vain se jonka lähdöstä on **uutinen**; lisätään se
+joka on **pukeutunut** tai jonka hankinnasta on uutinen.
+
 ```sql
 -- pelannut mutta ei rosterissa  (pitää olla tyhjä)
 -- vertaa SUKUNIMI + joukkue + pelipaikka, ei koko nimeä (ks. ansa alla)
