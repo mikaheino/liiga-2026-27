@@ -38,6 +38,26 @@ Neljä ansaa, kaikki koettu:
 Hyökkääjien `kh`/`lh` ei merkitse mallille mitään — molemmat ovat `F`.
 Kokoonpanon `role` kertoo todellisen paikan (STRIKER, RIGHT_WING, …).
 
+## Siirtolähde: huhuareena.com (2026-11-03)
+
+Kauden aikana uudet siirrot katsotaan **huhuareena.com**in etusivulta,
+osiosta *Uusimmat pelaajasiirrot* — rivit joissa lukee **VARMISTUNUT SIIRTO**.
+*Uusimmat huhut* on eri osio eikä kelpaa rosteriin.
+
+Se ei silti korvaa kokoanpanotäsmäytystä vaan täydentää sitä, ja ero on iso:
+3.11. huhuareenalla oli 6 varmistunutta siirtoa, joista 4 puuttui rosterista,
+kun taas `game_lineups` löysi **23** pelannutta jotka eivät olleet rosterissa.
+Siirtosivusto näkee kaupat, kokoonpanot näkevät myös nostot ja lainat. Aja
+molemmat; siirtosivusto kertoo lisäksi ne hankinnat jotka eivät ole vielä
+pelanneet (3.11. Lucas ja Stephens).
+
+⚠️ **Kahdessa joukkueessa pelannut ei ole puuttuva pelaaja.** Täsmäytys
+ryhmittelee joukkueittain, joten lainalla tai kesken kauden siirtynyt näkyy
+"puuttuvana" siinä joukkueessa jossa hän ei enää ole. Tarkista aina
+viimeisimmän ottelun päivä per joukkue ennen kuin siirrät ketään: 3.11.
+Tammela (Tappara 1.9.–21.10., KalPa 23.10. alkaen) ja Soini (Ässät-laina
+2.–7.10., muuten Jukurit) olivat molemmat jo oikeassa joukkueessa.
+
 ## Ulkoiset tilastot: hockeydb, ei EliteProspects (2026-09-15)
 
 **`r.jina.ai` + EliteProspects on kuollut.** Proxy vastaa, EliteProspects
