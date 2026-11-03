@@ -223,11 +223,23 @@ When the user says to add a new player (new signing, transfer update):
    ```bash
    python scripts/local/roster_impact.py
    ```
-   Rewrites `docs/roster_impact.md` and `data/roster_impact.csv` -- every
-   committed roster version run through the pre-season forecast with
+   Rewrites `docs/roster_impact.md` and `data/roster_impact.csv`, and writes
+   `data/roster_changes.csv` + appends to `data/roster_impact_runs.csv` --
+   every committed roster version run through the pre-season forecast with
    everything else held fixed, so the delta is the roster alone. The user
-   asked for this record to be kept (2026-10-09); commit the two files with
+   asked for this record to be kept (2026-10-09); commit the four files with
    the batch. It reads versions from git, so an uncommitted roster is not in it.
+
+   ⚠️ **roster_impact.csv:n luvut liikkuvat takautuvasti.** Jokainen ajo
+   laskee myös vanhat versiot nykyisellä tilastodatalla, joten lähtötasonkin
+   pisteet muuttuvat ilman että rosteri muuttui (Tappara v0: 115,26 lokakuussa,
+   115,55 marraskuussa). Se on vertailun kannalta oikein -- kaikki versiot
+   samalla mittatikulla -- mutta tarkoittaa ettei tiedosto kerro mitä silloin
+   laskettiin. Jäädytetyt luvut ovat `roster_impact_runs.csv`:ssä (append-only,
+   `run_at` per ajo; gitistä backfillattu 9.10. alkaen) ja pelaajatason
+   muutokset `roster_changes.csv`:ssä (johdettu pelkästään gitistä, ei voi
+   driftata). **Vertaa rostereita aina yhden `run_at`:n sisällä** -- eri ajot
+   on laskettu eri datalla.
 
    Adding a goalie can LOWER a team: `team_goaltending` weights rostered
    goalies by recent games, so a weaker veteran with many games pulls the

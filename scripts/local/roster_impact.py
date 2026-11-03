@@ -10,7 +10,20 @@ otteluita.
 Kirjoittaa:
     docs/roster_impact.md   luettava raportti: pisteet per versio, muutokset
                             vaiheittain ja ketkä lisättiin / poistettiin
-    data/roster_impact.csv  sama data koneluettavana
+    data/roster_impact.csv  sama data koneluettavana (VIIMEISIN ajo, korvataan)
+    data/roster_changes.csv pelaajatason muutokset per versio -- johdettu
+                            pelkästään gitistä, joten se ei voi driftata
+    data/roster_impact_runs.csv  JÄÄDYTETYT luvut: jokainen ajo lisätään
+                            perään omalla run_at-leimallaan, mitään ei
+                            koskaan ylikirjoiteta
+
+⚠️ roster_impact.csv:n luvut EIVÄT ole jäädytettyjä. Jokainen ajo laskee myös
+vanhat versiot nykyisellä datalla, joten ne liikkuvat takautuvasti: Tapparan
+lähtötaso v0 oli 9.10. ajossa 115,26 ja 3.11. ajossa 115,55 ilman että
+rosteri muuttui. Se on vertailun kannalta oikein (sama mittatikku kaikille
+versioille), mutta tarkoittaa ettei tiedosto kerro mitä silloin laskettiin.
+Siihen vastaa roster_impact_runs.csv, jossa jokainen ajo säilyy sellaisena
+kuin se laskettiin. Vertaa rostereita AINA yhden run_at:n sisällä.
 
 Lähtötaso on viimeisin rosteriversio ennen ensimmäistä julkaistua
 esikauden ennustetta (prediction_history, games_played = 0) -- se roster
@@ -32,6 +45,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -182,11 +196,69 @@ def write(vs: list[dict]) -> None:
                                                 encoding="utf-8")
 
 
+def write_changes(vs: list[dict]) -> int:
+    """data/roster_changes.csv: ketkä tulivat ja lähtivät kussakin versiossa.
+
+    Johdettu pelkästään gitin rosteritiedostoista, ei ennusteesta, joten
+    tämä tiedosto on jäädytetty jo luonnostaan: sama git-historia antaa aina
+    samat rivit riippumatta siitä mitä tilastotiedostoille on tapahtunut.
+    """
+    rows = []
+    for i in range(1, len(vs)):
+        a, b = vs[i - 1], vs[i]
+        pos = {(t, n): g for t, n, g in b["roster"]}
+        pos.update({(t, n): g for t, n, g in a["roster"]})
+        old_set = {(t, n) for t, n, _ in a["roster"]}
+        new_set = {(t, n) for t, n, _ in b["roster"]}
+        for team, name in sorted(new_set - old_set):
+            rows.append([i, b["sha"], b["date"], team, name,
+                         pos.get((team, name), ""), "added"])
+        for team, name in sorted(old_set - new_set):
+            rows.append([i, b["sha"], b["date"], team, name,
+                         pos.get((team, name), ""), "removed"])
+    with open(ROOT / "data/roster_changes.csv", "w", newline="",
+              encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["version", "commit", "date", "team", "player",
+                    "position_group", "change"])
+        w.writerows(rows)
+    return len(rows)
+
+
+def append_run(vs: list[dict]) -> int:
+    """Lisää tämän ajon luvut data/roster_impact_runs.csv:n perään.
+
+    Append-only: aiempia rivejä ei kosketa, joten kerran laskettu luku pysyy.
+    Vertailukelpoisia ovat saman run_at:n rivit keskenään -- eri ajot on
+    laskettu eri tilastodatalla.
+    """
+    path = ROOT / "data/roster_impact_runs.csv"
+    head = ["run_at", "head_commit", "source", "version", "commit", "date",
+            "team", "points"]
+    run_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    sha = git("rev-parse", "--short", "HEAD").strip()
+    rows = [[run_at, sha, "live", i, v["sha"], v["date"], t,
+             round(v["points"][t], 2)]
+            for i, v in enumerate(vs) for t in sorted(v["points"])]
+    exists = path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        if not exists:
+            w.writerow(head)
+        w.writerows(rows)
+    return len(rows)
+
+
 def main() -> None:
     vs = versions()
     print(f"{len(vs)} rosteriversiota, lähtötaso {vs[0]['sha']} {vs[0]['date']}")
-    write(run(vs))
+    vs = run(vs)
+    write(vs)
+    nch = write_changes(vs)
+    nrun = append_run(vs)
     print("kirjoitettu docs/roster_impact.md ja data/roster_impact.csv")
+    print(f"roster_changes.csv: {nch} muutosriviä")
+    print(f"roster_impact_runs.csv: +{nrun} jäädytettyä riviä")
     to_duckdb()
 
 
@@ -196,14 +268,21 @@ def to_duckdb() -> None:
     -näkymä (V_FORECAST_CHANGE) erottaa sillä kokoonpanomuutosten osuuden."""
     import duckdb
     import pandas as pd
-    df = pd.read_csv(ROOT / "data/roster_impact.csv")
     con = duckdb.connect(str(ROOT / "data/liiga.duckdb"))
     try:
-        con.register("ri", df)
-        con.execute("CREATE OR REPLACE TABLE roster_impact AS SELECT * FROM ri")
+        for table, fname in [("roster_impact", "roster_impact.csv"),
+                             ("roster_changes", "roster_changes.csv"),
+                             ("roster_impact_runs", "roster_impact_runs.csv")]:
+            path = ROOT / "data" / fname
+            if not path.exists():
+                continue
+            df = pd.read_csv(path)
+            con.register("t_" + table, df)
+            con.execute(f"CREATE OR REPLACE TABLE {table} AS "
+                        f"SELECT * FROM t_{table}")
+            print(f"DuckDB {table}: {len(df)} riviä")
     finally:
         con.close()
-    print(f"DuckDB roster_impact: {len(df)} riviä")
 
 
 if __name__ == "__main__":
