@@ -217,3 +217,8 @@ Severi Auvinen|2023|Mestis|19|0.912|Imatran Ketterä
 Severi Auvinen|2024|Mestis|9|0.885|Jokerit
 Severi Auvinen|2025|Mestis|23|0.894|Imatran Ketterä
 Severi Auvinen|2026|Mestis|20|0.901|Kiekko-Vantaa
+Alex Mäkelä|2022|Mestis|19|0.880|Hokki
+Alex Mäkelä|2023|Mestis|26|0.880|Hokki
+Alex Mäkelä|2024|Mestis|39|0.889|FPS
+Alex Mäkelä|2025|Mestis|34|0.900|Hermes
+Alex Mäkelä|2026|Mestis|39|0.903|Hermes
