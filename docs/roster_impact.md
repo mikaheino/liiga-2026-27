@@ -8,25 +8,25 @@ Lähtötaso on **26.8.2026** (d454ecc), roster jolla kauden ensimmäinen ennuste
 
 ## Pisteet versioittain
 
-| joukkue | 26.8.2026 | 15.9.2026 | 9.10.2026 | 16.10.2026 | 16.10.2026 | 25.10.2026 | muutos yhteensä |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| KalPa | 92,9 | 92,8 | 92,6 | 92,5 | 92,5 | 95,5 | **+2,6** |
-| Jukurit | 70,9 | 72,5 | 73,2 | 73,2 | 73,2 | 73,0 | **+2,1** |
-| Sport | 69,2 | 69,1 | 71,3 | 71,2 | 71,3 | 71,1 | **+1,9** |
-| HIFK | 99,2 | 99,5 | 99,4 | 101,2 | 101,0 | 100,9 | **+1,7** |
-| HPK | 86,2 | 86,6 | 86,9 | 86,8 | 86,8 | 87,4 | **+1,2** |
-| Ässät | 89,3 | 89,2 | 89,0 | 89,0 | 89,0 | 88,9 | **−0,4** |
-| Ilves | 104,0 | 104,0 | 103,8 | 103,7 | 103,7 | 103,6 | **−0,5** |
-| TPS | 79,0 | 78,9 | 78,7 | 78,6 | 78,6 | 78,5 | **−0,5** |
-| Kärpät | 91,3 | 91,2 | 91,0 | 90,9 | 90,9 | 90,7 | **−0,5** |
-| SaiPa | 98,2 | 98,1 | 97,9 | 97,8 | 97,8 | 97,6 | **−0,5** |
-| K-Espoo | 93,8 | 93,7 | 93,5 | 93,4 | 93,4 | 93,3 | **−0,6** |
-| Lukko | 105,1 | 105,0 | 104,8 | 104,7 | 104,7 | 104,6 | **−0,6** |
-| JYP | 96,2 | 96,1 | 95,9 | 95,8 | 95,8 | 95,7 | **−0,6** |
-| KooKoo | 107,4 | 106,9 | 106,7 | 106,6 | 106,7 | 106,5 | **−0,9** |
-| Pelicans | 89,4 | 88,8 | 88,6 | 88,5 | 88,5 | 88,4 | **−1,0** |
-| Jokerit | 98,7 | 98,6 | 97,9 | 97,5 | 97,5 | 97,4 | **−1,3** |
-| Tappara | 115,3 | 115,2 | 114,7 | 114,6 | 114,6 | 113,2 | **−2,1** |
+| joukkue | 26.8.2026 | 15.9.2026 | 9.10.2026 | 16.10.2026 | 16.10.2026 | 25.10.2026 | 3.11.2026 | muutos yhteensä |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| KalPa | 93,0 | 92,9 | 92,7 | 92,7 | 92,7 | 95,3 | 95,3 | **+2,3** |
+| Jukurit | 70,9 | 72,5 | 73,2 | 73,2 | 73,2 | 73,1 | 73,0 | **+2,1** |
+| Sport | 68,9 | 68,8 | 71,0 | 71,0 | 71,0 | 70,8 | 70,8 | **+1,9** |
+| HIFK | 98,9 | 99,1 | 99,1 | 100,9 | 100,7 | 100,6 | 100,5 | **+1,7** |
+| HPK | 86,1 | 86,5 | 86,8 | 86,8 | 86,8 | 87,4 | 87,3 | **+1,2** |
+| KooKoo | 107,4 | 106,9 | 106,7 | 106,6 | 106,6 | 106,5 | 107,4 | **+0,1** |
+| Ässät | 89,3 | 89,3 | 89,1 | 89,1 | 89,1 | 89,0 | 88,9 | **−0,4** |
+| Ilves | 103,9 | 103,8 | 103,6 | 103,6 | 103,6 | 103,5 | 103,4 | **−0,5** |
+| SaiPa | 98,0 | 97,9 | 97,7 | 97,7 | 97,7 | 97,5 | 97,5 | **−0,5** |
+| K-Espoo | 94,7 | 94,6 | 94,4 | 93,7 | 93,7 | 93,6 | 94,2 | **−0,5** |
+| Lukko | 105,0 | 104,9 | 104,7 | 104,6 | 104,7 | 104,5 | 104,5 | **−0,5** |
+| TPS | 78,7 | 78,6 | 78,4 | 78,4 | 78,4 | 78,3 | 78,2 | **−0,5** |
+| Kärpät | 91,2 | 91,2 | 91,0 | 90,9 | 90,9 | 90,8 | 90,7 | **−0,5** |
+| JYP | 96,5 | 96,4 | 96,2 | 96,1 | 96,1 | 96,0 | 95,9 | **−0,6** |
+| Jokerit | 98,6 | 98,5 | 97,8 | 97,5 | 97,5 | 97,3 | 97,5 | **−1,0** |
+| Pelicans | 89,4 | 88,8 | 88,6 | 88,5 | 88,5 | 88,4 | 88,4 | **−1,1** |
+| Tappara | 115,6 | 115,5 | 115,0 | 114,9 | 114,9 | 113,5 | 112,5 | **−3,1** |
 
 ## Vaiheittain
 
@@ -72,11 +72,11 @@ Commit `ac63c18`, roster 538 → 540.
 |---|---:|---|---|
 | HIFK | +1,8 | Olof Glifford, Sampo Ranta | – |
 | Ässät | 0,0 | Ethan Prow | – |
+| Jukurit | 0,0 | Christoffer Sedoff | – |
 | Pelicans | −0,1 | – | Onni Käyhkö |
-| Jukurit | −0,1 | Christoffer Sedoff | – |
-| K-Espoo | −0,1 | – | Tuomas Suoniemi |
 | JYP | −0,1 | Atte Ohtamaa | – |
-| Jokerit | −0,4 | – | Oliver Suni |
+| Jokerit | −0,3 | – | Oliver Suni |
+| K-Espoo | −0,7 | – | Tuomas Suoniemi |
 
 *Rivit näytetään joukkueille joiden rosteri muuttui tai joiden pisteet liikkuivat vähintään 0,5.*
 
@@ -97,10 +97,31 @@ Commit `3cb1c50`, roster 542 → 545.
 
 | joukkue | muutos | lisätty | poistettu |
 |---|---:|---|---|
-| KalPa | +3,0 | Jonne Tammela, Kyle Crnkovic | – |
+| KalPa | +2,7 | Jonne Tammela, Kyle Crnkovic | – |
 | HPK | +0,6 | Mattias Tedenby | – |
 | Pelicans | −0,1 | Antti Tyrväinen | – |
 | Tappara | −1,4 | – | Jonne Tammela |
+
+*Rivit näytetään joukkueille joiden rosteri muuttui tai joiden pisteet liikkuivat vähintään 0,5.*
+
+### 3.11.2026 — Rosteripäivitys: 25 pelaajaa (huhuareena + kokoonpanotäsmäytys)
+
+Commit `f561c45`, roster 545 → 570.
+
+| joukkue | muutos | lisätty | poistettu |
+|---|---:|---|---|
+| KooKoo | +0,9 | Alexander Ruuttu, Devante Stephens | – |
+| K-Espoo | +0,6 | Atte Vikla, Tuomas Suoniemi | – |
+| Jokerit | +0,2 | Andrew Lucas, Oliver Suni | – |
+| Jukurit | 0,0 | Aapo Kurri, Bogdans Hodass | – |
+| Lukko | 0,0 | Vili Pulakka | – |
+| SaiPa | 0,0 | Olli Eloranta, Vojtech Hora | – |
+| Kärpät | −0,1 | Niilo Hinno | – |
+| Pelicans | −0,1 | Alvar Soisalo, Joakim Torvinen, Onni Käyhkö | – |
+| HPK | −0,1 | Niklas Jussila, Oskari Kuusisto, Veikka Fagerström | – |
+| JYP | −0,1 | Eetu Räisänen, Veeti Vilander | – |
+| HIFK | −0,1 | Jori Lehterä, Vertti Saastamoinen | – |
+| Tappara | −1,0 | Alex Mäkelä, Emil Järventie, Tommi Kivistö | – |
 
 *Rivit näytetään joukkueille joiden rosteri muuttui tai joiden pisteet liikkuivat vähintään 0,5.*
 

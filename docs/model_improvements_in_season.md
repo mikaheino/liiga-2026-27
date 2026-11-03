@@ -209,6 +209,16 @@ the backup plays half the games, the real figure is something else. The
 season shows actual start distributions for the first time — see the
 goalie-census caveat in the backtest notes.
 
+*Havainto 3.11.2026, rosteripäivitys.* Paino lasketaan **otteluista mistä
+tahansa sarjasta**, joten Mestis-kauden työmäärä päihittää Liigan. Tapparaan
+nostettu Alex Mäkelä (2 Liiga-ottelua, Mestiksessä 39+12) sai joukkueen
+**suurimman painon 73** — enemmän kuin Heljanko (63) joka on tosiasiassa
+ykkösvahti — ja heikoimmalla projektiollaan 0,8885 veti Tapparan ennusteen
+−1,0 pistettä. Suunta on oikea vain sattumalta: nosto ei tee kenestäkään
+ykkösvahtia. Kun tämä kohta ratkaistaan, painon pitäisi tulla
+**saman sarjan** otteluista tai kuluvan kauden aloituksista, ei kaikesta
+pelatusta. Ei korjata kesken kauden (AGENTS.md §10).
+
 ## TODO — decide the in-season roster policy (opened 2026-09-15)
 
 Nothing here is decided. It needs deciding before the next roster batch,
