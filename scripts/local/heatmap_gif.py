@@ -16,6 +16,7 @@ import datetime as dt
 from pathlib import Path
 
 import duckdb
+import heatmap_intro as hi
 import heatmap_people as hp
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -32,7 +33,7 @@ ZONES = [(1, 6, "suoraan puolivälieriin", GOLD), (7, 10, "säälipudotuspelit",
          (11, 14, "", FAINT), (15, 17, "putoamisuhka", RED)]
 GAP_AFTER = {6, 10, 14}
 TWEEN, TWEEN_MS, HOLD_MS = 3, 150, 800  # siirtymäruudut, niiden kesto ja päivän pysähdys (hidas)
-FIRST_MS, LAST_MS = 3000, 8000
+FIRST_MS, LAST_MS = 2000, 7000
 # Tapahtuma hitaasti (käyttäjä 7.11.: "hidasta kun näytetään ihmisiä"): rivi esiin, lähtijä yksin,
 # sitten nuoli ja tulija; yhden henkilön paneeli kerralla.
 FOCUS_MS, OUT_MS, EVENT_MS, SINGLE_MS = 1500, 3000, 7000, 8000
@@ -70,7 +71,7 @@ SIGNINGS = [
     ("2026-11-02", "Andrew Lucas", "Jokerit", "HC Banská Bystrica", False),
     ("2026-11-06", "Henri Kiviaho", "Tappara", "Graz 99ers", False),
 ]
-COLORS = 112
+COLORS = 100
 
 AVENIR = "/System/Library/Fonts/Avenir Next.ttc"
 MONO = "/System/Library/Fonts/SFNSMono.ttf"
@@ -121,11 +122,11 @@ def load() -> list[dict]:
     return _merge_small(pre[-1:] + [s for s in out if s["played"] > 0])
 
 
-MIN_MOVE = 0.035                       # päivä, jona mikään solu ei liiku 3,5 %-yks., yhdistetään seuraavaan
+MIN_MOVE = 0.05                        # päivä, jona mikään solu ei liiku 5 %-yks., yhdistetään seuraavaan
 
 
 def _merge_small(snaps: list[dict]) -> list[dict]:
-    """GIFin koko (LinkedIn 5 Mt): pienen liikkeen päivä ei tuo kerrontaan mitään, mutta vie kolme
+    """GIFin koko (LinkedIn 5 Mt): pienen liikkeen päivä ei tuo kerrontaan mitään, mutta vie välikuvia.
     siirtymäruutua. Viimeinen tilannekuva säilyy aina."""
     out = [snaps[0]]
     for i, s in enumerate(snaps[1:], start=1):
@@ -309,8 +310,10 @@ class Painter:
         boxes = [(self.x0 - 10, int(self.top + r * self.rh) - 2, W - self.x0 + 10, int(self.top + r * self.rh) + self.rh + 2)
                  for r in rows]
         keep = [img.crop(b) for b in boxes]
-        if dim:
-            img = Image.blend(img, Image.new("RGB", img.size, BG), 0.66)
+        if dim:   # vain taulukkoalue: otsikko ja päivä pysyvät kirkkaina (ja tiedosto pienenä)
+            area = (0, self.top - 90, W, self.top + N * self.rh + 4)
+            part = img.crop(area)
+            img.paste(Image.blend(part, Image.new("RGB", part.size, BG), 0.66), area[:2])
         d = ImageDraw.Draw(img)
         for b, k in zip(boxes, keep):
             img.paste(k, b[:2])
@@ -404,9 +407,10 @@ def palette(frames: list[Image.Image]) -> Image.Image:
     fixed = [BG, EMPTY, INK, BODY, MUTED, FAINT, GOLD, GOLD_HI, SILVER, RED, (30, 25, 17), (24, 18, 8)]
     fixed += [ramp(i / 47) for i in range(48)]
     rest = COLORS - len(fixed)
-    sample = Image.new("RGB", (W, H * 2))
-    sample.paste(frames[0], (0, 0))
-    sample.paste(frames[-1], (0, H))
+    picks = frames[:: max(1, len(frames) // 6)][:6]
+    sample = Image.new("RGB", (W, H * len(picks)))
+    for i, f in enumerate(picks):
+        sample.paste(f, (0, H * i))
     extra = sample.quantize(colors=rest, method=Image.Quantize.MEDIANCUT).getpalette()[:rest * 3]
     flat = [c for rgb in fixed for c in rgb] + extra
     pal = Image.new("P", (1, 1))
@@ -438,40 +442,61 @@ def _delta(q: list[Image.Image]) -> list[Image.Image]:
     return out
 
 
+MONTHS = {9: "SYYSKUU", 10: "LOKAKUU", 11: "MARRASKUU", 12: "JOULUKUU", 1: "TAMMIKUU", 2: "HELMIKUU",
+          3: "MAALISKUU"}
+
+
+def _event_frames(painter: Painter, b: dict, ev: dict) -> list[tuple]:
+    """Tapahtuma, joka osui välille: hankinnat kortilla, henkilöt hitaasti paneelissa."""
+    if ev["kind"] == "HANKINNAT":
+        seq = [(painter.frame(b, b, 1.0, ev, stage=2), SIGN_MS)]   # kortti ja rivit kerralla (koko)
+        for sg in ev["signings"]:
+            painter.signed[sg[2]] = painter.signed.get(sg[2], 0) + 1
+        return seq
+    seq = [(painter.frame(b, b, 1.0, ev), FOCUS_MS)]
+    if len(ev["people"]) == 2:
+        seq += [(painter.frame(b, b, 1.0, ev, stage=1), OUT_MS), (painter.frame(b, b, 1.0, ev, stage=2), EVENT_MS)]
+    else:
+        seq.append((painter.frame(b, b, 1.0, ev, stage=2), SINGLE_MS))
+    painter.marked.add(ev["team"])
+    return seq
+
+
+def _season(painter: Painter, stage: hi.Stage, snaps: list[dict], evs: list[dict]) -> list[tuple]:
+    seq, part = [], 1
+    for a, b in zip(snaps, snaps[1:]):
+        # Kolme välikuvaa, kun rivit vaihtavat paikkaa vähintään kaksi sijaa; muuten kaksi (koko).
+        jump = max(abs(a["rank"][t] - b["rank"][t]) for t in b["rank"])
+        k = TWEEN if jump >= 2 else 2
+        seq += [(painter.frame(a, b, i / k), TWEEN_MS * TWEEN // k) for i in range(1, k + 1)]
+        seq[-1] = (seq[-1][0], HOLD_MS)
+        if b["date"][5:7] != a["date"][5:7]:            # väliotsikko kuukauden vaihtuessa
+            part += 1
+            seq.append(stage.month_card(seq[-1][0], part, MONTHS[int(b["date"][5:7])]))
+            seq.append((seq[-2][0], 300))
+        for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
+            seq += _event_frames(painter, b, ev)
+    return seq
+
+
 def build(out: Path) -> None:
     snaps, evs = load(), events()
-    painter = Painter(sorted(snaps[-1]["p"]))
-    frames, durations = [painter.frame(snaps[0], snaps[0], 0.0)], [FIRST_MS]
-    for a, b in zip(snaps, snaps[1:]):
-        for i in range(1, TWEEN + 1):
-            frames.append(painter.frame(a, b, i / TWEEN))
-            durations.append(TWEEN_MS)
-        durations[-1] = HOLD_MS
-        # Tapahtuma, joka osui tälle välille: rivi esiin, sitten iso paneeli kuvineen (hidas).
-        for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
-            if ev["kind"] == "HANKINNAT":
-                frames.append(painter.frame(b, b, 1.0, ev, stage=2))    # kortti ja rivit kerralla (koko)
-                durations.append(SIGN_MS)
-                for sg in ev["signings"]:
-                    painter.signed[sg[2]] = painter.signed.get(sg[2], 0) + 1
-                continue
-            frames += [painter.frame(b, b, 1.0, ev)]
-            durations += [FOCUS_MS]
-            if len(ev["people"]) == 2:
-                frames += [painter.frame(b, b, 1.0, ev, stage=1), painter.frame(b, b, 1.0, ev, stage=2)]
-                durations += [OUT_MS, EVENT_MS]
-            else:
-                frames += [painter.frame(b, b, 1.0, ev, stage=2)]
-                durations += [SINGLE_MS]
-            painter.marked.add(ev["team"])
-    durations[-1] = LAST_MS
+    teams = sorted(snaps[-1]["p"])
+    painter = Painter(teams)
+    stage = hi.Stage(W, H, logos(teams, 96))
+    first = painter.frame(snaps[0], snaps[0], 0.0)
+    seq = [*hi.intro(stage, teams, first), (first, FIRST_MS), *_season(painter, stage, snaps, evs)]
+    still = painter.frame(snaps[-1], snaps[-1], 1.0)    # loppu ilman tapahtumakorttia
+    seq.append((still, LAST_MS))
+    seq += stage.ending(TOTAL_GAMES - snaps[-1]["played"])
+    frames, durations = [f for f, _ in seq], [ms for _, ms in seq]
     pal = palette(frames)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     out.parent.mkdir(parents=True, exist_ok=True)
     q = _delta(q)
     q[0].save(out, save_all=True, append_images=q[1:], duration=durations, loop=0, optimize=False,
               disposal=1, transparency=TRANSPARENT)
-    frames[-1].save(out.with_suffix(".png"))
+    still.save(out.with_suffix(".png"))
     print(f"{out}: {len(snaps)} tilannekuvaa, {len(frames)} ruutua, {sum(durations) / 1000:.0f} s, "
           f"{out.stat().st_size / 1e6:.1f} Mt")
 
