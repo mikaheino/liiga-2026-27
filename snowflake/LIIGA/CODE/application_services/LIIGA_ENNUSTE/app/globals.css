@@ -1120,3 +1120,44 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .fr-links a { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--body);
     text-decoration: none; font: 400 12px var(--pixel); letter-spacing: .04em; }
 }
+
+/* --- Päivän tarina ja ratkaisupeli (7.11.2026) -------------------------------- */
+.story { position: relative; display: block; margin: 0 0 14px; padding: 22px 24px 0; border-radius: 16px; overflow: hidden;
+  text-decoration: none; color: var(--body); border: 1px solid var(--line-2);
+  background: radial-gradient(700px 260px at 0% 0%, rgba(235,202,104,.16), transparent 70%), var(--surface); }
+.story:hover { border-color: var(--gold-mid); }
+.story-h { display: flex; align-items: center; gap: 14px; margin: 10px 0 0; font: 800 34px/1.12 var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.story-h img { flex: none; }
+.story-v { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.story-m { font: 600 13px var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.story-from { font: 700 26px var(--mono); color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+.story-arrow { font: 700 26px var(--sans); color: var(--gold); }
+.story-v b { font: 800 64px/1 var(--mono); color: var(--gold-hi); letter-spacing: -.03em; text-shadow: 0 0 28px rgba(235,202,104,.35); }
+.story-curve { display: block; width: calc(100% + 48px); height: 90px; margin: 10px -24px 0; }
+.story-line { fill: none; stroke: var(--gold-hi); stroke-width: 2.5; vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: story-draw 2.2s .3s cubic-bezier(.3,.7,.2,1) forwards; }
+.story-area { fill: rgba(204,167,82,.10); opacity: 0; animation: story-fade 1s 1.6s forwards; }
+.story-dot { fill: var(--gold-hi); opacity: 0; animation: story-fade .4s 2.4s forwards; filter: drop-shadow(0 0 6px var(--gold-hi)); }
+@keyframes story-draw { to { stroke-dashoffset: 0; } }
+@keyframes story-fade { to { opacity: 1; } }
+.keygame { display: grid; gap: 10px; margin: 0 0 26px; padding: 16px 20px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface); cursor: pointer; }
+.keygame:hover { border-color: var(--gold-dim); }
+.kg-teams { display: flex; align-items: center; gap: 10px; font: 800 22px var(--sans); color: var(--ink); }
+.kg-teams i { font-style: normal; color: var(--faint); margin: 0 4px; }
+.kg-swing { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+.kg-l { font: 600 13px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); width: 100%; }
+.kg-side { font: 14px var(--sans); color: var(--body); }
+.kg-side b { font: 800 30px var(--mono); color: var(--gold-hi); margin-right: 4px; }
+.kg-go { font: 400 11px var(--pixel); letter-spacing: .06em; color: var(--gold); }
+@media (max-width: 860px) {
+  .story { padding: 18px 16px 0; }
+  .story-h { font-size: 25px; gap: 10px; } .story-h img { width: 32px; height: 32px; }
+  .story-v b { font-size: 48px; } .story-from, .story-arrow { font-size: 20px; }
+  .story-curve { width: calc(100% + 32px); margin: 8px -16px 0; height: 70px; }
+  .kg-teams { font-size: 18px; } .kg-teams img { width: 26px; height: 26px; }
+  .kg-side b { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-line { animation: none; stroke-dashoffset: 0; } .story-area, .story-dot { animation: none; opacity: 1; }
+}

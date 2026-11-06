@@ -1,12 +1,14 @@
-// Etusivu (uusittu 6.11.2026, kolmas iteraatio): neljä kerrosta lukujärjestyksessä, kukin
-// yhdellä otsikolla ja ilman selitekappaleita.
-//   1. Seuraava kierros   ennuste, panos ja lukitus (ottelukortti); käyttäjä 6.11.: ylimpänä
+// Etusivu (uusittu 6.11.2026, kolmas iteraatio; 7.11. päivän tarina ja ratkaisupeli ylimmäksi,
+// käyttäjä: "tylsä"). Kerrokset lukujärjestyksessä, kukin yhdellä otsikolla:
+//   0. Päivän tarina + ratkaisupeli  viikon suurin nousu (lib/dayStory.ts), suurimman panoksen ottelu
+//   1. Seuraava kierros   ennuste, panos ja lukitus (ottelukortti)
 //   2. Kauden kysymykset   luku, viikon muutos ja kausikäyrä (V7)
 //   3. Oma skenaario       "entä jos": kuvaile omin sanoin tai lukitse korteista (vain sovellus)
 //   4. Kausi               kelattava palkki + sijaintijakauma kaikilla leveyksillä
 // Osioiden ovet korvattu yhdellä linkkirivillä puhelimelle (tietokoneella yläpalkki).
 // Agentti elää kohteissa (ottelukortti, joukkue, skenaario), ei omana osionaan.
 import Link from "next/link";
+import { DayStory, KeyGame } from "@/components/DayStory";
 import NextRound from "@/components/NextRound";
 import PositionBoard from "@/components/PositionBoard";
 import ScenarioBoard from "@/components/ScenarioBoard";
@@ -15,15 +17,16 @@ import SeasonQuestions from "@/components/SeasonQuestions";
 import TimeTravel from "@/components/TimeTravel";
 import Top, { SECTIONS } from "@/components/Top";
 import { gameKey } from "@/lib/challenger";
-import { loadChallenger, loadChallengerSeason, loadFixtures, loadMeta, loadNews, loadPositionHistory, loadSeasonQuestions, loadStakes } from "@/lib/data";
+import { loadChallenger, loadChallengerSeason, loadFixtures, loadMeta, loadNews, loadPosition, loadPositionHistory, loadSeasonQuestions, loadStakes } from "@/lib/data";
+import { dayStory } from "@/lib/dayStory";
 import { nextRound } from "@/lib/fixtures";
 import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, fixtures, challenger, season, news, snapsAll, stakeList, questions] = await Promise.all([
-    loadMeta(), loadFixtures(), loadChallenger(), loadChallengerSeason(), loadNews(),
+  const [{ meta, next }, pos, fixtures, challenger, season, news, snapsAll, stakeList, questions] = await Promise.all([
+    loadMeta(), loadPosition(), loadFixtures(), loadChallenger(), loadChallengerSeason(), loadNews(),
     loadPositionHistory().catch((e) => { console.log(`[data] jakaumahistoria: ${(e as Error).message}`); return []; }),
     // Panokset ja kysymykset: puuttuva moottori (proseduuri ei vielä julkaistu) ei kaada etusivua.
     loadStakes().catch((e) => { console.log(`[data] panokset: ${(e as Error).message}`); return []; }),
@@ -39,13 +42,17 @@ export default async function Page() {
     { date: g.date, home: g.home, away: g.away, base: NaN, pHome: g.pHome, pOt: NaN, notes: g.notes }]));
   for (const c of challenger) chMap.set(gameKey(c.date, c.home, c.away), c);
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
+  const round = nextRound(fixtures, today);
+  const story = nowDate ? dayStory(snapsAll, pos, nowDate) : null;
   const links = [["/sijainti", "Sijainnit"], ...SECTIONS.filter(([h]) => h !== "/ottelut")] as const;
 
   return (
     <div className="shell">
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front fr">
-        <NextRound games={nextRound(fixtures, today)} challenger={chMap} all={fixtures} news={news.items} stakes={stakes} />
+        <DayStory story={story} />
+        <KeyGame games={round} stakes={stakes} all={fixtures} news={news.items} challenger={chMap} />
+        <NextRound games={round} challenger={chMap} all={fixtures} news={news.items} stakes={stakes} />
         <SeasonQuestions questions={questions} />
         {!STATIC && <ScenarioBoard />}
         <section className="fr-season" aria-label="Kausi">
