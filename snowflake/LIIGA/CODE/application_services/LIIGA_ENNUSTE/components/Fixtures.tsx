@@ -3,8 +3,10 @@
 // ✓/✗ kantaa osuman itse; väri yksin pettäisi sen, joka ei erota kultaa punaisesta.
 import Link from "next/link";
 import Grid, { Team } from "@/components/Grid";
+import MatchTap from "@/components/MatchCard";
 import { CountUp } from "@/components/Motion";
 import { type Fixture, MONTHS_FI, ROUND, challengerSaid, misses, modelSaid, recentHits, resultText, scoreboard } from "@/lib/fixtures";
+import { matchDetail } from "@/lib/matchDetail";
 import { fi } from "@/lib/table";
 
 const day = (ts: string) => `${Number(ts.slice(8, 10))}.${Number(ts.slice(5, 7))}.`;
@@ -70,7 +72,9 @@ export function Months({ months, chosen, href }: { months: string[]; chosen: str
   );
 }
 
-export function FixtureList({ fixtures, highlight }: { fixtures: Fixture[]; highlight: Set<string> }) {
+// Jokainen rivi avaa ottelukortin (5.11.): sama kortti ja agentti kuin kierroskortissa.
+// all = koko kauden ottelut korttiin (vire, keskinäiset); ilman sitä rivi ei avaudu.
+export function FixtureList({ fixtures, highlight, all }: { fixtures: Fixture[]; highlight: Set<string>; all?: Fixture[] }) {
   return (
     <Grid label="Ottelut" cols={[{ h: "Pvm", w: "56px", wsm: "40px", num: true }, { h: "Ottelu", w: "minmax(200px, 1.6fr)", wsm: "minmax(0, 1fr)" },
       { h: "Koti", w: "minmax(90px, 1fr)", wsm: "52px" }, { h: "Vieras", w: "minmax(90px, 1fr)", sm: true }, { h: "JA", w: "52px", num: true, sm: true },
@@ -78,8 +82,8 @@ export function FixtureList({ fixtures, highlight }: { fixtures: Fixture[]; high
       rows={fixtures.map((f) => {
         const p = f.pHome == null ? null : f.pHome * 100;
         return {
-          key: `${f.start_ts}${f.home}`, on: on(f, highlight), cls: f.ended ? "played" : "",
-          cells: [<span key="d" className="dim">{day(f.start_ts)}</span>,
+          key: `${f.start_ts}${f.home}`, on: on(f, highlight), cls: `${f.ended ? "played" : ""}${all ? " tap" : ""}`,
+          cells: [<span key="d" className="dim">{all && <MatchTap d={matchDetail(f, all)} stretch />}{day(f.start_ts)}</span>,
             <span key="m" className="match"><Team name={f.home} size={18} /><span className="dash">–</span><Team name={f.away} size={18} /></span>,
             <Prob key="h" p={p} />, <Prob key="a" p={p == null ? null : 100 - p} />,
             <span key="o" className="dim">{f.pOt == null ? "–" : `${Math.round(f.pOt * 100)} %`}</span>,
@@ -113,8 +117,9 @@ export function Misses({ fixtures, highlight }: { fixtures: Fixture[]; highlight
         <Grid label="Suurimmat hutit" cols={[{ h: "Pvm", w: "50px", num: true }, { h: "Suurimmat hutit", w: "minmax(150px, 1fr)" },
           { h: "Tulos", w: "64px", num: true }, { h: "", w: "56px", num: true }]}
           rows={m.worst.map((f) => ({
-            key: `${f.start_ts}${f.home}`, on: on(f, highlight),
-            cells: [<span key="d" className="dim">{day(f.start_ts)}</span>, <span key="m" className="pair">{f.home} – {f.away}</span>,
+            // Huti avaa ottelukortin, jossa agentilta voi kysyä "miksi malli meni pieleen".
+            key: `${f.start_ts}${f.home}`, on: on(f, highlight), cls: "tap",
+            cells: [<span key="d" className="dim"><MatchTap d={matchDetail(f, fixtures)} stretch />{day(f.start_ts)}</span>, <span key="m" className="pair">{f.home} – {f.away}</span>,
               resultText(f), <span key="v" className="down strong">{Math.round(modelSaid(f)!)} %</span>],
           }))} />
       </div>

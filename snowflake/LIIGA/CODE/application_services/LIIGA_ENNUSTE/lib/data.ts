@@ -135,9 +135,11 @@ export const loadHistory = memo("loadHistory", async () => {
 
 // Sama liitos kuin streamlit_app.py:n fixtures_sql: uusin snapshot
 // ottelupäivänä tai ennen -- se mitä malli sanoi ennen kiekon pudotusta.
-export const loadFixtures = memo("loadFixtures", async (): Promise<Fixture[]> => {
+// Avaimessa rivin muodon versio: muisti säilyy kehityspalvelimen kuumassa
+// latauksessa, ja vanhan muotoiset rivit (ilman season/gameId) jäivät käyttöön 5.11.
+export const loadFixtures = memo("loadFixtures:v2", async (): Promise<Fixture[]> => {
   const fx = await query(`
-    SELECT g.start_ts, g.home_team, g.away_team, g.ended, g.home_goals, g.away_goals,
+    SELECT g.season, g.game_id, g.start_ts, g.home_team, g.away_team, g.ended, g.home_goals, g.away_goals,
            g.result_category, p.p_home_win, p.p_overtime
     FROM ${M}.STG_GAMES g
     LEFT JOIN ${M}.PREDICTION_GAMES p ON p.game_id = g.game_id
@@ -149,7 +151,101 @@ export const loadFixtures = memo("loadFixtures", async (): Promise<Fixture[]> =>
     start_ts: String(r.START_TS), home: String(r.HOME_TEAM), away: String(r.AWAY_TEAM), ended: Boolean(r.ENDED),
     hg: num(r.HOME_GOALS), ag: num(r.AWAY_GOALS), category: r.RESULT_CATEGORY == null ? null : String(r.RESULT_CATEGORY),
     pHome: num(r.P_HOME_WIN), pOt: num(r.P_OVERTIME),
+    season: num(r.SEASON) ?? undefined, gameId: num(r.GAME_ID) ?? undefined,
   }));
+});
+
+// Pelaajat (5.11.2026, /pelaajat ja pelaajakortin agentti): kenttäpelaajat ja
+// maalivahdit kuluvalla kaudella. Snowflakessa valmiit näkymät V_PLAYER_SEASON_NOW ja
+// V_GOALIE_SEASON_NOW (sama logiikka kuin agentin semanttisessa mallissa); DuckDB:ssä
+// (paikallinen + Pages) niitä ei ole, joten samat kyselyt pohjatauluista -- todennettu
+// 5.11.: 484 + 41 riviä ja sama kärki desimaaleja myöten molemmissa.
+export type Skater = { id: number; name: string; team: string; position: string; gp: number; goals: number; assists: number;
+  points: number; ppGoals: number; prePpg: number | null; vsPre: number | null };
+export type Goalie = { id: number; name: string; team: string; gp: number; starts: number; solo: number | null; ga: number | null;
+  gaa: number | null; savedAvg: number | null; preSv: number | null; savedPre: number | null };
+const SKATERS_DUCK = `
+    WITH cur AS (SELECT MAX(season) AS s FROM stg_games),
+    gp AS (
+      SELECT l.player_id, MAX(l.first_name) AS first_name, MAX(l.last_name) AS last_name,
+             MAX(l.team) AS team, MAX(l.position_group) AS position_group,
+             COUNT(DISTINCT l.game_id) AS games_played
+      FROM game_lineups l
+      JOIN stg_games g ON g.game_id = l.game_id AND g.season = l.season AND g.ended
+      WHERE l.season = (SELECT s FROM cur) AND l.position_group <> 'G' AND NOT COALESCE(l.removed, FALSE)
+      GROUP BY l.player_id),
+    goals AS (
+      SELECT e.player_id, COUNT(*) AS goals,
+             COUNT(*) FILTER (WHERE e.is_powerplay) AS pp_goals
+      FROM raw_goal_events e
+      WHERE e.season = (SELECT s FROM cur) AND e.player_id <> 0
+        AND COALESCE(e.goal_types, '') NOT LIKE '%RL0%' AND COALESCE(e.goal_types, '') NOT LIKE '%VT0%'
+      GROUP BY e.player_id),
+    pss AS (SELECT player_id, assists FROM player_season_scoring WHERE season = (SELECT s FROM cur)),
+    pre_id AS (SELECT player_id, MAX(ppg) AS ppg FROM preseason_player_rates WHERE player_id IS NOT NULL GROUP BY player_id),
+    pre_nm AS (SELECT LOWER(name) AS nm, team, MAX(ppg) AS ppg FROM preseason_player_rates GROUP BY 1, 2)
+    SELECT gp.player_id, gp.first_name || ' ' || gp.last_name AS player_name, gp.team,
+           CASE WHEN gp.position_group = 'D' THEN 'Puolustaja' ELSE 'Hyökkääjä' END AS position,
+           gp.games_played, COALESCE(gl.goals, 0) AS goals, COALESCE(s.assists, 0) AS assists,
+           COALESCE(gl.goals, 0) + COALESCE(s.assists, 0) AS points, COALESCE(gl.pp_goals, 0) AS pp_goals,
+           COALESCE(pi.ppg, pn.ppg) AS preseason_points_per_game,
+           COALESCE(gl.goals, 0) + COALESCE(s.assists, 0) - COALESCE(pi.ppg, pn.ppg) * gp.games_played AS points_vs_preseason
+    FROM gp
+    LEFT JOIN goals gl ON gl.player_id = gp.player_id
+    LEFT JOIN pss s ON s.player_id = gp.player_id
+    LEFT JOIN pre_id pi ON pi.player_id = gp.player_id
+    LEFT JOIN pre_nm pn ON pn.nm = LOWER(gp.first_name || ' ' || gp.last_name) AND pn.team = gp.team
+    ORDER BY points DESC, goals DESC, games_played ASC`;
+const GOALIES_DUCK = `
+    WITH cur AS (SELECT MAX(season) AS s FROM stg_games),
+    gg AS (SELECT * FROM game_goalies WHERE season = (SELECT s FROM cur) AND played),
+    solo AS (SELECT game_id, team FROM gg GROUP BY game_id, team HAVING COUNT(*) = 1),
+    s AS (
+      SELECT g.player_id, g.team, g.goals_against, l.xg_against
+      FROM gg g
+      JOIN solo o ON o.game_id = g.game_id AND o.team = g.team
+      JOIN team_game_log l ON l.season = g.season AND l.game_id = g.game_id AND l.team = g.team),
+    scale AS (SELECT SUM(goals_against) / NULLIF(SUM(xg_against), 0) AS r FROM s),
+    tot AS (
+      SELECT player_id, MAX(first_name) AS first_name, MAX(last_name) AS last_name, MAX(team) AS team,
+             COUNT(*) AS games_played, COUNT(*) FILTER (WHERE started) AS starts
+      FROM gg GROUP BY player_id),
+    agg AS (SELECT player_id, COUNT(*) AS solo_games, SUM(goals_against) AS goals_against, SUM(xg_against) AS xg_against FROM s GROUP BY player_id),
+    pre AS (SELECT LOWER(name) AS nm, team, MAX(proj_save_pct) AS proj_save_pct FROM preseason_player_rates WHERE position_group = 'G' GROUP BY 1, 2)
+    SELECT t.player_id, t.first_name || ' ' || t.last_name AS goalie_name, t.team, t.games_played, t.starts,
+           a.solo_games, a.goals_against, a.goals_against / NULLIF(a.solo_games, 0) AS goals_against_per_game,
+           a.xg_against * (SELECT r FROM scale) - a.goals_against AS goals_saved_vs_average,
+           p.proj_save_pct AS preseason_save_pct,
+           a.xg_against * (SELECT r FROM scale) * (1 - p.proj_save_pct) / (1 - 0.908) - a.goals_against AS goals_saved_vs_preseason
+    FROM tot t
+    LEFT JOIN agg a ON a.player_id = t.player_id
+    LEFT JOIN pre p ON p.nm = LOWER(t.first_name || ' ' || t.last_name) AND p.team = t.team
+    ORDER BY goals_saved_vs_average DESC NULLS LAST`;
+export const loadPlayers = memo("loadPlayers", async () => {
+  const [sk, gk] = await Promise.all([
+    query(DATA_MODE === "snowflake"
+      ? `SELECT player_id, player_name, team, position, games_played, goals, assists, points, pp_goals,
+                preseason_points_per_game, points_vs_preseason
+         FROM ${M}.V_PLAYER_SEASON_NOW ORDER BY points DESC, goals DESC, games_played ASC`
+      : SKATERS_DUCK),
+    query(DATA_MODE === "snowflake"
+      ? `SELECT player_id, goalie_name, team, games_played, starts, solo_games, goals_against, goals_against_per_game,
+                goals_saved_vs_average, preseason_save_pct, goals_saved_vs_preseason
+         FROM ${M}.V_GOALIE_SEASON_NOW ORDER BY goals_saved_vs_average DESC NULLS LAST`
+      : GOALIES_DUCK),
+  ]);
+  const seen = new Set<number>();         // esikauden nimiliitos voi monistaa rivin
+  const skaters: Skater[] = sk.map((r) => ({
+    id: Number(r.PLAYER_ID), name: String(r.PLAYER_NAME), team: String(r.TEAM), position: String(r.POSITION), gp: Number(r.GAMES_PLAYED),
+    goals: Number(r.GOALS), assists: Number(r.ASSISTS), points: Number(r.POINTS), ppGoals: Number(r.PP_GOALS ?? 0),
+    prePpg: num(r.PRESEASON_POINTS_PER_GAME), vsPre: num(r.POINTS_VS_PRESEASON),
+  })).filter((r) => !seen.has(r.id) && (seen.add(r.id), true));
+  const goalies: Goalie[] = gk.map((r) => ({
+    id: Number(r.PLAYER_ID), name: String(r.GOALIE_NAME), team: String(r.TEAM), gp: Number(r.GAMES_PLAYED), starts: Number(r.STARTS),
+    solo: num(r.SOLO_GAMES), ga: num(r.GOALS_AGAINST), gaa: num(r.GOALS_AGAINST_PER_GAME), savedAvg: num(r.GOALS_SAVED_VS_AVERAGE),
+    preSv: num(r.PRESEASON_SAVE_PCT), savedPre: num(r.GOALS_SAVED_VS_PRESEASON),
+  }));
+  return { skaters, goalies };
 });
 
 // Uutishaastaja (27.10.): taulut syntyvät vain Pages-käännöksessä

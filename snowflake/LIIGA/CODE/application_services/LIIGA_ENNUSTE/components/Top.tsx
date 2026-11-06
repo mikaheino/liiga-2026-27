@@ -1,5 +1,6 @@
 // Yläpalkki: brändi (= etusivulle), osiot ja ennusteen aikaleima.
 import Link from "next/link";
+import AskButton from "@/components/AskButton";
 import { MOUHO_PAGES, STATIC } from "@/lib/target";
 
 export function stamp(iso: string) {
@@ -10,7 +11,7 @@ export function stamp(iso: string) {
 
 // Pagesissa ei LinkedIn-osiota, ja Mouho-peli avautuu omasta reposta.
 export const SECTIONS = [
-  ["/sarjataulukko", "Sarjataulukko"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"], ["/liike", "Liike"],
+  ["/sarjataulukko", "Sarjataulukko"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"], ["/pelaajat", "Pelaajat"], ["/liike", "Liike"],
   ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/linkedin", "LinkedIn"]]), [STATIC ? MOUHO_PAGES : "/mouho", "Mouho 2026"],
 ] as const;
 
@@ -28,6 +29,8 @@ export default function Top({ updatedAt, active }: { updatedAt?: string; active:
         {SECTIONS.map(([href, label]) => href.startsWith("http")
           ? <a key={href} href={href}>{label}</a>
           : <Link key={href} href={href} className={active === href ? "on" : ""}>{label}</Link>)}
+        {/* Vapaa keskustelu osiona muiden joukossa (6.11.); Pagesissa ei agenttia. */}
+        {!STATIC && <AskButton className="topnav-ask">Kysy</AskButton>}
       </nav>
       <div className="fresh"><span className="dot" />{updatedAt ? stamp(updatedAt) : "–"}</div>
     </header>

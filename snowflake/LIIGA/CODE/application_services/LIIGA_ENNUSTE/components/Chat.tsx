@@ -1,10 +1,27 @@
 "use client";
 // "Kysy agentilta": keskustelu LIIGA_ENNUSTAJA-agentin kanssa jokaisella sivulla.
-// Historia kulkee mukana, joten jatkokysymykset toimivat; joukkuesivulla
-// aloituskysymykset koskevat sitä joukkuetta. Historia säilyy sivulta toiselle
-// (sessionStorage), koska keskustelu on usein juuri sitä, mikä vie toiselle sivulle.
+// Historia kulkee mukana, joten jatkokysymykset toimivat. Historia säilyy sivulta
+// toiselle (sessionStorage), koska keskustelu on usein juuri sitä, mikä vie
+// toiselle sivulle.
+//
+// Sivutietoisuus (5.11.2026, käyttäjä: "agentilla olisi ymmärrys siitä millä
+// sivulla sitä käytetään"): jokaisen kysymyksen mukana lähtee polku ja
+// URL-valinnat, ja palvelin rakentaa niistä sivun tilannekuvan
+// (lib/pageContext.ts). Myös aloituskysymykset ja otsikon rivi kertovat, mitä
+// sivua agentti juuri nyt katsoo -- sama konteksti näkyy siis käyttäjälle.
+//
+// Telakointi (5.11.2026, käyttäjä: "agentti ei tulisi niin suoraan applikaation
+// päälle"): auki ollessaan paneeli ei kellu sisällön päällä vaan on sen vieressä.
+// Työpöydällä body saa luokan `chat-open` ja kaventuu paneelin verran, puhelimessa
+// paneeli on alalaatikko, jonka yläpuolella sivu näkyy ja vierii (globals.css).
+//
+// Avaaminen (6.11.2026): ei kelluvaa nappia. Kohteeseen sidottu agentti (CardAgent)
+// on pääreitti; vapaa keskustelu avataan navigaation "Kysy"-kohdasta (AskButton) tai
+// kortin vastausriviltä "Jatka keskustelua", jolloin kortin kysymys ja vastaus tulevat
+// keskustelun jatkoksi (lib/chatBus.ts). #agentti URL:ssa avaa myös.
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { chatState, onOpenChat } from "@/lib/chatBus";
 import { md } from "@/lib/markdown";
 
 type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean; suggestions?: string[] };
@@ -12,16 +29,44 @@ const KEY = "liiga-chat";
 const load = (): Turn[] => { try { return JSON.parse(sessionStorage.getItem(KEY) ?? "[]"); } catch { return []; } };
 const save = (t: Turn[]) => { try { sessionStorage.setItem(KEY, JSON.stringify(t.slice(-30))); } catch { /* yksityinen ikkuna */ } };
 
+const teamOf = (path: string) => (path.startsWith("/joukkue/") ? decodeURIComponent(path.split("/")[2] ?? "") : "");
+
+// Sivun nimi otsikkoriville: käyttäjä näkee, mitä agentti tietää katsovansa.
+// Palvelin tekee saman päättelyn uudelleen (lib/pageContext.ts) eikä luota tähän.
+function pageName(path: string): string {
+  const team = teamOf(path);
+  if (team) return team;
+  if (path === "/") return "Etusivu";
+  if (path.startsWith("/sarjataulukko")) return "Sarjataulukko";
+  if (path.startsWith("/voittaja")) return "Runkosarjan voittaja";
+  if (path.startsWith("/ottelut")) return "Ottelut";
+  if (path.startsWith("/liike")) return "Ennusteen liike";
+  if (path.startsWith("/sijainti")) return "Sijainnit";
+  if (path.startsWith("/pelaajat")) return "Pelaajat";
+  if (path.startsWith("/uutiset")) return "Uutiset";
+  return "Sovellus";
+}
+
+// Aloituskysymykset sivun mukaan: ne ovat sitä, mitä juuri tältä näkymältä on
+// luontevaa kysyä. Ei genetiiviä -- joukkueiden nimet taipuvat epäsäännöllisesti.
 function starters(path: string): string[] {
-  const team = path.startsWith("/joukkue/") ? decodeURIComponent(path.split("/")[2] ?? "") : "";
-  // Ei genetiiviä: joukkueiden nimet taipuvat epäsäännöllisesti (CLAUDE.md).
+  const team = teamOf(path);
   if (team) return [`Miksi joukkueen ${team} ennuste on muuttunut?`, `Mitä ${team} vaatii päästäkseen kuuden joukkoon?`, `Miten joukkueella ${team} on mennyt viimeisissä otteluissa?`];
+  if (path.startsWith("/sarjataulukko")) return ["Mikä tässä taulukossa yllättää mallia eniten?", "Ketkä ovat pudonneet eniten esikauden odotuksesta?", "Kuka nousee vielä kuuden joukkoon?"];
+  if (path.startsWith("/voittaja")) return ["Miksi suosikki on juuri tämä joukkue?", "Mitä haastaja vaatisi noustakseen kärkeen?", "Kuinka iso ero kahden kärjen välillä oikeasti on?"];
+  if (path.startsWith("/ottelut")) return ["Kierroksen esikatselu: tämän illan ottelut", "Missä malli meni tässä kuussa pahiten pieleen?", "Mikä on illan tasaisin ottelu?"];
+  if (path.startsWith("/liike")) return ["Miksi ennuste on muuttunut eniten tällä joukkueella?", "Mikä osuus muutoksesta on kokoonpanoja?", "Onko muutos tuloksia vai mallin uutta arviota?"];
+  if (path.startsWith("/sijainti")) return ["Mitä putoamisviivan yläpuolella pysyminen vaatii?", "Kuinka varma kuuden kärki on?", "Mikä sija on epävarmin?"];
+  if (path.startsWith("/uutiset")) return ["Mitä tämän päivän poissaolot tekevät illan otteluille?", "Kenen poissaolo painaa eniten?", "Miten haastaja eroaa perusmallista?"];
+  if (path.startsWith("/pelaajat")) return ["Kenen pelaajan poissaolo painaisi ennusteessa eniten?", "Ketkä maalivahdit ovat ylittäneet odotukset kestävästi?", "Mikä joukkue nojaa eniten yhteen pelaajaan?"];
   return ["Kierroksen esikatselu: tämän illan ottelut", "Kuka voittaa runkosarjan?", "Miksi KooKoon ennuste on romahtanut?", "Kuinka hyvin malli on osunut?"];
 }
 
 export default function Chat({ source = "snowflake" }: { source?: string }) {
   const path = usePathname();
+  const hidden = path.startsWith("/mouho");        // peli käyttää koko ruudun
   const [open, setOpen] = useState(false);
+  const [wide, setWide] = useState(false);          // puhelimen laatikko: 55 % vai lähes koko ruutu
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
@@ -31,19 +76,46 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setTurns(load()); }, []);
+  // Suora linkki keskusteluun: /sarjataulukko#agentti avaa paneelin valmiiksi.
+  useEffect(() => { if (window.location.hash === "#agentti") setOpen(true); }, [path]);
+  // Avaajat: navigaation Kysy (toggle) ja kortin "Jatka keskustelua" (seed).
+  useEffect(() => onOpenChat((o) => {
+    if (o.seed?.length) { setTurns((t) => [...t, ...o.seed!]); setOpen(true); }
+    else setOpen((v) => (o.toggle ? !v : true));
+  }), []);
+  useEffect(() => { chatState(open && !hidden); }, [open, hidden]);
+  useEffect(() => {
+    if (!open) return;
+    // Escape sulkee paneelin, ellei kortti ole auki (kortti sulkee ensin itsensä).
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector(".mc-wrap")) setOpen(false); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
   useEffect(() => { save(turns); end.current?.scrollIntoView({ block: "end" }); }, [turns, open]);
   useEffect(() => { if (live) end.current?.scrollIntoView({ block: "end" }); }, [live]);
   useEffect(() => { if (busy == null) return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [busy]);
+
+  // Telakointi: sivu väistää paneelin sen sijaan että paneeli peittäisi sivun.
+  // Luokka bodyssa, koska kavennettava sisältö on muualla (Shell, etusivu, alavalikko).
+  useEffect(() => {
+    const on = open && !hidden;
+    document.body.classList.toggle("chat-open", on);
+    document.body.classList.toggle("chat-wide", on && wide);
+    return () => { document.body.classList.remove("chat-open", "chat-wide"); };
+  }, [open, hidden, wide]);
 
   // Vastaus striimataan (NDJSON): tila ja teksti päivittyvät sitä mukaa kuin agentti etenee.
   async function send(text: string) {
     const q = text.trim(); if (!q || busy != null) return;
     const history = [...turns.filter((t) => !t.error), { role: "user" as const, text: q }];
+    // Sivu luetaan lähetyshetkellä: myös pelkkä kyselymerkkijonon muutos
+    // (?nakyma=, ?kk=) näkyy agentille ilman erillistä seurantaa.
+    const page = { path: window.location.pathname, query: window.location.search.replace(/^\?/, "") };
     setTurns([...turns, { role: "user", text: q }]); setDraft(""); setBusy(Date.now()); setNow(Date.now());
     setLive(""); setStatus("Yhdistetään…");
     let done: Turn | null = null;
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ history: history.map(({ role, text }) => ({ role, text })) }) });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ history: history.map(({ role, text }) => ({ role, text })), page }) });
       if (!res.ok || !res.body) { const j = await res.json().catch(() => ({})); throw new Error(j.error ?? `HTTP ${res.status}`); }
       const reader = res.body.getReader(), dec = new TextDecoder();
       let buf = "", acc = "";
@@ -69,22 +141,30 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
     }
   }
 
-  if (path.startsWith("/mouho")) return null;       // peli käyttää koko ruudun, nappi peittäisi sen
+  if (hidden) return null;
+  const where = pageName(path);
   return (
     <>
-      <button className={`chat-fab ${open ? "on" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="chat">
-        {open ? "✕ Sulje" : "▶ Kysy agentilta"}
-      </button>
       {open && (
         <aside id="chat" className="chat" aria-label="Keskustelu agentin kanssa">
           <header className="chat-h">
-            <div><div className="label">Liiga Ennustaja</div><div className="chat-sub">{source === "local" ? "Paikallinen Claude · data koneelta" : "Snowflake Intelligence -agentti"}</div></div>
-            {turns.length > 0 && <button className="chat-clear" onClick={() => setTurns([])}>Tyhjennä</button>}
+            <button className="chat-grip" onClick={() => setWide(!wide)} aria-label={wide ? "Pienennä keskustelu" : "Suurenna keskustelu"} />
+            <div className="chat-who">
+              <div className="label">Liiga Ennustaja</div>
+              <div className="chat-sub">
+                <span className="chat-here" title="Agentti tietää, mitä sivua katsot">◎ {where}</span>
+                <span className="chat-dot">·</span>{source === "local" ? "Paikallinen Claude" : "Snowflake Intelligence"}
+              </div>
+            </div>
+            <div className="chat-acts">
+              {turns.length > 0 && <button className="chat-clear" onClick={() => setTurns([])}>Tyhjennä</button>}
+              <button className="chat-x" onClick={() => setOpen(false)} aria-label="Sulje keskustelu">✕</button>
+            </div>
           </header>
           <div className="chat-log">
             {turns.length === 0 && (
               <div className="chat-start">
-                <p>Kysy mitä tahansa Liigan kaudesta 2026–27: ennuste, tulokset, mitä jos -skenaariot, kokoonpanot.</p>
+                <p>Kysy mitä tahansa Liigan kaudesta 2026–27. Agentti näkee, mitä sivulla <b>{where}</b> on nyt auki, joten voit viitata siihen suoraan.</p>
                 {starters(path).map((s) => <button key={s} className="chat-q" onClick={() => send(s)}>▸ {s}</button>)}
               </div>
             )}
@@ -111,7 +191,7 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
             <div ref={end} />
           </div>
           <form className="chat-in" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Kirjoita kysymys…" disabled={busy != null} aria-label="Kysymys" />
+            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Kysy sivusta ${where}…`} disabled={busy != null} aria-label="Kysymys" />
             <button type="submit" className="btn" disabled={busy != null || !draft.trim()}>Lähetä</button>
           </form>
         </aside>

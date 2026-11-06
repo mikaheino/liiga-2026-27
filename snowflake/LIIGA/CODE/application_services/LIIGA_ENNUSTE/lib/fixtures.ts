@@ -6,6 +6,9 @@ export type Fixture = {
   start_ts: string; home: string; away: string; ended: boolean;
   hg: number | null; ag: number | null; category: string | null;
   pHome: number | null; pOt: number | null;
+  // Ottelun avain (season, gameId): game_id ei ole yksilöllinen kausien yli (CLAUDE.md).
+  // Ottelukortin agenttivastaukset sidotaan tähän (lib/kortti.ts).
+  season?: number; gameId?: number;
   // Uutishaastajan kotivoitto, kun se on kirjannut ottelun (vain Pages; app/ottelut).
   chHome?: number | null;
 };

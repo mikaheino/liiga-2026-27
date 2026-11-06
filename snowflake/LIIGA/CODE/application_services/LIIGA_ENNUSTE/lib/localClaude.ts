@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Event, Turn } from "@/lib/agent";
+import { CONTEXT_RULE, type PageRef, pageContext } from "@/lib/pageContext";
 import { loadFixtures, loadHistory, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
 import { modelSaid, scoreboard } from "@/lib/fixtures";
 import { seasonTable, teamPoints } from "@/lib/table";
@@ -45,17 +46,19 @@ Käytä vain alla annettua tilannekuvaa; älä keksi lukuja. Jos kysytty asia ei
 Lyhyesti: vastaus yhdellä lauseella, tarvittaessa enintään 10 rivin taulukko, enintään kaksi lausetta tulkintaa. Prosentit yhdellä desimaalilla, desimaalipilkku.
 "Mestaruus" tarkoittaa tässä runkosarjan voittoa: malli ei ennusta pudotuspelejä. Vyöhykkeet: 1-6 puolivälierät, 7-10 karsinta, 15-17 putoaa. Vertaa mallin osuvuutta siihen, että kotijoukkue voittaa aina.
 Vedonlyönnistä: anna luvut, älä kehota pelaamaan.
-Lopeta joukkueita koskeva vastaus rivillä "Lisää sovelluksessa: /joukkue/<Joukkue>" ja muut sopivalla sivulla (/sarjataulukko, /voittaja, /ottelut, /liike).
+Lopeta joukkueita koskeva vastaus rivillä "Lisää sovelluksessa: /joukkue/<Joukkue>" ja muut sopivalla sivulla (/sarjataulukko, /voittaja, /ottelut, /liike) -- paitsi jos linkki osoittaisi sivulle, jolla käyttäjä jo on (ks. NÄKYMÄ).
 Kirjoita aivan viimeiseksi riviksi kolme lyhyttä jatkokysymystä, joita käyttäjä voisi kysyä seuraavaksi, muodossa "JATKO: kysymys 1 | kysymys 2 | kysymys 3".`;
 
 // Striimattuna kuten Snowflaken agentti: stream-json + osittaiset viestit, joten
 // teksti alkaa näkyä heti eikä vasta ~8 s päästä. JATKO-rivi ei näy (selain katkaisee
 // tekstin sen kohdalta), ja se puretaan lopuksi jatkokysymyksiksi.
-export async function askLocal(history: Turn[], emit: (e: Event) => void): Promise<void> {
+export async function askLocal(history: Turn[], emit: (e: Event) => void, page?: PageRef): Promise<void> {
   const t0 = Date.now();
   emit({ t: "status", text: "Paikallinen Claude miettii…" });
   const convo = history.slice(-10).map((t) => `${t.role === "user" ? "Käyttäjä" : "Sinä"}: ${t.text}`).join("\n\n");
-  const prompt = `TILANNEKUVA\n${await context()}\n\nKESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
+  // Sivun tilannekuva samalla tavalla kuin Snowflaken agentille (lib/pageContext.ts).
+  const view = page ? await pageContext(page) : "";
+  const prompt = `TILANNEKUVA\n${await context()}\n\n${view ? `NÄKYMÄ\n${CONTEXT_RULE}\n${view}\n\n` : ""}KESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
   const result = await new Promise<string>((resolve, reject) => {
     // Ilman työkaluja ja MCP:tä, väliaikaishakemistossa (ei projektin CLAUDE.md:tä), ei istuntohistoriaa.
     const p = spawn(CLAUDE, ["-p", "--tools", "", "--output-format", "stream-json", "--verbose", "--include-partial-messages",

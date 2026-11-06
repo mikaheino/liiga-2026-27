@@ -34,9 +34,129 @@ tekstiosa, jolloin alku ja taulukko katosivat. Jatkokysymykset = agentin `sugges
 (paikallisesti Clauden JATKO-rivi). Orkestrointimalli on **Sonnet** (käyttäjä 17.10.: halvempi;
 `deploy_agent.py`, `LIIGA_AGENT_MODEL` vaihtaa). ⚠️ App Runtimen OAuth-tokenilla REST-striimi on
 todennettava STAGINGissa; jos se ei aukea, varapolku vastaa ilman striimiä ja loki sanoo `[agent] striimi`.
+
 `/mouho` = point-and-click-peli Mouho 2026 -turnaukseen (`public/mouho/`, oma moottori
 `engine.js`, grafiikka `art.js`, tarina `game.js`; iframessa). Repo on julkinen, joten
 pelin koodi on kaikkien luettavissa -- käyttäjä valitsi tämän tietoisesti.
+
+**Sivutietoinen ja telakoitu agentti (5.11.2026, käyttäjä: "agentilla olisi ymmärrys siitä
+millä sivulla sitä käytetään ... ja agentti ei tulisi niin suoraan applikaation päälle").**
+Kaksi muutosta, molemmat **vain sovelluksessa** -- agenttia, sen ohjeita tai versiota ei
+koskettu, joten deploy.yml-ajoa ei tarvita:
+
+- **Konteksti:** `Chat.tsx` lähettää kysymyksen mukana `page = { path, query }`
+  (luetaan lähetyshetkellä `window.location`ista, joten myös `?nakyma=`, `?kk=` ja
+  `?joukkue=` näkyvät). `/api/chat` rajaa arvot (polku alkaa `/`, pituudet) ja
+  **`lib/pageContext.ts`** rakentaa niistä suomenkielisen NÄKYMÄ-lohkon: sivun nimi,
+  valinnat ja ne luvut jotka sivulla todella näkyvät -- samoista `lib/data.ts`:n
+  välimuistista ja samoilla funktioilla kuin sivu, eli ei yhtään lisäkyselyä. Lohko
+  liitetään **vain viimeiseen käyttäjäviestiin** (`withPage()` agent.ts:ssä), joten
+  vanhentunutta kontekstia ei kerry historiaan eikä selaimen `sessionStorage`iin.
+  Sama lohko menee paikalliselle Claudelle (`localClaude.ts`). Mukana `CONTEXT_RULE`:
+  tulkitse "tämä joukkue"/"tuo luku" näkymää vasten, älä hae valmiiksi annettuja
+  lukuja uudelleen työkalulla, äläkä linkitä sivulle jolla käyttäjä jo on.
+  Mitattu 5.11. paikallisesti: "Miksi tämä on muuttunut näin paljon?" ilman joukkueen
+  nimeä → oikea joukkue, sivun luvut ja linkki `/liike`en eikä takaisin joukkuesivulle.
+  Aloituskysymykset ovat nyt sivukohtaiset kaikilla sivuilla (ennen vain joukkuesivulla),
+  ja otsikkorivi näyttää käyttäjälle saman kontekstin ("◎ Tappara").
+- **Telakointi:** auki oleva paneeli ei kellu sisällön päällä. Työpöydällä `body` saa
+  luokan `chat-open` ja kaventuu `--chat-w` verran (`clamp(300px, 26vw, 380px)`).
+  ⚠️ **Sivuttaisvieritys on kielletty** (käyttäjä 5.11.: "joutuu scrollailemaan
+  sivuttain -> ei hyvä"): ensimmäinen yritys antoi sarjataulukolle oman
+  `overflow-x: auto`:n, mikä oli väärä ratkaisu. Nyt **valinnat-sivupalkki väistyy**
+  keskustelun ajaksi (`body.chat-open .rail { display: none }`, takaisin ≥ 1760 px),
+  jolloin taulukko mahtuu kokonaan. Mitattu: 1440 px → 1008/1008, 1280 px → 889/889,
+  ei yhtään sivuttain vierivää elementtiä. Puhelimessa paneeli
+  on alalaatikko (55 dvh, kahvasta 82 dvh), jonka yläpuolella sivu näkyy ja vierii;
+  `body` saa laatikon verran alatilaa. Kelluva nappi piiloutuu auki-tilassa kokonaan
+  (paneelin oma ✕ sulkee) ja sen hehkuanimaatio poistettiin. `#agentti`-tunniste
+  URL:ssa avaa paneelin valmiiksi. ⚠️ `body.chat-open .layout` täytyy olla
+  `:not(.no-rail)` -- muuten se antaa sivupalkittomalle sivulle (joukkuesivu, etusivu)
+  haamusarakkeen ja sisältö kutistuu.
+
+**Agentti ottelukortissa -- korvaa kelluvan paneelin (5.11.2026 ilta).** Käyttäjä:
+"agenttiominaisuus tuntuu päälleliimatulta" -> 11 kierroksen ideointi (ideoija, kriitikko,
+tutkija; workflow) -> suositus, jonka käyttäjä hyväksyi demoa varten ("nyt rakennetaan demoa").
+**Vapaa keskustelu ilman kelluvaa nappia (6.11., käyttäjä: "olis mukava jos agentin saisi
+myös vapaata keskustelua varten halutessaan missä tahansa ruudussa"):** sivutietoinen,
+telakoitu paneeli (yllä) on taas kaikilla sivuilla, mutta FAB on poistettu kokonaan (myös
+`LIIGA_FAB`-lippu). Paneeli avataan navigaation **"Kysy"**-kohdasta (`AskButton.tsx`:
+ylävalikon viimeinen, puhelimen alavalikon viimeinen -- osio muiden joukossa) tai kortin
+vastausrivin **"▸ Jatka keskustelua"** -napista, joka tuo kortin kysymyksen ja vastauksen
+keskustelun jatkoksi (`lib/chatBus.ts`, selaimen tapahtumat, koska avaajat ja paneeli ovat
+eri puissa). Paneeli (z 70) on korttien (z 60) päällä ja työpöydällä kortti siirtyy sen
+viereen, joten kortti ja keskustelu näkyvät yhtä aikaa. Escape sulkee ensin kortin, sitten
+paneelin. Paneelin ollessa auki yläpalkki tiivistyy (brändin alarivi ja aikaleima piiloon).
+⚠️ Yläpalkin `AskButton` kytkeytyy vasta sivun sisällön myötä, joten se lukee alkutilan
+`body.chat-open`-luokasta -- pelkkä tapahtuma jäi kuulematta, jos paneeli avautui heti.
+⚠️ Headless-kuvassa yläpalkin Kysy näyttää korostumattomalta: virtuaaliaika ei vie
+`transition`ia loppuun (vain siirtyvät ominaisuudet jäävät alkuarvoon; mitattu 6.11.).
+
+- **Kohde, ei ikkuna (laajennettu 5.11. myöhään, käyttäjä: "voisiko tämä olla muuallakin"):**
+  agentilta kysytään kohteesta, `components/CardAgent.tsx`:
+  - **ottelu** -- `MatchCard` avautuu nyt jokaisesta ottelusta: kierroskortti, `/ottelut`-lista,
+    joukkuesivun viimeiset/seuraavat ja "Suurimmat hutit". Kortin sisältö yhdestä paikasta
+    `lib/matchDetail.ts` (vire ja keskinäiset ottelua EDELTÄVISTÄ otteluista, pelatussa
+    lopputulos). Listarivillä "venytetty" nappi taustalla (`.mc-row-tap`), joukkueiden nimet
+    (linkit joukkuekorttiin) sen päällä -- ei sisäkkäisiä interaktiivisia elementtejä.
+    Kortti renderöidään `document.body`:yn (`createPortal`): rivien `rise`-animaation
+    `transform` ja `.swipe { will-change: transform }` tekisivät kiinteälle kortille oman
+    kehyksen. Siksi `@types/react-dom` (19.1.11) lisättiin. `#ottelu=<kausi>:<game_id>`
+    avaa kortin suoraan (demo, testikuvat).
+  - **joukkue** -- joukkuesivun "Ennusteen liike" -kaavion alla; tilannekuva samasta
+    `pageContext.ts`:n `team()`-funktiosta kuin sivun konteksti.
+  - **pelaaja** ja **koko liiga** (6.11., käyttäjä: "entä jos haluan kysyä yleisiä kysymyksiä
+    pelaajista? Snowflake tietää nämä tiedot") -- uusi sivu **`/pelaajat`** (`components/Players.tsx`,
+    navigaatioon ylä- ja alapalkkiin): pistepörssi (30 kärki, "näytä kaikki") ja maalivahdit
+    (≥ 3 yksin pelattua). Rivi avaa pelaajakortin (`#pelaaja=<player_id>` suoraan), jossa
+    agentti avaimella `('player', '<kausi>:<player_id>')`; sivun alalaidassa
+    `('season', '<kausi>:liiga')` kysymyksille, joilla ei ole yhtä pelaajaa kohteena.
+    Data `loadPlayers()`: Snowflakessa `V_PLAYER_SEASON_NOW`/`V_GOALIE_SEASON_NOW`, DuckDB:ssä
+    (paikallinen + Pages) samat kyselyt pohjatauluista -- todennettu 6.11.: 484 + 41 riviä ja
+    sama kärki desimaaleja myöten. Pelaajasirut "Nimi: kysymys" (nimiä ei taivuteta): ero
+    esikauden odotukseen ≥ 5 p, joukkueen kahden parhaan pistemiehen tai ykkösmaalivahdin
+    (≥ 60 % aloituksista) kuukauden poissaolo (simulaattori), maalivahdin torjuntaero ≥ 5.
+    Koko liigan osiossa ei sirua (datassa ei ole yksittäistä syytä). Alavalikossa nyt 6 kohtaa
+    (Pagesissa 7): `.bnav[data-n]` pienentää tekstiä.
+  Avain `(subject_type, subject_key)`: `('game', '2027:2701477')`, `('team', '2027:Tappara')`
+  -- uusi kohdetyyppi (pelaaja, kausi) on uusi haara `resolve()`-funktioon
+  (`lib/kortti.ts`), ei skeemamuutos. Avain tarkistetaan datasta (olemassa oleva ottelu,
+  tämän kauden joukkue).
+- **Elinkaari:** `pending -> done | error`; `forecast_ts` = `PREDICTION_META.UPDATED_AT`
+  kysymyshetkellä, ja kun ennuste päivittyy, rivi saa lapun **VANHA PERUSTA**. Kesken jäänyt
+  rivi (palvelin käynnistyi uudelleen) muuttuu virheeksi 5 min jälkeen.
+- **Kortin voi sulkea kesken:** `POST /api/kortti` palauttaa heti, agentti ajetaan
+  `after()`issa (`askOnce`, lib/agent.ts) ja edistyminen on muistissa (yksi instanssi,
+  app.yml). ⚠️ Todennettava STAGINGissa, että App Runtime ajaa `after()`in loppuun.
+- **Välimuisti = avain:** sama kysymys (normalisoitu) samasta ottelusta samalla
+  ennusteella palauttaa valmiin rivin eikä kutsu agenttia. Enintään 2 kesken per ottelu.
+- **Valmiit kysymykset vain datan syystä** (lasketaan kohteen koodissa, CardAgent vain näyttää):
+  ottelu -- "Miksi X on suosikki?" (tasaisessa, |p − 0,5| < 0,06, "Mikä ratkaisee näin
+  tasaisen ottelun?"), pelipäivänä kokoonpanot, pelatussa vain jos malli antoi voittajalle
+  < 40 %: "Miksi malli meni pieleen?"; joukkue -- ennuste liikkui viikossa ≥ 3 p, top 6
+  25–75 %, putoaminen ≥ 15 %, muuten (jos esikaudesta ≥ 5 p) "Miksi ennuste on muuttunut
+  esikaudesta?". Ei vastaväitettä pyytämättä (ideoinnin hylätty malli).
+- **Jälki samalla korttieleellä:** "▸ Jälki" avaa SwipeBack-kortin: agentti, perusta,
+  kesto, työkalut ja Cortex Analystin SQL (`render()` poimii `tool_use`-nimet kuten
+  morning_brief.py:99; SQL:n paikkaa tool_resultissa ei ole dokumentoitu, joten se haetaan
+  mistä tahansa `sql`-avaimesta -- tarkista STAGINGissa, että se löytyy).
+- Mitattu 5.-6.11. paikallisesti: kysymys -> valmis 7,5-10,8 s (ottelu, joukkue, pelattu ottelu, pelaaja, koko liiga),
+  sama kysymys eri kirjoitusasulla -> `cached: true`; Pages-käännöksessä agenttia ei ole (0 osumaa HTML:ssä). Virhepolku: rivi tallentui `error`-tilaan ja uusi yritys sallittiin.
+- ⚠️ **Kehityspalvelimen muistivälimuisti** (`globalThis.__liigaData`) säilyy kuumassa
+  latauksessa: kun rivin muoto muuttuu, vaihda memo-avain (`loadFixtures:v2`), muuten vanhan
+  muotoiset rivit jäävät käyttöön kunnes ennusteen aikaleima vaihtuu.
+- **Demo:** kysy kortista edellisenä iltana ennen aamun ennusteajoa, niin VANHA PERUSTA
+  -rivi on aito. Ideoinnin koko aineisto ja demon runko: istunnon workflow `agentti-ideointi`
+  (5.11.); toisiksi parhaat varastossa (agentin allekirjoittama poissaolon kesto, jonka
+  kokoonpano ratkaisee; haastaja Snowflakeen Git-objektilla).
+
+**Pagesiin ei agenttia (käyttäjän päätös 5.11.2026).** Puhelimessa luettava versio on
+GitHub Pages, jossa Chat ja `/api/chat` on poistettu käännöksestä (27.10.) -- siellä ei
+ole palvelinta, joka kutsuisi agenttia. Harkittiin välitystä olemassa olevan
+`workers/hyvaksynta`-Workerin kautta (sama GitHub-kirjautuminen, oma Snowflake-
+palvelutunnus roolilla `LIIGA_AGENT_USER`, konteksti ilman lukuja); **hylättiin
+toistaiseksi**. Älä ehdota uudelleen ilman uutta pyyntöä. Agentti on siis vain
+Snowflake-sovelluksessa ja kehityskoneella.
 
 **Agentti linkittää sovellukseen** (käyttäjä 16.10.): `deploy_agent.app_note()` lisää
 vastausohjeeseen rivin "Lisää sovelluksessa: <linkki>" syvälinkkeineen (`/joukkue/<nimi>`,

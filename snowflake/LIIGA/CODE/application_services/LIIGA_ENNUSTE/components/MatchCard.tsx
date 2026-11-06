@@ -4,8 +4,11 @@
 // ennuste ja haastaja, huomiot (maalivahdit, poissaolot), vire, keskinäiset ja uutiset.
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import CardAgent from "@/components/CardAgent";
 import SwipeBack from "@/components/SwipeBack";
 import { fi, logo } from "@/lib/table";
+import { STATIC } from "@/lib/target";
 
 export type MatchDetail = {
   when: string; home: string; away: string; pHome: number | null; pOt: number | null;
@@ -13,6 +16,8 @@ export type MatchDetail = {
   form: Record<string, string[]>;                       // joukkue -> viimeiset tulokset (V/JV/JH/H)
   h2h: { date: string; text: string }[];
   news: { team: string; title: string; url: string; date: string }[];
+  result?: string | null;                               // pelatun ottelun lopputulos
+  agent?: { key: string; chips: string[] } | null;      // agentin kirjatut kysymykset (CardAgent.tsx)
 };
 
 const pct = (p: number) => `${fi(100 * p, 0)} %`;
@@ -41,7 +46,7 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
     <div className="mc-wrap" role="dialog" aria-modal="true" aria-label={`${d.home} – ${d.away}`}>
       <SwipeBack onBack={onClose} className="mc">
         <button className="crumb mc-back" onClick={onClose}>◀ Takaisin</button>
-        <div className="mc-when">{d.when}</div>
+        <div className="mc-when">{d.when}{d.result ? ` · päättyi ${d.result}` : ""}</div>
         <div className="mc-teams">
           {[d.home, d.away].map((t, i) => (
             <Link key={t} href={`/joukkue/${encodeURIComponent(t)}`} className="mc-team">
@@ -55,7 +60,7 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
         {h != null && (
           <div className="nr-bar mc-bar"><i className={h >= 0.5 ? "fav" : ""} style={{ width: `${100 * h}%` }} /><i className={h < 0.5 ? "fav" : ""} style={{ width: `${100 * (1 - h)}%` }} /></div>
         )}
-        {d.pOt != null && <div className="mc-ot">Jatkoaika {pct(d.pOt)}</div>}
+        {d.pOt != null && <div className="mc-ot">{d.result ? "Ennuste ennen ottelua · " : ""}Jatkoaika {pct(d.pOt)}</div>}
         {d.ch && (
           <div className="mc-box">
             <div className="label">Haastaja</div>
@@ -94,18 +99,31 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
             ))}
           </div>
         )}
+        {/* Agentti kortin alimpana: kysymys sidotaan tähän otteluun ja vastaus jää kortille.
+            Pagesissa ei agenttia (käyttäjän päätös 5.11.), eikä siellä ole /api-reittejä. */}
+        {!STATIC && d.agent && <CardAgent subject={{ type: "game", key: d.agent.key }} chips={d.agent.chips} placeholder="Kysy tästä ottelusta…" />}
         <div className="mc-hint">Pyyhkäise oikealle palataksesi</div>
       </SwipeBack>
     </div>
   );
 }
 
-export default function MatchTap({ d, children }: { d: MatchDetail; children: React.ReactNode }) {
+// stretch: taulukkorivin taustalla oleva näkymätön nappi (5.11.). Rivin joukkueiden
+// nimet ovat jo linkkejä joukkuekorttiin, joten koko riviä ei voi kääriä nappiin
+// (sisäkkäiset interaktiiviset elementit); nimet nousevat napin päälle CSS:llä.
+// Kortti renderöidään bodyyn: rivin animaatio (transform) ei saa leikata sitä.
+export default function MatchTap({ d, children, stretch = false }: { d: MatchDetail; children?: React.ReactNode; stretch?: boolean }) {
   const [open, setOpen] = useState(false);
+  const label = `${d.home} – ${d.away}: ottelukortti`;
+  // Suora linkki korttiin: #ottelu=<kausi>:<game_id> avaa sen (demo, agentin linkit).
+  const key = d.agent?.key;
+  useEffect(() => { if (key && decodeURIComponent(window.location.hash) === `#ottelu=${key}`) setOpen(true); }, [key]);
   return (
     <>
-      <button className="mc-tap" onClick={() => setOpen(true)} aria-label={`${d.home} – ${d.away}: lisätiedot`}>{children}</button>
-      {open && <Sheet d={d} onClose={() => setOpen(false)} />}
+      {stretch
+        ? <button className="mc-row-tap" onClick={() => setOpen(true)} aria-label={label} />
+        : <button className="mc-tap" onClick={() => setOpen(true)} aria-label={label}>{children}</button>}
+      {open && createPortal(<Sheet d={d} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

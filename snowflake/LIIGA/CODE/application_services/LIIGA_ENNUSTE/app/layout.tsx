@@ -24,6 +24,8 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fi" className={`${hanken.variable} ${mono.variable} ${pixel.variable}`}>
+      {/* Vapaa keskustelu ilman kelluvaa nappia (6.11.): avataan navigaation Kysy-kohdasta
+          tai kortin "Jatka keskustelua" -rivistä (lib/chatBus.ts). Pagesissa ei agenttia. */}
       <body>{children}<BottomNav /><NavTrack /><VersionCheck />{!STATIC && <Chat source={AGENT_SOURCE} />}</body>
     </html>
   );

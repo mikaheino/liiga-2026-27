@@ -87,7 +87,7 @@ export const FixturesView = withUrlParams(({ fixtures, teams, sp }: { fixtures: 
         <Score fixtures={fixtures} />
         <Months months={months} chosen={month} href={(m) => hrefWith("/ottelut", sp, { kk: m }, true)} />
       </div>
-      <FixtureList fixtures={fixtures.filter((f) => f.start_ts.startsWith(month))} highlight={highlight} />
+      <FixtureList fixtures={fixtures.filter((f) => f.start_ts.startsWith(month))} highlight={highlight} all={fixtures} />
       <div className="label sub">Missä malli menee pieleen</div>
       <Misses fixtures={fixtures} highlight={highlight} />
     </>

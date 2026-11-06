@@ -3,11 +3,13 @@
 // ennustetussa järjestyksessä kuin NHL 95:n joukkuevalinta.
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import CardAgent from "@/components/CardAgent";
 import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
 import Shell from "@/components/Shell";
 import { loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
+import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,22 @@ export default async function Page({ params }: { params: Promise<{ team: string 
   const played = mine.filter((f) => f.ended).slice(-5), coming = mine.filter((f) => !f.ended).slice(0, 5);
   const base = preseason.get(team);
   const q = `?joukkue=${encodeURIComponent(team)}`;
+
+  // Agentti joukkuesivulla (5.11.): kysymys sidotaan joukkueeseen (kausi:joukkue).
+  // Valmiit kysymykset vain datan syystä: ennuste liikkui viikossa, kuuden joukko
+  // on auki tai putoaminen uhkaa. Ilman syytä ei sirua, vain kenttä.
+  const seasonNo = Math.max(...fixtures.map((f) => f.season ?? 0));
+  const mineHist = history.filter((h) => h.team === team);
+  const last = mineHist.at(-1);
+  const weekAgo = last ? [...mineHist].reverse().find((h) => h.date <= new Date(Date.parse(last.date) - 7 * 864e5).toISOString().slice(0, 10)) : undefined;
+  const dWeek = last && weekAgo ? last.points - weekAgo.points : 0;
+  const top6 = sum(1, PLAYOFF_CUT), rel = sum(RELEGATION_CUT + 1, TEAMS);
+  const chips = [
+    Math.abs(dWeek) >= 3 ? `Miksi ennuste ${dWeek < 0 ? "laski" : "nousi"} viikossa ${fi(Math.abs(dWeek))} pistettä?` : null,
+    top6 >= 25 && top6 <= 75 ? "Mitä kuuden joukkoon pääsy vaatii?" : null,
+    rel >= 15 ? "Mitä putoamisen välttäminen vaatii?" : null,
+  ].filter((c): c is string => !!c);
+  if (!chips.length && base != null && Math.abs(r.points - base) >= 5) chips.push("Miksi ennuste on muuttunut esikaudesta?");
 
   return (
     <Shell active="" title={team} rail={false}>
@@ -71,13 +89,16 @@ export default async function Page({ params }: { params: Promise<{ team: string 
       <div className="team-grid">
         <div>
           <div className="label">Viimeiset</div>
-          <FixtureList fixtures={played} highlight={new Set()} />
+          <FixtureList fixtures={played} highlight={new Set()} all={fixtures} />
           <div className="label sub">Seuraavat</div>
-          <FixtureList fixtures={coming} highlight={new Set()} />
+          <FixtureList fixtures={coming} highlight={new Set()} all={fixtures} />
         </div>
         <div>
           <div className="label">Ennusteen liike</div>
           <History history={history} order={[team]} highlight={new Set()} preseason={preseason} big />
+          {!STATIC && seasonNo > 0 && (
+            <div className="team-agent"><CardAgent subject={{ type: "team", key: `${seasonNo}:${team}` }} chips={chips} placeholder={`Kysy joukkueesta ${team}…`} /></div>
+          )}
           <nav className="jumps">
             <Link href={`/sarjataulukko${q}`}>▶ Sarjataulukossa</Link>
             <Link href={`/voittaja${q}`}>▶ Voittajakisassa</Link>

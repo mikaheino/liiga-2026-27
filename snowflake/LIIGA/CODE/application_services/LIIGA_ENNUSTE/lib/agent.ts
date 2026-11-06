@@ -15,16 +15,18 @@ import os from "node:os";
 import path from "node:path";
 import { parse } from "smol-toml";
 import { askLocal } from "@/lib/localClaude";
+import { CONTEXT_RULE, type PageRef, pageContext } from "@/lib/pageContext";
 import { DATA_MODE, query } from "@/lib/snowflake";
 
 const AGENT = process.env.LIIGA_AGENT ?? "SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA";
 const TOKEN = "/snowflake/session/token";
 export type Turn = { role: "user" | "assistant"; text: string };
+export type { PageRef } from "@/lib/pageContext";
 // Selaimelle kulkevat tapahtumat (NDJSON): tila, tekstin pala, valmis vastaus.
 export type Event =
   | { t: "status"; text: string }
   | { t: "delta"; text: string }
-  | { t: "done"; text: string; ms: number; suggestions: string[] }
+  | { t: "done"; text: string; ms: number; suggestions: string[]; tools?: string[]; sql?: string[] }
   | { t: "error"; text: string };
 type Emit = (e: Event) => void;
 
@@ -41,7 +43,7 @@ const body = (history: Turn[], stream: boolean) => JSON.stringify({
 // viimeinen tekstiosa näytettiin, jolloin alku ja agentin taulukko jäivät pois.
 type Col = { name: string; type: string; scale?: number };
 type Table = { title?: string; result_set?: { data?: (string | null)[][]; resultSetMetaData?: { rowType?: Col[] } } };
-type Part = { type?: string; text?: string; table?: Table; suggested_queries?: { query?: string }[] };
+type Part = { type?: string; text?: string; table?: Table; suggested_queries?: { query?: string }[]; tool_use?: { name?: string }; tool_result?: unknown };
 
 // Yleisimmät sarakkeet suomeksi; muut näytetään sellaisinaan pienellä.
 const FI: Record<string, string> = {
@@ -64,10 +66,23 @@ export function tableMd(t: Table): string {
   return [t.title ? `**${t.title}**\n` : "", `| ${head.join(" | ")} |`, `|${head.map(() => "---").join("|")}|`,
     ...rows.map((r) => `| ${cols.map((c, i) => cell(r[i], c)).join(" | ")} |`)].join("\n");
 }
-function render(parts: Part[]): { text: string; suggestions: string[] } {
+// Agentin jälki (5.11., ottelukortin "konepelti"): käytetyt työkalut ja Cortex
+// Analystin generoima SQL. Työkalun nimi on tool_use-osassa (kuten
+// morning_brief.py:99); SQL:n paikka tool_resultissa ei ole dokumentoitu, joten
+// se haetaan mistä tahansa "sql"-avaimesta -- puuttuessaan jälki on ilman SQL:ää.
+function sqlIn(v: unknown, out: string[] = []): string[] {
+  if (Array.isArray(v)) v.forEach((x) => sqlIn(x, out));
+  else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) {
+    if (k === "sql" && typeof x === "string" && x.trim()) out.push(x.trim()); else sqlIn(x, out);
+  }
+  return out;
+}
+function render(parts: Part[]): { text: string; suggestions: string[]; tools: string[]; sql: string[] } {
   const text = parts.map((p) => (p.type === "text" ? p.text ?? "" : p.type === "table" && p.table ? `\n\n${tableMd(p.table)}\n\n` : "")).join("").replace(/\n{3,}/g, "\n\n").trim();
   const suggestions = parts.flatMap((p) => p.suggested_queries ?? []).map((q) => q.query ?? "").filter(Boolean).slice(0, 3);
-  return { text, suggestions };
+  const tools = [...new Set(parts.filter((p) => p.type === "tool_use").map((p) => p.tool_use?.name ?? "").filter(Boolean))];
+  const sql = [...new Set(parts.filter((p) => p.type === "tool_result").flatMap((p) => sqlIn(p.tool_result)))];
+  return { text, suggestions, tools, sql };
 }
 
 // --- Tilaviestit suomeksi ----------------------------------------------------
@@ -133,8 +148,8 @@ async function streamRest(history: Turn[], emit: Emit, t0: number): Promise<bool
       else if (kind === "response.table") emit({ t: "delta", text: `\n\n${tableMd(d as Table)}\n\n` });
       else if (kind === "error") { emit({ t: "error", text: String(d.message ?? "Agentti palautti virheen.") }); return true; }
       else if (kind === "response") {
-        const { text, suggestions } = render((d.content ?? []) as Part[]);
-        emit({ t: "done", text: text || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions });
+        const { text, suggestions, tools, sql } = render((d.content ?? []) as Part[]);
+        emit({ t: "done", text: text || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql });
         return true;
       }
     }
@@ -148,18 +163,50 @@ async function viaSql(history: Turn[], emit: Emit, t0: number) {
   emit({ t: "status", text: "Agentti miettii…" });
   const rows = await query<{ R: string }>("SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(?, ?) AS R", [AGENT, body(history, false)]);
   const r = JSON.parse(rows[0]?.R ?? "{}") as { content?: Part[]; message?: string; error?: string };
-  const { text, suggestions } = render(r.content ?? []);
-  emit({ t: "done", text: text || r.message || r.error || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions });
+  const { text, suggestions, tools, sql } = render(r.content ?? []);
+  emit({ t: "done", text: text || r.message || r.error || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql });
 }
 
-export async function ask(history: Turn[], emit: Emit): Promise<void> {
+// Sivun tilannekuva (5.11.) liitetään VAIN viimeiseen käyttäjäviestiin: näin se
+// on aina sen sivun tieto, jolla kysymys esitettiin, eikä vanhentunutta
+// kontekstia kerry historiaan -- selain tallentaa vuorot ilman tätä lohkoa.
+async function withPage(history: Turn[], page?: PageRef): Promise<Turn[]> {
+  if (!page) return history;
+  const ctx = await pageContext(page);
+  if (!ctx) return history;
+  const i = history.length - 1;
+  const q = history[i];
+  return [...history.slice(0, i), { ...q, text: `${CONTEXT_RULE}\n\nNÄKYMÄ\n${ctx}\n\nKYSYMYS\n${q.text}` }];
+}
+
+export async function ask(history: Turn[], emit: Emit, page?: PageRef): Promise<void> {
   const t0 = Date.now();
-  if (AGENT_SOURCE === "local") return askLocal(history, emit);
+  if (AGENT_SOURCE === "local") return askLocal(history, emit, page);
+  const msgs = await withPage(history, page);
   let opened = false;
-  try { opened = await streamRest(history, (e) => { opened = true; emit(e); }, t0); }
+  try { opened = await streamRest(msgs, (e) => { opened = true; emit(e); }, t0); }
   catch (e) {
     if (opened) throw e;                                  // kesken katkennut: ei toista vastausta
     console.log(`[agent] striimi ei auennut: ${(e as Error).message} -> SQL`);
   }
-  if (!opened) await viaSql(history, emit, t0);
+  if (!opened) await viaSql(msgs, emit, t0);
+}
+
+// --- Kertakutsu (ottelukortti, 5.11.) ------------------------------------------
+// Kortin kysymys ei ole keskustelu: yksi kysymys, kohteen tilannekuva mukana,
+// vastaus tallennetaan riviksi (lib/kortti.ts). Sama agentti ja sama striimi kuin
+// keskustelussa; tila ja osittainen teksti välitetään edistymisen näyttämiseen.
+export type Answer = { text: string; suggestions: string[]; tools: string[]; sql: string[]; ms: number; source: "snowflake" | "local" };
+export async function askOnce(question: string, context: string,
+  progress: (p: { status?: string; partial?: string }) => void = () => {}): Promise<Answer> {
+  let partial = "", done: Answer | null = null, error = "";
+  const text = `${context}\n\nKYSYMYS\n${question}`;
+  await ask([{ role: "user", text }], (e) => {
+    if (e.t === "status") progress({ status: e.text });
+    else if (e.t === "delta") { partial += e.text; progress({ partial: partial.split(/\n?\s*JATKO:/)[0] }); }
+    else if (e.t === "error") error = e.text;
+    else if (e.t === "done") done = { text: e.text, suggestions: e.suggestions, tools: e.tools ?? [], sql: e.sql ?? [], ms: e.ms, source: AGENT_SOURCE };
+  });
+  if (!done) throw new Error(error || "Agentti ei vastannut.");
+  return done;
 }
