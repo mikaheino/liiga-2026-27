@@ -40,7 +40,13 @@ export async function POST(req: Request) {
     const list = (Array.isArray(parsed) ? parsed : [parsed]).filter((x) => x && typeof x === "object" && !("stakes" in (x as object)));
     const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[] }>("json", list);
     if (res.error) return NextResponse.json({ answer: a.text, items: [], error: res.error, tools: a.tools }, { status: 422, headers: NO_STORE });
-    return NextResponse.json({ answer: a.text, items: res.scenario_canonical ?? [], tools: a.tools }, { headers: NO_STORE });
+    const items = res.scenario_canonical ?? [];
+    // Sama raja kuin omassa skenaariossa (lib/lockBus.ts MAX_LOCKS): ei katkaista hiljaa.
+    if (items.length > 10) {
+      return NextResponse.json({ answer: a.text, items: [], tools: a.tools,
+        error: `Skenaariossa on ${items.length} riviä (esim. lukittua ottelua); enintään 10. Rajaa jaksoa tai otteluiden määrää.` }, { status: 422, headers: NO_STORE });
+    }
+    return NextResponse.json({ answer: a.text, items, tools: a.tools }, { headers: NO_STORE });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502, headers: NO_STORE });
   }

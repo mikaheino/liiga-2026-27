@@ -44,7 +44,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V3 | paikallinen agentti A: `scripts/local/liiga_mcp.py` | ✅ paikallisesti 6.11. |
 | J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
 | J1/V5 | "kuvaile skenaario omin sanoin" | ✅ paikallisesti 6.11. |
-| J1 | demokäsikirjoitus | |
+| J1 | demokäsikirjoitus | ✅ `docs/demo_skenaario.md` + `scripts/dev/demo_numbers.py` |
 | J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | |
 | J3/V11–V12 | tulkinta yhteen paikkaan (recompute.yml), latausrooli + NEWS_*-taulut | |
 
@@ -110,4 +110,4 @@ EI KORTTI_VASTAUS-riviä eikä SubjectType `scenario`ia, koska käyttäjän laus
 (periaate); vain kanoniset rivit selaimen sessioon. Palvelin hyväksyy vain kanonisia rivejä
 (`lib/scenarioItems.ts`). Todennettu paikallisesti: "HPK häviää kaikki ottelunsa joulun yli ja
 Jokerit voittaa seuraavat kolme" → 8 sirua, työkalu liiga_skenaario. Agentin työkalukuvaukseen
-lisätty from/until. Avoinna: 17+7 evaluointitapausta (suunnitelman V5-todennus).
+lisätty from/until. Evaluointi `scripts/dev/scenario_eval.py` (17 tavallista + 7 vihamielistä, rivit eikä sanamuoto, vuototarkistus): **24/24 paikallisesti 6.11.** (Claude, ~10 s/lause). Yli 10 riviä → virhe "rajaa jaksoa" (ei hiljaista katkaisua).
