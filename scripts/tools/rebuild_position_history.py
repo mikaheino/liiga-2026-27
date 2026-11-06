@@ -124,6 +124,25 @@ def truth(day: str) -> tuple[int, pd.DataFrame, pd.DataFrame | None]:
     return int(hist.games_played.iloc[0]), hist, (dist if not dist.empty else None)
 
 
+def _columns(con, table: str) -> list[str]:
+    return [r[0] for r in con.execute(
+        f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table}'").fetchall()]
+
+
+def _copy_games(cur, wt, table: str, ids: str) -> None:
+    """Otteluiden rivit nykyisestä kannasta työpuun kantaan (yhteiset sarakkeet)."""
+    cols_cur = set(_columns(cur, table))
+    cols = [c for c in _columns(wt, table) if c in cols_cur]
+    if "season" not in cols or "game_id" not in cols:
+        return
+    df = cur.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE season = {SEASON} AND game_id IN ({ids})").df()
+    wt.execute(f"DELETE FROM {table} WHERE season = {SEASON} AND game_id IN ({ids})")
+    if not df.empty:
+        wt.register("add_df", df)
+        wt.execute(f"INSERT INTO {table} ({', '.join(cols)}) SELECT {', '.join(cols)} FROM add_df")
+        wt.unregister("add_df")
+
+
 def advance(wt_db: Path, n_played: int) -> int:
     """Lisää työpuun kantaan ne ottelut, jotka D:n ajossa oli pelattu (nykyisestä kannasta)."""
     cur = duckdb.connect(str(DB), read_only=True)
@@ -144,19 +163,8 @@ def advance(wt_db: Path, n_played: int) -> int:
         wt_tables = {r[0] for r in wt.execute("SELECT table_name FROM information_schema.tables").fetchall()}
         ids = ", ".join(str(int(g)) for g in add)
         for table in PER_GAME:
-            if table not in wt_tables:
-                continue                    # vanha skeema: taulua ei vielä ollut, vanha koodi ei sitä lue
-            cols_wt = [r[0] for r in wt.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table}'").fetchall()]
-            cols_cur = {r[0] for r in cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table}'").fetchall()}
-            cols = [c for c in cols_wt if c in cols_cur]
-            if "season" not in cols or "game_id" not in cols:
-                continue
-            df = cur.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE season = {SEASON} AND game_id IN ({ids})").df()
-            wt.execute(f"DELETE FROM {table} WHERE season = {SEASON} AND game_id IN ({ids})")
-            if not df.empty:
-                wt.register("add_df", df)
-                wt.execute(f"INSERT INTO {table} ({', '.join(cols)}) SELECT {', '.join(cols)} FROM add_df")
-                wt.unregister("add_df")
+            if table in wt_tables:          # vanha skeema: taulua ei vielä ollut, vanha koodi ei sitä lue
+                _copy_games(cur, wt, table, ids)
         return len(add)
     finally:
         cur.close()
