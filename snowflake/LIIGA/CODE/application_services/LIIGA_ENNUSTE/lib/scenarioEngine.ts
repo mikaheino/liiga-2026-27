@@ -10,7 +10,7 @@ import { DATA_MODE, query } from "@/lib/snowflake";
 const REPO = process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ process.cwd(), "../../../../..");
 const PROC = process.env.LIIGA_SCENARIO_PROC ?? "";
 
-export type EngineMode = "json" | "panel";
+export type EngineMode = "json" | "panel" | "absence";
 
 function local(mode: EngineMode, payload: string): Promise<string> {
   return new Promise((resolve, reject) => {

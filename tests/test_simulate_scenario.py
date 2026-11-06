@@ -227,3 +227,33 @@ def test_panel_same_in_all_three_shapes(loaded):
     assert one["base"]["p"] == static["base"]["p"] and one["streak"]["req"]["p"] == static["streak"]["req"]["p"]
     assert set(files) == set(loaded[2]) and len(files["KooKoo"]["panels"]) == 16
     assert "error" in json.loads(skenaario.run_panel('{"team": "KooKoo", "goal": "x", "streak": 5}'))
+
+
+def test_missing_regulars_and_baseline():
+    """Vakio = 7/10 edellisestä; puuttuvat viimeisimmästä; perustaso samalla säännöllä."""
+    rows = []
+    for g in range(12):
+        key = f"2026-10-{g + 10:02d}|{g}"
+        squad = [1, 2, 3, 4] + ([5] if g < 11 else [])            # pelaaja 5 puuttuu viimeisestä
+        squad += [6] if g % 2 else []                                # 6 pelaa puolet: ei vakio
+        rows += [{"team": "A", "game_key": key, "player_id": p, "name": f"P{p}"} for p in squad]
+    missing, baseline = sim.missing_regulars(rows, "A")
+    assert [m["player_id"] for m in missing] == [5]
+    assert baseline == 0.0
+    assert sim.missing_regulars(rows[:10], "A") == ([], 0.0)         # liian vähän otteluita
+
+
+@needs_db
+def test_absence_card_shape(loaded):
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts" / "tools"))
+    import json
+
+    import skenaario
+    out = json.loads(skenaario.run_absence('{"team": "Lukko"}'))
+    assert set(out) >= {"team", "goal", "missing", "baseline", "durations", "show", "forecastDate"}
+    if out["missing"]:
+        assert set(out["durations"]) == {"week", "month", "season"}
+        d = out["durations"]["season"]
+        assert 0 <= d["p"] <= 1 and 0 <= d["p_now"] <= 1
+    assert "error" in json.loads(skenaario.run_absence('{"team": "Eiole"}'))

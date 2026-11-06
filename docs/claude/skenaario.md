@@ -45,7 +45,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
 | J1/V5 | "kuvaile skenaario omin sanoin" | ✅ paikallisesti 6.11. |
 | J1 | demokäsikirjoitus | ✅ `docs/demo_skenaario.md` + `scripts/dev/demo_numbers.py` |
-| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | V8 ✅ 6.11. |
+| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | V6 ✅, V8 ✅ 6.11. |
 | J3/V11–V12 | tulkinta yhteen paikkaan (recompute.yml), latausrooli + NEWS_*-taulut | |
 
 Koko suunnitelma (ominaisuudet, turvallisuus, hylätyt ideat): workflow `wf_4fedff4b-b60`.
@@ -125,3 +125,13 @@ Välimuisti tyhjenee myös uutiskannan muuttuessa (`lib/data.ts` newsStamp). Tie
 Pagesissa ei ollut agenttia, nyt uutiset ovat paikallisessa versiossa). MCP ei avaa
 uutiskantaa. Testit: `tests/test_news_db.py` (mallikannassa ei uutistauluja = CI-vartija).
 Todennettu: paikallinen /uutiset 80 juttua, haastajan kausiennuste ja poissaolot kuten Pagesissa.
+
+**V6 poissaolot (6.11.).** Moottoriin `missing_regulars()` (vakio = 7/10 edellisestä, puuttuu
+viimeisimmästä pelatusta; perustaso samalla säännöllä 10 edellisestä) ja `absence()` (vaikutus
+joukkueen elävimpään tavoitteeseen kestoilla 1 vko / 4 vko / loppukausi; `show` vain kun
+puuttuvia > perustaso JA loppukauden vaikutus ≥ 1 %-yks.). Data: kokoonpanot mallikannasta
+(paikallisesti `game_lineups`, Snowflakessa `RAW.GAME_LINEUPS`) → toimii kaikissa kolmessa
+ilman uutisia. MODE `absence` / `skenaario.py --absence`. Joukkuesivun `AbsenceCard` + agentin
+siru "Mitä poissaolot tarkoittavat?" (vain kun kortti näkyy). 6.11.: kortti Lukko (3 puuttuu,
+perustaso 1,7; voitto 58 → 51 % loppukausi), Tappara, HPK; ei KooKoo, Jokerit. Hyväksytyt
+uutispoissaolot (news_absences) yhdistetään korttiin J3:n jälkeen (Snowflakessa ei vielä uutisdataa).

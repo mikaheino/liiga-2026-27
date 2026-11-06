@@ -433,3 +433,20 @@ export const loadStakes = memo("loadStakes:v1", async (): Promise<Stake[]> => {
   if (r.error) throw new Error(r.error);
   return r.stakes ?? [];
 });
+
+// Poissaolokortti (6.11.2026, docs/claude/skenaario.md V6): puuttuvat vakiot viimeisimmästä
+// pelatusta ottelusta ja moottorin laskema vaikutus kolmella kestolla. Joukkuekohtainen
+// välimuisti (tyhjenee ennusteen vaihtuessa kuten muutkin).
+export type TeamAbsence = { team: string; goal: StakeRow["goal"]; missing: { player_id: number; name: string }[]; baseline: number;
+  durations: Record<"week" | "month" | "season", { p_now: number; p: number }>; show: boolean; forecastDate?: string };
+export async function loadAbsence(team: string): Promise<TeamAbsence | null> {
+  await fresh();
+  const key = `loadAbsence:v1:${team}`;
+  let p = store.values.get(key) as Promise<TeamAbsence | null> | undefined;
+  if (!p) {
+    p = runEngine<TeamAbsence>("absence", { team }).then((r) => (r.error ? null : r))
+      .catch((e) => { store.values.delete(key); throw e; });
+    store.values.set(key, p);
+  }
+  return p;
+}

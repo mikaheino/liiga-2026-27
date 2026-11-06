@@ -720,6 +720,75 @@ def panel_request(req: dict, teams: list[str]) -> tuple[str, str, int]:
     return team, goal, streak
 
 
+# ------------------------------------------------ poissaolot (joukkuesivu, J2/V6)
+REGULAR_LAST, REGULAR_MIN = 10, 7          # vakio: kokoonpanossa 7 joukkueen 10 edellisestä
+ABSENCE_DAYS = {"week": 7, "month": 28, "season": None}
+LINEUP_SQL = """
+    SELECT l.team, SUBSTR(g.start_ts, 1, 10) || '|' || CAST(l.game_id AS VARCHAR) AS game_key,
+           l.player_id, l.first_name || ' ' || l.last_name AS name
+    FROM {lineups} l JOIN {games} g ON g.season = l.season AND g.game_id = l.game_id
+    WHERE l.season = (SELECT MAX(season) FROM {games}) AND g.ended AND l.line IS NOT NULL
+      AND l.position_group <> 'G' AND NOT COALESCE(l.removed, FALSE)"""
+
+
+def _regulars(prev: list[dict]) -> set:
+    counts: dict = {}
+    for g in prev:
+        for pid in g:
+            counts[pid] = counts.get(pid, 0) + 1
+    need = math.ceil(REGULAR_MIN / REGULAR_LAST * len(prev))
+    return {pid for pid, c in counts.items() if c >= need}
+
+
+def missing_regulars(lineups: list[dict], team: str) -> tuple[list[dict], float]:
+    """Vakiot (kokoonpanossa 7/10 edellisestä), jotka puuttuivat joukkueen viimeisimmästä
+    pelatusta ottelusta, ja perustaso: montako vakiota tavallisesti puuttuu (keskiarvo 10
+    edellisestä ottelusta samalla säännöllä). Puuttuminen voi olla myös lepuutus."""
+    games: dict[str, dict] = {}
+    names: dict = {}
+    for r in lineups:
+        if r["team"] == team and r["player_id"] is not None:
+            games.setdefault(r["game_key"], {})[int(r["player_id"])] = r["name"]
+            names[int(r["player_id"])] = r["name"]
+    keys = sorted(games)
+    if len(keys) < 6:
+        return [], 0.0
+
+    def miss(i: int) -> set:
+        return _regulars([games[k] for k in keys[max(0, i - REGULAR_LAST):i]]) - set(games[keys[i]])
+    last = len(keys) - 1
+    hist = [len(miss(i)) for i in range(max(5, last - REGULAR_LAST), last)]
+    return ([{"player_id": pid, "name": names[pid]} for pid in sorted(miss(last), key=lambda x: names[x])],
+            sum(hist) / len(hist) if hist else 0.0)
+
+
+def _alive_goal(published: dict, team: str) -> str:
+    """Joukkueen elävin tavoite: julkaistu todennäköisyys lähimpänä 50 %:a."""
+    return min(GOAL_PUB, key=lambda g: abs((_pub_goal(published, team, g) or 0.0) - 0.5))
+
+
+def absence(team: str, lineups: list[dict], games, banked, published, w, played, model, base=None, today=None) -> dict:
+    """Joukkuesivun poissaolokortti: puuttuvien vakioiden vaikutus elävimpään tavoitteeseen
+    kolmella kestolla. Näytetään vain, kun puuttuvia on yli perustason JA loppukauden
+    vaikutus on vähintään 1 %-yks. (mitattu: lähes kaikilta puuttuu joku)."""
+    missing, baseline = missing_regulars(lineups, team)
+    ids = {_pid(p.get("player_id")) for p in model["players"] if p["position_group"] != "G"}
+    missing = [m for m in missing if m["player_id"] in ids]
+    goal = _alive_goal(published, team)
+    out = {"team": team, "goal": goal, "missing": missing, "baseline": baseline, "durations": {}, "show": False}
+    if not missing:
+        return out
+    base = base or simulate(games, banked, sorted(published))
+    for key, days in ABSENCE_DAYS.items():
+        items = [{"injury": m["player_id"], **({"days": days} if days else {})} for m in missing]
+        req = compute([*items, {"team": team, "goal": goal}], games, banked, published, w, played, model,
+                      base=base, today=today)["requirements"][0]
+        out["durations"][key] = {"p_now": req["p_without_injury"], "p": req["p"]}
+    s = out["durations"]["season"]
+    out["show"] = len(missing) > baseline and abs(s["p"] - s["p_now"]) >= 0.01
+    return out
+
+
 def _pct(x: float) -> str:
     return f"{x * 100:.1f}".replace(".", ",")
 
@@ -903,13 +972,25 @@ def needs_model(sc: list[dict]) -> bool:
     return any(it.get("injury") is not None or it.get("player_id") is not None for it in sc)
 
 
+def load_lineups(session) -> list[dict]:
+    """Pelattujen otteluiden kokoonpanot (kenttäpelaajat) poissaolokorttiin."""
+    sql = LINEUP_SQL.format(lineups="LIIGA.RAW.GAME_LINEUPS", games="LIIGA.MODEL.STG_GAMES")
+    return [{"team": r[0], "game_key": r[1], "player_id": r[2], "name": r[3]} for r in session.sql(sql).collect()]
+
+
 def run(session, scenario: str, mode: str = "text") -> str:
     """Proseduurin käsittelijä. MODE 'text' (agentti, oletus), 'json' (sovellus) tai
-    'panel' ({"team", "goal", "streak"} -> joukkuesivun skenaariopaneeli).
+    'panel' ({"team", "goal", "streak"} -> joukkuesivun skenaariopaneeli) tai 'absence'
+    ({"team"} -> joukkuesivun poissaolokortti).
     Virhe palautetaan tekstinä tai {"error": ..}, jotta agentti voi kertoa sen
     käyttäjälle ja pyytää tarkennusta."""
-    js = str(mode or "text").lower() in ("json", "panel")
+    js = str(mode or "text").lower() in ("json", "panel", "absence")
     try:
+        if str(mode).lower() == "absence":
+            games, banked, published, w, snap, played = load(session)
+            team = _team_of({t.lower(): t for t in published}, json.loads(scenario).get("team"))
+            res = absence(team, load_lineups(session), games, banked, published, w, played, load_model(session))
+            return to_json({**res, "forecastDate": str(snap)}, str(snap))
         if str(mode).lower() == "panel":
             games, banked, published, w, snap, played = load(session)
             team, goal, streak = panel_request(json.loads(scenario), sorted(published))

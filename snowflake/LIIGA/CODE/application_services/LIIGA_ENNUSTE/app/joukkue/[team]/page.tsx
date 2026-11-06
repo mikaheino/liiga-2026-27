@@ -3,12 +3,13 @@
 // ennustetussa järjestyksessä kuin NHL 95:n joukkuevalinta.
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AbsenceCard from "@/components/AbsenceCard";
 import CardAgent from "@/components/CardAgent";
 import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
 import Scenario from "@/components/Scenario";
 import Shell from "@/components/Shell";
-import { loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { loadAbsence, loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
 
@@ -18,8 +19,10 @@ const zone = (k: number) => (k <= PLAYOFF_CUT ? "z-top" : k <= QUALI_CUT ? "z-qu
 
 export default async function Page({ params }: { params: Promise<{ team: string }> }) {
   const team = decodeURIComponent((await params).team);
-  const [pos, log, teams, fixtures, { history, preseason }, season] = await Promise.all([
+  const [pos, log, teams, fixtures, { history, preseason }, season, absence] = await Promise.all([
     loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadChallengerSeason(),
+    // Poissaolokortti: moottorin puute (esim. proseduuri ei vielä julkaistu) ei kaada sivua.
+    loadAbsence(decodeURIComponent((await params).team)).catch((e) => { console.log(`[data] poissaolot: ${(e as Error).message}`); return null; }),
   ]);
   const ch = season.teams.find((t) => t.team === team && Math.abs(t.points - t.pointsNow) >= 0.3);
   const i = pos.findIndex((r) => r.team === team);
@@ -50,6 +53,8 @@ export default async function Page({ params }: { params: Promise<{ team: string 
     Math.abs(dWeek) >= 3 ? `Miksi ennuste ${dWeek < 0 ? "laski" : "nousi"} viikossa ${fi(Math.abs(dWeek))} pistettä?` : null,
   ].filter((c): c is string => !!c);
   if (!chips.length && base != null && Math.abs(r.points - base) >= 5) chips.push("Miksi ennuste on muuttunut esikaudesta?");
+  // Poissaolosiru vain, kun kortti näkyy (kynnys ylittyi).
+  if (absence?.show) chips.unshift("Mitä poissaolot tarkoittavat?");
   // Skenaariopaneelin oletustavoite: se, joka on joukkueelle ajankohtaisin (6.11.).
   const top10 = sum(1, QUALI_CUT);
   const goal = rel >= 15 ? "avoid_relegation" : top10 > 5 && top10 < 95 ? "top10" : top6 > 5 && top6 < 95 ? "top6" : "win";
@@ -99,6 +104,7 @@ export default async function Page({ params }: { params: Promise<{ team: string 
         <div>
           <div className="label">Ennusteen liike</div>
           <History history={history} order={[team]} highlight={new Set()} preseason={preseason} big />
+          {absence?.show && <div className="team-agent"><AbsenceCard a={absence} /></div>}
           <div className="team-agent"><Scenario team={team} defaultGoal={goal} /></div>
           {!STATIC && seasonNo > 0 && (
             <div className="team-agent"><CardAgent subject={{ type: "team", key: `${seasonNo}:${team}` }} chips={chips} placeholder={`Kysy joukkueesta ${team}…`} /></div>

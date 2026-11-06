@@ -119,6 +119,27 @@ def run_panel(request: str, today: str | None = None) -> str:
         con.close()
 
 
+def load_lineups(con) -> list[dict]:
+    sql = sim.LINEUP_SQL.format(lineups="game_lineups", games="stg_games")
+    return [dict(zip(["team", "game_key", "player_id", "name"], r)) for r in con.execute(sql).fetchall()]
+
+
+def run_absence(request: str, today: str | None = None) -> str:
+    """Joukkuesivun poissaolokortti: sama muoto kuin Snowflaken MODE 'absence'."""
+    import json
+    con = _connect()
+    try:
+        games, banked, published, w, snap, played = load(con)
+        team = sim._team_of({t.lower(): t for t in published}, json.loads(request).get("team"))
+        res = sim.absence(team, load_lineups(con), games, banked, published, w, played, load_model(con, today),
+                          today=today)
+        return sim.to_json({**res, "forecastDate": str(snap)}, str(snap))
+    except (sim.ScenarioError, ValueError) as exc:
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+    finally:
+        con.close()
+
+
 def run(scenario: str) -> str:
     con = _connect()
     try:
@@ -142,6 +163,8 @@ def main(argv: list[str]) -> None:
     if argv and argv[0] == "--batch":
         for out in run_batch((ln for ln in sys.stdin if ln.strip()), today):
             print(out, flush=True)
+    elif argv and argv[0] == "--absence":
+        print(run_absence(argv[1], today))
     elif argv and argv[0] == "--panel":
         print(run_panel(argv[1], today))
     elif argv and argv[0] == "--json":
