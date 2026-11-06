@@ -86,7 +86,7 @@ luontioikeudet vain omaan skeemaan `LIIGA.APP`. Omistuksen siirto EI onnistu ("U
 feature 'TRANSFER OWNERSHIP ON APPLICATION SERVICE'"), joten käyttäjän päätös 6.11.: palvelut
 luodaan uudelleen skeemaan LIIGA.APP roolilla LIIGA_APP (`snow app deploy --role LIIGA_APP`,
 app.yml `schema: APP`). Osoite vaihtuu; vanhat LIIGA.CODE-palvelut poistetaan vasta, kun uusi
-tuotanto toimii. Rooli luotu 6.11. (Snowsight, ACCOUNTADMIN); LIIGA.APP-lauseet ajettava.
+tuotanto toimii. Rooli ja LIIGA.APP luotu 6.11. (Snowsight). ✅ Tuotannossa 6.11.: `LIIGA.APP.LIIGA_ENNUSTE` (LIIGA_APP), https://exduovc-zueemdq-container-services.snowflakecomputing.app; todennettu LIIGA_APP-roolilla: MODEL-luku, KORTTI_VASTAUS, moottori (CALL json), agentti (DATA_AGENT_RUN). Vanhat LIIGA.CODE-palvelut odottavat poistoa (käyttäjä).
 ⚠️ ACCOUNTADMIN `snow sql -c CONTAINER_SERVICES` ei toimi Claude Coden kautta (OAuth-paluu
 aikakatkaistaan) -> Snowsight.
 

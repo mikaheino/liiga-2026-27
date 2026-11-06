@@ -217,7 +217,9 @@ koska se ei ole ennustettavissa; ilman palvelua linkkiä ei tule. Seuraus: **ens
 tuotantoajo julkaisee sovelluksen, mutta agentti saa linkin vasta seuraavassa ajossa**
 (sen versio rakennetaan ehdokasvaiheessa ennen kuin tuotantopalvelu on olemassa).
 Todennettu DEV-aliaksella: "Miten Kärppien ennuste näyttää?" -> linkki `/joukkue/Kärpät`.
-**Tuotannossa 16.10.2026:** https://mwduovc-zueemdq-container-services.snowflakecomputing.app
+**Tuotannossa 6.11.2026 alkaen:** https://exduovc-zueemdq-container-services.snowflakecomputing.app
+(`LIIGA.APP.LIIGA_ENNUSTE`, omistaja LIIGA_APP; STAGING https://axduovc-zueemdq-container-services.snowflakecomputing.app).
+Vanha osoite 16.10.–6.11.: https://mwduovc-zueemdq-container-services.snowflakecomputing.app (`LIIGA.CODE`, LIIGA_DEPLOYER)
 (ajo 38950653914, `--promote-only` toimi ensimmäisellä kerralla; STAGING iwduovc-…, DEV ewduovc-…).
 
 `snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
