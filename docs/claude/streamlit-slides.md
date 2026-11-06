@@ -393,3 +393,12 @@ Erilliset postaukset ovat sovelluksessa yhä.
 Nuoli vertaa julkaistuun esikauden ennusteeseen (`games_played = 0`), ja
 alaviite sanoo ääneen, että liike sisältää myös syyskuun datakorjaukset
 (ks. "Nuoli mittaa ennusteen liikettä, ei pelkkää kauden opetusta").
+
+## Visuaalien iterointi agenteilla: `visual-iterate` (7.11.2026)
+
+Tallennettu työnkulku `.claude/workflows/visual-iterate.js` (pohjana LinkedIn-heatmap-GIF).
+Vaiheet: 3 ideoijaa (oletussuunnat TV-grafiikka, peli ja elokuvamainen tarina) -> tuomari -> rakentaja
+omassa työpuussaan -> kriitikko <-> korjaaja (`rounds` 1-3). Pakolliset argumentit: `goal`, `current` ja `out`.
+Valinnaiset: `files`, `constraints`, `directions`, `brief` (teksti tai `file:/polku/judge.json`, jolloin
+ideointi ja valinta ohitetaan), `rounds` ja `name`. Pääkopioon ei kosketa, joten hyväksytty tulos
+viedään sinne käsin. Ajo: "aja visual-iterate" ja argumentit, tai `Workflow({name: 'visual-iterate', args})`.
