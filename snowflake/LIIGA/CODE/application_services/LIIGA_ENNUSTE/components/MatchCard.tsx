@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import CardAgent from "@/components/CardAgent";
 import SwipeBack from "@/components/SwipeBack";
 import type { Stake } from "@/lib/data";
-import { getLocks, onLocks, toggleLock, type Lock } from "@/lib/lockBus";
+import { getLocks, onLocks, toggleLock, type Item } from "@/lib/lockBus";
 import { shown, stakeLabel, stakePct, worthShowing } from "@/lib/stakeText";
 import { fi, logo } from "@/lib/table";
 import { STATIC } from "@/lib/target";
@@ -40,17 +40,17 @@ function why(note: string): string {
 // Napautuslukitus (vain sovelluksessa): tulos lukitaan omaan skenaarioon, jonka
 // etusivun ScenarioBoard laskee moottorilla.
 function LockButtons({ d }: { d: MatchDetail }) {
-  const [locks, setL] = useState<Lock[]>([]);
+  const [locks, setL] = useState<Item[]>([]);
   useEffect(() => { setL(getLocks()); return onLocks(setL); }, []);
   const id = d.stake?.game_id;
   if (id == null) return null;
-  const cur = locks.find((l) => l.game_id === id)?.result;
+  const cur = locks.find((l) => "game_id" in l && l.game_id === id) as { result?: string } | undefined;
   const opt = [["home_win", `${d.home} voittaa`], ["away_win", `${d.away} voittaa`]] as const;
   return (
     <div className="sc-streak">
       <span className="dim">Lukitse omaan skenaarioon:</span>
       {opt.map(([r, l]) => (
-        <button key={r} type="button" className={`sc-chip ${cur === r ? "on" : ""}`} aria-pressed={cur === r}
+        <button key={r} type="button" className={`sc-chip ${cur?.result === r ? "on" : ""}`} aria-pressed={cur?.result === r}
           onClick={() => toggleLock({ game_id: id, result: r, label: `${d.when.split(" klo")[0]} ${d.home}–${d.away}: ${l}` })}>{l}</button>
       ))}
     </div>

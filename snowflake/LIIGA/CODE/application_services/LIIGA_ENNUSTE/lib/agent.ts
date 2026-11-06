@@ -24,10 +24,13 @@ const TOKEN = "/snowflake/session/token";
 export type Turn = { role: "user" | "assistant"; text: string };
 export type { PageRef } from "@/lib/pageContext";
 // Selaimelle kulkevat tapahtumat (NDJSON): tila, tekstin pala, valmis vastaus.
+// Työkalukutsun syöte (6.11.): "kuvaile skenaario" lukee agentin liiga_skenaario-kutsun
+// skenaarion ja ratkaisee sen moottorilla siruiksi (app/api/skenaario/kuvaile).
+export type ToolInput = { name: string; input: Record<string, unknown> };
 export type Event =
   | { t: "status"; text: string }
   | { t: "delta"; text: string }
-  | { t: "done"; text: string; ms: number; suggestions: string[]; tools?: string[]; sql?: string[] }
+  | { t: "done"; text: string; ms: number; suggestions: string[]; tools?: string[]; sql?: string[]; inputs?: ToolInput[] }
   | { t: "error"; text: string };
 type Emit = (e: Event) => void;
 
@@ -44,7 +47,7 @@ const body = (history: Turn[], stream: boolean) => JSON.stringify({
 // viimeinen tekstiosa näytettiin, jolloin alku ja agentin taulukko jäivät pois.
 type Col = { name: string; type: string; scale?: number };
 type Table = { title?: string; result_set?: { data?: (string | null)[][]; resultSetMetaData?: { rowType?: Col[] } } };
-type Part = { type?: string; text?: string; table?: Table; suggested_queries?: { query?: string }[]; tool_use?: { name?: string }; tool_result?: unknown };
+type Part = { type?: string; text?: string; table?: Table; suggested_queries?: { query?: string }[]; tool_use?: { name?: string; input?: Record<string, unknown> }; tool_result?: unknown };
 
 // Yleisimmät sarakkeet suomeksi; muut näytetään sellaisinaan pienellä.
 const FI: Record<string, string> = {
@@ -78,12 +81,13 @@ function sqlIn(v: unknown, out: string[] = []): string[] {
   }
   return out;
 }
-function render(parts: Part[]): { text: string; suggestions: string[]; tools: string[]; sql: string[] } {
+function render(parts: Part[]): { text: string; suggestions: string[]; tools: string[]; sql: string[]; inputs: ToolInput[] } {
   const text = parts.map((p) => (p.type === "text" ? p.text ?? "" : p.type === "table" && p.table ? `\n\n${tableMd(p.table)}\n\n` : "")).join("").replace(/\n{3,}/g, "\n\n").trim();
   const suggestions = parts.flatMap((p) => p.suggested_queries ?? []).map((q) => q.query ?? "").filter(Boolean).slice(0, 3);
   const tools = [...new Set(parts.filter((p) => p.type === "tool_use").map((p) => p.tool_use?.name ?? "").filter(Boolean))];
   const sql = [...new Set(parts.filter((p) => p.type === "tool_result").flatMap((p) => sqlIn(p.tool_result)))];
-  return { text, suggestions, tools, sql };
+  const inputs = parts.filter((p) => p.type === "tool_use" && p.tool_use?.name).map((p) => ({ name: p.tool_use!.name!, input: p.tool_use!.input ?? {} }));
+  return { text, suggestions, tools, sql, inputs };
 }
 
 // --- Tilaviestit suomeksi ----------------------------------------------------
@@ -145,8 +149,8 @@ async function streamRest(history: Turn[], emit: Emit, t0: number): Promise<bool
       else if (kind === "response.table") emit({ t: "delta", text: `\n\n${tableMd(d as Table)}\n\n` });
       else if (kind === "error") { emit({ t: "error", text: String(d.message ?? "Agentti palautti virheen.") }); return true; }
       else if (kind === "response") {
-        const { text, suggestions, tools, sql } = render((d.content ?? []) as Part[]);
-        emit({ t: "done", text: text || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql });
+        const { text, suggestions, tools, sql, inputs } = render((d.content ?? []) as Part[]);
+        emit({ t: "done", text: text || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql, inputs });
         return true;
       }
     }
@@ -160,8 +164,8 @@ async function viaSql(history: Turn[], emit: Emit, t0: number) {
   emit({ t: "status", text: "Agentti miettii…" });
   const rows = await query<{ R: string }>("SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(?, ?) AS R", [AGENT, body(history, false)]);
   const r = JSON.parse(rows[0]?.R ?? "{}") as { content?: Part[]; message?: string; error?: string };
-  const { text, suggestions, tools, sql } = render(r.content ?? []);
-  emit({ t: "done", text: text || r.message || r.error || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql });
+  const { text, suggestions, tools, sql, inputs } = render(r.content ?? []);
+  emit({ t: "done", text: text || r.message || r.error || "Agentti ei vastannut.", ms: Date.now() - t0, suggestions, tools, sql, inputs });
 }
 
 // Sivun tilannekuva (5.11.) liitetään VAIN viimeiseen käyttäjäviestiin: näin se
@@ -193,7 +197,7 @@ export async function ask(history: Turn[], emit: Emit, page?: PageRef): Promise<
 // Kortin kysymys ei ole keskustelu: yksi kysymys, kohteen tilannekuva mukana,
 // vastaus tallennetaan riviksi (lib/kortti.ts). Sama agentti ja sama striimi kuin
 // keskustelussa; tila ja osittainen teksti välitetään edistymisen näyttämiseen.
-export type Answer = { text: string; suggestions: string[]; tools: string[]; sql: string[]; ms: number; source: "snowflake" | "local" };
+export type Answer = { text: string; suggestions: string[]; tools: string[]; sql: string[]; inputs: ToolInput[]; ms: number; source: "snowflake" | "local" };
 export async function askOnce(question: string, context: string,
   progress: (p: { status?: string; partial?: string }) => void = () => {}): Promise<Answer> {
   let partial = "", done: Answer | null = null, error = "";
@@ -202,7 +206,7 @@ export async function askOnce(question: string, context: string,
     if (e.t === "status") progress({ status: e.text });
     else if (e.t === "delta") { partial += e.text; progress({ partial: partial.split(/\n?\s*JATKO:/)[0] }); }
     else if (e.t === "error") error = e.text;
-    else if (e.t === "done") done = { text: e.text, suggestions: e.suggestions, tools: e.tools ?? [], sql: e.sql ?? [], ms: e.ms, source: AGENT_SOURCE };
+    else if (e.t === "done") done = { text: e.text, suggestions: e.suggestions, tools: e.tools ?? [], sql: e.sql ?? [], inputs: e.inputs ?? [], ms: e.ms, source: AGENT_SOURCE };
   });
   if (!done) throw new Error(error || "Agentti ei vastannut.");
   return done;

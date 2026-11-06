@@ -10,7 +10,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Event, Turn } from "@/lib/agent";
+import type { Event, ToolInput, Turn } from "@/lib/agent";
 import { TOOL } from "@/lib/agentTools";
 import { CONTEXT_RULE, type PageRef, pageContext } from "@/lib/pageContext";
 import { loadFixtures, loadHistory, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
@@ -67,6 +67,7 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
   const view = page ? await pageContext(page) : "";
   const prompt = `TILANNEKUVA\n${await context()}\n\n${view ? `NÄKYMÄ\n${CONTEXT_RULE}\n${view}\n\n` : ""}KESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
   const tools = new Set<string>();
+  const inputs: ToolInput[] = [];
   const result = await new Promise<string>((resolve, reject) => {
     // Vain liigan MCP-työkalut, väliaikaishakemistossa (ei projektin CLAUDE.md:tä), ei istuntohistoriaa.
     const p = spawn(CLAUDE, ["-p", "--tools", "", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
@@ -79,11 +80,15 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
       for (let i; (i = buf.indexOf("\n")) >= 0;) {
         const line = buf.slice(0, i); buf = buf.slice(i + 1);
         let j: { type?: string; event?: { type?: string; delta?: { type?: string; text?: string } }; result?: string; is_error?: boolean;
-          message?: { content?: { type?: string; name?: string }[] } };
+          message?: { content?: { type?: string; name?: string; input?: Record<string, unknown> }[] } };
         try { j = JSON.parse(line); } catch { continue; }
         // Työkalukutsu: sama tilarivi ja Jälki-nimi kuin Snowflaken agentilla.
         const use = j.type === "assistant" ? j.message?.content?.find((c) => c.type === "tool_use") : undefined;
-        if (use?.name) { const n = use.name.replace(/^mcp__liiga__/, ""); tools.add(n); emit({ t: "status", text: TOOL[n] ?? "Haetaan tietoja" }); }
+        if (use?.name) {
+          const n = use.name.replace(/^mcp__liiga__/, "");
+          tools.add(n); inputs.push({ name: n, input: use.input ?? {} });
+          emit({ t: "status", text: TOOL[n] ?? "Haetaan tietoja" });
+        }
         if (j.type === "stream_event" && j.event?.type === "content_block_delta" && j.event.delta?.type === "text_delta") emit({ t: "delta", text: j.event.delta.text ?? "" });
         else if (j.type === "result") { if (j.is_error || !j.result) return reject(new Error(j.result || "Paikallinen Claude ei vastannut.")); final = j.result; }
       }
@@ -96,5 +101,5 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
   // Jatkokysymykset viimeiseltä JATKO-riviltä, kuten Snowflaken agentin suggested_queries.
   const m = result.match(/\n?\s*JATKO:\s*(.+)\s*$/);
   const suggestions = m ? m[1].split("|").map((q) => q.trim()).filter(Boolean).slice(0, 3) : [];
-  emit({ t: "done", text: m ? result.slice(0, m.index).trimEnd() : result, ms: Date.now() - t0, suggestions, tools: [...tools] });
+  emit({ t: "done", text: m ? result.slice(0, m.index).trimEnd() : result, ms: Date.now() - t0, suggestions, tools: [...tools], inputs });
 }

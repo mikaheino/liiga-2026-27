@@ -43,7 +43,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V2 | skenaariopaneeli identtiseksi (Snowflake CALL, Pages JSON) | ✅ paikallisesti + Pages-käännös 6.11. (Snowflake CI:llä) |
 | J1/V3 | paikallinen agentti A: `scripts/local/liiga_mcp.py` | ✅ paikallisesti 6.11. |
 | J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
-| J1/V5 | "kuvaile skenaario omin sanoin" (SubjectType `scenario`) | |
+| J1/V5 | "kuvaile skenaario omin sanoin" | ✅ paikallisesti 6.11. |
 | J1 | demokäsikirjoitus | |
 | J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | |
 | J3/V11–V12 | tulkinta yhteen paikkaan (recompute.yml), latausrooli + NEWS_*-taulut | |
@@ -99,3 +99,15 @@ ero ≥ 2 %-yks.; ottelukortti: kolme tulosta + sivulliset. Sovelluksessa (ei Pa
 enintään 10) → etusivun `ScenarioBoard` (POST /api/skenaario {scenario}) : sirut, uskottavuus,
 liikkuneet joukkueet (putoaa/top 10/top 6/voitto), "Kysy agentilta tästä". 390 px: ei
 sivuttaisvieritystä (mitattu iframe-luotaimella).
+
+**V5 kuvaile omin sanoin (6.11.).** Etusivun "Oma skenaario" -laatikossa tekstikenttä (vain
+sovellus). `POST /api/skenaario/kuvaile {text}` → `askOnce` ohjeella (tämä päivä, joukkueiden
+nimet, muodot, ilmausten tulkinnat: "joulun yli" = 20.12.–6.1.; monitulkintainen → yksi
+tarkentava kysymys) → agentin `liiga_skenaario`-kutsun syöte (`Answer.inputs`; Cortex:
+`tool_use.input`, paikallinen: stream-jsonin tool_use) → moottori json-tilassa → kanoniset rivit
+siruiksi (`lib/lockBus.ts` yleistetty: ottelu / poissaolo / tavoite). Poikkeus suunnitelmaan:
+EI KORTTI_VASTAUS-riviä eikä SubjectType `scenario`ia, koska käyttäjän lausetta ei tallenneta
+(periaate); vain kanoniset rivit selaimen sessioon. Palvelin hyväksyy vain kanonisia rivejä
+(`lib/scenarioItems.ts`). Todennettu paikallisesti: "HPK häviää kaikki ottelunsa joulun yli ja
+Jokerit voittaa seuraavat kolme" → 8 sirua, työkalu liiga_skenaario. Agentin työkalukuvaukseen
+lisätty from/until. Avoinna: 17+7 evaluointitapausta (suunnitelman V5-todennus).

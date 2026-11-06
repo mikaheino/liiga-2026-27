@@ -14,23 +14,20 @@
 import { NextResponse } from "next/server";
 import { loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
+import { validItem } from "@/lib/scenarioItems";
 
 export const dynamic = "force-dynamic";
 const NO_STORE = { "cache-control": "no-store" };
 const GOALS = new Set(["top6", "top10", "avoid_relegation", "win"]);
 const STREAKS = new Set([0, 3, 5, 10]);
 
-const RESULTS = new Set(["home_win", "away_win", "home_reg", "home_ot", "away_ot", "away_reg"]);
-
-// Lukittujen otteluiden skenaario (napautuslukitus, lib/lockBus.ts): vain tunnisteet ja
-// tulosenumit, enintään 10. Moottori palauttaa joukkueiden luvut, uskottavuuden ja
-// kanonisen skenaarion (json-tila).
+// Oma skenaario (lib/lockBus.ts): vain moottorin kanonisia rivejä (lib/scenarioItems.ts),
+// enintään 10. Moottori palauttaa joukkueiden luvut, uskottavuuden ja kanonisen skenaarion.
 async function locks(items: unknown[]) {
-  const ok = items.length > 0 && items.length <= 10 && items.every((x) => {
-    const o = x as { game_id?: unknown; result?: unknown };
-    return Number.isInteger(o.game_id) && typeof o.result === "string" && RESULTS.has(o.result) && Object.keys(o).length === 2;
-  });
-  if (!ok) return NextResponse.json({ error: "virheellinen skenaario" }, { status: 400, headers: NO_STORE });
+  const teams = new Set(await loadTeams());
+  if (!items.length || items.length > 10 || !items.every((x) => validItem(x, teams))) {
+    return NextResponse.json({ error: "virheellinen skenaario" }, { status: 400, headers: NO_STORE });
+  }
   try {
     const res = await runEngine("json", items);
     return NextResponse.json(res, { status: res.error ? 422 : 200, headers: NO_STORE });
