@@ -12,6 +12,7 @@ joukkuetta ei korosteta.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 from pathlib import Path
 
 import duckdb
@@ -35,11 +36,40 @@ FIRST_MS, LAST_MS = 3000, 8000
 # Tapahtuma hitaasti (käyttäjä 7.11.: "hidasta kun näytetään ihmisiä"): rivi esiin, lähtijä yksin,
 # sitten nuoli ja tulija; yhden henkilön paneeli kerralla.
 FOCUS_MS, OUT_MS, EVENT_MS, SINGLE_MS = 1500, 3000, 7000, 8000
+SIGN_MS = 5000
 # Kauden tapahtumat animaatioon (7.11.2026, käyttäjä: "nosta Jori Lehterä, valmentajavaihdot").
 # Valmentajavaihdot mallin taulusta coaching_changes (tarkistettu: fi.wikipedia, kausi 2026–27);
 # Lehterä: HIFK ilmoitti 19.9.2026, että hänen uransa HIFK:ssa päättyy ja hän pitää tauon (Yle).
 # Kaikki tapahtumat samalla tyylillä. Henkilökuvat: scripts/local/heatmap_people.py (Commons).
 PLAYER_EVENTS = [("2026-09-19", "HIFK", "Jori Lehterä", "jää tauolle urastaan")]
+# Hankinnat 1.9. jälkeen (käyttäjä 7.11.): Liiga-joukkueeseen tulleet, huhuareena.com/siirrot
+# (haettu 7.11.2026). Ei roster_changes.csv:tä: suurin osa sen lisäyksistä on täsmäytystä
+# (pelaaja oli joukkueessa alusta asti), ei hankintoja. (päivä, pelaaja, joukkue, mistä, laina)
+SIGNINGS = [
+    ("2026-09-14", "Petteri Lindbohm", "TPS", "HIFK", False),
+    ("2026-09-15", "David Nemecek", "HIFK", "HC Sparta Praha", False),
+    ("2026-09-18", "Tomi Karhunen", "Jokerit", "SaiPa", False),
+    ("2026-09-25", "Brett Harrison", "Sport", "Lehigh Valley Phantoms", False),
+    ("2026-09-28", "Oula Palve", "Sport", "Djurgårdens IF", False),
+    ("2026-09-29", "Olli Palola", "HPK", "Ilves", True),
+    ("2026-09-29", "Benjamin Rautiainen", "Tappara", "Tampa Bay Lightning", True),
+    ("2026-10-01", "Pekka Jormakka", "Jukurit", "HKM Zvolen", False),
+    ("2026-10-01", "Samuli Piipponen", "HPK", "Sport", False),
+    ("2026-10-11", "Atte Ohtamaa", "JYP", "Kärpät", False),
+    ("2026-10-12", "Christoffer Sedoff", "Jukurit", "Milwaukee Admirals", False),
+    ("2026-10-13", "Ethan Prow", "Ässät", "Grizzlys Wolfsburg", False),
+    ("2026-10-13", "Sampo Ranta", "HIFK", "Örebro HK", False),
+    ("2026-10-13", "Olof Glifford", "HIFK", "HV71", True),
+    ("2026-10-18", "Jonne Tammela", "KalPa", "Tappara", False),
+    ("2026-10-21", "Kyle Crnkovic", "KalPa", "Wichita Thunder", False),
+    ("2026-10-22", "Antti Tyrväinen", "Pelicans", "", False),
+    ("2026-10-24", "Mattias Tedenby", "HPK", "HV71", False),
+    ("2026-10-27", "Alexander Ruuttu", "KooKoo", "Jukurit", False),
+    ("2026-10-29", "Tommi Kivistö", "Tappara", "Mountfield HK", False),
+    ("2026-10-29", "Devante Stephens", "KooKoo", "EC Salzburg", False),
+    ("2026-11-02", "Andrew Lucas", "Jokerit", "HC Banská Bystrica", False),
+    ("2026-11-06", "Henri Kiviaho", "Tappara", "Graz 99ers", False),
+]
 COLORS = 112
 
 AVENIR = "/System/Library/Fonts/Avenir Next.ttc"
@@ -88,7 +118,21 @@ def load() -> list[dict]:
         prev = key
     # Esikaudesta vain viimeinen tilannekuva ennen ensimmäistä ottelua.
     pre = [s for s in out if s["played"] == 0]
-    return pre[-1:] + [s for s in out if s["played"] > 0]
+    return _merge_small(pre[-1:] + [s for s in out if s["played"] > 0])
+
+
+MIN_MOVE = 0.035                       # päivä, jona mikään solu ei liiku 3,5 %-yks., yhdistetään seuraavaan
+
+
+def _merge_small(snaps: list[dict]) -> list[dict]:
+    """GIFin koko (LinkedIn 5 Mt): pienen liikkeen päivä ei tuo kerrontaan mitään, mutta vie kolme
+    siirtymäruutua. Viimeinen tilannekuva säilyy aina."""
+    out = [snaps[0]]
+    for i, s in enumerate(snaps[1:], start=1):
+        move = max(abs(x - y) for t in s["p"] for x, y in zip(out[-1]["p"][t], s["p"][t]))
+        if move >= MIN_MOVE or i == len(snaps) - 1:
+            out.append(s)
+    return out
 
 
 def events() -> list[dict]:
@@ -99,7 +143,22 @@ def events() -> list[dict]:
     ev = [{"date": d, "team": t, "kind": "VALMENTAJAVAIHDOS", "people": [(o, "lähti"), (i, "tilalle")]}
           for d, t, o, i in rows]
     ev += [{"date": d, "team": t, "kind": "PELAAJA", "people": [(n, x)]} for d, t, n, x in PLAYER_EVENTS]
-    return sorted(ev, key=lambda e: e["date"])
+    return sorted(ev + signing_weeks(), key=lambda e: e["date"])
+
+
+def signing_weeks() -> list[dict]:
+    """Hankinnat viikoittain yhdeksi kortiksi (ma–su); kortti näytetään viikon viimeisen hankinnan
+    jälkeisessä tilannekuvassa."""
+    weeks: dict[str, list[tuple]] = {}
+    for sg in SIGNINGS:
+        day = dt.date.fromisoformat(sg[0])
+        weeks.setdefault((day - dt.timedelta(days=day.weekday())).isoformat(), []).append(sg)
+    out = []
+    for mon, rows in sorted(weeks.items()):
+        sun = (dt.date.fromisoformat(mon) + dt.timedelta(days=6)).isoformat()
+        out.append({"date": max(r[0] for r in rows), "kind": "HANKINNAT", "from": mon, "until": sun,
+                    "team": rows[0][2], "teams": sorted({r[2] for r in rows}), "signings": rows})
+    return out
 
 
 def logos(teams: list[str], size: int) -> dict[str, Image.Image]:
@@ -157,6 +216,9 @@ class Painter:
         self.logos = logos(teams, 32)
         self.big = logos(teams, 46)
         self.marked: set[str] = set()     # joukkueet, joilla tapahtuma on jo ollut (pieni merkki)
+        self.signed: dict[str, int] = {}  # hankintojen määrä tähän mennessä ("+N" nimen perään)
+        self.f_sign = font(16, "Bold")
+        self.small = logos(teams, 30)
         self.f_ev_k, self.f_ev_t, self.f_ev_n = font(20, "Demi"), font(40, "Bold"), font(27, "Demi")
         self.f_ev_r, self.f_ev_c, self.f_init = font(20, "Medium"), font(14, "Medium"), font(64, "Bold")
         self.huge = logos(teams, 64)
@@ -226,9 +288,12 @@ class Painter:
                 lg = self.logos[t]
                 img.paste(lg, (self.x0 + int((32 - lg.width) / 2), int(y + (self.rh - lg.height) / 2)), lg)
             d.text((self.x0 + 44, y + self.rh / 2), t, font=self.f_team, fill=INK, anchor="lm")
+            cx, cy = self.x0 + 44 + d.textlength(t, font=self.f_team) + 11, y + self.rh / 2
             if t in self.marked:              # tapahtuma ollut: pieni kultainen vinoneliö nimen perään
-                cx, cy = self.x0 + 44 + d.textlength(t, font=self.f_team) + 11, y + self.rh / 2
                 d.polygon([(cx, cy - 5), (cx + 5, cy), (cx, cy + 5), (cx - 5, cy)], fill=GOLD)
+                cx += 13
+            if self.signed.get(t):            # hankinnat tähän mennessä
+                d.text((cx - 4, cy), f"+{self.signed[t]}", font=self.f_sign, fill=GOLD_HI, anchor="lm")
             self._cells(d, y, ps[t], texts[t])
             if pts.get(t) is not None:
                 d.text((W - self.x0, y + self.rh / 2), str(round(pts[t])), font=self.f_pts, fill=GOLD_HI, anchor="rm")
@@ -238,15 +303,45 @@ class Painter:
             self.faces[name] = hp.portrait(name, size, GOLD_HI, (26, 21, 13), self.f_init)
         return self.faces[name]
 
-    def focus(self, img: Image.Image, row: float) -> Image.Image:
-        """Muu taulukko himmenee, joukkueen rivi jää kirkkaaksi ja saa kehyksen."""
-        y = int(self.top + row * self.rh)
-        box = (self.x0 - 10, y - 2, W - self.x0 + 10, y + self.rh + 2)
-        keep = img.crop(box)
-        img = Image.blend(img, Image.new("RGB", img.size, BG), 0.66)
-        img.paste(keep, box[:2])
-        ImageDraw.Draw(img).rounded_rectangle(box, radius=10, outline=GOLD_HI, width=3)
+    def focus(self, img: Image.Image, rows: list[float], dim: bool = True) -> Image.Image:
+        """Muu taulukko himmenee, joukkueiden rivit jäävät kirkkaiksi ja saavat kehyksen.
+        Hankinnoissa ilman himmennystä: kehys riittää, ja tiedosto pysyy pienenä."""
+        boxes = [(self.x0 - 10, int(self.top + r * self.rh) - 2, W - self.x0 + 10, int(self.top + r * self.rh) + self.rh + 2)
+                 for r in rows]
+        keep = [img.crop(b) for b in boxes]
+        if dim:
+            img = Image.blend(img, Image.new("RGB", img.size, BG), 0.66)
+        d = ImageDraw.Draw(img)
+        for b, k in zip(boxes, keep):
+            img.paste(k, b[:2])
+            d.rounded_rectangle(b, radius=10, outline=GOLD_HI, width=3)
         return img
+
+    def signings(self, img: Image.Image, ev: dict, rows: list[float]) -> None:
+        """Viikon hankinnat: kortti sille puoliskolle, jolla on vähemmän korostettuja rivejä."""
+        lines = ev["signings"]
+        ph = 112 + 54 * len(lines)
+        low = sum(r > 8 for r in rows) > len(rows) / 2
+        y0 = self.top - 6 if low else self.top + N * self.rh - ph + 6
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((self.x0 - 10, y0, W - self.x0 + 10, y0 + ph), radius=18, fill=(22, 18, 11),
+                            outline=GOLD, width=2)
+        a, b = dt.date.fromisoformat(ev["from"]), dt.date.fromisoformat(ev["until"])
+        d.text((self.x0 + 16, y0 + 24), f"HANKINNAT  ·  {a.day}.{a.month}.–{b.day}.{b.month}.{b.year}",
+               font=self.f_ev_k, fill=GOLD)
+        d.text((self.x0 + 16, y0 + 50), f"{len(lines)} {'uusi pelaaja' if len(lines) == 1 else 'uutta pelaajaa'}",
+               font=self.f_ev_n, fill=INK)
+        for i, (day, name, team, src, loan) in enumerate(lines):
+            y = y0 + 100 + i * 54
+            if team in self.small:
+                lg = self.small[team]
+                img.paste(lg, (self.x0 + 16, y), lg)
+            d.text((self.x0 + 60, y + 15), name, font=self.f_ev_n, fill=INK, anchor="lm")
+            x = self.x0 + 60 + d.textlength(name, font=self.f_ev_n) + 14
+            tail = f"{team}" + (f"  ·  {src}" if src else "") + ("  ·  laina" if loan else "")
+            d.text((x, y + 17), tail, font=self.f_ev_r, fill=GOLD, anchor="lm")
+            dd = dt.date.fromisoformat(day)
+            d.text((W - self.x0 - 4, y + 17), f"{dd.day}.{dd.month}.", font=self.f_ev_r, fill=MUTED, anchor="rm")
 
     def panel(self, img: Image.Image, ev: dict, row: float, stage: int = 2) -> None:
         """Iso tapahtumapaneeli taulukon toiselle puoliskolle kuin joukkueen rivi."""
@@ -294,8 +389,11 @@ class Painter:
         ps = {tm: [x + (y - x) * e for x, y in zip(a["p"][tm], b["p"][tm])] for tm in b["p"]}
         self.rows(img, d, ys, ps, near["p"], near["pts"])
         if ev:
-            img = self.focus(img, ys[ev["team"]])
-            if stage:
+            rows = [ys[t] for t in ev.get("teams", [ev["team"]])]
+            img = self.focus(img, rows, dim=ev["kind"] != "HANKINNAT")
+            if stage and ev["kind"] == "HANKINNAT":
+                self.signings(img, ev, rows)
+            elif stage:
                 self.panel(img, ev, ys[ev["team"]], stage)
         return img
 
@@ -316,6 +414,30 @@ def palette(frames: list[Image.Image]) -> Image.Image:
     return pal
 
 
+TRANSPARENT = 255                     # paletin vapaa indeksi (COLORS < 255)
+
+
+def _delta(q: list[Image.Image]) -> list[Image.Image]:
+    """Muuttumattomat pikselit läpinäkyviksi niissä ruuduissa, joissa muuttuu alle puolet
+    (tapahtumat): GIF piirtää ruudun edellisen päälle (disposal 1), ja läpinäkyvät jonot
+    pakkautuvat lähes ilmaiseksi. Siirtymissä muuttuu lähes kaikki, joten ne pysyvät ennallaan."""
+    import numpy as np
+    out, prev = [q[0]], np.array(q[0])
+    for im in q[1:]:
+        cur = np.array(im)
+        same = cur == prev
+        if same.mean() > 0.5:
+            diff = cur.copy()
+            diff[same] = TRANSPARENT
+            frame = Image.fromarray(diff, "P")
+            frame.putpalette(im.getpalette())
+            out.append(frame)
+        else:
+            out.append(im)
+        prev = cur
+    return out
+
+
 def build(out: Path) -> None:
     snaps, evs = load(), events()
     painter = Painter(sorted(snaps[-1]["p"]))
@@ -327,6 +449,12 @@ def build(out: Path) -> None:
         durations[-1] = HOLD_MS
         # Tapahtuma, joka osui tälle välille: rivi esiin, sitten iso paneeli kuvineen (hidas).
         for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
+            if ev["kind"] == "HANKINNAT":
+                frames.append(painter.frame(b, b, 1.0, ev, stage=2))    # kortti ja rivit kerralla (koko)
+                durations.append(SIGN_MS)
+                for sg in ev["signings"]:
+                    painter.signed[sg[2]] = painter.signed.get(sg[2], 0) + 1
+                continue
             frames += [painter.frame(b, b, 1.0, ev)]
             durations += [FOCUS_MS]
             if len(ev["people"]) == 2:
@@ -340,7 +468,9 @@ def build(out: Path) -> None:
     pal = palette(frames)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     out.parent.mkdir(parents=True, exist_ok=True)
-    q[0].save(out, save_all=True, append_images=q[1:], duration=durations, loop=0, optimize=True, disposal=1)
+    q = _delta(q)
+    q[0].save(out, save_all=True, append_images=q[1:], duration=durations, loop=0, optimize=False,
+              disposal=1, transparency=TRANSPARENT)
     frames[-1].save(out.with_suffix(".png"))
     print(f"{out}: {len(snaps)} tilannekuvaa, {len(frames)} ruutua, {sum(durations) / 1000:.0f} s, "
           f"{out.stat().st_size / 1e6:.1f} Mt")
