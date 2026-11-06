@@ -171,7 +171,9 @@ Todennettu DEV-aliaksella: "Miten Kärppien ennuste näyttää?" -> linkki `/jou
 `snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js 16, TypeScript,
 `app.yml`). Käyttäjän päätös: Streamlit warehouse runtime on vanhentuva ja container
 runtime jää päälle (ei sleep timeria) -- App Runtime sammuu itse
-(`auto_suspend_secs: 300`, `auto_resume: true`). Python-tuki App Runtimessa on vasta
+(`auto_suspend_secs: 1800`, `auto_resume: true`). ⚠️ 6.11.: 300 s sammutti palvelun ennen kuin
+kylmäkäynnistys (jopa ~8,5 min) ehti valmiiksi; heräämisen aikana pyyntö saa heti 503:n
+`serviceStatus=PENDING`, joten sivu ladataan uudelleen kun palvelu on RUNNING. Python-tuki App Runtimessa on vasta
 suunnitteilla, siksi TypeScript.
 
 - **Sama data paikallisesti ja Snowflakessa:** `lib/snowflake.ts` käyttää palvelun

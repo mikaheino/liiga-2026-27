@@ -45,9 +45,14 @@ build:
 run:
   command: [node, .next/standalone/server.js]
 
-# Ei jää päälle: sammuu 5 min käyttämättömänä (pienin sallittu), herää
-# seuraavasta pyynnöstä. Yksi instanssi riittää demolle.
-auto_suspend_secs: 300
+# Ei jää päälle: sammuu käyttämättömänä, herää seuraavasta pyynnöstä. Yksi
+# instanssi riittää demolle.
+# 1800 s (6.11.2026, ennen 300 = pienin sallittu): laskentapoolin kylmäkäynnistys
+# kestää jopa ~8,5 min, ja 5 min raja sammutti palvelun ennen kuin se ehti
+# palvella ensimmäistäkään pyyntöä (käyttäjä: "sammutamme applikaation ennen kuin
+# se ehtii käynnistyä"). Heräämisen aikana tullut pyyntö saa heti 503:n
+# (serviceStatus=PENDING) eikä jää odottamaan -- sivu ladataan uudelleen.
+auto_suspend_secs: 1800
 auto_resume: true
 min_instances: 1
 max_instances: 1
