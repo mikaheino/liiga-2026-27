@@ -32,7 +32,9 @@ ZONES = [(1, 6, "suoraan puolivälieriin", GOLD), (7, 10, "säälipudotuspelit",
 GAP_AFTER = {6, 10, 14}
 TWEEN, TWEEN_MS, HOLD_MS = 3, 150, 800  # siirtymäruudut, niiden kesto ja päivän pysähdys (hidas)
 FIRST_MS, LAST_MS = 3000, 8000
-FOCUS_MS, EVENT_MS = 1100, 5600       # tapahtuma: ensin rivi esiin, sitten paneeli (hidas)
+# Tapahtuma hitaasti (käyttäjä 7.11.: "hidasta kun näytetään ihmisiä"): rivi esiin, lähtijä yksin,
+# sitten nuoli ja tulija; yhden henkilön paneeli kerralla.
+FOCUS_MS, OUT_MS, EVENT_MS, SINGLE_MS = 1500, 3000, 7000, 8000
 # Kauden tapahtumat animaatioon (7.11.2026, käyttäjä: "nosta Jori Lehterä, valmentajavaihdot").
 # Valmentajavaihdot mallin taulusta coaching_changes (tarkistettu: fi.wikipedia, kausi 2026–27);
 # Lehterä: HIFK ilmoitti 19.9.2026, että hänen uransa HIFK:ssa päättyy ja hän pitää tauon (Yle).
@@ -246,7 +248,7 @@ class Painter:
         ImageDraw.Draw(img).rounded_rectangle(box, radius=10, outline=GOLD_HI, width=3)
         return img
 
-    def panel(self, img: Image.Image, ev: dict, row: float) -> None:
+    def panel(self, img: Image.Image, ev: dict, row: float, stage: int = 2) -> None:
         """Iso tapahtumapaneeli taulukon toiselle puoliskolle kuin joukkueen rivi."""
         ph = 450
         y0 = self.top - 6 if row > 8 else self.top + N * self.rh - ph + 6
@@ -263,11 +265,12 @@ class Painter:
         if len(people) == 2:
             xs = [W / 2 - size - 70, W / 2 + 70]
             ay = y0 + 120 + size / 2
-            d.line((W / 2 - 40, ay, W / 2 + 26, ay), fill=GOLD_HI, width=5)
-            d.polygon([(W / 2 + 22, ay - 14), (W / 2 + 44, ay), (W / 2 + 22, ay + 14)], fill=GOLD_HI)
+            if stage == 2:                      # nuoli vasta tulijan kanssa
+                d.line((W / 2 - 40, ay, W / 2 + 26, ay), fill=GOLD_HI, width=5)
+                d.polygon([(W / 2 + 22, ay - 14), (W / 2 + 44, ay), (W / 2 + 22, ay + 14)], fill=GOLD_HI)
         else:
             xs = [W / 2 - size / 2]
-        for (name, role), px in zip(people, xs):
+        for (name, role), px in list(zip(people, xs))[:1 if stage == 1 else None]:
             face = self.face(name, size)
             img.paste(face, (int(px), y0 + 118), face)
             cx = px + size / 2
@@ -277,7 +280,7 @@ class Painter:
             if cr:
                 d.text((cx, y0 + 430), cr, font=self.f_ev_c, fill=FAINT, anchor="ma")
 
-    def frame(self, a: dict, b: dict, t: float, ev: dict | None = None, show: bool = False) -> Image.Image:
+    def frame(self, a: dict, b: dict, t: float, ev: dict | None = None, stage: int = 0) -> Image.Image:
         e = t * t * (3 - 2 * t)          # pehmeä alku ja loppu
         img = self.bg.copy()
         d = ImageDraw.Draw(img)
@@ -292,8 +295,8 @@ class Painter:
         self.rows(img, d, ys, ps, near["p"], near["pts"])
         if ev:
             img = self.focus(img, ys[ev["team"]])
-            if show:
-                self.panel(img, ev, ys[ev["team"]])
+            if stage:
+                self.panel(img, ev, ys[ev["team"]], stage)
         return img
 
 
@@ -324,8 +327,14 @@ def build(out: Path) -> None:
         durations[-1] = HOLD_MS
         # Tapahtuma, joka osui tälle välille: rivi esiin, sitten iso paneeli kuvineen (hidas).
         for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
-            frames += [painter.frame(b, b, 1.0, ev), painter.frame(b, b, 1.0, ev, show=True)]
-            durations += [FOCUS_MS, EVENT_MS]
+            frames += [painter.frame(b, b, 1.0, ev)]
+            durations += [FOCUS_MS]
+            if len(ev["people"]) == 2:
+                frames += [painter.frame(b, b, 1.0, ev, stage=1), painter.frame(b, b, 1.0, ev, stage=2)]
+                durations += [OUT_MS, EVENT_MS]
+            else:
+                frames += [painter.frame(b, b, 1.0, ev, stage=2)]
+                durations += [SINGLE_MS]
             painter.marked.add(ev["team"])
     durations[-1] = LAST_MS
     pal = palette(frames)
