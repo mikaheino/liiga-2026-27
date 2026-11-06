@@ -29,8 +29,13 @@ N, TOTAL_GAMES = 17, 544
 ZONES = [(1, 6, "suoraan puolivälieriin", GOLD), (7, 10, "säälipudotuspelit", SILVER),
          (11, 14, "", FAINT), (15, 17, "putoamisuhka", RED)]
 GAP_AFTER = {6, 10, 14}
-TWEEN, TWEEN_MS, HOLD_MS = 3, 140, 560  # siirtymäruudut, niiden kesto ja päivän pysähdys
-FIRST_MS, LAST_MS = 2600, 7000
+TWEEN, TWEEN_MS, HOLD_MS = 3, 150, 800  # siirtymäruudut, niiden kesto ja päivän pysähdys (hidas)
+FIRST_MS, LAST_MS, EVENT_MS = 3000, 8000, 3800
+# Kauden tapahtumat animaatioon (7.11.2026, käyttäjä: "nosta Jori Lehterä, valmentajavaihdot").
+# Valmentajavaihdot mallin taulusta coaching_changes (tarkistettu: fi.wikipedia, kausi 2026–27);
+# Lehterä: HIFK ilmoitti 19.9.2026, että hänen uransa HIFK:ssa päättyy ja hän pitää tauon (Yle).
+# Kaikki tapahtumat samalla tyylillä: mitään joukkuetta ei korosteta muita enemmän.
+PLAYER_EVENTS = [("2026-09-19", "HIFK", "PELAAJA", "Jori Lehterä jää tauolle urastaan")]
 COLORS = 112
 
 AVENIR = "/System/Library/Fonts/Avenir Next.ttc"
@@ -80,6 +85,16 @@ def load() -> list[dict]:
     # Esikaudesta vain viimeinen tilannekuva ennen ensimmäistä ottelua.
     pre = [s for s in out if s["played"] == 0]
     return pre[-1:] + [s for s in out if s["played"] > 0]
+
+
+def events() -> list[dict]:
+    con = duckdb.connect(str(ROOT / "data/liiga.duckdb"), read_only=True)
+    rows = con.execute("SELECT change_date, team, coach_out, coach_in FROM coaching_changes "
+                       "WHERE season = 2027 ORDER BY change_date").fetchall()
+    con.close()
+    ev = [{"date": d, "team": t, "kind": "VALMENTAJAVAIHDOS", "text": f"{o} → {i}"} for d, t, o, i in rows]
+    ev += [{"date": d, "team": t, "kind": k, "text": x} for d, t, k, x in PLAYER_EVENTS]
+    return sorted(ev, key=lambda e: e["date"])
 
 
 def logos(teams: list[str], size: int) -> dict[str, Image.Image]:
@@ -135,6 +150,9 @@ class Painter:
             self.xs.append(x)
             x += self.cw + (10 if k in GAP_AFTER else 0)
         self.logos = logos(teams, 32)
+        self.big = logos(teams, 46)
+        self.marked: set[str] = set()     # joukkueet, joilla tapahtuma on jo ollut (pieni merkki)
+        self.f_ev_k, self.f_ev = font(17, "Demi"), font(27, "Demi")
         self.bg = background()
         d = ImageDraw.Draw(self.bg)
         self._static(d)
@@ -200,11 +218,38 @@ class Painter:
                 lg = self.logos[t]
                 img.paste(lg, (self.x0 + int((32 - lg.width) / 2), int(y + (self.rh - lg.height) / 2)), lg)
             d.text((self.x0 + 44, y + self.rh / 2), t, font=self.f_team, fill=INK, anchor="lm")
+            if t in self.marked:              # tapahtuma ollut: pieni kultainen vinoneliö nimen perään
+                cx, cy = self.x0 + 44 + d.textlength(t, font=self.f_team) + 11, y + self.rh / 2
+                d.polygon([(cx, cy - 5), (cx + 5, cy), (cx, cy + 5), (cx - 5, cy)], fill=GOLD)
             self._cells(d, y, ps[t], texts[t])
             if pts.get(t) is not None:
                 d.text((W - self.x0, y + self.rh / 2), str(round(pts[t])), font=self.f_pts, fill=GOLD_HI, anchor="rm")
 
-    def frame(self, a: dict, b: dict, t: float) -> Image.Image:
+    def event(self, img: Image.Image, d: ImageDraw.ImageDraw, ev: dict, row: float) -> None:
+        """Tapahtumakortti selitteen paikalle ja joukkueen rivin kehys."""
+        y = self.top + row * self.rh
+        d.rounded_rectangle((self.x0 - 8, y, W - self.x0 + 8, y + self.rh), radius=10, outline=GOLD_HI, width=3)
+        y0 = self.top + N * self.rh + 16
+        d.rounded_rectangle((self.x0 - 8, y0, W - self.x0 + 8, H - 24), radius=14, fill=(26, 21, 13), outline=GOLD, width=2)
+        x = self.x0 + 10
+        if ev["team"] in self.big:
+            lg = self.big[ev["team"]]
+            img.paste(lg, (x, int(y0 + (H - 24 - y0 - lg.height) / 2)), lg)
+            x += 62
+        d.text((x, y0 + 18), f"{ev['kind']}  ·  {fi_date(ev['date'])}", font=self.f_ev_k, fill=GOLD)
+        # Avenirista puuttuu nuolimerkki: "A → B" piirretään kahtena tekstinä ja viivanuolena.
+        parts = f"{ev['team']}: {ev['text']}".split(" → ")
+        ty = y0 + 44
+        for i, part in enumerate(parts):
+            if i:
+                my = ty + 17
+                d.line((x + 8, my, x + 34, my), fill=GOLD, width=3)
+                d.polygon([(x + 34, my - 7), (x + 44, my), (x + 34, my + 7)], fill=GOLD)
+                x += 54
+            d.text((x, ty), part, font=self.f_ev, fill=INK)
+            x += d.textlength(part, font=self.f_ev)
+
+    def frame(self, a: dict, b: dict, t: float, ev: dict | None = None) -> Image.Image:
         e = t * t * (3 - 2 * t)          # pehmeä alku ja loppu
         img = self.bg.copy()
         d = ImageDraw.Draw(img)
@@ -217,6 +262,8 @@ class Painter:
         ys = {tm: float(i) for i, tm in enumerate(sorted(key, key=key.get))}
         ps = {tm: [x + (y - x) * e for x, y in zip(a["p"][tm], b["p"][tm])] for tm in b["p"]}
         self.rows(img, d, ys, ps, near["p"], near["pts"])
+        if ev:
+            self.event(img, d, ev, ys[ev["team"]])
         return img
 
 
@@ -237,7 +284,7 @@ def palette(frames: list[Image.Image]) -> Image.Image:
 
 
 def build(out: Path) -> None:
-    snaps = load()
+    snaps, evs = load(), events()
     painter = Painter(sorted(snaps[-1]["p"]))
     frames, durations = [painter.frame(snaps[0], snaps[0], 0.0)], [FIRST_MS]
     for a, b in zip(snaps, snaps[1:]):
@@ -245,6 +292,11 @@ def build(out: Path) -> None:
             frames.append(painter.frame(a, b, i / TWEEN))
             durations.append(TWEEN_MS)
         durations[-1] = HOLD_MS
+        # Tapahtuma, joka osui tälle välille: pysähdys kortin ja rivin kehyksen kanssa.
+        for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
+            frames.append(painter.frame(b, b, 1.0, ev))
+            durations.append(EVENT_MS)
+            painter.marked.add(ev["team"])
     durations[-1] = LAST_MS
     pal = palette(frames)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
