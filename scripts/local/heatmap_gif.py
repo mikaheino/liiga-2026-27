@@ -15,6 +15,7 @@ import argparse
 from pathlib import Path
 
 import duckdb
+import heatmap_people as hp
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,12 +31,13 @@ ZONES = [(1, 6, "suoraan puolivälieriin", GOLD), (7, 10, "säälipudotuspelit",
          (11, 14, "", FAINT), (15, 17, "putoamisuhka", RED)]
 GAP_AFTER = {6, 10, 14}
 TWEEN, TWEEN_MS, HOLD_MS = 3, 150, 800  # siirtymäruudut, niiden kesto ja päivän pysähdys (hidas)
-FIRST_MS, LAST_MS, EVENT_MS = 3000, 8000, 3800
+FIRST_MS, LAST_MS = 3000, 8000
+FOCUS_MS, EVENT_MS = 1100, 5600       # tapahtuma: ensin rivi esiin, sitten paneeli (hidas)
 # Kauden tapahtumat animaatioon (7.11.2026, käyttäjä: "nosta Jori Lehterä, valmentajavaihdot").
 # Valmentajavaihdot mallin taulusta coaching_changes (tarkistettu: fi.wikipedia, kausi 2026–27);
 # Lehterä: HIFK ilmoitti 19.9.2026, että hänen uransa HIFK:ssa päättyy ja hän pitää tauon (Yle).
-# Kaikki tapahtumat samalla tyylillä: mitään joukkuetta ei korosteta muita enemmän.
-PLAYER_EVENTS = [("2026-09-19", "HIFK", "PELAAJA", "Jori Lehterä jää tauolle urastaan")]
+# Kaikki tapahtumat samalla tyylillä. Henkilökuvat: scripts/local/heatmap_people.py (Commons).
+PLAYER_EVENTS = [("2026-09-19", "HIFK", "Jori Lehterä", "jää tauolle urastaan")]
 COLORS = 112
 
 AVENIR = "/System/Library/Fonts/Avenir Next.ttc"
@@ -92,8 +94,9 @@ def events() -> list[dict]:
     rows = con.execute("SELECT change_date, team, coach_out, coach_in FROM coaching_changes "
                        "WHERE season = 2027 ORDER BY change_date").fetchall()
     con.close()
-    ev = [{"date": d, "team": t, "kind": "VALMENTAJAVAIHDOS", "text": f"{o} → {i}"} for d, t, o, i in rows]
-    ev += [{"date": d, "team": t, "kind": k, "text": x} for d, t, k, x in PLAYER_EVENTS]
+    ev = [{"date": d, "team": t, "kind": "VALMENTAJAVAIHDOS", "people": [(o, "lähti"), (i, "tilalle")]}
+          for d, t, o, i in rows]
+    ev += [{"date": d, "team": t, "kind": "PELAAJA", "people": [(n, x)]} for d, t, n, x in PLAYER_EVENTS]
     return sorted(ev, key=lambda e: e["date"])
 
 
@@ -152,7 +155,10 @@ class Painter:
         self.logos = logos(teams, 32)
         self.big = logos(teams, 46)
         self.marked: set[str] = set()     # joukkueet, joilla tapahtuma on jo ollut (pieni merkki)
-        self.f_ev_k, self.f_ev = font(17, "Demi"), font(27, "Demi")
+        self.f_ev_k, self.f_ev_t, self.f_ev_n = font(20, "Demi"), font(40, "Bold"), font(27, "Demi")
+        self.f_ev_r, self.f_ev_c, self.f_init = font(20, "Medium"), font(14, "Medium"), font(64, "Bold")
+        self.huge = logos(teams, 64)
+        self.faces: dict[str, Image.Image] = {}
         self.bg = background()
         d = ImageDraw.Draw(self.bg)
         self._static(d)
@@ -225,31 +231,53 @@ class Painter:
             if pts.get(t) is not None:
                 d.text((W - self.x0, y + self.rh / 2), str(round(pts[t])), font=self.f_pts, fill=GOLD_HI, anchor="rm")
 
-    def event(self, img: Image.Image, d: ImageDraw.ImageDraw, ev: dict, row: float) -> None:
-        """Tapahtumakortti selitteen paikalle ja joukkueen rivin kehys."""
-        y = self.top + row * self.rh
-        d.rounded_rectangle((self.x0 - 8, y, W - self.x0 + 8, y + self.rh), radius=10, outline=GOLD_HI, width=3)
-        y0 = self.top + N * self.rh + 16
-        d.rounded_rectangle((self.x0 - 8, y0, W - self.x0 + 8, H - 24), radius=14, fill=(26, 21, 13), outline=GOLD, width=2)
-        x = self.x0 + 10
-        if ev["team"] in self.big:
-            lg = self.big[ev["team"]]
-            img.paste(lg, (x, int(y0 + (H - 24 - y0 - lg.height) / 2)), lg)
-            x += 62
-        d.text((x, y0 + 18), f"{ev['kind']}  ·  {fi_date(ev['date'])}", font=self.f_ev_k, fill=GOLD)
-        # Avenirista puuttuu nuolimerkki: "A → B" piirretään kahtena tekstinä ja viivanuolena.
-        parts = f"{ev['team']}: {ev['text']}".split(" → ")
-        ty = y0 + 44
-        for i, part in enumerate(parts):
-            if i:
-                my = ty + 17
-                d.line((x + 8, my, x + 34, my), fill=GOLD, width=3)
-                d.polygon([(x + 34, my - 7), (x + 44, my), (x + 34, my + 7)], fill=GOLD)
-                x += 54
-            d.text((x, ty), part, font=self.f_ev, fill=INK)
-            x += d.textlength(part, font=self.f_ev)
+    def face(self, name: str, size: int) -> Image.Image:
+        if name not in self.faces:
+            self.faces[name] = hp.portrait(name, size, GOLD_HI, (26, 21, 13), self.f_init)
+        return self.faces[name]
 
-    def frame(self, a: dict, b: dict, t: float, ev: dict | None = None) -> Image.Image:
+    def focus(self, img: Image.Image, row: float) -> Image.Image:
+        """Muu taulukko himmenee, joukkueen rivi jää kirkkaaksi ja saa kehyksen."""
+        y = int(self.top + row * self.rh)
+        box = (self.x0 - 10, y - 2, W - self.x0 + 10, y + self.rh + 2)
+        keep = img.crop(box)
+        img = Image.blend(img, Image.new("RGB", img.size, BG), 0.66)
+        img.paste(keep, box[:2])
+        ImageDraw.Draw(img).rounded_rectangle(box, radius=10, outline=GOLD_HI, width=3)
+        return img
+
+    def panel(self, img: Image.Image, ev: dict, row: float) -> None:
+        """Iso tapahtumapaneeli taulukon toiselle puoliskolle kuin joukkueen rivi."""
+        ph = 450
+        y0 = self.top - 6 if row > 8 else self.top + N * self.rh - ph + 6
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((self.x0 - 10, y0, W - self.x0 + 10, y0 + ph), radius=18, fill=(22, 18, 11),
+                            outline=GOLD, width=2)
+        x = self.x0 + 16
+        if ev["team"] in self.huge:
+            lg = self.huge[ev["team"]]
+            img.paste(lg, (x, y0 + 22), lg)
+        d.text((x + 82, y0 + 26), f"{ev['kind']}  ·  {fi_date(ev['date'])}", font=self.f_ev_k, fill=GOLD)
+        d.text((x + 82, y0 + 50), ev["team"], font=self.f_ev_t, fill=INK)
+        people, size = ev["people"], 230
+        if len(people) == 2:
+            xs = [W / 2 - size - 70, W / 2 + 70]
+            ay = y0 + 120 + size / 2
+            d.line((W / 2 - 40, ay, W / 2 + 26, ay), fill=GOLD_HI, width=5)
+            d.polygon([(W / 2 + 22, ay - 14), (W / 2 + 44, ay), (W / 2 + 22, ay + 14)], fill=GOLD_HI)
+        else:
+            xs = [W / 2 - size / 2]
+        for (name, role), px in zip(people, xs):
+            face = self.face(name, size)
+            img.paste(face, (int(px), y0 + 118), face)
+            cx = px + size / 2
+            d.text((cx, y0 + 370), name, font=self.f_ev_n, fill=INK, anchor="ma")
+            d.text((cx, y0 + 404), role, font=self.f_ev_r, fill=GOLD, anchor="ma")
+            cr = hp.credit(name)
+            if cr:
+                d.text((cx, y0 + 430), cr, font=self.f_ev_c, fill=FAINT, anchor="ma")
+
+    def frame(self, a: dict, b: dict, t: float, ev: dict | None = None, show: bool = False) -> Image.Image:
         e = t * t * (3 - 2 * t)          # pehmeä alku ja loppu
         img = self.bg.copy()
         d = ImageDraw.Draw(img)
@@ -263,7 +291,9 @@ class Painter:
         ps = {tm: [x + (y - x) * e for x, y in zip(a["p"][tm], b["p"][tm])] for tm in b["p"]}
         self.rows(img, d, ys, ps, near["p"], near["pts"])
         if ev:
-            self.event(img, d, ev, ys[ev["team"]])
+            img = self.focus(img, ys[ev["team"]])
+            if show:
+                self.panel(img, ev, ys[ev["team"]])
         return img
 
 
@@ -292,10 +322,10 @@ def build(out: Path) -> None:
             frames.append(painter.frame(a, b, i / TWEEN))
             durations.append(TWEEN_MS)
         durations[-1] = HOLD_MS
-        # Tapahtuma, joka osui tälle välille: pysähdys kortin ja rivin kehyksen kanssa.
+        # Tapahtuma, joka osui tälle välille: rivi esiin, sitten iso paneeli kuvineen (hidas).
         for ev in (e for e in evs if a["date"] < e["date"] <= b["date"]):
-            frames.append(painter.frame(b, b, 1.0, ev))
-            durations.append(EVENT_MS)
+            frames += [painter.frame(b, b, 1.0, ev), painter.frame(b, b, 1.0, ev, show=True)]
+            durations += [FOCUS_MS, EVENT_MS]
             painter.marked.add(ev["team"])
     durations[-1] = LAST_MS
     pal = palette(frames)
