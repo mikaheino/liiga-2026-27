@@ -64,6 +64,12 @@ GOLDEN: list[tuple[str, str | None, str]] = [
     ("Kuka on tehnyt eniten maaleja tällä kaudella?", K,
      f"""(SELECT 'Eniten maaleja: ' || LISTAGG(player_name || ' (' || team || ') ' || goals || ' maalia', ' ja ')
           FROM {M}.V_PLAYER_SEASON_NOW WHERE goals = (SELECT MAX(goals) FROM {M}.V_PLAYER_SEASON_NOW)) || '.'"""),
+    # Pelaajan aiemmat kaudet (6.11.2026): agentti vastasi "menneiden kausien
+    # pelaajakohtaisia pisteitä ei löydy", vaikka data on V_PLAYER_SEASONSissa.
+    ("Miten Daniel Mäkiaho on tehnyt pisteitä aiempina kausina?", K,
+     f"""(SELECT 'Daniel Mäkiaho, aiemmat Liiga-kaudet: ' || LISTAGG(season_label || ' ' || team || ' ' || points || ' pistettä', ', ')
+             WITHIN GROUP (ORDER BY season, team) || '.'
+          FROM {M}.V_PLAYER_SEASONS WHERE player_id = 32675788 AND NOT is_current_season)"""),
     ("Kuinka hyvin malli on osunut?", K,
      f"""(SELECT 'Malli on osunut ' || TO_CHAR(ROUND(AVG(model_correct) * 100, 1)) || ' %:iin otteluista ('
              || SUM(model_correct) || '/' || COUNT(*) || '). Vertailukohta aina kotijoukkue: '

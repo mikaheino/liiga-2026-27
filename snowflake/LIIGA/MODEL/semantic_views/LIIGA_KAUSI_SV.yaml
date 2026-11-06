@@ -1,7 +1,7 @@
 # Generoitu: python scripts/deploy/semantic_views.py --write. Älä muokkaa käsin.
 name: LIIGA_KAUSI_SV
 description: 'Liiga 2026-27 so far: current table, results, model accuracy, surprises, scoring leaders,
-  goalies, lineups and past seasons.'
+  goalies, lineups and past seasons (teams and players).'
 tables:
 - name: TABLE_NOW
   description: Actual table NOW and each team's season so far. TABLE_RANK is the liiga.fi order (points,
@@ -493,6 +493,80 @@ tables:
   - kokoonpano
   - ketjut
   - todennäköinen kokoonpano
+- name: PLAYER_SEASONS
+  description: 'A player''s Liiga seasons from 2021-22, one row per player, season and team (current season
+    included). Past seasons have no per-player games, so pace is per TEAM game, as in the model. The model''s
+    player projection repeats on every row of the player: it weights the last five seasons, the latest
+    x1 and each older one 0.80 times the next.'
+  base_table:
+    database: LIIGA
+    schema: MODEL
+    table: V_PLAYER_SEASONS
+  dimensions:
+  - name: PLAYER_NAME
+    description: Player
+    expr: PLAYER_NAME
+    synonyms:
+    - pelaaja
+  - name: TEAM
+    description: Team
+    expr: TEAM
+    synonyms:
+    - joukkue
+    - seura
+  - name: SEASON
+    description: Season as a number, 2026 = 2025-26
+    expr: SEASON
+  - name: SEASON_LABEL
+    description: Season as 2025-26
+    expr: SEASON_LABEL
+    synonyms:
+    - kausi
+  - name: IS_CURRENT_SEASON
+    description: Current season 2026-27
+    expr: IS_CURRENT_SEASON
+  - name: MODEL_SOURCE
+    description: 'Source of the model''s projection: liiga = Liiga seasons, otherwise seasons in other
+      leagues scaled by league factors'
+    expr: MODEL_SOURCE
+  facts:
+  - name: GOALS
+    description: Goals (shootout goals excluded)
+    expr: GOALS
+    synonyms:
+    - maalit
+  - name: ASSISTS
+    description: Assists
+    expr: ASSISTS
+    synonyms:
+    - syötöt
+  - name: POINTS
+    description: Points
+    expr: POINTS
+    synonyms:
+    - pisteet
+  - name: TEAM_GAMES
+    description: Team games in the season (not the player's own)
+    expr: TEAM_GAMES
+  - name: POINTS_PER_TEAM_GAME
+    description: Points per team game
+    expr: POINTS_PER_TEAM_GAME
+    synonyms:
+    - tahti
+  - name: MODEL_POINTS_PER_GAME
+    description: The model's current player projection, points per game
+    expr: MODEL_POINTS_PER_GAME
+  - name: MODEL_SEASONS_USED
+    description: Number of seasons in the model's player projection
+    expr: MODEL_SEASONS_USED
+  - name: PRESEASON_POINTS_PER_GAME
+    description: Pre-season expectation, points per game (frozen)
+    expr: PRESEASON_POINTS_PER_GAME
+  synonyms:
+  - pelaajan aiemmat kaudet
+  - pelaajan kausihistoria
+  - uran tilastot
+  - edelliset kaudet
 - name: PAST_SEASONS
   description: Team seasons 2022-2027 (2026 = season 2025-26).
   base_table:
@@ -531,7 +605,7 @@ tables:
     description: xG share
     expr: XG_SHARE
   synonyms:
-  - aiemmat kaudet
+  - joukkueiden aiemmat kaudet
   - viime kausi
   - kausihistoria
 relationships:
@@ -572,7 +646,11 @@ module_custom_instructions:
 
     Surprise = POINTS_VS_PRESEASON (team, player) or GOALS_SAVED_VS_PRESEASON (goalie).
 
-    Player lists: require GAMES_PLAYED >= 5 unless asked otherwise.'
+    Player lists: require GAMES_PLAYED >= 5 unless asked otherwise.
+
+    A player''s past seasons = PLAYER_SEASONS (search by name with ILIKE ''%surname%''); teams''
+
+    past seasons = PAST_SEASONS. Past-season pace is per TEAM game.'
   question_categorization: 'Liiga only. Forecasts of the final table or upcoming games belong
 
     to the other tool.'
@@ -694,6 +772,14 @@ verified_queries:
     ORDER BY home_team
 
     '
+  verified_at: 1791590400
+  verified_by: mheino
+  use_as_onboarding_question: false
+- name: PLAYER_HISTORY
+  question: Miten Daniel Mäkiaho on tehnyt pisteitä aiempina kausina?
+  sql: "SELECT season_label, team, goals, assists, points, team_games,\n       ROUND(points_per_team_game,\
+    \ 2) AS pisteet_per_joukkueen_ottelu,\n       ROUND(model_points_per_game, 2) AS mallin_ennuste_nyt\n\
+    FROM __player_seasons WHERE player_name ILIKE '%Mäkiaho%' ORDER BY season, team\n"
   verified_at: 1791590400
   verified_by: mheino
   use_as_onboarding_question: false

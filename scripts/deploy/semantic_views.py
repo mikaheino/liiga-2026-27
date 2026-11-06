@@ -462,6 +462,28 @@ def kausi() -> dict:
               tdims=[tdim("GAME_DATE", "Ottelun päivä")],
               facts=[fact("LINE", "Ketju / pari (1-4)", syn=["ketju", "kenttä"]),
                      fact("JERSEY", "Pelinumero")]),
+        # Pelaajan aiemmat kaudet (6.11.2026): agentti vastasi "menneiden kausien
+        # pelaajakohtaisia pisteitä ei löydy", vaikka malli rakentuu juuri niistä.
+        table("PLAYER_SEASONS", "MODEL.V_PLAYER_SEASONS",
+              "Pelaajan Liiga-kaudet 2021-22 alkaen, yksi rivi per pelaaja, kausi ja joukkue "
+              "(kuluva kausi mukana). Aiemmilta kausilta ei ole pelaajan omia otteluita, joten "
+              "tahti on per JOUKKUEEN ottelu, kuten mallissa. Mallin pelaajaennuste toistuu "
+              "pelaajan jokaisella rivillä: se painottaa viittä viimeistä kautta, tuorein x1 ja "
+              "jokainen vanhempi 0,80-kertaisesti.",
+              dims=[dim("PLAYER_NAME", "Pelaaja", syn=["pelaaja"]), team(),
+                    dim("SEASON", "Kausi numerona, 2026 = 2025-26"),
+                    dim("SEASON_LABEL", "Kausi muodossa 2025-26", syn=["kausi"]),
+                    dim("IS_CURRENT_SEASON", "Kuluva kausi 2026-27"),
+                    dim("MODEL_SOURCE", "Mallin ennusteen lähde: liiga = Liiga-kaudet, muuten "
+                        "muiden sarjojen kaudet sarjakertoimilla")],
+              facts=[fact("GOALS", "Maalit (ei voittolaukausmaaleja)", syn=["maalit"]),
+                     fact("ASSISTS", "Syötöt", syn=["syötöt"]),
+                     fact("POINTS", "Tehopisteet", syn=["pisteet"]),
+                     fact("TEAM_GAMES", "Joukkueen ottelut kaudella (ei pelaajan omia)"),
+                     fact("POINTS_PER_TEAM_GAME", "Tehopisteet / joukkueen ottelu", syn=["tahti"]),
+                     fact("MODEL_POINTS_PER_GAME", "Mallin nykyinen pelaajaennuste, pisteet / ottelu"),
+                     fact("MODEL_SEASONS_USED", "Montako kautta mallin pelaajaennusteessa"),
+                     fact("PRESEASON_POINTS_PER_GAME", "Esikauden odotus, pisteet / ottelu (jäädytetty)")]),
         table("PAST_SEASONS", "MODEL.TEAM_SEASON",
               "Joukkueiden kaudet 2022-2027 (2026 = kausi 2025-26).",
               dims=[team(), dim("SEASON", "Kausi, 2026 = 2025-26", syn=["kausi"])],
@@ -532,6 +554,11 @@ ORDER BY position_group DESC, line, role_fi"""),
 SELECT home_team, away_team, home_goals, away_goals, result_category
 FROM __games WHERE ended AND game_date = DATEADD(day, -1, {TODAY})
 ORDER BY home_team"""),
+        vq("PLAYER_HISTORY", "Miten Daniel Mäkiaho on tehnyt pisteitä aiempina kausina?", """
+SELECT season_label, team, goals, assists, points, team_games,
+       ROUND(points_per_team_game, 2) AS pisteet_per_joukkueen_ottelu,
+       ROUND(model_points_per_game, 2) AS mallin_ennuste_nyt
+FROM __player_seasons WHERE player_name ILIKE '%Mäkiaho%' ORDER BY season, team"""),
         vq("LAST_SEASON", "Miten joukkueet menestyivät viime kaudella?", """
 SELECT team, points, games_played, goals_for, goals_against
 FROM __past_seasons WHERE season = 2026 ORDER BY points DESC"""),
@@ -540,13 +567,15 @@ FROM __past_seasons WHERE season = 2026 ORDER BY points DESC"""),
         "name": "LIIGA_KAUSI_SV",
         "description": "Liiga 2026-27 toteuma: sarjatilanne nyt, tulokset, mallin "
                        "osuvuus, yllättäjät, pistepörssi, maalivahdit, kokoonpanot "
-                       "ja aiemmat kaudet.",
+                       "ja aiemmat kaudet (joukkueet ja pelaajat).",
         "tables": tables, "relationships": rels,
         "module_custom_instructions": {
             "sql_generation": COMMON + """
 Mallin osuvuus: vertaa aina HIT_RATEa kotijoukkueen voittoprosenttiin, ei 50 %:iin.
 Yllättäjä = POINTS_VS_PRESEASON (joukkue, pelaaja) tai GOALS_SAVED_VS_PRESEASON (maalivahti).
-Pelaajalistoissa vaadi GAMES_PLAYED >= 5 ellei toisin kysytä.""",
+Pelaajalistoissa vaadi GAMES_PLAYED >= 5 ellei toisin kysytä.
+Pelaajan aiemmat kaudet = PLAYER_SEASONS (hae nimellä ILIKE '%sukunimi%'); joukkueiden
+aiemmat kaudet = PAST_SEASONS. Aiempien kausien tahti on per joukkueen ottelu.""",
             "question_categorization": """Vain Liiga. Ennusteet lopputaulukosta tai
 tulevista otteluista kuuluvat toiselle työkalulle.""",
         },
@@ -637,7 +666,9 @@ ENRICH = {
                         "metrics": [metric("TOTAL_GOALS_SAVED_VS_AVERAGE", "Maaleja vähemmän kuin "
                                            "keskiverto yhteensä", "SUM(GOALS_SAVED_VS_AVERAGE)")]},
         "LATEST_LINEUPS": {"syn": ["kokoonpano", "ketjut", "todennäköinen kokoonpano"]},
-        "PAST_SEASONS": {"syn": ["aiemmat kaudet", "viime kausi", "kausihistoria"]},
+        "PLAYER_SEASONS": {"syn": ["pelaajan aiemmat kaudet", "pelaajan kausihistoria",
+                                   "uran tilastot", "edelliset kaudet"]},
+        "PAST_SEASONS": {"syn": ["joukkueiden aiemmat kaudet", "viime kausi", "kausihistoria"]},
     },
 }
 

@@ -20,6 +20,9 @@ goals AS (
          COUNT_IF(e.is_winning_goal) AS game_winning_goals
   FROM LIIGA.RAW.RAW_GOAL_EVENTS e
   WHERE e.season = (SELECT s FROM cur) AND e.player_id <> 0
+    -- Voittolaukausmaalit eivät ole pelaajan maaleja (6.11.2026: 15 kpl 14
+    -- pelaajalle näkyi pistepörssissä, esim. Ojantakanen 11 virallisen 10 sijaan).
+    AND NOT COALESCE(e.is_shootout, FALSE)
     AND COALESCE(e.goal_types, '') NOT LIKE '%RL0%'
     AND COALESCE(e.goal_types, '') NOT LIKE '%VT0%'
   GROUP BY e.player_id),

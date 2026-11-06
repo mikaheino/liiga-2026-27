@@ -19,6 +19,23 @@ Tämä tiedosto on agentin tietopankkia (`liiga_tieto`).
   Liigasta, koottu käsin.
 - **Yleisöarvio:** 40 Jatkoaika.comin keskustelijan esikauden lopputaulukko.
 
+## Pelaajan aiemmat kaudet
+
+Jokaisen pelaajan Liiga-kaudet 2021-22 alkaen ovat tallessa: maalit, syötöt,
+pisteet ja joukkue kausittain (työkalu liiga_kausi, taulu PLAYER_SEASONS). Malli
+rakentaa pelaajan esikauden odotuksen juuri näistä: viisi viimeistä kautta,
+tuorein painolla 1 ja jokainen vanhempi 0,80-kertaisesti, ja pieni otos vedetään
+kohti pelipaikan keskiarvoa. Siksi yksi läpimurtokausi nostaa odotusta vain osin:
+esimerkiksi pelaaja, jonka kaudet olivat 13, 17, 18 ja 38 pistettä, sai
+odotukseksi noin 0,39 pistettä ottelua kohden, vaikka viimeisin kausi oli 0,63.
+
+Aiemmilta kausilta ei ole pelaajan omia otteluita, joten kausitahti lasketaan
+joukkueen otteluista (pisteet / joukkueen ottelu) -- sama mittari jolla malli
+laskee. Maaleihin eivät kuulu voittolaukausmaalit, epäonnistuneet
+rangaistuslaukaukset eivätkä videolla hylätyt maalit, kuten virallisissa
+tilastoissa. Muiden sarjojen kaudet (esim. AHL, SHL) ovat mallissa mukana
+sarjakertoimilla, mutta niitä ei voi hakea kausi kerrallaan.
+
 ## Päivitysaikataulu
 
 - Snowflake tarkistaa joka aamu klo 5.00 (Suomen aikaa), onko jokin ottelu
