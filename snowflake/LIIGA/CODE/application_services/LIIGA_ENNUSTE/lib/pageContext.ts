@@ -148,12 +148,15 @@ async function positions(): Promise<string[]> {
   ];
 }
 
+// Uutissivu agentille (6.11.): VAIN rakenteiset, ihmisen hyväksymät poissaolot ja
+// otsikoiden määrä -- ei otsikoita eikä muuta uutistekstiä (vieras teksti ei kulje
+// agentille, docs/claude/skenaario.md). Nimi ja joukkue ovat rosterista hyväksyttyjä.
 async function news(): Promise<string[]> {
   const n = await loadNews();
-  if (!n.items.length && !n.absences.length) return ["Uutisdataa ei ole tässä ajoympäristössä (vain GitHub Pages -käännöksessä)."];
+  if (!n.items.length && !n.absences.length) return ["Uutisdataa ei ole tässä ajoympäristössä."];
   return [
-    n.absences.length ? `Voimassa olevat poissaolot: ${n.absences.slice(-8).map((a) => `${a.player} (${a.team}, ${a.kind}${a.until ? `, ${a.until} asti` : ""})`).join("; ")}` : "",
-    n.items.length ? `Tuoreimmat otsikot: ${n.items.slice(0, 8).map((i) => `${i.team ? `${i.team}: ` : ""}${i.title}`).join(" | ")}` : "",
+    n.absences.length ? `Voimassa olevat hyväksytyt poissaolot: ${n.absences.slice(-8).map((a) => `${a.player} (${a.team}, ${a.kind}${a.until ? `, ${a.until} asti` : ""})`).join("; ")}` : "",
+    n.items.length ? `Sivulla ${n.items.length} uutisotsikkoa (otsikoita ei välitetä agentille).` : "",
   ];
 }
 

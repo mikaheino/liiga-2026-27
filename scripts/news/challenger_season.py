@@ -227,13 +227,18 @@ def main(news: Path, history_dir: Path | None = None) -> int:
     db = str(sk.ROOT / "data/liiga.duckdb")
     # Luku ja kirjoitus eri yhteyksillä: DuckDB 2.0 ei salli kirjoitusta yhteydellä,
     # jolla on kesken jäänyt tulos (skenaariotyökalun fetchone-kyselyt).
+    import newsdb
+    out = newsdb.target()                   # uutiskanta (LIIGA_NEWS_DUCKDB), ei mallikanta
     con = duckdb.connect(db, read_only=True)
     try:
+        if out.exists():                    # load_news.py:n taulut (news_candidates, news_items)
+            con.execute(f"ATTACH '{out}' AS news (READ_ONLY)")
+            con.execute("SET search_path = 'liiga.main,news.main'")
         teams_df, games_df, effects, snap = forecast(con, news, items, today)
     finally:
         con.close()
     save_history(teams_df, today, history_dir)
-    con = duckdb.connect(db)
+    con = duckdb.connect(str(out))
     try:
         history = effects.attrs.get("history", pd.DataFrame(columns=EVENT_COLS))
         for name, df in (("challenger_teams", teams_df), ("challenger_games", games_df), ("news_effects", effects),

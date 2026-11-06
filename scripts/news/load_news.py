@@ -3,7 +3,8 @@
 
     python scripts/news/load_news.py NEWSDIR
 
-Taulut (korvataan joka kerta; Pagesin runnerin kanta on kertakäyttöinen):
+Taulut kirjoitetaan uutiskantaan LIIGA_NEWS_DUCKDB (scripts/news/newsdb.py, 6.11.), ei
+mallikantaan. Taulut (korvataan joka kerta):
   news_items             uutiset (otsikko, linkki, joukkue, liput)
   news_candidates        uutisen otsikosta tunnistetut rosterin pelaajat
                          (vain loukkaantuminen/paluu/pelikielto-liputetut)
@@ -25,10 +26,11 @@ import duckdb
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import absences  # noqa: E402
+import newsdb  # noqa: E402
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-DB = ROOT / "data" / "liiga.duckdb"
+DB = newsdb.MODEL_DB                  # mallikanta: vain luku (rosteri)
 # Ehdokkaat: poissaolot (OK-lomake) ja siirrot (onko pelaaja jo rosterissa).
 SUGGEST = ("loukkaantuminen", "paluu", "pelikielto", "siirto")
 
@@ -75,8 +77,21 @@ def candidates(items: pd.DataFrame, roster: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["url", "player", "team", "position"]).drop_duplicates()
 
 
+def _roster() -> pd.DataFrame:
+    con = duckdb.connect(str(DB), read_only=True)
+    try:
+        roster = con.execute("""
+            SELECT name, team, position_group FROM player_rates
+            UNION ALL SELECT name, team, 'G' FROM team_goalie_weights""").df()
+    finally:
+        con.close()
+    return roster.drop_duplicates(["name", "team"])          # maalivahdit ovat kummassakin
+
+
 def main(folder: Path) -> None:
-    con = duckdb.connect(str(DB))
+    out = newsdb.target()                 # uutiskanta (LIIGA_NEWS_DUCKDB), ei mallikanta
+    roster = _roster()
+    con = duckdb.connect(str(out))
     try:
         frames = {}
         for table, (fname, cols) in FILES.items():
@@ -84,10 +99,6 @@ def main(folder: Path) -> None:
             df = pd.read_csv(path, dtype=str) if path.exists() else pd.DataFrame(columns=cols)
             frames[table] = df.reindex(columns=cols)
         frames["news_absences"] = pd.DataFrame(absences.events(folder), columns=absences.FIELDS)
-        roster = con.execute("""
-            SELECT name, team, position_group FROM player_rates
-            UNION ALL SELECT name, team, 'G' FROM team_goalie_weights""").df()
-        roster = roster.drop_duplicates(["name", "team"])          # maalivahdit ovat kummassakin
         frames["news_candidates"] = candidates(frames["news_items"], roster)
         frames["news_roster"] = roster.rename(columns={"name": "player", "position_group": "position"}).sort_values(["team", "player"])
         for table, df in frames.items():

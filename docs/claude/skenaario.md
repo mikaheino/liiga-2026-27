@@ -45,7 +45,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
 | J1/V5 | "kuvaile skenaario omin sanoin" | ✅ paikallisesti 6.11. |
 | J1 | demokäsikirjoitus | ✅ `docs/demo_skenaario.md` + `scripts/dev/demo_numbers.py` |
-| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | |
+| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | V8 ✅ 6.11. |
 | J3/V11–V12 | tulkinta yhteen paikkaan (recompute.yml), latausrooli + NEWS_*-taulut | |
 
 Koko suunnitelma (ominaisuudet, turvallisuus, hylätyt ideat): workflow `wf_4fedff4b-b60`.
@@ -111,3 +111,17 @@ EI KORTTI_VASTAUS-riviä eikä SubjectType `scenario`ia, koska käyttäjän laus
 (`lib/scenarioItems.ts`). Todennettu paikallisesti: "HPK häviää kaikki ottelunsa joulun yli ja
 Jokerit voittaa seuraavat kolme" → 8 sirua, työkalu liiga_skenaario. Agentin työkalukuvaukseen
 lisätty from/until. Evaluointi `scripts/dev/scenario_eval.py` (17 tavallista + 7 vihamielistä, rivit eikä sanamuoto, vuototarkistus): **24/24 paikallisesti 6.11.** (Claude, ~10 s/lause). Yli 10 riviä → virhe "rajaa jaksoa" (ei hiljaista katkaisua).
+
+**V8 uutiset paikalliseen (N0 + 7a, 6.11.).** Uutis- ja haastajataulut omaan kantaan
+`data/news.duckdb` (gitignore; `scripts/news/newsdb.py`: kirjoitus vaatii
+`LIIGA_NEWS_DUCKDB`, mallikanta kielletty). `load_news.py` lukee rosterin mallikannasta
+lukutilassa, `challenger_season.py` liittää uutiskannan lukutilassa ja kirjoittaa sinne.
+Sovelluksen silta (`duckdb_query.py`) liittää uutiskannan READ_ONLY + search_path, joten
+kyselyt ovat ennallaan. Pages: `pages.yml` asettaa `LIIGA_NEWS_DUCKDB: data/news.duckdb`
+samassa muutoksessa. Paikallisesti `scripts/news/news_pull.py` (julkinen news-data-haara
+välimuistiin, ei tokenia) → samat vaiheet; `daily_update.py` ajaa sen lopuksi (ei CI:ssä).
+Välimuisti tyhjenee myös uutiskannan muuttuessa (`lib/data.ts` newsStamp). Tietoturva:
+**uutissivun tilannekuva agentille ei enää sisällä otsikoita** (`lib/pageContext.ts`; ennen
+Pagesissa ei ollut agenttia, nyt uutiset ovat paikallisessa versiossa). MCP ei avaa
+uutiskantaa. Testit: `tests/test_news_db.py` (mallikannassa ei uutistauluja = CI-vartija).
+Todennettu: paikallinen /uutiset 80 juttua, haastajan kausiennuste ja poissaolot kuten Pagesissa.

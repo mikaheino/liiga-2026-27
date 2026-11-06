@@ -45,3 +45,7 @@ data/mouho_2027_ilmoittautumiset.csv
 
 # Kokeiden välimuisti (scripts/experiments/starting_goalie.py: ~2 300 ottelun tiedot liiga.fi:stä)
 .cache/
+
+# Uutiskanta (scripts/news/newsdb.py): ei gittiin, repo on julkinen.
+data/news.duckdb
+data/news.duckdb.wal

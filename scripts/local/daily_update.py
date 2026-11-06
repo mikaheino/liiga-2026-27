@@ -63,6 +63,24 @@ def main(sync: bool = True, grace_hours: int = 8) -> None:
     # local run -- results, site, DuckDB -- completely intact.
     if sync:
         sync_all(quiet=True)
+    _news()
+
+
+def _news() -> None:
+    """Uutiset paikalliseen sovellukseen (scripts/news/news_pull.py, 6.11.2026).
+    Vain omalla koneella: Pages ajaa saman omassa vaiheessaan. Paras yritys: uutisten
+    puute ei kaada ennusteajoa."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    if os.environ.get("CI"):
+        return
+    script = Path(__file__).resolve().parents[2] / "scripts" / "news" / "news_pull.py"
+    try:
+        subprocess.run([sys.executable, str(script)], check=True, timeout=600)
+    except (subprocess.SubprocessError, OSError) as exc:
+        print(f"uutiset: ohitettu ({exc})")
 
 
 if __name__ == "__main__":

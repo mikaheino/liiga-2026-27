@@ -133,6 +133,8 @@ jobs:
         # (scripts/news/load_news.py); haaraa ei vielä ole -> tyhjät taulut.
         env:
           URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          # Uutistaulut omaan kantaansa (scripts/news/newsdb.py, 6.11.); sovellus liittää sen.
+          LIIGA_NEWS_DUCKDB: data/news.duckdb
         run: |
           git clone -q --depth 1 --branch news-data "$URL" .news-data || mkdir -p .news-data
           .venv/bin/python scripts/news/load_news.py .news-data

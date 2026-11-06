@@ -21,6 +21,11 @@ import duckdb
 
 # LIIGA_DUCKDB vaihtaa kannan (testikäännös kopiolla, 27.10.).
 DB = Path(os.environ.get("LIIGA_DUCKDB") or Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb")
+# Uutiskanta (6.11., scripts/news/newsdb.py): liitetään lukutilassa, jos se on olemassa;
+# taulut (news_*, challenger_*) löytyvät ilman etuliitettä hakupolun kautta.
+NEWS = Path(os.environ.get("LIIGA_NEWS_DUCKDB") or Path(__file__).resolve().parents[2] / "data" / "news.duckdb")
+if not NEWS.is_absolute():
+    NEWS = Path(__file__).resolve().parents[2] / NEWS
 
 
 def _plain(v):
@@ -37,6 +42,9 @@ def run(sql: str, binds: list) -> list[dict]:
         try:
             con = duckdb.connect(str(DB), read_only=True)
             try:
+                if NEWS.exists():
+                    con.execute(f"ATTACH '{NEWS}' AS news (READ_ONLY)")
+                    con.execute(f"SET search_path = '{DB.stem}.main,news.main'")
                 cur = con.execute(sql, binds or [])
                 cols = [d[0].upper() for d in cur.description]
                 return [dict(zip(cols, map(_plain, row))) for row in cur.fetchall()]

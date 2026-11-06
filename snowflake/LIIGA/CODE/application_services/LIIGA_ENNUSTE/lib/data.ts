@@ -10,6 +10,8 @@
 import type { PositionRow } from "@/components/Heatmap";
 import type { HistoryPoint, TitleRow } from "@/components/TitleRace";
 import type { Fixture } from "@/lib/fixtures";
+import fs from "node:fs";
+import path from "node:path";
 import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
@@ -36,13 +38,21 @@ function metaQuery() {
   ]).then(([meta, next]) => ({ meta: meta[0], next: next[0] }));
 }
 
+const NEWS_DB = path.join(process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ process.cwd(), "../../../../.."), "data", "news.duckdb");
+function newsStamp(): string {
+  if (DATA_MODE === "snowflake") return "";
+  try { return String(fs.statSync(NEWS_DB).mtimeMs); } catch { return ""; }
+}
+
 async function fresh() {
   if (!store.meta || Date.now() - store.checked > CHECK_MS) {
     store.checked = Date.now();
     store.meta = metaQuery().catch((e) => { store.meta = null; throw e; });
   }
   const m = (await store.meta) as Awaited<ReturnType<typeof metaQuery>>;
-  const stamp = String(m.meta?.UPDATED_AT ?? "");
+  // Paikallisesti myös uutiskannan muutos (scripts/news/news_pull.py) tyhjentää
+  // välimuistin: uutiset päivittyvät useammin kuin ennuste.
+  const stamp = `${m.meta?.UPDATED_AT ?? ""}|${newsStamp()}`;
   if (stamp !== store.stamp) {
     store.stamp = stamp;
     store.values.clear();
