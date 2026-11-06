@@ -110,3 +110,120 @@ def test_injury_weakens_team():
     assert inj["d_goals_for"] < 0 and inj["win_after"] < inj["win_before"]
     row = next(r for r in res["teams"] if r["team"] == top["team"])
     assert row["points_scenario"] < row["points_now"]
+
+
+# --- Moottorin laajennus (6.11.2026, docs/claude/skenaario.md V1) -------------------
+
+@pytest.fixture(scope="module")
+def loaded():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts" / "tools"))
+    import skenaario
+    con = duckdb.connect(str(DB), read_only=True)
+    games, banked, pub, w, snap, played = skenaario.load(con)
+    model = skenaario.load_model(con)
+    con.close()
+    return games, banked, pub, w, played, model, sim.simulate(games, banked, sorted(pub))
+
+
+needs_db = pytest.mark.skipif(not DB.exists(), reason="ei paikallista kantaa")
+
+
+@needs_db
+def test_empty_scenario_is_published(loaded):
+    games, banked, pub, w, played, model, base = loaded
+    res = sim.compute(sim.parse("[]", allow_empty=True), games, banked, pub, w, played, base=base)
+    for r in res["teams"]:
+        for k in ("p_title", "p_top6", "p_top10", "p_relegation"):
+            assert r[f"{k}_scenario"] == pytest.approx(r[f"{k}_now"], abs=1e-12)
+        assert r["points_scenario"] == pytest.approx(r["points_now"])
+    assert res["scenario_canonical"] == [] and res["plausibility"] is None
+    with pytest.raises(sim.ScenarioError):
+        sim.parse("[]")                                   # tekstitila (agentti): tyhjä on virhe
+
+
+@needs_db
+def test_requirement_is_anchored_to_published(loaded):
+    games, banked, pub, w, played, model, base = loaded
+    team = sorted(pub)[0]
+    req = sim.compute([{"team": team, "goal": "avoid_relegation"}], games, banked, pub, w, played,
+                      base=base)["requirements"][0]
+    assert req["p"] == pytest.approx(1 - pub[team]["p_relegation"], abs=1e-9)   # yksi luku per asia
+
+
+@needs_db
+def test_game_id_lock_equals_team_lock_and_same_sha(loaded):
+    games, banked, pub, w, played, model, base = loaded
+    g = games[0]
+    a = sim.compute([{"team": g["home_team"], "result": "win"}], games, banked, pub, w, base=base)
+    b = sim.compute([{"game_id": g["game_id"], "result": "home_win"}], games, banked, pub, w, base=base)
+    c = sim.compute([{"game_id": g["game_id"], "team": g["away_team"], "result": "loss"}], games, banked, pub, w,
+                    base=base)
+    assert a["scenario_sha"] == b["scenario_sha"] == c["scenario_sha"]
+    assert a["teams"] == b["teams"]
+    p = sim._outcome_probs(g)
+    assert b["plausibility"] == pytest.approx(p["home_reg"] + p["home_ot"])
+    # kanoninen lista kelpaa sellaisenaan syötteeksi (sovelluksen sirut)
+    again = sim.compute(b["scenario_canonical"], games, banked, pub, w, base=base)
+    assert again["scenario_sha"] == b["scenario_sha"]
+
+
+@needs_db
+def test_window_lock_until_inclusive(loaded):
+    games, banked, pub, w, played, model, base = loaded
+    team = games[0]["home_team"]
+    mine = [g for g in games if team in (g["home_team"], g["away_team"])]
+    lo, hi = mine[1]["iso"], mine[3]["iso"]
+    res = sim.compute([{"team": team, "result": "loss", "from": lo, "until": hi}], games, banked, pub, w, base=base)
+    want = [g for g in mine if lo <= g["iso"] <= hi]
+    assert len(res["locked_games"]) == len(want) >= 2
+    with pytest.raises(sim.ScenarioError):
+        sim.compute([{"team": team, "result": "loss", "from": "2030-01-01", "until": "2030-02-01"}],
+                    games, banked, pub, w, base=base)
+
+
+@needs_db
+def test_stake_matches_explicit_lock(loaded):
+    """Panos (ehdollistus samoista kausista) = lukitun ottelun simulaatio kahden keskivirheen sisällä."""
+    games, banked, pub, w, played, model, base = loaded
+    res = sim.compute([{"stakes": {"days": 7}}], games, banked, pub, w, base=base)
+    assert res["stakes"]
+    for st in res["stakes"][:5]:
+        top = st["top"]
+        locked = sim.compute([{"game_id": st["game_id"], "result": "home_win"},
+                              {"team": top["team"], "goal": top["goal"]}], games, banked, pub, w, base=base)
+        assert abs(locked["requirements"][0]["p"] - top["p_home_win"]) <= max(2 * top["se"], 0.005)
+
+
+@needs_db
+def test_injury_by_player_id_and_text_mode_unchanged_shape(loaded):
+    games, banked, pub, w, played, model, base = loaded
+    top = max((p for p in model["players"] if p["position_group"] != "G" and p.get("player_id") == p.get("player_id")),
+              key=lambda p: p["projected_goals_per_game"])
+    by_name = sim.compute([{"injury": top["name"], "games": 5}], games, banked, pub, w, played, model, base=base)
+    by_id = sim.compute([{"injury": int(top["player_id"]), "games": 5}], games, banked, pub, w, played, model,
+                        base=base)
+    assert by_name["scenario_sha"] == by_id["scenario_sha"]
+    assert by_name["scenario_canonical"][0]["injury"] == int(top["player_id"])    # ei nimeä tunnisteeksi
+    txt = sim.render(by_name, "6.11.2026")
+    assert txt.startswith("SKENAARIO") and "LOUKKAANTUMINEN" in txt
+
+
+@needs_db
+def test_panel_same_in_all_three_shapes(loaded):
+    """Paikallinen reitti (--panel), Snowflaken MODE 'panel' ja Pagesin tiedosto: sama funktio."""
+    import json
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts" / "deploy"))
+    import scenario_static
+    import skenaario
+    one = json.loads(skenaario.run_panel('{"team": "KooKoo", "goal": "top10", "streak": 5}'))
+    con = skenaario._connect()
+    try:
+        files = scenario_static.build(con)
+    finally:
+        con.close()
+    static = json.loads(sim.to_json(files["KooKoo"]["panels"]["top10:5"], "x"))
+    assert one["base"]["p"] == static["base"]["p"] and one["streak"]["req"]["p"] == static["streak"]["req"]["p"]
+    assert set(files) == set(loaded[2]) and len(files["KooKoo"]["panels"]) == 16
+    assert "error" in json.loads(skenaario.run_panel('{"team": "KooKoo", "goal": "x", "streak": 5}'))

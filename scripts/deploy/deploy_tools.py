@@ -34,7 +34,7 @@ WAREHOUSE = "LIIGA_WH"
 # käyttää toisiaan (lineups.py käyttää simulate_scenario.py:n kaavoja).
 SIM = "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py"
 TOOLS = {
-    "SIMULATE_SCENARIO": dict(srcs=[SIM], sig="SCENARIO VARCHAR", handler="simulate_scenario.run",
+    "SIMULATE_SCENARIO": dict(srcs=[SIM], sig="SCENARIO VARCHAR, MODE VARCHAR DEFAULT 'text'", handler="simulate_scenario.run",
                               desc="Mitä jos? -simulaattori: lukitut tulokset, loukkaantumiset, tavoitteet."),
     # Ei agentin työkalu vaan agentin käyttäjä: ajaa agentin ja lähettää vastauksen.
     "SEND_MORNING_BRIEF": dict(srcs=["snowflake/LIIGA/MODEL/procedures/SEND_MORNING_BRIEF/morning_brief.py"], sig="VERSION VARCHAR",

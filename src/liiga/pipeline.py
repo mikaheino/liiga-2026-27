@@ -39,6 +39,19 @@ GAME_COLUMNS = ["snapshot_date", "game_id", "home_team", "away_team",
                 "p_home_reg", "p_away_reg", "p_overtime", "p_home_ot_win",
                 "p_home_win"]
 
+# The whole position distribution per day (6.11.2026): the front page heatmap can
+# be scrubbed back through the season. Like prediction_history it cannot be
+# rebuilt afterwards -- only the latest distribution was kept until now (days
+# before this are backfilled from the database versions in git,
+# scripts/tools/backfill_position_history.py).
+POSITION_HISTORY_COLUMNS = (["snapshot_date", "games_played", "team"]
+                            + [f"rank_{k}" for k in range(1, 18)])
+
+# The top-14 points line per day (simulate.points_line), so a scrubbed heatmap
+# can show what was needed THEN, not only the distribution (6.11.2026).
+LINE_HISTORY_COLUMNS = ["snapshot_date", "games_played", "line_rank",
+                        "line_likely", "line_safe"]
+
 
 def refresh_results(season: int | None = None, con=None, *,
                     grace_hours: int = 8) -> dict:
@@ -213,8 +226,17 @@ def forecast(con=None, cfg=None) -> dict:
         challenger.insert(0, "snapshot_date", today)
     challenger = challenger.reindex(columns=GAME_COLUMNS)
 
+    pos_hist = pos.copy()
+    pos_hist.insert(0, "snapshot_date", today)
+    pos_hist.insert(1, "games_played", meta["n_played"])
+    line_hist = pd.DataFrame([{"snapshot_date": today, "games_played": meta["n_played"],
+                               "line_rank": res["line"].get("rank"),
+                               "line_likely": res["line"].get("likely"),
+                               "line_safe": res["line"].get("safe")}])
+
     return {"standings": standings, "position": pos, "meta": meta_df,
             "history": hist, "games": games, "games_challenger": challenger,
+            "position_history": pos_hist, "line_history": line_hist,
             "today": today,
             "n_played": meta["n_played"], "n_total": meta["n_total"],
             "crowd_weight": crowd_weight}
@@ -248,6 +270,15 @@ def persist(res: dict, con=None) -> None:
         register_df(con, "prediction_meta", res["meta"])
         register_df(con, "prediction_history", history)
         register_df(con, "prediction_games", games)
+        if "position_history" in res:
+            pos_hist = _replace_today(con, "position_distribution_history",
+                                      POSITION_HISTORY_COLUMNS, res["today"],
+                                      res["position_history"])
+            register_df(con, "position_distribution_history", pos_hist)
+        if "line_history" in res:
+            line_hist = _replace_today(con, "line_history", LINE_HISTORY_COLUMNS,
+                                       res["today"], res["line_history"])
+            register_df(con, "line_history", line_hist)
         if "games_challenger" in res:
             challenger = _replace_today(con, "prediction_games_challenger",
                                         GAME_COLUMNS, res["today"],

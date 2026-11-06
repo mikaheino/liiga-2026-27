@@ -21,7 +21,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { type Goalie, type Skater, loadFixtures, loadMeta, loadPlayers, loadPosition, loadTeams } from "@/lib/data";
+import { type Goalie, type Skater, loadFixtures, loadMeta, loadPlayerHistory, loadPlayers, loadPosition, loadTeams } from "@/lib/data";
 import { type Fixture, resultText } from "@/lib/fixtures";
 import { team as teamLines } from "@/lib/pageContext";
 import { DATA_MODE, query } from "@/lib/snowflake";
@@ -161,7 +161,8 @@ const goalieLine = (g: Goalie) =>
 // Pelaaja: oma rivi, joukkueen kolme parasta pistemiestä ja joukkueen ennuste
 // (loukkaantumisskenaarioon agentti tarvitsee tiedon, kuinka keskeinen pelaaja on).
 async function playerContext(id: number): Promise<{ text: string } | null> {
-  const [{ skaters, goalies }, pos] = await Promise.all([loadPlayers(), loadPosition()]);
+  const [{ skaters, goalies }, pos, hist] = await Promise.all([loadPlayers(), loadPosition(),
+    loadPlayerHistory().catch(() => ({ seasons: {} as Record<number, never[]>, used: {} as Record<number, number> }))]);
   const sk = skaters.find((p) => p.id === id), gk = goalies.find((g) => g.id === id);
   if (!sk && !gk) return null;
   const team = (sk ?? gk)!.team;
@@ -170,6 +171,11 @@ async function playerContext(id: number): Promise<{ text: string } | null> {
   const keepers = goalies.filter((g) => g.team === team).map(goalieLine);
   return { text: [
     `PELAAJA (player_id ${id}): ${sk ? skaterLine(sk) : goalieLine(gk!)}.`,
+    // Aiemmat kaudet (6.11.): esikauden odotus rakentuu niistä, ja ilman niitä agentti
+    // vastasi "menneiden kausien pelaajadataa ei ole".
+    (hist.seasons[id] ?? []).length ? `Aiemmat Liiga-kaudet (pisteet / joukkueen ottelu): ${hist.seasons[id].map((s) =>
+      `${s.season - 1}-${String(s.season).slice(2)} ${s.team} ${s.goals}+${s.assists}=${s.goals + s.assists} p (${f1(s.teamGames ? (s.goals + s.assists) / s.teamGames : null)})`).join("; ")}.` +
+      `${hist.used[id] ? ` Esikauden odotus painottaa ${hist.used[id]} viimeistä kautta: tuorein ×1, jokainen vanhempi ×0,8, ja vedetään kohti pelipaikan keskiarvoa.` : ""}` : "Ei aiempia Liiga-kausia (tulokas tai muista sarjoista).",
     r ? `Joukkue ${team}: ennuste ${r.projRank}. sija, ${Math.round(r.points)} p, runkosarjan voitto ${f1(r.pTitle)} %.` : "",
     `Joukkueen parhaat pistemiehet: ${mates.join("; ")}.`,
     keepers.length ? `Joukkueen maalivahdit: ${keepers.join("; ")}.` : "",

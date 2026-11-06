@@ -156,11 +156,8 @@ def run(session, day: str) -> str:
 
 
 def sim_load_model(session) -> dict:
-    m = sim.load_model(session)
-    ids = {r[0]: r[1] for r in session.sql("SELECT name, player_id FROM LIIGA.MODEL.PLAYER_RATES").collect()}
-    for p in m["players"]:
-        p["player_id"] = ids.get(p["name"])
-    return m
+    """player_id tulee nyt suoraan simulate_scenario.load_model():sta (6.11.2026)."""
+    return sim.load_model(session)
 
 
 if __name__ == "__main__":

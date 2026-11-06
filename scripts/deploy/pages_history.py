@@ -3,7 +3,7 @@
 Pages-ajo (.github/workflows/pages.yml) laskee ennusteen kertakäyttöisessä
 runnerissa repon tietokannasta eteenpäin. Ottelutulokset saa aina uudelleen
 liiga.fi:stä, mutta päivittäisiä ennusteita ei: eilistä ennustetta ei voi laskea
-jälkikäteen. Siksi nämä kaksi taulua säilytetään CSV:nä omassa haarassaan
+jälkikäteen. Siksi nämä taulut säilytetään CSV:nä omassa haarassaan
 `pages-data`, eikä Pages riipu Macin commiteista. Ensimmäinen ajo, jossa
 CSV:tä ei vielä ole, alkaa repon tietokannan historiasta.
 
@@ -18,7 +18,10 @@ from pathlib import Path
 import duckdb
 
 DB = Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb"
-TABLES = ("prediction_history", "prediction_games")
+# Sijaintijakauma ja 14 parhaan raja päivittäin (6.11.): etusivun kelaus. Ensimmäisellä
+# ajolla CSV:tä ei ole, joten pohjana on repon kannan (git-versioista ja
+# uudelleenlaskennasta täydennetty) historia.
+TABLES = ("prediction_history", "prediction_games", "position_distribution_history", "line_history")
 
 
 def _q(con, sql: str, params: list | None = None) -> list:

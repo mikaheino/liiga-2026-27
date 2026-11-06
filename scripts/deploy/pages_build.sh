@@ -36,6 +36,10 @@ export async function generateStaticParams() {
 }
 TS
 
+# Skenaariopaneeli esilaskettuna (agentiton, ei /api-reittiä): sama moottori ja muoto
+# kuin sovelluksen /api/skenaario (scenario_static.py, docs/claude/skenaario.md).
+"$REPO/.venv/bin/python" "$REPO/scripts/deploy/scenario_static.py" "$BUILD/public/skenaario"
+
 # Riippuvuudet: CI:ssä puhdas asennus, paikallisesti sovelluksen omat kopiona
 # (Turbopack ei seuraa projektin ulkopuolelle osoittavaa node_modules-linkkiä).
 if [ -n "${CI:-}" ]; then

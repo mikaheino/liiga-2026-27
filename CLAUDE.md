@@ -73,6 +73,7 @@ CLAUDE.md pidetään lyhyenä, koska se ladataan jokaiseen istuntoon ja jokaisel
 | Snowflake: taulut, taskit, palvelukäyttäjät | `docs/claude/snowflake.md` | synkka, taskit, oikeudet |
 | agentti, semanttiset mallit, työkalut, julkaisuputki | `docs/claude/agent.md` | agentti, CI/CD, evaluoinnit |
 | Next.js-sovellus | `docs/claude/app.md` | sovellus, App Runtime |
+| skenaariotyökalu + uutiset kolmeen ympäristöön (päätökset, tiekartta) | `docs/claude/skenaario.md` | skenaariot, panokset, paikallinen MCP, uutisdata |
 | Streamlit, diat, LinkedIn-postaukset, vyöhykkeet | `docs/claude/streamlit-slides.md` | diat, postaukset |
 | paikallinen sivusto ja retro-teema | `docs/claude/site.md` | site/index.html |
 

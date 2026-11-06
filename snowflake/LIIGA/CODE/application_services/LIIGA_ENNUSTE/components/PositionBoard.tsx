@@ -2,8 +2,9 @@
 // (/sijainti) kaikkialla. Puhelimessa sivulla näkyvät samat tiedot kuin webissä
 // (käyttäjä 27.10.): sijojen väriraita sekä todennäköinen ja varma raja
 // puuttuvine pisteineen ja tarvittavine pistetahteineen per ottelu.
-import Heatmap, { DEFAULT_LINE, type Line, type Need } from "@/components/Heatmap";
-import { loadLine, loadLog, loadMeta, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { DEFAULT_LINE, type Line, type Need } from "@/components/Heatmap";
+import HeatmapTime, { LineNote } from "@/components/HeatmapTime";
+import { loadLine, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
 import { TEAMS, seasonTable } from "@/lib/table";
 
 export default async function PositionBoard({ full = false }: { full?: boolean }) {
@@ -19,14 +20,10 @@ export default async function PositionBoard({ full = false }: { full?: boolean }
     <section className={full ? "pos-full" : ""}>
       <div className="pick-row">
         <div className="label pick"><span className="blink">▶</span> Valitse joukkue</div>
-        <div className="line-note" title="Todennäköinen: riittää 14 parhaan joukkoon puolessa simulaatioista. Varma: 95 %:ssa. Nyt: 14. sijan pisteet sarjataulukossa.">
-          {lineRank} parhaan raja:
-          <span>todennäköinen <b>{line?.likely ?? DEFAULT_LINE} p</b></span>
-          {line && <span>varma <b>{line.safe} p</b></span>}
-          {line?.now != null && <span>nyt {lineRank}. sijalla <b>{line.now} p</b></span>}
-        </div>
+        {/* Kelattaessa (etusivun yläpalkki) rivi kertoo tilannekuvan päivän. */}
+        <LineNote lineRank={lineRank} likely={line?.likely ?? DEFAULT_LINE} safe={line?.safe} now={line?.now} />
       </div>
-      <Heatmap rows={pos} highlight={new Set()} link={teamHref} need={perTeam ? need : undefined} line={line} />
+      <HeatmapTime rows={pos} highlight={new Set()} link need={perTeam ? need : undefined} line={line} perTeam={perTeam} />
       {full && <p className="note">Sarakkeet: puuttuvat pisteet rajaan ja tarvittava pistetahti per jäljellä oleva ottelu. Oranssi = tahtiin on yltänyt noin neljännes joukkueista, punainen = enintään puolet (kaudet 2022–26).</p>}
     </section>
   );

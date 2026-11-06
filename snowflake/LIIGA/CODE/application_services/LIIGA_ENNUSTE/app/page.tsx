@@ -6,9 +6,10 @@ import { type Line } from "@/components/Heatmap";
 import NextRound from "@/components/NextRound";
 import PositionBoard from "@/components/PositionBoard";
 import Season from "@/components/Season";
+import TimeTravel from "@/components/TimeTravel";
 import Top from "@/components/Top";
 import { gameKey } from "@/lib/challenger";
-import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
+import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadPositionHistory, loadTeams } from "@/lib/data";
 import { nextRound, scoreboard } from "@/lib/fixtures";
 import { fi, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
@@ -16,9 +17,13 @@ import { STATIC } from "@/lib/target";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger, season, news] = await Promise.all([
+  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger, season, news, snapsAll] = await Promise.all([
     loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(), loadChallenger(), loadChallengerSeason(), loadNews(),
+    loadPositionHistory().catch((e) => { console.log(`[data] jakaumahistoria: ${(e as Error).message}`); return []; }),
   ]);
+  // Kelattavat tilannekuvat: kaikki ennen nykyistä ennustetta (nykyhetki tulee suoraan).
+  const nowDate = String(meta?.UPDATED_AT ?? "").slice(0, 10);
+  const snaps = snapsAll.filter((s) => s.date < nowDate);
   // Haastaja kierroskorttiin: päivän ajo (maalivahdit + poissaolot) ohittaa kausiennusteen
   // otteluarvion (vain poissaolot), joka kattaa myös tulevat päivät.
   const chMap = new Map(season.games.map((g) => [gameKey(g.date, g.home, g.away),
@@ -49,11 +54,15 @@ export default async function Page() {
     <div className="shell">
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front">
-        {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
+        {/* Seuraava kierros ylimpänä (käyttäjä 6.11.); kelattava yläpalkki ja heatmap
+            peräkkäin, jotta palkin ja taulukon yhteys on ilmeinen. */}
         <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))}
           challenger={chMap} all={fixtures} news={news.items} />
+        <TimeTravel snaps={snaps}>
+        {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}
         {/* Sijaintitaulukko: tietokoneella etusivulla, puhelimessa omalla sivullaan (ovi alla). */}
         <div className="desk-only"><PositionBoard /></div>
+        </TimeTravel>
         <nav className="doors" aria-label="Osiot">
           {doors.map((d, i) => (
             <Link key={d.href} href={d.href} className={`door ${"phone" in d && d.phone ? "phone-only" : ""}`} style={{ animationDelay: `${600 + i * 90}ms` }}>

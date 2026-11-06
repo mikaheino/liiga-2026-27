@@ -10,11 +10,41 @@ import { createPortal } from "react-dom";
 import CardAgent from "@/components/CardAgent";
 import Grid from "@/components/Grid";
 import SwipeBack from "@/components/SwipeBack";
-import type { Goalie, Skater } from "@/lib/data";
+import type { Goalie, PastSeason, Skater } from "@/lib/data";
 import { fi, logo } from "@/lib/table";
 import { STATIC } from "@/lib/target";
 
 type Who = { kind: "skater"; p: Skater } | { kind: "goalie"; p: Goalie };
+export type History = { seasons: Record<number, PastSeason[]>; used: Record<number, number> };
+const label = (season: number) => `${season - 1}–${String(season).slice(2)}`;
+
+// Aiemmat kaudet + kuluva (6.11.): se mistä esikauden odotus syntyy, datana ilman
+// agenttia. Tahtipalkki yhteisellä asteikolla, jotta läpimurto erottuu silmällä.
+function Seasons({ p, past, used, season }: { p: Skater; past: PastSeason[]; used?: number; season: number }) {
+  const rows = [...past.map((s) => ({ key: `${s.season}${s.team}`, label: label(s.season), team: s.team, g: s.goals, a: s.assists,
+    rate: s.teamGames ? (s.goals + s.assists) / s.teamGames : null, now: false })),
+    { key: "now", label: label(season), team: p.team, g: p.goals, a: p.assists, rate: p.gp ? p.points / p.gp : null, now: true }];
+  const max = Math.max(...rows.map((r) => r.rate ?? 0), p.prePpg ?? 0, 0.01);
+  return (
+    <div className="mc-box pc-seasons">
+      <div className="label">Kaudet</div>
+      {rows.map((r) => (
+        <div key={r.key} className={`pc-season ${r.now ? "now" : ""}`}>
+          <span className="pc-s-l">{r.label}</span>
+          <span className="pc-s-t">{r.team}</span>
+          <span className="pc-s-p">{r.g}+{r.a}=<b>{r.g + r.a}</b></span>
+          <span className="pc-s-bar"><i style={{ width: `${(100 * (r.rate ?? 0)) / max}%` }} />
+            {p.prePpg != null && <em style={{ left: `${(100 * p.prePpg) / max}%` }} title="Esikauden odotus" />}</span>
+          <span className="pc-s-r">{fi(r.rate, 2)}</span>
+        </div>
+      ))}
+      <p className="pc-note">
+        {past.length ? "Tahti = pisteet / ottelu; aiemmilla kausilla joukkueen otteluista (pelaajan omia otteluita ei ole tallessa). " : "Ei aiempia Liiga-kausia. "}
+        {p.prePpg != null && <>Pystyviiva = esikauden odotus {fi(p.prePpg, 2)}{used ? `, joka painottaa ${used} viimeistä kautta: tuorein ×1, jokainen vanhempi ×0,8` : ""}.</>}
+      </p>
+    </div>
+  );
+}
 const sg = (x: number | null, d = 1) => (x == null ? "–" : `${x > 0 ? "+" : ""}${fi(x, d)}`);
 const cls = (x: number | null, t = 0.5) => (x == null || Math.abs(x) < t ? "dim" : x > 0 ? "up" : "down");
 
@@ -34,7 +64,7 @@ function chips(w: Who, skaters: Skater[], goalies: Goalie[]): string[] {
   ].filter((c): c is string => !!c);
 }
 
-function Card({ w, season, skaters, goalies, onClose }: { w: Who; season: number; skaters: Skater[]; goalies: Goalie[]; onClose: () => void }) {
+function Card({ w, season, skaters, goalies, history, onClose }: { w: Who; season: number; skaters: Skater[]; goalies: Goalie[]; history: History; onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -73,6 +103,7 @@ function Card({ w, season, skaters, goalies, onClose }: { w: Who; season: number
             ? (w.p.prePpg != null ? `Esikauden odotus ${fi(w.p.prePpg, 2)} p/ottelu eli ${fi(w.p.prePpg * w.p.gp)} pistettä näissä otteluissa. Ylivoimamaaleja ${w.p.ppGoals}.` : `Esikauden odotusta ei ole. Ylivoimamaaleja ${w.p.ppGoals}.`)
             : `Torjuntaero = päästetyt maalit verrattuna keskivertomaalivahtiin samoista maalipaikoista (xG), vain otteluista joissa hän pelasi yksin (${w.p.solo ?? 0}).`}
         </p>
+        {w.kind === "skater" && <Seasons p={w.p} past={history.seasons[p.id] ?? []} used={history.used[p.id]} season={season} />}
         {!STATIC && <CardAgent subject={{ type: "player", key: `${season}:${p.id}` }} chips={chips(w, skaters, goalies)} placeholder={`Kysy pelaajasta ${p.name}…`} />}
         <div className="mc-hint">Pyyhkäise oikealle palataksesi</div>
       </SwipeBack>
@@ -80,7 +111,7 @@ function Card({ w, season, skaters, goalies, onClose }: { w: Who; season: number
   );
 }
 
-export default function Players({ skaters, goalies, season }: { skaters: Skater[]; goalies: Goalie[]; season: number }) {
+export default function Players({ skaters, goalies, season, history }: { skaters: Skater[]; goalies: Goalie[]; season: number; history: History }) {
   const [open, setOpen] = useState<Who | null>(null);
   const [allSk, setAllSk] = useState(false);
   const [allGk, setAllGk] = useState(false);
@@ -123,7 +154,7 @@ export default function Players({ skaters, goalies, season }: { skaters: Skater[
         }))} />
       {goalies.length > ranked.length && <button className="ag-more pl-more" onClick={() => setAllGk(!allGk)}>{allGk ? "Vain vähintään 3 yksin pelattua" : `Näytä kaikki ${goalies.length}`}</button>}
 
-      {open && createPortal(<Card w={open} season={season} skaters={skaters} goalies={goalies} onClose={() => setOpen(null)} />, document.body)}
+      {open && createPortal(<Card w={open} season={season} skaters={skaters} goalies={goalies} history={history} onClose={() => setOpen(null)} />, document.body)}
     </>
   );
 }

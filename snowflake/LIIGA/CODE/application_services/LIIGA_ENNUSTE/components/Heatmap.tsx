@@ -37,7 +37,8 @@ const DANGER_RATE = 1.5, WARN_RATE = 1.3;
 const risk = (rate: number) => (rate >= DANGER_RATE ? "danger" : rate >= WARN_RATE ? "warn" : "");
 
 // Puuttuvat pisteet rajaan ja vaadittu tahti: (raja - pisteet nyt) / jäljellä olevat ottelut.
-function NeedCell({ n, target, kind }: { n?: Need; target: number; kind: string }) {
+function NeedCell({ n, target, kind, past }: { n?: Need; target: number; kind: string; past?: boolean }) {
+  if (past) return <div className="hn dim"><b>–</b></div>;      // rajaa ei ole historiassa
   if (!n) return <div className="hn" />;
   const need = target - n.pts;
   if (need <= 0) return <div className="hn ok" title={`${n.pts} p: ${kind} raja ${target} p saavutettu`}><b>✓</b><span>{n.pts} p</span></div>;
@@ -53,13 +54,16 @@ function NeedCell({ n, target, kind }: { n?: Need; target: number; kind: string 
 const peakOf = (p: number[]) => p.indexOf(Math.max(...p)) + 1;
 
 // `link` tekee rivistä drilldownin joukkuesivulle (etusivu).
-export default function Heatmap({ rows, highlight, link, need, line }: {
+// past: kauden kelaus (HeatmapTime.tsx) -- solut tilannekuvasta, pisterajasarakkeissa viiva.
+// settled: kelauksen jälkeen solujen sisääntuloanimaatio ei soi uudelleen (globals.css).
+export default function Heatmap({ rows, highlight, link, need, line, past = false, settled = false }: {
   rows: PositionRow[]; highlight: Set<string>; link?: (team: string) => string; need?: Map<string, Need>; line?: Line | null;
+  past?: boolean; settled?: boolean;
 }) {
   const target = line?.likely ?? DEFAULT_LINE;
   const ranks = Array.from({ length: TEAMS }, (_, i) => i + 1);
   return (
-    <div className={`heat ${highlight.size ? "has-hl" : ""} ${need ? (line ? "with-need2" : "with-need") : ""}`} role="table" aria-label="Sijaintijakauma">
+    <div className={`heat ${highlight.size ? "has-hl" : ""} ${need ? (line ? "with-need2" : "with-need") : ""} ${past ? "past" : ""} ${settled ? "settled" : ""}`} role="table" aria-label="Sijaintijakauma">
       <div className="hr hh" role="row">
         <div className="ht">Joukkue</div>
         {ranks.map((k) => <div key={k} className={`hc ${edge(k)}`}>{k}</div>)}
@@ -81,12 +85,12 @@ export default function Heatmap({ rows, highlight, link, need, line }: {
               title={`${r.team}: sija ${k} -- ${(r.p[k - 1] * 100).toFixed(1).replace(".", ",")} %`}>{label(r.p[k - 1])}</div>
           ))}
           {!need && <div className="hp"><b>{Math.round(r.points)}</b><span>{Math.round(r.p05)}–{Math.round(r.p95)}</span></div>}
-          {need && <NeedCell n={need.get(r.team)} target={target} kind="todennäköinen" />}
-          {need && line && <NeedCell n={need.get(r.team)} target={line.safe} kind="varma" />}
+          {need && <NeedCell n={need.get(r.team)} target={target} kind="todennäköinen" past={past} />}
+          {need && line && <NeedCell n={need.get(r.team)} target={line.safe} kind="varma" past={past} />}
         </>);
         return link
-          ? <Link key={r.team} href={link(r.team)} role="row" className={cls} aria-label={`${r.team}: avaa joukkue`}>{cells}</Link>
-          : <div key={r.team} role="row" className={cls}>{cells}</div>;
+          ? <Link key={r.team} href={link(r.team)} role="row" className={cls} data-team={r.team} aria-label={`${r.team}: avaa joukkue`}>{cells}</Link>
+          : <div key={r.team} role="row" className={cls} data-team={r.team}>{cells}</div>;
       })}
     </div>
   );

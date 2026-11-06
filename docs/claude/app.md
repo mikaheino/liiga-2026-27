@@ -150,6 +150,58 @@ paneelin. Paneelin ollessa auki yläpalkki tiivistyy (brändin alarivi ja aikale
   (5.11.); toisiksi parhaat varastossa (agentin allekirjoittama poissaolon kesto, jonka
   kokoonpano ratkaisee; haastaja Snowflakeen Git-objektilla).
 
+**Pelaajahistoria, kauden kelaus ja skenaariopaneeli (6.11.2026; ensin paikallisesti,
+käyttäjä: "toteuta nämä kaikki ensin lokaalisti ja vasta sitten Snowflakeen").**
+
+- **Pelaajan aiemmat kaudet.** Agentti vastasi "menneiden kausien pelaajadataa ei ole", vaikka
+  malli rakentuu niistä: semanttiset mallit näkivät vain kuluvan kauden. Uusi näkymä
+  `V_PLAYER_SEASONS` (Liiga-kaudet 2021-22 ->, tahti per JOUKKUEEN ottelu, koska aiemmilta
+  kausilta ei ole kokoonpanoja) + `LIIGA_KAUSI_SV`:n taulu `PLAYER_SEASONS` ja VQR + käännökset +
+  `liiga_kausi`-työkalun kuvaus + tietopankki (data.md) + evaluointikysymys (Mäkiahon kaudet,
+  odotus SQL:llä). Pelaajakortissa kaudet tahtipalkkeina ja esikauden odotus pystyviivana
+  (`Players.tsx` Seasons), ja agentin tilannekuvassa (lib/kortti.ts). Matkalla löytyi
+  **pistepörssin vika**: voittolaukausmaalit laskettiin maaleiksi (data.md).
+- **Kauden kelaus** (`TimeTravel.tsx`, `Season.tsx`, `HeatmapTime.tsx`): yläpalkki on näkymätön
+  liukusäädin (veto/napautus/nuolet, Escape = nyt). Joukkueet asettuvat sen hetken järjestykseen
+  (`PREDICTION_HISTORY.proj_rank`) ja liukuvat paikoilleen (FLIP) -- ensimmäinen versio piti rivit
+  paikallaan, ja käyttäjä: "Lukko pysyy paikallaan kokoajan ... lukija ei osaa tulkita tätä".
+  Seuraava kierros on etusivulla ylimpänä, palkki ja heatmap peräkkäin. Tilannekuvia vain git-
+  versioiden päiviltä aluksi: jakauma kirjoitettiin ennen yli joka päivä, ja Snowflaken Time
+  Travel on 1 päivä (taulu luodaan uudelleen päivittäin).
+- **Puuttuvat päivät laskettu uudelleen ja todennettu (6.11.)**, käyttäjä: "jos meillä on kaikki
+  rosterimuutokset tiedossa ja malli muutokset, niin eikö puuttuvat päivät pysty laskemaan?" --
+  pystyy: `scripts/tools/rebuild_position_history.py`. Päivälle D git-työpuu viimeisimmässä
+  commitissa ennen aamuajoa (koodi + asetukset + KANTA, koska kanta on gitissä ja jokainen
+  rosterierä commitoitiin sen kanssa), siihen lisätään nykyisestä kannasta ne ottelut, jotka D:n
+  ajossa oli pelattu (`prediction_history.games_played`), ja ajetaan sen päivän koodilla.
+  Siemen on kiinteä, joten tulos on bitintarkka: pilotti toisti 3 git-päivän koko jakauman
+  (ero 0,0) ja 45/47 puuttuvaa päivää osui prediction_historyyn täsmälleen (18 koodiversiota).
+  7.10. ja 8.10. eivät osu (0,15/0,22 p), vaikka ottelut ja pisteet täsmäävät virallisen
+  sarjataulukon (`raw_standings`) kanssa -- jokin commitoimaton kantamuutos; EI kirjoitettu.
+  Kelaimessa nyt 64 päivää. Alkuperä: `position_distribution_rebuilds` (koodi, kanta, ero).
+- **Tarvittavat pisteet kelattaessa (6.11.)**, käyttäjä: "olisi mukavaa että tarvittavat
+  pistemäärätkin päivittyisivät". Uusi taulu `line_history` (14 parhaan raja per päivä,
+  `pipeline.LINE_HISTORY_COLUMNS`), putki tallentaa päivittäin. Menneet: `--lines`. Raja
+  (`points_line`) tuli malliin vasta 27.10., joten ennen sitä se johdetaan samasta
+  simulaatiosta: sen päivän koodi tuottaa otteluennusteet ja kerätyt pisteet, nykyinen
+  `simulate` ajaa ne -- ja raja hyväksytään vain, jos jakauma toistuu täsmälleen (60/60
+  päivää). Joukkueen silloiset pisteet ja ottelut = ensimmäiset N pelattua (lib/data.ts).
+  Tarkistettu 20.10.: KooKoo 5 p / 14 ott -> +75 (1,50/ott) ja +81 (1,62/ott). Data `position_distribution_history`: `pipeline.persist()` tallentaa
+  päivittäin, menneet 19 päivää (18.8.-3.11.) täydennettiin git-versioista
+  (`scripts/tools/backfill_position_history.py`). `#tilanne=YYYY-MM-DD` avaa hetken.
+  Vain tietokoneella (puhelimessa etusivulla ei heatmapia). ⚠️ Kelauksen jälkeen heatmap on
+  `settled`: muuten `.peak`-luokan siirtyminen käynnisti solujen sisääntuloanimaation viiveineen
+  uudelleen ja solut näkyivät tyhjinä. ⚠️ `memo()` EI saa saada tyhjää onnistumisena: kääreen
+  `.catch(() => [])` tallensi ohimenevän DuckDB-lukituksen tyhjäksi koko päiväksi -- virhe
+  hylätään ja kutsuja käsittelee sen.
+- **Skenaariopaneeli** joukkuesivulla (`Scenario.tsx`, `/api/skenaario`): mitä vaaditaan
+  (säilyy / pudotuspelit / kuuden joukko / voitto) ja "entä jos voittaa seuraavat 3/5/10" samasta
+  moottorista kuin agentin `liiga_skenaario` (`skenaario.py --json`). Kilpakumppanit = kaudet
+  joissa tavoite toteutui vs. odotus; putki lukitsee tulokset, jotka ovat vastustajien
+  tappioita. "Kysy agentilta tästä" vie tuloksen keskusteluun syötteeksi. Agentin "mitä
+  vaaditaan" -sirut poistettiin joukkuesivulta (paneeli laskee sen). Snowflakessa 501 ja
+  paneeli piiloutuu, kunnes proseduuri saa JSON-tilan.
+
 **Pagesiin ei agenttia (käyttäjän päätös 5.11.2026).** Puhelimessa luettava versio on
 GitHub Pages, jossa Chat ja `/api/chat` on poistettu käännöksestä (27.10.) -- siellä ei
 ole palvelinta, joka kutsuisi agenttia. Harkittiin välitystä olemassa olevan

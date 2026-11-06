@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import CardAgent from "@/components/CardAgent";
 import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
+import Scenario from "@/components/Scenario";
 import Shell from "@/components/Shell";
 import { loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
@@ -44,12 +45,14 @@ export default async function Page({ params }: { params: Promise<{ team: string 
   const weekAgo = last ? [...mineHist].reverse().find((h) => h.date <= new Date(Date.parse(last.date) - 7 * 864e5).toISOString().slice(0, 10)) : undefined;
   const dWeek = last && weekAgo ? last.points - weekAgo.points : 0;
   const top6 = sum(1, PLAYOFF_CUT), rel = sum(RELEGATION_CUT + 1, TEAMS);
+  // "Mitä vaaditaan" ei ole agentin siru (6.11.): skenaariopaneeli laskee sen suoraan.
   const chips = [
     Math.abs(dWeek) >= 3 ? `Miksi ennuste ${dWeek < 0 ? "laski" : "nousi"} viikossa ${fi(Math.abs(dWeek))} pistettä?` : null,
-    top6 >= 25 && top6 <= 75 ? "Mitä kuuden joukkoon pääsy vaatii?" : null,
-    rel >= 15 ? "Mitä putoamisen välttäminen vaatii?" : null,
   ].filter((c): c is string => !!c);
   if (!chips.length && base != null && Math.abs(r.points - base) >= 5) chips.push("Miksi ennuste on muuttunut esikaudesta?");
+  // Skenaariopaneelin oletustavoite: se, joka on joukkueelle ajankohtaisin (6.11.).
+  const top10 = sum(1, QUALI_CUT);
+  const goal = rel >= 15 ? "avoid_relegation" : top10 > 5 && top10 < 95 ? "top10" : top6 > 5 && top6 < 95 ? "top6" : "win";
 
   return (
     <Shell active="" title={team} rail={false}>
@@ -96,6 +99,7 @@ export default async function Page({ params }: { params: Promise<{ team: string 
         <div>
           <div className="label">Ennusteen liike</div>
           <History history={history} order={[team]} highlight={new Set()} preseason={preseason} big />
+          <div className="team-agent"><Scenario team={team} defaultGoal={goal} /></div>
           {!STATIC && seasonNo > 0 && (
             <div className="team-agent"><CardAgent subject={{ type: "team", key: `${seasonNo}:${team}` }} chips={chips} placeholder={`Kysy joukkueesta ${team}…`} /></div>
           )}

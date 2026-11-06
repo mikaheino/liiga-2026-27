@@ -1,6 +1,6 @@
 {
  "limit": 15,
- "coverage_min": 24.0,
+ "coverage_min": 33.1,
  "complex_functions": {
   "scripts/deploy/deploy_agent.py::candidate": 29,
   "scripts/local/build_site.py::_assets": 19,
@@ -11,9 +11,8 @@
   "snowflake/LIIGA/MODEL/procedures/LINEUP_FORECAST/lineups.py::adjust": 24,
   "snowflake/LIIGA/MODEL/procedures/LINEUP_FORECAST/lineups.py::parse_detail": 18,
   "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py::apply_injuries": 34,
-  "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py::compute": 28,
+  "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py::compute": 25,
   "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py::render": 26,
-  "snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/simulate_scenario.py::resolve": 18,
   "src/liiga/results.py::_parse_goalies": 27,
   "src/liiga/standings.py::reconstruct_games": 27,
   "src/liiga/transfers.py::parse_article": 17

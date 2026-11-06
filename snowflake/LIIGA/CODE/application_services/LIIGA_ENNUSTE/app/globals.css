@@ -1008,3 +1008,61 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .bnav[data-n="7"] .bnav-ask svg { width: 20px; height: 20px; }
   body.chat-open .mc-wrap { right: 0; }
 }
+/* Pelaajakortin kaudet (6.11.): tahtipalkki yhteisellä asteikolla, pystyviiva = esikauden odotus. */
+.pc-seasons { gap: 7px; }
+.pc-season { display: grid; grid-template-columns: 66px minmax(0, 1fr) 70px minmax(56px, 1.2fr) 36px; gap: 8px; align-items: center; font-size: 12.5px; }
+.pc-season.now { color: var(--ink); font-weight: 650; }
+.pc-s-l { font: 400 10px var(--pixel); letter-spacing: .02em; color: var(--muted); white-space: nowrap; }
+.pc-s-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--body); }
+.pc-s-p, .pc-s-r { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; font-size: 12px; }
+.pc-s-p b { color: var(--ink); }
+.pc-s-bar { position: relative; height: 8px; border-radius: 99px; background: var(--surface-2); }
+.pc-s-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--gold-mid); }
+.pc-season.now .pc-s-bar i { background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi)); }
+.pc-s-bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); opacity: .7; }
+
+/* =========================================================================
+   Kauden kelaus (6.11.): yläpalkki on näkymätön liukusäädin, heatmap seuraa.
+   Ainoat näkyvät merkit: kursori, kelattaessa päivämäärä ja "nyt".
+   ========================================================================= */
+.sh-track.scrub { cursor: ew-resize; touch-action: none; -webkit-user-select: none; user-select: none; outline: none; }
+.sh-track.scrub:focus-visible .sh-bar { box-shadow: 0 0 0 2px var(--gold-mid); }
+.sh-bar .sh-ghost { opacity: .22; }
+.season-hero .sh-bar i, .season-hero .sh-now { transition: width .25s ease, left .25s ease; }
+.season-hero.past .sh-num { color: var(--gold-hi); }
+.sh-back { all: unset; margin-left: 6px; cursor: pointer; font: 400 10.5px var(--pixel); letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
+.sh-back:hover { color: var(--gold-hi); }
+.heat .hc { transition: background-color .3s ease, color .3s ease; }
+.heat.settled .hr:not(.hh) .hc { animation: none; opacity: 1; transform: none; }
+.heat.settled .hr:not(.hh) .hc.peak { animation: breathe 4.5s ease-in-out infinite; }
+.heat.settled .hr:not(.hh) .hc:hover { transform: scale(1.12); }
+.heat.past .hrank { color: var(--gold-hi); }
+.line-note.past b { color: var(--gold-hi); }
+@media (prefers-reduced-motion: reduce) { .heat .hc, .season-hero .sh-bar i, .season-hero .sh-now { transition: none; } }
+
+/* =========================================================================
+   Skenaariopaneeli (Scenario.tsx, 6.11.): mitä vaaditaan ja entä jos -putki.
+   ========================================================================= */
+.sc { gap: 10px; transition: opacity .2s; }
+.sc.busy { opacity: .6; }
+.sc-goals, .sc-streak { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sc-chip { all: unset; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2);
+  font: 400 10px var(--pixel); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.sc-chip:hover { color: var(--gold-hi); border-color: var(--gold-mid); }
+.sc-chip.on { color: var(--gold-hi); border-color: var(--gold-mid); background: var(--surface-2); box-shadow: 2px 2px 0 var(--gold-dim); }
+.sc-chip:focus-visible { outline: 2px solid var(--gold-mid); outline-offset: 1px; }
+.sc-p { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sc-p b { font: 800 30px var(--mono); color: var(--ink); letter-spacing: -.02em; }
+.sc-p .sc-new { color: var(--gold-hi); }
+.sc-p .sc-arrow { color: var(--gold-mid); font-size: 18px; }
+.sc-p span:last-child { font: 400 10px var(--pixel); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+.sc-line { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.sc-line b { color: var(--ink); } .sc-line b.down, .sc-rival b.down { color: var(--down); } .sc-line b.up, .sc-rival b.up { color: var(--up); }
+.sc-basis { margin: 6px 0 0; font-size: 11px; }
+.sc-need { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--faint); }
+.sc-need b { color: var(--body); font-weight: 650; }
+.sc-rivals { display: grid; gap: 4px; }
+.sc-rivals .label.sub { margin: 4px 0 2px; }
+.sc-rival { display: grid; grid-template-columns: minmax(70px, 1fr) auto 52px auto; gap: 10px; align-items: baseline; font-size: 12.5px; }
+.sc-rival b { font-family: var(--mono); text-align: right; }
+.sc-streak .dim { font-size: 12.5px; margin-right: 2px; }

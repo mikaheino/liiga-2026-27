@@ -51,6 +51,14 @@ rangaistuslaukauksia laukovien kärkihyökkääjien tahtia. **Ei korjattu**, kos
 korjaus muuttaa mallin syötettä ja siten julkaistua ennustetta — odottaa
 käyttäjän päätöstä.
 
+⚠️ **Voittolaukausmaalit (`VL`, jakso 5, `is_shootout`) eivät ole pelaajan maaleja**
+(löydetty 6.11.2026). `V_PLAYER_SEASON_NOW` sulki pois vain `RL0`/`VT0`, joten pistepörssi
+näytti tällä kaudella 15 voittolaukausmaalia 14 pelaajalle (Ojantakanen 11 virallisen 10
+sijaan). Virallinen sääntö näyttötarkoituksiin: `NOT is_shootout AND goal_types NOT LIKE
+'%RL0%' AND NOT LIKE '%VT0%'` (V_PLAYER_SEASON_NOW, V_PLAYER_SEASONS, sovelluksen
+DuckDB-peilit). `player_season_scoring` sulkee voittolaukaukset pois mutta laskee RL0:t
+(yllä) -- mallin syötettä EI muutettu.
+
 ## Three doors into liiga.fi, and which one is used
 
 | Endpoint | Used for | Health |

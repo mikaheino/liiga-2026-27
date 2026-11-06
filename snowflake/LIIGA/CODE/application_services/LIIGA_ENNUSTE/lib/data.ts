@@ -178,7 +178,7 @@ const SKATERS_DUCK = `
       SELECT e.player_id, COUNT(*) AS goals,
              COUNT(*) FILTER (WHERE e.is_powerplay) AS pp_goals
       FROM raw_goal_events e
-      WHERE e.season = (SELECT s FROM cur) AND e.player_id <> 0
+      WHERE e.season = (SELECT s FROM cur) AND e.player_id <> 0 AND NOT COALESCE(e.is_shootout, FALSE)
         AND COALESCE(e.goal_types, '') NOT LIKE '%RL0%' AND COALESCE(e.goal_types, '') NOT LIKE '%VT0%'
       GROUP BY e.player_id),
     pss AS (SELECT player_id, assists FROM player_season_scoring WHERE season = (SELECT s FROM cur)),
@@ -221,7 +221,7 @@ const GOALIES_DUCK = `
     LEFT JOIN agg a ON a.player_id = t.player_id
     LEFT JOIN pre p ON p.nm = LOWER(t.first_name || ' ' || t.last_name) AND p.team = t.team
     ORDER BY goals_saved_vs_average DESC NULLS LAST`;
-export const loadPlayers = memo("loadPlayers", async () => {
+export const loadPlayers = memo("loadPlayers:v2", async () => {   // v2: ei voittolaukausmaaleja
   const [sk, gk] = await Promise.all([
     query(DATA_MODE === "snowflake"
       ? `SELECT player_id, player_name, team, position, games_played, goals, assists, points, pp_goals,
@@ -246,6 +246,99 @@ export const loadPlayers = memo("loadPlayers", async () => {
     preSv: num(r.PRESEASON_SAVE_PCT), savedPre: num(r.GOALS_SAVED_VS_PRESEASON),
   }));
   return { skaters, goalies };
+});
+
+// Pelaajan aiemmat Liiga-kaudet (6.11.2026, pelaajakortti ja agentin tilannekuva).
+// Snowflakessa V_PLAYER_SEASONS, DuckDB:ssä sama kysely pohjatauluista. Maalit
+// virallisella säännöllä: ei voittolaukausmaaleja (is_shootout), ei RL0:aa eikä VT0:aa
+// -- PLAYER_SEASON_SCORINGin oma goals laskee RL0:t (docs/claude/data.md). Aiemmilta
+// kausilta ei ole kokoonpanoja, joten tahti on per joukkueen ottelu, kuten mallissa.
+export type PastSeason = { season: number; team: string; goals: number; assists: number; teamGames: number };
+const HISTORY_DUCK = `
+    WITH cur AS (SELECT MAX(season) AS s FROM stg_games),
+    goals AS (
+      SELECT season, player_id, team, COUNT(*) AS goals
+      FROM raw_goal_events
+      WHERE player_id <> 0 AND NOT COALESCE(is_shootout, FALSE)
+        AND COALESCE(goal_types, '') NOT LIKE '%RL0%' AND COALESCE(goal_types, '') NOT LIKE '%VT0%'
+      GROUP BY 1, 2, 3),
+    model AS (SELECT player_id, MAX(n_seasons) AS n_seasons FROM player_rates_unified WHERE player_id IS NOT NULL GROUP BY 1)
+    SELECT s.player_id, s.season, s.team, COALESCE(g.goals, 0) AS goals, COALESCE(s.assists, 0) AS assists,
+           s.team_games, m.n_seasons AS model_seasons_used
+    FROM player_season_scoring s
+    LEFT JOIN goals g ON g.season = s.season AND g.player_id = s.player_id AND g.team = s.team
+    LEFT JOIN model m ON m.player_id = s.player_id
+    WHERE s.season < (SELECT s FROM cur)
+    ORDER BY s.player_id, s.season, s.team`;
+// Virhe hylätään (ei tyhjää välimuistiin, ks. loadPositionHistory); kutsujat
+// näyttävät kortin ilman historiaa, jos näkymää ei vielä ole.
+export const loadPlayerHistory = memo("loadPlayerHistory:v2", async () => {
+  const rows = await query(DATA_MODE === "snowflake"
+    ? `SELECT player_id, season, team, goals, assists, team_games, model_seasons_used
+       FROM ${M}.V_PLAYER_SEASONS WHERE NOT is_current_season ORDER BY player_id, season, team`
+    : HISTORY_DUCK);
+  const seasons: Record<number, PastSeason[]> = {}, used: Record<number, number> = {};
+  for (const r of rows) {
+    const id = Number(r.PLAYER_ID);
+    (seasons[id] ??= []).push({ season: Number(r.SEASON), team: String(r.TEAM), goals: Number(r.GOALS), assists: Number(r.ASSISTS),
+      teamGames: Number(r.TEAM_GAMES) });
+    if (r.MODEL_SEASONS_USED != null) used[id] = Number(r.MODEL_SEASONS_USED);
+  }
+  return { seasons, used };
+});
+
+// Sijaintijakauman historia (6.11.2026): etusivun heatmapia voi kelata kauden
+// taaksepäin yläpalkista. pipeline.persist() tallentaa jakauman päivittäin, menneet
+// päivät täydennettiin git-versioista (scripts/tools/backfill_position_history.py).
+// Ilman taulua kelaus vain puuttuu -- mutta virhe HYLÄTÄÄN eikä muuteta tyhjäksi:
+// memo() tallentaisi tyhjän onnistumisena seuraavaan ennusteajoon asti, ja yksi
+// ohimenevä DuckDB-lukitus piilotti kelauksen (6.11.). Kutsuja käsittelee virheen.
+// Sija = sen päivän PREDICTION_HISTORY.proj_rank (sama lähde kuin nykyinen järjestys),
+// jotta kelattaessa joukkueet asettuvat sen hetken järjestykseen (käyttäjä 6.11.:
+// "joukkueet eivät liiku ylös alas ... lukija ei osaa tulkita tätä").
+// Tarvittavat pisteet kelattaessa (6.11.): sen päivän 14 parhaan raja (LINE_HISTORY) ja
+// joukkueiden silloiset pisteet ja ottelut = ensimmäiset N pelattua ottelua aloitusajan
+// mukaan (sama joukko, joka todennettiin virallista sarjataulukkoa vasten).
+export type SnapLine = { rank: number; likely: number; safe: number };
+export type Snap = { date: string; played: number; p: Record<string, number[]>; rank: Record<string, number>;
+  line: SnapLine | null; table: Record<string, { pts: number; gp: number }> };
+const missingTable = (e: unknown) => /does not exist/i.test(String((e as Error)?.message ?? e));
+function pointsOf(f: Fixture): [number, number] {
+  const extra = f.category === "overtime" || f.category === "shootout";
+  return f.hg! > f.ag! ? (extra ? [2, 1] : [3, 0]) : (extra ? [1, 2] : [0, 3]);
+}
+export const loadPositionHistory = memo("loadPositionHistory:v5", async (): Promise<Snap[]> => {
+  const [lineRows, fx] = await Promise.all([
+    query(`SELECT * FROM ${M}.LINE_HISTORY`).catch((e) => { if (missingTable(e)) return [] as Record<string, unknown>[]; throw e; }),
+    loadFixtures(),
+  ]);
+  const lines = new Map(lineRows.map((r) => [String(r.SNAPSHOT_DATE).slice(0, 10),
+    { rank: Number(r.LINE_RANK), likely: Number(r.LINE_LIKELY), safe: Number(r.LINE_SAFE) }]));
+  const played = fx.filter((f) => f.ended && f.hg != null && f.ag != null)
+    .sort((a, b) => a.start_ts.localeCompare(b.start_ts) || (a.gameId ?? 0) - (b.gameId ?? 0));
+  const rows = await query(`
+    SELECT h.*, p.proj_rank AS hist_rank FROM ${M}.POSITION_DISTRIBUTION_HISTORY h
+    LEFT JOIN ${M}.PREDICTION_HISTORY p
+      ON CAST(p.snapshot_date AS VARCHAR) = CAST(h.snapshot_date AS VARCHAR) AND p.team = h.team
+    ORDER BY h.snapshot_date, h.team`);
+  const by = new Map<string, Snap>();
+  for (const r of rows) {
+    const d = String(r.SNAPSHOT_DATE).slice(0, 10);
+    const snap = by.get(d) ?? { date: d, played: Number(r.GAMES_PLAYED), p: {}, rank: {}, line: lines.get(d) ?? null, table: {} };
+    snap.p[String(r.TEAM)] = Array.from({ length: 17 }, (_, i) => Math.round(Number(r[`RANK_${i + 1}`] ?? 0) * 1e4) / 1e4);
+    if (r.HIST_RANK != null) snap.rank[String(r.TEAM)] = Number(r.HIST_RANK);
+    by.set(d, snap);
+  }
+  for (const snap of by.values()) {
+    for (const f of played.slice(0, snap.played)) {
+      const [hp, ap] = pointsOf(f);
+      for (const [t, p] of [[f.home, hp], [f.away, ap]] as const) {
+        const row = (snap.table[t] ??= { pts: 0, gp: 0 });
+        row.pts += p; row.gp += 1;
+      }
+    }
+  }
+  return [...by.values()];
 });
 
 // Uutishaastaja (27.10.): taulut syntyvät vain Pages-käännöksessä

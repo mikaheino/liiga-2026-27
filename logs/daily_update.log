@@ -1,24 +1,3 @@
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
     raise new_e
   File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
     self._validate_conn(conn)
@@ -1997,4 +1976,25 @@ updated: 161/544 games played, crowd weight 0.14
 wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
 serve with: python -m http.server 8765 --directory site
 snowflake sync: 11 tables, 5,481 rows published to LIIGA
+=== done ===
+=== 2026-11-04 08:30:05 daily update ===
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 11 tables, 5,563 rows published to LIIGA
+=== done ===
+=== 2026-11-05 08:30:04 daily update ===
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 11 tables, 5,563 rows published to LIIGA
+=== done ===
+=== 2026-11-06 08:30:03 daily update ===
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 11 tables, 5,563 rows published to LIIGA
 === done ===

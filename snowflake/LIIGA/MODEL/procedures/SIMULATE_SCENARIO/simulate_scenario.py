@@ -42,6 +42,20 @@ ensemblen Poisson-osaan painolla 0,4 -- Elo-osa ei riipu pelaajista. Tasapelien
 kalibrointi (model.calibrate_ties) jätetään pois muutoksesta: se on koko
 otteluohjelman kerroin eikä juuri liiku yhden joukkueen muutoksesta.
 
+Ottelu tunnisteella (sovelluksen napautus) ja jakso (6.11.2026):
+  {"game_id": 2701370, "result": "home_win"}       # home_win|away_win|home_reg|home_ot|away_ot|away_reg
+  {"game_id": 2701370, "team": "HPK", "result": "loss"}
+  {"team": "HPK", "result": "loss", "from": "2026-12-20", "until": "2027-01-06"}   # until mukaan lukien
+Poissaolo myös pelaajan tunnisteella: {"injury": 12345} tai {"player_id": 12345}.
+Panokset: {"stakes": {"days": 7}} (seuraavan viikon ottelut) tai
+{"stakes": {"team": "Jokerit", "top": 5}} (joukkueen ratkaisevimmat ottelut): tavoitteen
+todennäköisyys ehdolla kunkin ottelun tulos, samoista simuloiduista kausista.
+
+Kaikki todennäköisyydet ankkuroidaan julkaistuun ennusteeseen (julkaistu + skenaario -
+perustaso), myös "mitä vaaditaan" ja panokset. JSON-tila (MODE 'json') palauttaa
+rakenteisen tuloksen ja kanonisen skenaarion (vain ratkaistut tunnisteet) sekä sen
+sha:n: sama skenaario eri sanoin = sama sha. Tyhjä skenaario sallitaan vain JSON-tilassa.
+
 Puhdas Python + numpy: sama tiedosto ajetaan paikallisesti
 (scripts/tools/skenaario.py, DuckDB) ja Snowflaken proseduurina (handler `run`).
 """
@@ -55,6 +69,13 @@ import numpy as np
 N_SIMS = 10_000
 SEED = 42
 PTS = {"reg_win": 3, "ot_win": 2, "ot_loss": 1, "reg_loss": 0}
+CANON = ("home_reg", "home_ot", "away_ot", "away_reg")     # tuloskoodit 0..3 (k-matriisi)
+GAME_RESULTS = {"home_win": ("home_reg", "home_ot"), "away_win": ("away_ot", "away_reg"),
+                "home_reg": ("home_reg",), "home_ot": ("home_ot",), "away_ot": ("away_ot",),
+                "away_reg": ("away_reg",)}
+# Tavoite -> julkaistun ennusteen kenttä (ja onko se komplementti).
+GOAL_PUB = {"win": ("p_title", False), "top6": ("p_top6", False), "top10": ("p_top10", False),
+            "avoid_relegation": ("p_relegation", True)}
 RESULTS = {
     "win": ("home_reg", "home_ot"), "reg_win": ("home_reg",), "ot_win": ("home_ot",),
     "loss": ("away_reg", "away_ot"), "reg_loss": ("away_reg",), "ot_loss": ("away_ot",),
@@ -81,36 +102,81 @@ class ScenarioError(ValueError):
     """Skenaariota ei voi tulkita; viesti kerrotaan käyttäjälle."""
 
 
+def _team_of(lower: dict[str, str], name, what: str = "joukkue") -> str:
+    t = lower.get(str(name or "").strip().lower())
+    if not t:
+        raise ScenarioError(f"tuntematon {what} {name!r}; joukkueet: {', '.join(sorted(lower.values()))}")
+    return t
+
+
+def _result_of(item: dict) -> str:
+    res = str(item.get("result", "win")).strip().lower()
+    res = ALIASES.get(res, res)
+    if res not in RESULTS:
+        raise ScenarioError(f"tuntematon tulos {item.get('result')!r}; käytä {', '.join(RESULTS)}")
+    return res
+
+
+def _matching(games: list[dict], team: str, opp: str | None, lo: str, hi: str) -> list[int]:
+    both = (team, opp) if opp else (team,)
+    hits = [i for i, g in enumerate(games) if all(t in (g["home_team"], g["away_team"]) for t in both)]
+    if lo or hi:
+        hits = [i for i in hits if (lo or "0000") <= games[i]["iso"] <= (hi or "9999")]
+    return hits
+
+
+def _team_games(item: dict, games: list[dict], team: str, opp: str | None) -> list[int]:
+    """Joukkueen lukittavat ottelut: seuraavat N tai jakson from-until (until mukaan lukien)."""
+    lo, hi = str(item.get("from") or "")[:10], str(item.get("until") or "")[:10]
+    hits = _matching(games, team, opp, lo, hi)
+    if (lo or hi) and not item.get("games"):
+        if not hits:
+            raise ScenarioError(f"{team}: ei pelaamattomia otteluita jaksolla {lo or '…'}–{hi or '…'}")
+        return hits
+    n = int(item.get("games") or 1)
+    if len(hits) < n:
+        raise ScenarioError(f"{team}: pelaamattomia otteluita löytyi {len(hits)}, pyydettiin {n}")
+    return hits[:n]
+
+
+def _game_lock(item: dict, games: list[dict], lower: dict[str, str]) -> tuple[int, tuple[str, ...]]:
+    """{"game_id": .., "result": home_win|..} tai joukkueen näkökulmasta {"team": .., "result": win|..}."""
+    gid = int(item["game_id"])
+    i = next((i for i, g in enumerate(games) if int(g.get("game_id") or -1) == gid), None)
+    if i is None:
+        raise ScenarioError(f"ottelua {gid} ei löydy pelaamattomista")
+    g = games[i]
+    if item.get("team"):
+        team = _team_of(lower, item["team"])
+        if team not in (g["home_team"], g["away_team"]):
+            raise ScenarioError(f"{team} ei pelaa ottelussa {g['home_team']}–{g['away_team']}")
+        res = _result_of(item)
+        return i, RESULTS[res] if g["home_team"] == team else tuple(FLIP[o] for o in RESULTS[res])
+    res = str(item.get("result", "")).strip().lower()
+    if res not in GAME_RESULTS:
+        raise ScenarioError(f"tuntematon tulos {item.get('result')!r}; käytä {', '.join(GAME_RESULTS)}")
+    return i, GAME_RESULTS[res]
+
+
 def resolve(scenario: list[dict], games: list[dict], teams: set[str]) -> dict[int, tuple[str, ...]]:
     """Skenaarion rivit -> {pelaamattoman ottelun indeksi: sallitut tulokset kotijoukkueen
     näkökulmasta}. `games` on aikajärjestyksessä."""
     fixed: dict[int, tuple[str, ...]] = {}
     lower = {t.lower(): t for t in teams}
     for item in scenario:
-        team = lower.get(str(item.get("team", "")).strip().lower())
-        if not team:
-            raise ScenarioError(f"tuntematon joukkue {item.get('team')!r}; joukkueet: {', '.join(sorted(teams))}")
-        res = str(item.get("result", "win")).strip().lower()
-        res = ALIASES.get(res, res)
-        if res not in RESULTS:
-            raise ScenarioError(f"tuntematon tulos {item.get('result')!r}; käytä {', '.join(RESULTS)}")
-        opp = item.get("opponent")
-        if opp:
-            opp = lower.get(str(opp).strip().lower())
-            if not opp:
-                raise ScenarioError(f"tuntematon vastustaja {item.get('opponent')!r}")
-        n = int(item.get("games") or 1)
-        hits = [i for i, g in enumerate(games)
-                if team in (g["home_team"], g["away_team"])
-                and (not opp or opp in (g["home_team"], g["away_team"]))][:n]
-        if len(hits) < n:
-            raise ScenarioError(f"{team}: pelaamattomia otteluita löytyi {len(hits)}, pyydettiin {n}")
-        for i in hits:
-            allowed = RESULTS[res] if games[i]["home_team"] == team else tuple(FLIP[o] for o in RESULTS[res])
+        if item.get("game_id") is not None:
+            pairs = [_game_lock(item, games, lower)]
+        else:
+            team = _team_of(lower, item.get("team"))
+            res = _result_of(item)
+            opp = _team_of(lower, item["opponent"], "vastustaja") if item.get("opponent") else None
+            pairs = [(i, RESULTS[res] if games[i]["home_team"] == team else tuple(FLIP[o] for o in RESULTS[res]))
+                     for i in _team_games(item, games, team, opp)]
+        for i, allowed in pairs:
             if i in fixed and set(fixed[i]) != set(allowed):
                 g = games[i]
                 raise ScenarioError(f"ristiriita: {g['home_team']}–{g['away_team']} lukittu kahdesti eri tavoin")
-            fixed[i] = allowed
+            fixed[i] = tuple(o for o in CANON if o in allowed)
     return fixed
 
 
@@ -148,11 +214,35 @@ def _goalie_mult(goalies: list[dict], team: str, out: set[str]) -> float:
     return (1 - sv) / (1 - LEAGUE_SV)
 
 
-def find_player(name: str, players: list[dict], goalies: list[dict]) -> dict:
+def _pid(x) -> int | None:
+    try:
+        return int(x) if x is not None and x == x else None       # NaN -> None
+    except (TypeError, ValueError):
+        return None
+
+
+def _by_id(pid: int, pool: list[dict]) -> dict:
+    hit = next((p for p in pool if p["player_id"] == pid), None)
+    if not hit:
+        raise ScenarioError(f"pelaajaa {pid} ei löydy nykyisistä kokoonpanoista")
+    return hit
+
+
+def find_player(name, players: list[dict], goalies: list[dict]) -> dict:
+    """Nimi tai tunniste (player_id) -> pelaaja. Monitulkintainen nimi on virhe:
+    agentti kysyy tarkennuksen eikä arvaa."""
     pool = [{"name": p["name"], "team": p["team"], "position_group": p["position_group"],
-             "rate": p["projected_goals_per_game"]} for p in players if p["position_group"] != "G"]
-    pool += [{"name": g["name"], "team": g["team"], "position_group": "G", "rate": g["proj_save_pct"]}
-             for g in goalies]
+             "rate": p["projected_goals_per_game"], "player_id": _pid(p.get("player_id"))}
+            for p in players if p["position_group"] != "G"]
+    pid = name if isinstance(name, int) else (int(name) if str(name).strip().isdigit() else None)
+    if pid is not None:
+        return _by_id(pid, pool)
+    pool += [{"name": g["name"], "team": g["team"], "position_group": "G", "rate": g["proj_save_pct"],
+              "player_id": None} for g in goalies]
+    return _by_name(str(name), pool)
+
+
+def _by_name(name: str, pool: list[dict]) -> dict:
     q = name.strip().lower()
     hits = [p for p in pool if p["name"].lower() == q] or \
            [p for p in pool if q in p["name"].lower() or p["name"].lower().split()[-1] == q.split()[-1]]
@@ -187,6 +277,10 @@ def _iso_add(iso: str, days: int) -> str:
     return (dt.date.fromisoformat(iso) + dt.timedelta(days=days)).isoformat()
 
 
+def _who(it: dict):
+    return it["player_id"] if it.get("player_id") is not None else it["injury"]
+
+
 def apply_injuries(items: list[dict], games: list[dict], model: dict,
                    today: str | None = None) -> tuple[list[dict], list[dict]]:
     """Poissa olevat pelaajat -> joukkueen hyökkäys- ja puolustusvoima mallin omilla
@@ -202,7 +296,7 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
     scale = LEAGUE_AVG / (sum(raw_all.values()) / len(raw_all))
     info = []
     for it in items:
-        p = find_player(str(it["injury"]), players, goalies)
+        p = find_player(_who(it), players, goalies)
         d_off, d_def = _player_delta(p, players, goalies, raw_all, scale)
         tg = [i for i, g in enumerate(games) if p["team"] in (g["home_team"], g["away_team"])]
         if it.get("until"):
@@ -275,10 +369,18 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
     return changed, info
 
 
+def _outcome_probs(gm: dict) -> dict[str, float]:
+    hreg, ot, how = gm["p_home_reg"], gm["p_overtime"], gm["p_home_ot_win"]
+    return {"home_reg": hreg, "home_ot": ot * how, "away_ot": ot * (1 - how),
+            "away_reg": max(0.0, 1.0 - hreg - ot)}
+
+
 def simulate(games: list[dict], banked: dict[str, float], teams: list[str],
              fixed: dict[int, tuple[str, ...]] | None = None) -> dict[str, np.ndarray]:
     """Monte Carlo kuten src/liiga/simulate.py. Satunnaisluvut arvotaan ennen
-    lukitusta, joten kahdella kutsulla (fixed=None ja fixed=...) on samat luvut."""
+    lukitusta, joten kahdella kutsulla (fixed=None ja fixed=...) on samat luvut.
+    `_k` (kausi x ottelu, int8) = kunkin ottelun tulos koodina CANON-järjestyksessä:
+    panokset ehdollistetaan sillä samoista kausista."""
     fixed = fixed or {}
     rng = np.random.default_rng(SEED)
     idx = {t: i for i, t in enumerate(teams)}
@@ -286,13 +388,12 @@ def simulate(games: list[dict], banked: dict[str, float], teams: list[str],
     u = rng.random((N_SIMS, G))
     jitter = rng.random((N_SIMS, len(teams))) * 1e-6
     points = np.zeros((N_SIMS, len(teams)))
+    K = np.zeros((N_SIMS, G), dtype=np.int8)
     for t, b in banked.items():
         if t in idx:
             points[:, idx[t]] += b
     for g, gm in enumerate(games):
-        hreg, ot, how = gm["p_home_reg"], gm["p_overtime"], gm["p_home_ot_win"]
-        p = {"home_reg": hreg, "home_ot": ot * how, "away_ot": ot * (1 - how),
-             "away_reg": max(0.0, 1.0 - hreg - ot)}
+        p = _outcome_probs(gm)
         allowed = fixed.get(g, ("home_reg", "home_ot", "away_ot", "away_reg"))
         order = [o for o in ("home_reg", "home_ot", "away_ot", "away_reg") if o in allowed]
         w = np.array([p[o] for o in order])
@@ -301,6 +402,7 @@ def simulate(games: list[dict], banked: dict[str, float], teams: list[str],
         # samaa satunnaislukua kuin perustasossa (common random numbers).
         cut = np.cumsum(w)
         k = np.minimum(np.searchsorted(cut, u[:, g], side="right"), len(order) - 1)
+        K[:, g] = np.array([CANON.index(o) for o in order], dtype=np.int8)[k]
         h, a = idx[gm["home_team"]], idx[gm["away_team"]]
         for j, o in enumerate(order):
             m = k == j
@@ -312,8 +414,9 @@ def simulate(games: list[dict], banked: dict[str, float], teams: list[str],
     ranks[np.arange(N_SIMS)[:, None], order_] = np.arange(1, len(teams) + 1)
     n = len(teams)
     return {"points": points.mean(axis=0), "p_title": (ranks == 1).mean(axis=0),
-            "p_top6": (ranks <= 6).mean(axis=0), "p_relegation": (ranks >= n - 2).mean(axis=0),
-            "_points": points, "_ranks": ranks}
+            "p_top6": (ranks <= 6).mean(axis=0), "p_top10": (ranks <= 10).mean(axis=0),
+            "p_relegation": (ranks >= n - 2).mean(axis=0),
+            "_points": points, "_ranks": ranks, "_k": K}
 
 
 # Tavoite -> paras sallittu sija (n = joukkueiden määrä). Putoaminen on 15.-17.
@@ -381,39 +484,147 @@ def requirement(team: str, goal: str, sim: dict, games: list[dict], banked: dict
             "line_p95": float(np.percentile(line, 95)), "rivals": rivals, "rival_rows": rival_rows}
 
 
-def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
-            published: dict[str, dict], crowd_weight: float,
-            played: dict[str, int] | None = None, model: dict | None = None) -> dict:
-    teams = sorted(published)
-    goals = [it for it in scenario if it.get("goal")]
-    injuries = [it for it in scenario if it.get("injury")]
-    fixed = resolve([it for it in scenario if not it.get("goal") and not it.get("injury")],
-                    games, set(teams))
-    injury_info: list[dict] = []
-    games_scn = games
-    if injuries:
-        if not model:
-            raise ScenarioError("loukkaantumisskenaario tarvitsee pelaaja- ja joukkuedatan")
-        games_scn, injury_info = apply_injuries(injuries, games, model, model.get("today"))
-    base = simulate(games, banked, teams)
-    scn = simulate(games_scn, banked, teams, fixed) if (fixed or injuries) else base
+def _goal_ok(sim: dict, teams: list[str], goal: str) -> np.ndarray:
+    """kausi x joukkue: toteutuiko tavoite."""
+    return sim["_ranks"] <= GOALS[goal][1](len(teams))
+
+
+def _pub_goal(published: dict, team: str, goal: str) -> float | None:
+    key, inv = GOAL_PUB[goal]
+    v = published[team].get(key)
+    return None if v is None else (1 - v if inv else v)
+
+
+def _anchor(pub: float | None, p_scn: float, p_base: float) -> float:
+    """Yksi luku per asia: julkaistu + (skenaario - perustaso), rajattu 0..1."""
+    return p_scn if pub is None else min(1.0, max(0.0, pub + p_scn - p_base))
+
+
+def _stake_games(games: list[dict], team: str | None, opts: dict, today: str | None) -> list[int]:
+    if team:
+        return [i for i, g in enumerate(games) if team in (g["home_team"], g["away_team"])]
+    lo = today or games[0]["iso"]
+    hi = _iso_add(lo, int(opts.get("days") or 7))
+    return [i for i, g in enumerate(games) if lo <= g["iso"] < hi]
+
+
+def _stake(g: dict, rows: list[dict], team: str | None) -> dict | None:
+    playing = (g["home_team"], g["away_team"])
+    mine = [r for r in rows if r["team"] in ((team,) if team else playing)]
+    if not mine:
+        return None
+    others = sorted((r for r in rows if r["team"] not in playing and abs(r["delta"]) > max(0.01, 2 * r["se"])),
+                    key=lambda r: -abs(r["delta"]))
+    return {"game_id": g.get("game_id"), "date": g["date"], "iso": g["iso"], "home": g["home_team"],
+            "away": g["away_team"], "p_outcome": _outcome_probs(g),
+            "top": max(mine, key=lambda r: abs(r["delta"])), "others": others[:3]}
+
+
+def stakes(scn: dict, base: dict, games: list[dict], teams: list[str], published: dict,
+           opts: dict, today: str | None = None) -> list[dict]:
+    """Panokset: tavoitteen todennäköisyys ehdolla ottelun tulos, samoista kausista
+    (k-matriisi). Ottelulle valitaan sen joukkueiden elävin tavoite (suurin ero
+    koti- ja vierasvoiton välillä); sivulliset = muut joukkueet, joiden luku liikkuu
+    yli kaksi keskivirhettä. opts: {"days": 7} tai {"team": "Jokerit", "top": 5}."""
+    team = _team_of({t.lower(): t for t in teams}, opts["team"]) if opts.get("team") else None
+    ok = {gl: _goal_ok(scn, teams, gl) for gl in GOAL_PUB}
+    base_p = {gl: _goal_ok(base, teams, gl).mean(axis=0) for gl in GOAL_PUB}
+    out = [x for i in _stake_games(games, team, opts, today)
+           if (x := _stake(games[i], _stake_rows(scn["_k"][:, i], ok, base_p, teams, published), team))]
+    if team:
+        out = sorted(out, key=lambda x: -abs(x["top"]["delta"]))[:int(opts.get("top") or 5)]
+    return out
+
+
+def _stake_rows(k: np.ndarray, ok: dict, base_p: dict, teams: list[str], published: dict) -> list[dict]:
+    """Kaikki (joukkue, tavoite) -parit, jotka ovat vielä auki: ehdolliset luvut koodeittain."""
+    masks = {"home_win": k <= 1, "away_win": k >= 2, "home_reg": k == 0, "ot": (k == 1) | (k == 2),
+             "away_reg": k == 3}
+    n = {m: int(v.sum()) for m, v in masks.items()}
+    rows = []
+    for gl, mat in ok.items():
+        p_all = mat.mean(axis=0)
+        cond = {m: (mat[v].mean(axis=0) if n[m] else p_all) for m, v in masks.items()}
+        for j, t in enumerate(teams):
+            if not 0.005 < p_all[j] < 0.995:
+                continue
+            ph, pa = cond["home_win"][j], cond["away_win"][j]
+            se = math.sqrt(ph * (1 - ph) / max(n["home_win"], 1) + pa * (1 - pa) / max(n["away_win"], 1))
+            pub, b = _pub_goal(published, t, gl), float(base_p[gl][j])
+            rows.append({"team": t, "goal": gl, "p_now": _anchor(pub, float(p_all[j]), b),
+                         **{f"p_{m}": _anchor(pub, float(cond[m][j]), b) for m in masks},
+                         "delta": float(ph - pa), "se": se})
+    return rows
+
+
+def _lock_label(gm: dict, allowed: tuple[str, ...]) -> str:
+    key = tuple(o for o in CANON if o in allowed)
+    return {("home_reg", "home_ot"): f"{gm['home_team']} voittaa",
+            ("away_ot", "away_reg"): f"{gm['away_team']} voittaa",
+            ("home_reg",): f"{gm['home_team']} voittaa varsinaisella peliajalla",
+            ("home_ot",): f"{gm['home_team']} voittaa jatkoajalla",
+            ("away_ot",): f"{gm['away_team']} voittaa jatkoajalla",
+            ("away_reg",): f"{gm['away_team']} voittaa varsinaisella peliajalla"}.get(key, "/".join(key))
+
+
+def canonical(fixed: dict, games: list[dict], injury_info: list[dict], goals: list[dict]) -> list[dict]:
+    """Ratkaistu skenaario: vain tunnisteet ja enumit, ei käyttäjän sanoja. Kelpaa
+    sellaisenaan syötteeksi (sovelluksen sirut), ja sama skenaario eri sanoin
+    tuottaa saman listan."""
+    rev = {v: k for k, v in GAME_RESULTS.items()}
+    items: list[dict] = []
+    for i, allowed in sorted(fixed.items()):
+        gm = games[i]
+        items.append({"game_id": gm.get("game_id"), "result": rev[tuple(o for o in CANON if o in allowed)],
+                      "label": f"{gm['date']} {gm['home_team']}–{gm['away_team']}: {_lock_label(gm, allowed)}"})
+    for x in injury_info:
+        it = {"injury": x["player_id"] if x.get("player_id") is not None else x["name"], "games": x["n_games"]}
+        if x["ramp_games"]:
+            it.update(ramp_games=x["ramp_games"], ramp_effect=x["ramp_effect"])
+        items.append({**it, "label": f"{x['name']} ({x['team']}) poissa {x['n_games']} ottelua"})
+    for g in goals:
+        it = {"team": g["team"], "goal": g["goal"]}
+        if g.get("rivals"):
+            it["rivals"] = sorted(g["rivals"])
+        items.append({**it, "label": f"{g['team']}: {GOALS[g['goal']][0]}"})
+    return items
+
+
+def scenario_sha(items: list[dict]) -> str:
+    import hashlib
+    core = [{k: v for k, v in it.items() if k != "label"} for it in items]
+    return hashlib.sha256(json.dumps(core, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+
+
+def _goal_items(goals: list[dict], teams: list[str]) -> list[dict]:
     lower = {t.lower(): t for t in teams}
+    out = []
+    for g in goals:
+        gl = GOAL_ALIASES.get(str(g["goal"]).strip().lower(), str(g["goal"]).strip().lower())
+        if gl not in GOALS:
+            raise ScenarioError(f"tuntematon tavoite {g['goal']!r}; käytä {', '.join(GOALS)}")
+        out.append({"team": _team_of(lower, g.get("team")), "goal": gl,
+                    "rivals": [_team_of(lower, rv, "kilpakumppani") for rv in g.get("rivals") or []]})
+    return out
+
+
+def _requirements(goals: list[dict], scn: dict, base: dict, games, banked, teams, played, published,
+                  injuries: bool) -> list[dict]:
     reqs = []
     for g in goals:
-        t = lower.get(str(g.get("team", "")).strip().lower())
-        if not t:
-            raise ScenarioError(f"tuntematon joukkue {g.get('team')!r}")
-        named = []
-        for rv in g.get("rivals") or []:
-            rt = lower.get(str(rv).strip().lower())
-            if not rt:
-                raise ScenarioError(f"tuntematon kilpakumppani {rv!r}")
-            named.append(rt)
-        reqs.append(requirement(t, str(g["goal"]).strip().lower(), scn, games, banked, teams, played,
-                                named or None))
+        r = requirement(g["team"], g["goal"], scn, games, banked, teams, played, g["rivals"] or None)
+        pub = _pub_goal(published, g["team"], g["goal"])
+        p_base = float(_goal_ok(base, teams, g["goal"])[:, teams.index(g["team"])].mean())
+        r["p_sim"] = r["p"]
+        r["p"] = _anchor(pub, r["p_sim"], p_base)
         if injuries:     # mitä vaaditaan -vastaus ilman poissaoloa vertailuksi
-            reqs[-1]["p_without_injury"] = requirement(
-                t, str(g["goal"]).strip().lower(), base, games, banked, teams, played)["p"]
+            r["p_without_injury"] = _anchor(pub, p_base, p_base)
+        reqs.append(r)
+    return reqs
+
+
+def _team_rows(teams, published, scn, base, crowd_weight) -> list[dict]:
+    keys = [k for k in ("p_title", "p_top6", "p_top10", "p_relegation") if k in published[teams[0]]]
     rows = []
     for i, t in enumerate(teams):
         pub = published[t]
@@ -421,27 +632,92 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
             "team": t,
             "points_now": pub["points"],
             "points_scenario": pub["points"] + (1 - crowd_weight) * (scn["points"][i] - base["points"][i]),
-            **{f"{k}_now": pub[k] for k in ("p_title", "p_top6", "p_relegation")},
-            **{f"{k}_scenario": min(1.0, max(0.0, pub[k] + scn[k][i] - base[k][i]))
-               for k in ("p_title", "p_top6", "p_relegation")},
+            **{f"{k}_now": pub[k] for k in keys},
+            **{f"{k}_scenario": min(1.0, max(0.0, pub[k] + scn[k][i] - base[k][i])) for k in keys},
         })
     for key in ("now", "scenario"):
         for r, row in enumerate(sorted(rows, key=lambda x: -x[f"points_{key}"]), start=1):
             row[f"rank_{key}"] = r
-    locked = []
+    return rows
+
+
+def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
+            published: dict[str, dict], crowd_weight: float,
+            played: dict[str, int] | None = None, model: dict | None = None,
+            base: dict | None = None, today: str | None = None) -> dict:
+    """base = valmiiksi simuloitu perustaso (sama kaikille skenaarioille, --batch)."""
+    teams = sorted(published)
+    today = today or (model or {}).get("today")
+    goals = _goal_items([it for it in scenario if it.get("goal")], teams)
+    injuries = [it for it in scenario if it.get("injury") is not None or it.get("player_id") is not None]
+    stake_opts = [it["stakes"] for it in scenario if it.get("stakes")]
+    locks = [it for it in scenario if not it.get("goal") and it not in injuries and not it.get("stakes")]
+    fixed = resolve(locks, games, set(teams))
+    injury_info: list[dict] = []
+    games_scn = games
+    if injuries:
+        if not model:
+            raise ScenarioError("loukkaantumisskenaario tarvitsee pelaaja- ja joukkuedatan")
+        games_scn, injury_info = apply_injuries(injuries, games, model, today)
+    base = base or simulate(games, banked, teams)
+    scn = simulate(games_scn, banked, teams, fixed) if (fixed or injuries) else base
+    reqs = _requirements(goals, scn, base, games, banked, teams, played, published, bool(injuries))
+    locked, plaus = [], 1.0
     for g, allowed in sorted(fixed.items()):
         gm = games[g]
-        desc = {("home_reg", "home_ot"): f"{gm['home_team']} voittaa",
-                ("away_ot", "away_reg"): f"{gm['away_team']} voittaa",
-                ("home_reg",): f"{gm['home_team']} voittaa varsinaisella peliajalla",
-                ("home_ot",): f"{gm['home_team']} voittaa jatkoajalla",
-                ("away_ot",): f"{gm['away_team']} voittaa jatkoajalla",
-                ("away_reg",): f"{gm['away_team']} voittaa varsinaisella peliajalla"}
-        key = tuple(o for o in ("home_reg", "home_ot", "away_ot", "away_reg") if o in allowed)
+        p = sum(_outcome_probs(gm)[o] for o in allowed)
+        plaus *= p
         locked.append({"date": gm["date"], "game": f"{gm['home_team']}–{gm['away_team']}",
-                       "result": desc.get(key, "/".join(key))})
-    return {"locked_games": locked, "teams": sorted(rows, key=lambda x: x["rank_scenario"]),
-            "requirements": reqs, "injuries": injury_info}
+                       "game_id": gm.get("game_id"), "result": _lock_label(gm, allowed), "p_model": p})
+    canon = canonical(fixed, games, injury_info, goals)
+    st = [x for o in stake_opts for x in stakes(scn, base, games, teams, published,
+                                                o if isinstance(o, dict) else {"days": int(o)}, today)]
+    return {"locked_games": locked, "teams": sorted(_team_rows(teams, published, scn, base, crowd_weight),
+                                                    key=lambda x: x["rank_scenario"]),
+            "requirements": reqs, "injuries": injury_info, "plausibility": plaus if fixed else None,
+            "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st}
+
+
+# ------------------------------------------------------- skenaariopaneeli (sovellus)
+PANEL_GOALS = ("avoid_relegation", "top10", "top6", "win")
+PANEL_STREAKS = (0, 3, 5, 10)
+
+
+def panel(team: str, goals: tuple[str, ...], streak: int, games, banked, published, w, played=None,
+          base: dict | None = None, today: str | None = None) -> dict[str, dict]:
+    """Joukkuesivun "mitä vaaditaan" + "entä jos voittaa seuraavat N": {tavoite: vastaus}.
+    Sama muoto kaikkialla: paikallinen reitti, Snowflaken MODE 'panel' ja Pagesin
+    esilaskettu tiedosto (scripts/deploy/scenario_static.py). Kaikki tavoitteet
+    yhdellä simulaatiolla per putki."""
+    want = [{"team": team, "goal": g} for g in goals]
+    base = base or simulate(games, banked, sorted(published))
+    b = compute(want, games, banked, published, w, played, base=base, today=today)
+    s = None
+    if streak:
+        try:
+            s = compute([{"team": team, "result": "win", "games": streak}, *want], games, banked, published, w,
+                        played, base=base, today=today)
+        except ScenarioError:
+            s = None                     # kautta jäljellä vähemmän kuin putki
+    out = {}
+    for i, g in enumerate(goals):
+        st = None
+        if s:
+            movers = sorted(({"team": r["team"], "d": r["points_scenario"] - r["points_now"]} for r in s["teams"]
+                             if r["team"] != team and abs(r["points_scenario"] - r["points_now"]) >= 0.3),
+                            key=lambda m: m["d"])[:6]
+            st = {"games": streak, "req": s["requirements"][i], "locked": s["locked_games"], "movers": movers}
+        out[g] = {"team": team, "goal": g, "base": b["requirements"][i], "streak": st}
+    return out
+
+
+def panel_request(req: dict, teams: list[str]) -> tuple[str, str, int]:
+    team = _team_of({t.lower(): t for t in teams}, req.get("team"))
+    goal = str(req.get("goal", ""))
+    streak = int(req.get("streak") or 0)
+    if goal not in PANEL_GOALS or streak not in PANEL_STREAKS:
+        raise ScenarioError("virheellinen skenaario")
+    return team, goal, streak
 
 
 def _pct(x: float) -> str:
@@ -552,14 +828,14 @@ def render_requirement(r: dict) -> list[str]:
     return L
 
 
-def parse(scenario_json: str) -> list[dict]:
+def parse(scenario_json: str, allow_empty: bool = False) -> list[dict]:
     try:
         s = json.loads(scenario_json)
     except (TypeError, ValueError) as exc:
         raise ScenarioError(f"skenaario ei ole JSONia: {exc}") from exc
     if isinstance(s, dict):
         s = s.get("scenario", [s]) if "team" not in s else [s]
-    if not isinstance(s, list) or not s:
+    if not isinstance(s, list) or (not s and not allow_empty):
         raise ScenarioError("skenaario on tyhjä: anna lista, esim. [{\"team\": \"Ilves\", \"result\": \"win\"}]")
     return s
 
@@ -571,7 +847,7 @@ def load(session) -> tuple[list[dict], dict, dict, float, str, dict]:
     games = [r.as_dict() for r in session.sql(f"""
         SELECT TO_CHAR(CONVERT_TIMEZONE('Europe/Helsinki', TO_TIMESTAMP_TZ(s.start_ts)), 'DD.MM.') AS "date",
                TO_CHAR(CONVERT_TIMEZONE('Europe/Helsinki', TO_TIMESTAMP_TZ(s.start_ts)), 'YYYY-MM-DD') AS "iso",
-               p.home_team AS "home_team", p.away_team AS "away_team",
+               p.game_id AS "game_id", p.home_team AS "home_team", p.away_team AS "away_team",
                p.p_home_reg AS "p_home_reg", p.p_overtime AS "p_overtime", p.p_home_ot_win AS "p_home_ot_win"
         FROM LIIGA.MODEL.PREDICTION_GAMES p
         JOIN LIIGA.MODEL.STG_GAMES s ON s.season = 2027 AND s.game_id = p.game_id
@@ -585,9 +861,9 @@ def load(session) -> tuple[list[dict], dict, dict, float, str, dict]:
         banked[r[1]] = banked.get(r[1], 0) + r[3]
         played[r[0]] = played.get(r[0], 0) + 1
         played[r[1]] = played.get(r[1], 0) + 1
-    published = {r[0]: {"points": r[1], "p_title": r[2], "p_top6": r[3], "p_relegation": r[4]}
+    published = {r[0]: {"points": r[1], "p_title": r[2], "p_top6": r[3], "p_relegation": r[4], "p_top10": r[5]}
                  for r in session.sql("""
-        SELECT s.team, s.mean_points, s.p_title, z.p_top6_quarterfinal, z.p_relegation_15_17
+        SELECT s.team, s.mean_points, s.p_title, z.p_top6_quarterfinal, z.p_relegation_15_17, z.p_playoffs_any
         FROM LIIGA.MODEL.STANDINGS_2026_27 s JOIN LIIGA.MODEL.V_ZONE_PROBABILITIES z ON z.team = s.team""").collect()}
     w = session.sql("SELECT crowd_weight_eff FROM LIIGA.MODEL.PREDICTION_META").collect()[0][0] or 0.0
     return games, banked, published, float(w), str(snap), played
@@ -595,8 +871,9 @@ def load(session) -> tuple[list[dict], dict, dict, float, str, dict]:
 
 def load_model(session) -> dict:
     """Pelaaja- ja joukkuedata loukkaantumisskenaariolle (vain kun sitä tarvitaan)."""
-    players = [{"name": r[0], "team": r[1], "position_group": r[2], "projected_goals_per_game": r[3]}
-               for r in session.sql("""SELECT name, team, position_group, projected_goals_per_game
+    players = [{"name": r[0], "team": r[1], "position_group": r[2], "projected_goals_per_game": r[3],
+                "player_id": _pid(r[4])}
+               for r in session.sql("""SELECT name, team, position_group, projected_goals_per_game, player_id
                                        FROM LIIGA.MODEL.PLAYER_RATES""").collect()]
     goalies = [{"team": r[0], "name": r[1], "proj_save_pct": r[2], "wt": r[3]}
                for r in session.sql("""SELECT team, name, proj_save_pct, wt
@@ -608,14 +885,42 @@ def load_model(session) -> dict:
     return {"players": players, "goalies": goalies, "strength": strength, "today": today}
 
 
-def run(session, scenario: str) -> str:
-    """Proseduurin käsittelijä. Virhe palautetaan tekstinä, jotta agentti voi
-    kertoa sen käyttäjälle ja pyytää tarkennusta."""
+def to_json(res: dict, forecast_date: str) -> str:
+    def clean(o):
+        if isinstance(o, dict):
+            return {str(k): clean(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [clean(v) for v in o]
+        if isinstance(o, (np.integer,)):
+            return int(o)
+        if isinstance(o, (np.floating, float)):
+            return None if o != o else float(o)
+        return o
+    return json.dumps(clean({**res, "forecast_date": forecast_date}), ensure_ascii=False)
+
+
+def needs_model(sc: list[dict]) -> bool:
+    return any(it.get("injury") is not None or it.get("player_id") is not None for it in sc)
+
+
+def run(session, scenario: str, mode: str = "text") -> str:
+    """Proseduurin käsittelijä. MODE 'text' (agentti, oletus), 'json' (sovellus) tai
+    'panel' ({"team", "goal", "streak"} -> joukkuesivun skenaariopaneeli).
+    Virhe palautetaan tekstinä tai {"error": ..}, jotta agentti voi kertoa sen
+    käyttäjälle ja pyytää tarkennusta."""
+    js = str(mode or "text").lower() in ("json", "panel")
     try:
-        sc = parse(scenario)
+        if str(mode).lower() == "panel":
+            games, banked, published, w, snap, played = load(session)
+            team, goal, streak = panel_request(json.loads(scenario), sorted(published))
+            res = panel(team, (goal,), streak, games, banked, published, w, played)[goal]
+            return to_json({**res, "forecastDate": str(snap)}, str(snap))
+        sc = parse(scenario, allow_empty=js)
         games, banked, published, w, snap, played = load(session)
-        model = load_model(session) if any(it.get("injury") for it in sc) else None
-        d = f"{int(snap[8:10])}.{int(snap[5:7])}.{snap[:4]}"
-        return render(compute(sc, games, banked, published, w, played, model), d)
+        model = load_model(session) if needs_model(sc) else None
+        res = compute(sc, games, banked, published, w, played, model)
+        if js:
+            return to_json(res, str(snap))
+        return render(res, f"{int(snap[8:10])}.{int(snap[5:7])}.{snap[:4]}")
     except ScenarioError as exc:
-        return f"SKENAARIOTA EI VOITU AJAA: {exc}"
+        return json.dumps({"error": str(exc)}, ensure_ascii=False) if js else f"SKENAARIOTA EI VOITU AJAA: {exc}"
