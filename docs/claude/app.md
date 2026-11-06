@@ -186,6 +186,13 @@ suunnitteilla, siksi TypeScript.
 - **Mitattu 16.10.:** ensimmäinen julkaisu 12 min (järjestelmäpoolin `SYSTEM_COMPUTE_POOL_CPU`
   kylmäkäynnistys ~8,5 min + käännös ~1 min), lämpimänä ~3 min. DEV-osoite
   https://ewduovc-zueemdq-container-services.snowflakecomputing.app (Snowflake-kirjautuminen).
+- ⚠️ **Google Fonts voi katketa Snowflaken käännöksessä (6.11.):** `next/font/google` hakee fontit
+  käännöksen aikana, ja STAGING-käännös kaatui `Module not found: Can't resolve
+  '@vercel/turbopack-next/internal/font/google/font'` / `next/font/google queries have exactly one
+  entry` (12 virhettä, kaikki `layout.tsx`:n fonteista). Koodi ei ollut muuttunut, ja **uusinta
+  (`gh run rerun <id> --failed`) meni läpi**. Lokin saa `snow sql -c liiga_ci -q "SELECT * FROM
+  TABLE(USER$LIIGA_CI.PUBLIC.SPCS_APP_BUILDER_JOB_<id>!SPCS_GET_LOGS())"` (uusin rivi ensin). Jos
+  toistuu, pysyvä korjaus on `next/font/local` repoon tallennetuilla fonteilla.
 - **Kolme ansaa:** `HOSTNAME` on alustan varaama (094516) -- älä aseta; Next.js
   standalone ei kopioi `.next/static`ia eikä `public`ia (build-skripti tekee sen);
   Next.js 16 kirjoittaa projektiin oman `AGENTS.md`:n (`agentRules: false`).
