@@ -14,8 +14,8 @@ import { useTime } from "@/components/TimeTravel";
 
 const dm = (d: string) => `${Number(d.slice(8, 10))}.${Number(d.slice(5, 7))}.`;
 
-export default function Season({ played, total, nextDate, nextGames }: {
-  played: number; total: number; nextDate: string | null; nextGames: number;
+export default function Season({ played, total, nextDate, nextGames, compact = false }: {
+  played: number; total: number; nextDate: string | null; nextGames: number; compact?: boolean;
 }) {
   const { snaps, at, setAt, enabled } = useTime();
   const [touched, setTouched] = useState(false);          // kelauksen jälkeen ei uutta laskuanimaatiota
@@ -62,7 +62,7 @@ export default function Season({ played, total, nextDate, nextGames }: {
   } : { "aria-hidden": true };
 
   return (
-    <section className={`season-hero ${snap ? "past" : ""}`} aria-label="Kauden tilanne">
+    <section className={`season-hero ${compact ? "mini" : ""} ${snap ? "past" : ""}`} aria-label="Kauden tilanne">
       <div className="sh-main">
         <div className="eyebrow">Runkosarja 2026–27</div>
         <div className="sh-big">
@@ -84,7 +84,7 @@ export default function Season({ played, total, nextDate, nextGames }: {
         <div className="sh-ticks">{rounds.map((i) => <span key={i} className={i < done ? "on" : ""} />)}</div>
         <div className="sh-scale"><span>Syyskuu</span><span>Joulukuu</span><span>Maaliskuu</span></div>
       </div>
-      {day && (
+      {day && !compact && (
         <div className="sh-next">
           <div className="sh-next-k"><span className="blink">▶</span> Seuraava pelipäivä</div>
           <div className="sh-next-d">{day}</div>

@@ -1102,3 +1102,21 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .sq-legend i.l { margin-left: 0; }
 .sq-legend i.n { border-top: 2px dashed var(--silver); }
 @media (max-width: 900px) { .sq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* --- Etusivu, neljä kerrosta (6.11.2026) -------------------------------------
+   Kerrosten väli tasainen, kausipalkki kompaktina heatmapin yläpuolella, osiolinkit
+   puhelimella yhtenä rivinä (tietokoneella yläpalkki). */
+.fr > section, .fr > .scb { margin: 0 0 26px; }
+.fr .sq { margin-top: 0; }
+.fr-season > .label { margin-bottom: 10px; }
+.season-hero.mini { grid-template-columns: auto minmax(220px, 1fr); gap: 28px; padding: 16px 20px; margin-bottom: 14px; }
+.season-hero.mini .sh-num { font-size: 56px; }
+.season-hero.mini .sh-main .eyebrow, .season-hero.mini .sh-scale { display: none; }
+.fr-links { display: none; }
+@media (max-width: 860px) {
+  .season-hero.mini { grid-template-columns: 1fr; gap: 12px; padding: 14px 16px; }
+  .season-hero.mini .sh-num { font-size: 44px; }
+  .fr-links { display: flex !important; flex-wrap: wrap; gap: 8px; margin: 4px 0 24px; }
+  .fr-links a { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--body);
+    text-decoration: none; font: 400 12px var(--pixel); letter-spacing: .04em; }
+}

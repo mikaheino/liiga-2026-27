@@ -13,21 +13,13 @@ export const useTime = () => useContext(Ctx);
 
 export default function TimeTravel({ snaps, children }: { snaps: Snap[]; children: React.ReactNode }) {
   const [at, setAt] = useState<number | null>(null);
-  // Heatmap näkyy etusivulla vain tietokoneella (desk-only); puhelimessa kelaus
-  // muuttaisi vain lukua, joten se on pois päältä.
-  const [wide, setWide] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 861px)");
-    const on = () => { setWide(mq.matches); if (!mq.matches) setAt(null); };
-    on(); mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
+  // Uusi etusivu (6.11.2026): heatmap näkyy kaikilla leveyksillä, joten kelaus myös puhelimella.
   // Suora linkki hetkeen: #tilanne=2026-10-02 (demo, jakaminen) -- lähin tilannekuva siihen asti.
   useEffect(() => {
     const m = /^#tilanne=(\d{4}-\d{2}-\d{2})$/.exec(window.location.hash);
-    if (!m || !wide) return;
+    if (!m) return;
     const i = snaps.map((s) => s.date <= m[1]).lastIndexOf(true);
     if (i >= 0) setAt(i);
-  }, [snaps, wide]);
-  return <Ctx.Provider value={{ snaps, at, setAt, enabled: wide && snaps.length > 0 }}>{children}</Ctx.Provider>;
+  }, [snaps]);
+  return <Ctx.Provider value={{ snaps, at, setAt, enabled: snaps.length > 0 }}>{children}</Ctx.Provider>;
 }
