@@ -488,7 +488,7 @@ def build(out: Path) -> None:
     seq = [*hi.intro(stage, teams, first), (first, FIRST_MS), *_season(painter, stage, snaps, evs)]
     still = painter.frame(snaps[-1], snaps[-1], 1.0)    # loppu ilman tapahtumakorttia
     seq.append((still, LAST_MS))
-    seq += stage.ending(TOTAL_GAMES - snaps[-1]["played"])
+    seq += stage.ending(TOTAL_GAMES - snaps[-1]["played"], still)
     frames, durations = [f for f, _ in seq], [ms for _, ms in seq]
     pal = palette(frames)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]

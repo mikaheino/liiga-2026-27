@@ -6,7 +6,8 @@ Ei kopioi mitään peliä: oma teksti, omat värit (sama kulta kuin heatmapissa)
                  nimiruutu ja vilkkuva START, joukkueiden esittely yksi kerrallaan,
                  kenttäkortti "KIERROS 1 / ESIKAUSI / VALMIINA?" ja iiris auki heatmapiin.
   month_card()   väliotsikko kuukauden vaihtuessa ("OSA 2 · LOKAKUU"), nauha keskellä.
-  ending()       "JATKUU..." ja jäljellä olevat ottelut.
+  ending()       iiris kiinni, "JATKUU..." ja jäljellä olevat ottelut; tekstit häipyvät pelkäksi
+                 taivaaksi, josta alku jatkuu saumattomasti (loputon silmukka).
 Pikselikirjaimet: teksti piirretään pienenä ilman pehmennystä ja suurennetaan jyrkästi.
 Jokainen funktio palauttaa listan (ruutu, kesto ms).
 """
@@ -145,14 +146,26 @@ class Stage:
         put(img, month, y + 18, 9, INK, shadow=GOLD_DIM)
         return (img, 1900)
 
-    def ending(self, left: int) -> list[tuple]:
-        a = self.sky(3)
+    def iris_close(self, still: Image.Image) -> list[tuple]:
+        """Heatmap sulkeutuu ympyräksi tähtitaivaalle (alun iiriksen peilikuva)."""
+        out = []
+        for r in (620, 340, 120, 0):
+            mask = Image.new("L", (self.w, self.h), 0)
+            if r:
+                ImageDraw.Draw(mask).ellipse((self.w / 2 - r, self.h / 2 - r, self.w / 2 + r, self.h / 2 + r), fill=255)
+            out.append((Image.composite(still, self.sky(0), mask), 90))
+        return out
+
+    def ending(self, left: int, still: Image.Image) -> list[tuple]:
+        """Iiris kiinni, JATKUU..., ja tekstit häipyvät käänteisessä järjestyksessä pelkäksi
+        taivaaksi: GIFin alku (sama taivas) jatkuu siitä saumattomasti, kierros toisensa perään."""
+        a = self.sky(0)
         put(a, "JATKUU...", 440, 11, INK, shadow=GOLD_DIM)
         b = a.copy()
         put(b, f"{left} OTTELUA JÄLJELLÄ", 700, 5, GOLD_HI)
         c = b.copy()
         put(c, "LIIGA ENNUSTE  ·  PÄIVITTYY JOKA AAMU", 820, 3, MUTED)
-        return [(a, 1200), (b, 1400), (c, 3600)]
+        return [*self.iris_close(still), (a, 1200), (b, 1400), (c, 3600), (b, 260), (a, 260), (self.sky(0), 900)]
 
 
 def intro(stage: Stage, teams: list[str], first: Image.Image) -> list[tuple]:
