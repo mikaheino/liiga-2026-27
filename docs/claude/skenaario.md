@@ -79,8 +79,13 @@ mcp__liiga__…`; työkalukutsu → sama tilarivi (`lib/agentTools.ts`) ja `done
 Todennettu: "KooKoo voittaa 5" → liiga_skenaario, sama luku kuin moottori; tiedosto- ja
 komentopyyntö → "ei työkaluja". liiga_ennuste/liiga_kausi tilannekuvasta vaiheeseen B asti.
 
-**LIIGA_APP (6.11.).** Sovelluspalvelut (LIIGA_ENNUSTE, _STAGING, _DEV) omistaa LIIGA_DEPLOYER
-→ sovelluksen agenttikutsut ajetaan julkaisuroolin oikeuksin. `snowflake/_account/roles/LIIGA_APP.sql`
-= kapea rooli (MODEL luku, KORTTI_VASTAUS INSERT/UPDATE, proseduurit, agentti, LIIGA_WH),
-annettu LIIGA_DEPLOYERille. Käyttöönotto: rooli ACCOUNTADMINina → omistuksen siirto
-DEV-palvelulle ja testi → STAGING → tuotanto (deploy-app.yml siirtää omistuksen julkaisussa).
+**LIIGA_APP (6.11.).** Sovelluspalvelut (LIIGA_ENNUSTE, _STAGING, _DEV) omisti LIIGA_DEPLOYER
+→ sovelluksen agenttikutsut ajettiin julkaisuroolin oikeuksin. `snowflake/_account/roles/LIIGA_APP.sql`
+= kapea rooli (MODEL luku, KORTTI_VASTAUS INSERT/UPDATE, proseduurit, agentti, LIIGA_WH) +
+luontioikeudet vain omaan skeemaan `LIIGA.APP`. Omistuksen siirto EI onnistu ("Unsupported
+feature 'TRANSFER OWNERSHIP ON APPLICATION SERVICE'"), joten käyttäjän päätös 6.11.: palvelut
+luodaan uudelleen skeemaan LIIGA.APP roolilla LIIGA_APP (`snow app deploy --role LIIGA_APP`,
+app.yml `schema: APP`). Osoite vaihtuu; vanhat LIIGA.CODE-palvelut poistetaan vasta, kun uusi
+tuotanto toimii. Rooli luotu 6.11. (Snowsight, ACCOUNTADMIN); LIIGA.APP-lauseet ajettava.
+⚠️ ACCOUNTADMIN `snow sql -c CONTAINER_SERVICES` ei toimi Claude Coden kautta (OAuth-paluu
+aikakatkaistaan) -> Snowsight.

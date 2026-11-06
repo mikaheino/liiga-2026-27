@@ -1,4 +1,6 @@
 # Sovelluksen julkaisu (Liiga Ennuste, Next.js Snowflake App Runtimessa, sis. Mouho-pelin):
+#   6.11.: palvelut skeemassa LIIGA.APP, julkaisu ja omistus roolilla LIIGA_APP (kapea
+#   ajorooli: sovelluksen kyselyt ja agenttikutsut ajetaan omistajan oikeuksin).
 #   ehdokas: käännös Snowflakessa -> LIIGA_ENNUSTE_STAGING käynnissä ja vastaa
 #   tuotanto (hyväksyntä): SAMA käännös -> LIIGA_ENNUSTE (--promote-only) + oikeus
 #            käyttäjäroolille
@@ -73,11 +75,11 @@ jobs:
           printf '  - name: LIIGA_SCENARIO_PROC\n    value: "%s"\n' "$proc" >> app.yml
           echo "skenaarioproseduuri: $proc" >> "$GITHUB_STEP_SUMMARY"
       - name: Käännös ja ehdokas (LIIGA_ENNUSTE_STAGING)
-        run: snow app deploy --target staging -c ci --no-interactive
+        run: snow app deploy --target staging -c ci --role LIIGA_APP --no-interactive
       - name: Ehdokas käynnissä
         shell: bash
         run: |
-          snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE_STAGING' IN SCHEMA LIIGA.CODE" > svc.json
+          snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE_STAGING' IN SCHEMA LIIGA.APP" > svc.json
           python - <<'PY'
           import json, os
           r = json.load(open("svc.json"))
@@ -85,7 +87,7 @@ jobs:
           state = {k.lower(): v for k, v in r[0].items()}
           print({k: state.get(k) for k in ("name", "status", "url", "auto_suspend_secs")})
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
-              fh.write(f"### Sovellus (STAGING)\n\n`LIIGA.CODE.LIIGA_ENNUSTE_STAGING`: {state.get('status')}, https://{state.get('url')}\n")
+              fh.write(f"### Sovellus (STAGING)\n\n`LIIGA.APP.LIIGA_ENNUSTE_STAGING`: {state.get('status')}, https://{state.get('url')}\n")
           PY
 
   prod:
@@ -108,8 +110,8 @@ jobs:
       - name: Sama käännös kuin STAGING tuotantoon
         shell: bash
         run: |
-          snow app deploy --target prod --promote-only -c ci --no-interactive
-          snow sql -c ci -q "GRANT USAGE ON APPLICATION SERVICE LIIGA.CODE.LIIGA_ENNUSTE TO ROLE LIIGA_AGENT_USER"
-          url=$(snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE' IN SCHEMA LIIGA.CODE" | python -c "import json,sys; print(next((r.get('url') for r in json.load(sys.stdin) if r.get('name') == 'LIIGA_ENNUSTE'), ''))")
+          snow app deploy --target prod --promote-only -c ci --role LIIGA_APP --no-interactive
+          snow sql -c ci --role LIIGA_APP -q "GRANT USAGE ON APPLICATION SERVICE LIIGA.APP.LIIGA_ENNUSTE TO ROLE LIIGA_AGENT_USER"
+          url=$(snow sql -c ci --format json -q "SHOW APPLICATION SERVICES LIKE 'LIIGA_ENNUSTE' IN SCHEMA LIIGA.APP" | python -c "import json,sys; print(next((r.get('url') for r in json.load(sys.stdin) if r.get('name') == 'LIIGA_ENNUSTE'), ''))")
           echo "### Sovellus tuotannossa" >> "$GITHUB_STEP_SUMMARY"
           echo "https://$url" >> "$GITHUB_STEP_SUMMARY"

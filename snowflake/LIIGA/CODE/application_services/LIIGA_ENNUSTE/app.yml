@@ -1,4 +1,5 @@
-# Snowflake App Runtime: Liiga Ennuste -sovellus (Next.js), LIIGA.CODE.
+# Snowflake App Runtime: Liiga Ennuste -sovellus (Next.js), LIIGA.APP (6.11.: oma skeema,
+# omistaja LIIGA_APP -- kapea ajorooli, snowflake/_account/roles/LIIGA_APP.sql; ennen LIIGA.CODE).
 # Korvaa Streamlitin (streamlit_app/) osio kerrallaan; prototyyppi 16.10.2026.
 #
 # Sama polku kuin agentilla (CLAUDE.md, "Agentin julkaisuputki"):
@@ -12,16 +13,16 @@ version: 2
 
 name: LIIGA_ENNUSTE
 database: LIIGA
-schema: CODE
+schema: APP
 query_warehouse: LIIGA_WH
 
 default_target: dev
-artifact_repo: LIIGA.CODE.LIIGA_ENNUSTE_REPO
+artifact_repo: LIIGA.APP.LIIGA_ENNUSTE_REPO
 package_name: liiga_ennuste
 targets:
   dev:
     name: LIIGA_ENNUSTE_DEV
-    artifact_repo: LIIGA.CODE.LIIGA_ENNUSTE_DEV_REPO
+    artifact_repo: LIIGA.APP.LIIGA_ENNUSTE_DEV_REPO
   staging:
     name: LIIGA_ENNUSTE_STAGING
   prod:

@@ -9,8 +9,12 @@
 -- lukee LIIGA.MODELia, kirjoittaa korttivastauksia (KORTTI_VASTAUS), kutsuu
 -- agenttia ja skenaarioproseduuria.
 --
--- LIIGA_DEPLOYER saa tämän roolin (hierarkia): CI voi julkaista palvelun ja
--- siirtää sen omistuksen tälle roolille, mutta tämä rooli ei saa julkaisuoikeuksia.
+-- LIIGA_DEPLOYER saa tämän roolin (hierarkia), joten CI (LIIGA_CI) julkaisee
+-- sovelluksen tällä roolilla (snow app deploy --role LIIGA_APP). Omistusta ei voi
+-- siirtää jälkikäteen (Snowflake: "Unsupported feature 'TRANSFER OWNERSHIP ON
+-- APPLICATION SERVICE'", 6.11.), joten palvelu luodaan suoraan tälle roolille omaan
+-- skeemaansa LIIGA.APP. Rooli saa luontioikeudet VAIN siihen skeemaan, ei mallin
+-- tai koodin skeemoihin.
 --
 -- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_APP.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
@@ -65,3 +69,21 @@ GRANT USAGE ON SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS TO ROLE LIIGA_APP;
 GRANT USAGE ON AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA TO ROLE LIIGA_APP;
 
 GRANT USAGE ON WAREHOUSE LIIGA_WH TO ROLE LIIGA_APP;
+
+-- Sovelluksen oma skeema: palvelut, koodistage ja artifact repository (snow app deploy).
+CREATE SCHEMA IF NOT EXISTS LIIGA.APP
+  COMMENT = 'Liiga Ennuste -sovellus (App Runtime): palvelut LIIGA_ENNUSTE(_STAGING/_DEV), omistaja LIIGA_APP.';
+
+GRANT USAGE ON SCHEMA LIIGA.APP TO ROLE LIIGA_APP;
+
+GRANT CREATE STAGE ON SCHEMA LIIGA.APP TO ROLE LIIGA_APP;
+
+GRANT CREATE ARTIFACT REPOSITORY ON SCHEMA LIIGA.APP TO ROLE LIIGA_APP;
+
+GRANT CREATE APPLICATION SERVICE ON SCHEMA LIIGA.APP TO ROLE LIIGA_APP;
+
+GRANT CREATE SERVICE ON SCHEMA LIIGA.APP TO ROLE LIIGA_APP;
+
+-- Sovelluksen käyttäjät (CoWork-demo): palvelun löytäminen. USAGE palveluun annetaan
+-- julkaisussa (deploy-app.yml).
+GRANT USAGE ON SCHEMA LIIGA.APP TO ROLE LIIGA_AGENT_USER;

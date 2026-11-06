@@ -105,7 +105,7 @@ APP_SERVICE = {True: "LIIGA_ENNUSTE_DEV", False: "LIIGA_ENNUSTE"}
 def app_url(dev: bool) -> str | None:
     try:
         rows = json.loads(_snow("sql", "--format", "json", "-q",
-                                f"SHOW APPLICATION SERVICES LIKE '{APP_SERVICE[dev]}' IN SCHEMA LIIGA.CODE"))
+                                f"SHOW APPLICATION SERVICES LIKE '{APP_SERVICE[dev]}' IN SCHEMA LIIGA.APP"))
     except (RuntimeError, OSError, json.JSONDecodeError):     # ei snowia / ei yhteyttä -> ei linkkiä
         return None
     url = next((r.get("url") for r in rows if r.get("name") == APP_SERVICE[dev] and r.get("url")), None)
