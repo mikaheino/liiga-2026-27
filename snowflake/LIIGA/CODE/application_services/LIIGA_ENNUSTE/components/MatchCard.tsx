@@ -7,6 +7,9 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import CardAgent from "@/components/CardAgent";
 import SwipeBack from "@/components/SwipeBack";
+import type { Stake } from "@/lib/data";
+import { getLocks, onLocks, toggleLock, type Lock } from "@/lib/lockBus";
+import { shown, stakeLabel, stakePct, worthShowing } from "@/lib/stakeText";
 import { fi, logo } from "@/lib/table";
 import { STATIC } from "@/lib/target";
 
@@ -18,6 +21,7 @@ export type MatchDetail = {
   news: { team: string; title: string; url: string; date: string }[];
   result?: string | null;                               // pelatun ottelun lopputulos
   agent?: { key: string; chips: string[] } | null;      // agentin kirjatut kysymykset (CardAgent.tsx)
+  stake?: Stake | null;                                 // panos (skenaariomoottori, lib/data.ts loadStakes)
 };
 
 const pct = (p: number) => `${fi(100 * p, 0)} %`;
@@ -31,6 +35,26 @@ function why(note: string): string {
   const d = Number(m[2]);
   if (Math.abs(d) < 0.005) return `Aloittava maalivahti ${m[1]}: sama taso kuin joukkueen aiemmat aloittajat`;
   return `Aloittava maalivahti ${m[1]}: ${d > 0 ? "parempi" : "heikompi"} kuin joukkueen aiemmat aloittajat (${d > 0 ? "−" : "+"}${fi(Math.abs(d), 2)} päästettyä maalia / ottelu)`;
+}
+
+// Napautuslukitus (vain sovelluksessa): tulos lukitaan omaan skenaarioon, jonka
+// etusivun ScenarioBoard laskee moottorilla.
+function LockButtons({ d }: { d: MatchDetail }) {
+  const [locks, setL] = useState<Lock[]>([]);
+  useEffect(() => { setL(getLocks()); return onLocks(setL); }, []);
+  const id = d.stake?.game_id;
+  if (id == null) return null;
+  const cur = locks.find((l) => l.game_id === id)?.result;
+  const opt = [["home_win", `${d.home} voittaa`], ["away_win", `${d.away} voittaa`]] as const;
+  return (
+    <div className="sc-streak">
+      <span className="dim">Lukitse omaan skenaarioon:</span>
+      {opt.map(([r, l]) => (
+        <button key={r} type="button" className={`sc-chip ${cur === r ? "on" : ""}`} aria-pressed={cur === r}
+          onClick={() => toggleLock({ game_id: id, result: r, label: `${d.when.split(" klo")[0]} ${d.home}–${d.away}: ${l}` })}>{l}</button>
+      ))}
+    </div>
+  );
 }
 
 function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
@@ -72,6 +96,25 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
             </>) : <p className="dim">Haastaja ei kirjannut syytä tälle ottelulle.</p>}
           </div>
         )}
+        {!d.result && d.stake && worthShowing(d.stake.top) && (() => {
+          const t = d.stake.top;
+          return (
+            <div className="mc-box">
+              <div className="label">Panos</div>
+              <b>{stakeLabel(t)}: nyt {stakePct(shown(t, t.p_now))}</b>
+              <div className="mc-stake">
+                <span>{d.home} voittaa (varsinainen)</span><b>{stakePct(shown(t, t.p_home_reg))}</b>
+                <span>Jatkoaika</span><b>{stakePct(shown(t, t.p_ot))}</b>
+                <span>{d.away} voittaa (varsinainen)</span><b>{stakePct(shown(t, t.p_away_reg))}</b>
+              </div>
+              {d.stake.others.length > 0 && (
+                <p className="mc-ot">Myös: {d.stake.others.map((o) => `${stakeLabel(o)} ${stakePct(shown(o, o.p_home_win))} ↔ ${stakePct(shown(o, o.p_away_win))}`).join(" · ")}</p>
+              )}
+              <p className="mc-ot">Samat 10 000 simuloitua kautta kuin ennusteessa, ehdolla tämän ottelun tulos.</p>
+              {!STATIC && <LockButtons d={d} />}
+            </div>
+          );
+        })()}
         <div className="mc-box">
           <div className="label">Vire (viimeiset 5)</div>
           {[d.home, d.away].map((t) => (

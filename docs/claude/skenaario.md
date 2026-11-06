@@ -42,7 +42,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V1 | moottori: k-matriisi, stakes, ankkuroitu requirement, p_top10, game_id, from/until, player_id, tyhjä skenaario json-tilassa, MODE, kanoninen JSON + sha | ✅ paikallisesti 6.11. (Snowflake CI:llä) |
 | J1/V2 | skenaariopaneeli identtiseksi (Snowflake CALL, Pages JSON) | ✅ paikallisesti + Pages-käännös 6.11. (Snowflake CI:llä) |
 | J1/V3 | paikallinen agentti A: `scripts/local/liiga_mcp.py` | ✅ paikallisesti 6.11. |
-| J1/V4 | panokset + napautuslukitus | |
+| J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
 | J1/V5 | "kuvaile skenaario omin sanoin" (SubjectType `scenario`) | |
 | J1 | demokäsikirjoitus | |
 | J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | |
@@ -89,3 +89,13 @@ app.yml `schema: APP`). Osoite vaihtuu; vanhat LIIGA.CODE-palvelut poistetaan va
 tuotanto toimii. Rooli luotu 6.11. (Snowsight, ACCOUNTADMIN); LIIGA.APP-lauseet ajettava.
 ⚠️ ACCOUNTADMIN `snow sql -c CONTAINER_SERVICES` ei toimi Claude Coden kautta (OAuth-paluu
 aikakatkaistaan) -> Snowsight.
+
+**V4 panokset ja lukitus (6.11.).** Ei uutta taulua: sovellus pyytää panokset moottorilta
+(`lib/scenarioEngine.ts` → paikallisesti/Pages-käännöksessä `skenaario.py --json`, Snowflakessa
+`CALL <proc>(?, 'json')`; `loadStakes()` = `[{"stakes": {"days": 14}}]`, memo per ennuste).
+Kierroskortti: rivi "Panos · KalPa pudotuspeleihin 48 % ↔ 61 %" (koti ↔ vieras voittaa), kun
+ero ≥ 2 %-yks.; ottelukortti: kolme tulosta + sivulliset. Sovelluksessa (ei Pages) ottelukortin
+"Lukitse omaan skenaarioon" → `lib/lockBus.ts` (sessionStorage, vain game_id + tulosenum,
+enintään 10) → etusivun `ScenarioBoard` (POST /api/skenaario {scenario}) : sirut, uskottavuus,
+liikkuneet joukkueet (putoaa/top 10/top 6/voitto), "Kysy agentilta tästä". 390 px: ei
+sivuttaisvieritystä (mitattu iframe-luotaimella).

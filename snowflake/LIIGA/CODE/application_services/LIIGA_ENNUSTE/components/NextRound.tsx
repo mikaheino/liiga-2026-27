@@ -4,9 +4,10 @@
 import Link from "next/link";
 import MatchTap from "@/components/MatchCard";
 import { fixtureKey } from "@/lib/challenger";
-import type { Challenger, NewsItem } from "@/lib/data";
+import type { Challenger, NewsItem, Stake } from "@/lib/data";
 import type { Fixture } from "@/lib/fixtures";
 import { matchDetail } from "@/lib/matchDetail";
+import { shown, stakeLabel, stakePct, worthShowing } from "@/lib/stakeText";
 import { logo } from "@/lib/table";
 
 const fmt = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("fi-FI", { ...o, timeZone: "Europe/Helsinki" });
@@ -24,8 +25,8 @@ function Side({ team, p, fav, away }: { team: string; p: number; fav: boolean; a
   );
 }
 
-export default function NextRound({ games, challenger, all = [], news = [] }: {
-  games: Fixture[]; challenger?: Map<string, Challenger>; all?: Fixture[]; news?: NewsItem[];
+export default function NextRound({ games, challenger, all = [], news = [], stakes }: {
+  games: Fixture[]; challenger?: Map<string, Challenger>; all?: Fixture[]; news?: NewsItem[]; stakes?: Map<number, Stake>;
 }) {
   if (!games.length) return null;
   const days = [...new Set(games.map((g) => dayName.format(new Date(g.start_ts))))];
@@ -35,13 +36,17 @@ export default function NextRound({ games, challenger, all = [], news = [] }: {
         <div className="label">Seuraava kierros</div>
         <span className="nr-days">{days.join(" – ")}</span>
       </div>
+      {/* Panos (6.11.): ottelun tuloksen vaikutus joukkueen elävimpään tavoitteeseen. */}
+      {games.some((g) => worthShowing(stakes?.get(g.gameId ?? -1)?.top)) && (
+        <p className="nr-legend">Panos: todennäköisyys, jos koti voittaa ↔ jos vieras voittaa</p>
+      )}
       {days.map((d) => (
         <div key={d} className="nr-day">
           {days.length > 1 && <div className="nr-date">{d}</div>}
           {games.filter((g) => dayName.format(new Date(g.start_ts)) === d).map((g) => {
             const h = g.pHome == null ? null : 100 * g.pHome;
             return (
-              <MatchTap key={g.start_ts + g.home} d={matchDetail(g, all, news, challenger?.get(fixtureKey(g)))}>
+              <MatchTap key={g.start_ts + g.home} d={{ ...matchDetail(g, all, news, challenger?.get(fixtureKey(g))), stake: stakes?.get(g.gameId ?? -1) ?? null }}>
               <div className="nr-game">
                 <span className="nr-time">{clock.format(new Date(g.start_ts))}</span>
                 {h == null ? (
@@ -61,6 +66,11 @@ export default function NextRound({ games, challenger, all = [], news = [] }: {
                     const base = h == null ? null : h / 100;
                     if (!c || base == null || (Math.abs(c.pHome - base) < 0.005 && !c.notes)) return null;
                     return <span className="nr-ch">Haastaja {Math.round(100 * c.pHome)} – {Math.round(100 * (1 - c.pHome))} %{c.notes ? ` · ${c.notes}` : ""}</span>;
+                  })()}
+                  {(() => {
+                    const t = stakes?.get(g.gameId ?? -1)?.top;
+                    if (!t || !worthShowing(t)) return null;
+                    return <span className="nr-stake">Panos · {stakeLabel(t)} <b>{stakePct(shown(t, t.p_home_win))}</b> ↔ <b>{stakePct(shown(t, t.p_away_win))}</b></span>;
                   })()}
                 </>)}
               </div>

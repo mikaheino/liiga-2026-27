@@ -10,6 +10,7 @@
 import type { PositionRow } from "@/components/Heatmap";
 import type { HistoryPoint, TitleRow } from "@/components/TitleRace";
 import type { Fixture } from "@/lib/fixtures";
+import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
 
@@ -408,3 +409,17 @@ export const loadChallengerSeason = memo("loadChallengerSeason", async () => {
 export { type Params, highlightOf, hrefWith } from "@/lib/params";
 
 export const teamHref = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
+
+// Panokset (6.11.2026, docs/claude/skenaario.md V4): tavoitteen todennäköisyys ehdolla
+// ottelun tulos, skenaariomoottorin samoista 10 000 kaudesta (stakes()). Seuraavat
+// 14 päivää kattavat myös maaotteluvälin jälkeisen kierroksen. Moottori laskee, tämä
+// vain välittää: paikallisesti ja Pagesin käännöksessä skenaario.py, Snowflakessa proseduuri.
+export type StakeRow = { team: string; goal: "win" | "top6" | "top10" | "avoid_relegation"; p_now: number;
+  p_home_win: number; p_away_win: number; p_home_reg: number; p_ot: number; p_away_reg: number; delta: number; se: number };
+export type Stake = { game_id: number; date: string; iso: string; home: string; away: string;
+  p_outcome: Record<"home_reg" | "home_ot" | "away_ot" | "away_reg", number>; top: StakeRow; others: StakeRow[] };
+export const loadStakes = memo("loadStakes:v1", async (): Promise<Stake[]> => {
+  const r = await runEngine<{ stakes?: Stake[] }>("json", [{ stakes: { days: 14 } }]);
+  if (r.error) throw new Error(r.error);
+  return r.stakes ?? [];
+});
