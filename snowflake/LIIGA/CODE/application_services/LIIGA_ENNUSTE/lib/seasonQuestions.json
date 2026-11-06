@@ -1,0 +1,7 @@
+[
+  {"id": "jokerit-putoaa", "team": "Jokerit", "goal": "relegation", "label": "Putoavatko Jokerit?", "short": "Jokerien putoamisuhka"},
+  {"id": "kespoo-top6", "team": "K-Espoo", "goal": "top6", "label": "Pääseekö K-Espoo kuuden joukkoon?", "short": "K-Espoon kuuden joukon todennäköisyys"},
+  {"id": "pelicans-top6", "team": "Pelicans", "goal": "top6", "label": "Nouseeko Pelicans kuuden joukkoon?", "short": "Pelicansin kuuden joukon todennäköisyys"},
+  {"id": "hpk-joulu", "team": "HPK", "goal": "relegation", "label": "Putoaako HPK, jos se häviää joulun yli?", "short": "HPK:n putoamisuhka joulun yli hävitessä",
+   "lock": {"team": "HPK", "result": "loss", "from": "2026-12-20", "until": "2027-01-06"}}
+]

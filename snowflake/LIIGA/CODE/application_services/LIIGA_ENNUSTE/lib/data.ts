@@ -13,6 +13,7 @@ import type { Fixture } from "@/lib/fixtures";
 import fs from "node:fs";
 import path from "node:path";
 import { runEngine } from "@/lib/scenarioEngine";
+import { type LockState, type QPoint, type QuestionView, NEWS_COL, QUESTIONS, goalP, lockState, trend } from "@/lib/seasonQuestions";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
 
@@ -450,3 +451,43 @@ export async function loadAbsence(team: string): Promise<TeamAbsence | null> {
   }
   return p;
 }
+
+// Kauden kysymykset (6.11.2026, docs/claude/skenaario.md J2/V7): käyrä sijajakaumahistoriasta,
+// lukituskysymyksen tämä päivä moottorilta ja aiemmat päivät scenario_history-taulusta
+// (scripts/tools/season_questions.py), Uutiskorjattu haastajan historiasta (vain
+// paikallisesti ja Pagesissa; Snowflakeen J3:ssa, kuten lukituskysymyksen historia).
+export const loadSeasonQuestions = memo("loadSeasonQuestions:v2", async (): Promise<QuestionView[]> => {
+  const [snaps, pos, fx, hist, news] = await Promise.all([
+    loadPositionHistory().catch(() => [] as Snap[]), loadPosition(), loadFixtures(),
+    query(`SELECT * FROM ${M}.SCENARIO_HISTORY ORDER BY snapshot_date`)
+      .catch((e) => { if (missingTable(e)) return [] as Record<string, unknown>[]; throw e; }),
+    optional(() => query(`SELECT * FROM challenger_history ORDER BY snapshot_date`)),
+  ]);
+  const today = String((await fresh()).meta?.UPDATED_AT ?? "").slice(0, 10);
+  return Promise.all(QUESTIONS.map(async (q): Promise<QuestionView> => {
+    const now = pos.find((r) => r.team === q.team);
+    const plain = now ? goalP(now.p, q.goal) : null;
+    let p = plain, series: QPoint[], state: LockState | undefined, sha: string | undefined;
+    if (q.lock) {
+      state = lockState(q.lock, fx);
+      if (state === "open") {
+        type R = { requirements?: { p: number }[]; scenario_sha?: string; error?: string };
+        const r: R = await runEngine<R>("json", [q.lock, { team: q.team, goal: q.goal === "relegation" ? "avoid_relegation" : q.goal }])
+          .catch((e) => ({ error: (e as Error).message }));
+        const rp = r.requirements?.[0]?.p;
+        p = r.error || rp == null ? null : q.goal === "relegation" ? 1 - rp : rp;
+        sha = r.scenario_sha;
+      } else if (state === "failed") p = null;
+      series = hist.filter((h) => String(h.QUESTION_ID) === q.id && h.P != null)
+        .map((h) => ({ date: String(h.SNAPSHOT_DATE).slice(0, 10), p: Number(h.P) }));
+    } else {
+      series = snaps.filter((s) => s.p[q.team]).map((s) => ({ date: s.date, p: goalP(s.p[q.team], q.goal) }));
+    }
+    series = series.filter((x) => x.date !== today);
+    if (p != null && today) series.push({ date: today, p });
+    const col = NEWS_COL[q.goal];
+    const newsSeries = q.lock || !col ? [] : news.filter((r) => String(r.TEAM) === q.team && r[col] != null)
+      .map((r) => ({ date: String(r.SNAPSHOT_DATE).slice(0, 10), p: Number(r[col]) }));
+    return { ...q, p, base: q.lock ? plain : null, series, news: newsSeries, state, sha, ...trend(series) };
+  }));
+});

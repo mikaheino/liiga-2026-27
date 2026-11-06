@@ -45,7 +45,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V4 | panokset + napautuslukitus | ✅ paikallisesti 6.11. |
 | J1/V5 | "kuvaile skenaario omin sanoin" | ✅ paikallisesti 6.11. |
 | J1 | demokäsikirjoitus | ✅ `docs/demo_skenaario.md` + `scripts/dev/demo_numbers.py` |
-| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | V6 ✅, V8 ✅ 6.11. |
+| J2/V6–V10 | poissaolot, kauden kysymykset, uutiset paikalliseen (`data/news.duckdb`), kokoonpanot, vaihe B | V6 ✅, V7 ✅, V8 ✅ 6.11. |
 | J3/V11–V12 | tulkinta yhteen paikkaan (recompute.yml), latausrooli + NEWS_*-taulut | |
 
 Koko suunnitelma (ominaisuudet, turvallisuus, hylätyt ideat): workflow `wf_4fedff4b-b60`.
@@ -135,3 +135,21 @@ ilman uutisia. MODE `absence` / `skenaario.py --absence`. Joukkuesivun `AbsenceC
 siru "Mitä poissaolot tarkoittavat?" (vain kun kortti näkyy). 6.11.: kortti Lukko (3 puuttuu,
 perustaso 1,7; voitto 58 → 51 % loppukausi), Tappara, HPK; ei KooKoo, Jokerit. Hyväksytyt
 uutispoissaolot (news_absences) yhdistetään korttiin J3:n jälkeen (Snowflakessa ei vielä uutisdataa).
+
+**V7 kauden kysymykset (6.11.).** Lista `LIIGA_ENNUSTE/lib/seasonQuestions.json` (muutos vain
+PR:llä): Jokerien putoaminen, K-Espoon ja Pelicansin top 6 sekä lukituskysymys "HPK putoaa, jos
+häviää joulun yli" (20.12.–6.1., viisi ottelua). Etusivun `SeasonQuestions` (myös Pages): luku,
+viikon muutos, kausikäyrä ja Uutiskorjattu-katkoviiva (haastajan `challenger_history`, ei top 10:lle
+eikä lukituskysymykselle). Tavallisen kysymyksen käyrä summataan sijajakaumahistoriasta
+(ei omaa laskentaa; tarkistettu: K-Espoo 17,5 → 45,5 % 30.10.–6.11. = +28 kortissa). Lukituskysymys:
+tämä päivä moottorilta (`requirements[0].p`, ankkuroitu; 6.11. HPK 55 %, ilman ehtoa 32 %),
+aiemmat päivät taulusta `scenario_history` (`scripts/tools/season_questions.py record`, jota
+`daily_update.py` kutsuu Macilla ja Pagesissa; Pages tallentaa sen pages-dataan vain aamuajossa,
+`pages_history.py`). Takautuva täyttö kerran git-historian mallitiloista (`backfill`, 16 päivää;
+käyrä seuraa ehdotonta putoamisuhkaa ~20 %-yks. ylempänä). Lukituksen tila pelatuista otteluista:
+open / held (kaikki hävitty → ehdoton luku) / failed (piste jaksolla → "ehto ei toteutunut").
+Kuollut raja: alle 3 % tai yli 97 % seitsemän päivää → kortti himmenee. Joukkuesivun siru
+"Miksi <kysymys> nousi/laski viikossa?", kun muutos ≥ 5 %-yks. Paikallisesti `news_pull.py` hakee
+myös pages-data-haaran (challenger_history). **Snowflake:** käyrät sijajakaumahistoriasta ja
+lukituskysymyksen tämä päivä proseduurilta; lukituskysymyksen historia ja Uutiskorjattu-käyrä
+tulevat J3:n latausreittiä (`sync_all` ei sovi: selainkirjautuminen ja Macin ennuste).

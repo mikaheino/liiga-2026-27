@@ -9,7 +9,7 @@ import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
 import Scenario from "@/components/Scenario";
 import Shell from "@/components/Shell";
-import { loadAbsence, loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadTeams, teamHref } from "@/lib/data";
+import { loadAbsence, loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadSeasonQuestions, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
 
@@ -19,10 +19,11 @@ const zone = (k: number) => (k <= PLAYOFF_CUT ? "z-top" : k <= QUALI_CUT ? "z-qu
 
 export default async function Page({ params }: { params: Promise<{ team: string }> }) {
   const team = decodeURIComponent((await params).team);
-  const [pos, log, teams, fixtures, { history, preseason }, season, absence] = await Promise.all([
+  const [pos, log, teams, fixtures, { history, preseason }, season, absence, questions] = await Promise.all([
     loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadChallengerSeason(),
     // Poissaolokortti: moottorin puute (esim. proseduuri ei vielä julkaistu) ei kaada sivua.
     loadAbsence(decodeURIComponent((await params).team)).catch((e) => { console.log(`[data] poissaolot: ${(e as Error).message}`); return null; }),
+    loadSeasonQuestions().catch(() => []),
   ]);
   const ch = season.teams.find((t) => t.team === team && Math.abs(t.points - t.pointsNow) >= 0.3);
   const i = pos.findIndex((r) => r.team === team);
@@ -53,6 +54,10 @@ export default async function Page({ params }: { params: Promise<{ team: string 
     Math.abs(dWeek) >= 3 ? `Miksi ennuste ${dWeek < 0 ? "laski" : "nousi"} viikossa ${fi(Math.abs(dWeek))} pistettä?` : null,
   ].filter((c): c is string => !!c);
   if (!chips.length && base != null && Math.abs(r.points - base) >= 5) chips.push("Miksi ennuste on muuttunut esikaudesta?");
+  // Kauden kysymyksen siru (V7): joukkueen kysymys liikkui viikossa vähintään 5 %-yks.
+  for (const sq of questions.filter((x) => x.team === team && x.dWeek != null && Math.abs(x.dWeek) >= 5)) {
+    chips.unshift(`Miksi ${sq.short} ${sq.dWeek! > 0 ? "nousi" : "laski"} viikossa?`);
+  }
   // Poissaolosiru vain, kun kortti näkyy (kynnys ylittyi).
   if (absence?.show) chips.unshift("Mitä poissaolot tarkoittavat?");
   // Skenaariopaneelin oletustavoite: se, joka on joukkueelle ajankohtaisin (6.11.).

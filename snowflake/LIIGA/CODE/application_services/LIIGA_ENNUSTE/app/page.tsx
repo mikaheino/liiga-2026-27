@@ -5,12 +5,13 @@ import Link from "next/link";
 import { type Line } from "@/components/Heatmap";
 import NextRound from "@/components/NextRound";
 import ScenarioBoard from "@/components/ScenarioBoard";
+import SeasonQuestions from "@/components/SeasonQuestions";
 import PositionBoard from "@/components/PositionBoard";
 import Season from "@/components/Season";
 import TimeTravel from "@/components/TimeTravel";
 import Top from "@/components/Top";
 import { gameKey } from "@/lib/challenger";
-import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadPositionHistory, loadStakes, loadTeams } from "@/lib/data";
+import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadHistory, loadLine, loadLog, loadMeta, loadPosition, loadPositionHistory, loadSeasonQuestions, loadStakes, loadTeams } from "@/lib/data";
 import { nextRound, scoreboard } from "@/lib/fixtures";
 import { fi, seasonTable } from "@/lib/table";
 import { STATIC } from "@/lib/target";
@@ -18,11 +19,12 @@ import { STATIC } from "@/lib/target";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger, season, news, snapsAll, stakeList] = await Promise.all([
+  const [{ meta, next }, pos, log, teams, fixtures, { history, preseason }, sim, challenger, season, news, snapsAll, stakeList, questions] = await Promise.all([
     loadMeta(), loadPosition(), loadLog(), loadTeams(), loadFixtures(), loadHistory(), loadLine(), loadChallenger(), loadChallengerSeason(), loadNews(),
     loadPositionHistory().catch((e) => { console.log(`[data] jakaumahistoria: ${(e as Error).message}`); return []; }),
     // Panokset: puuttuva moottori (esim. proseduuri ei vielä julkaistu) ei kaada etusivua.
     loadStakes().catch((e) => { console.log(`[data] panokset: ${(e as Error).message}`); return []; }),
+    loadSeasonQuestions().catch((e) => { console.log(`[data] kauden kysymykset: ${(e as Error).message}`); return []; }),
   ]);
   const stakes = new Map(stakeList.map((s) => [s.game_id, s]));
   // Kelattavat tilannekuvat: kaikki ennen nykyistä ennustetta (nykyhetki tulee suoraan).
@@ -62,6 +64,7 @@ export default async function Page() {
             peräkkäin, jotta palkin ja taulukon yhteys on ilmeinen. */}
         <NextRound games={nextRound(fixtures, new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" }))}
           challenger={chMap} all={fixtures} news={news.items} stakes={stakes} />
+        <SeasonQuestions questions={questions} />
         {!STATIC && <ScenarioBoard />}
         <TimeTravel snaps={snaps}>
         {meta && <Season played={meta.GAMES_PLAYED} total={meta.GAMES_TOTAL} nextDate={next?.D ?? null} nextGames={Number(next?.N ?? 0)} />}

@@ -241,8 +241,13 @@ def main(news: Path, history_dir: Path | None = None) -> int:
     con = duckdb.connect(str(out))
     try:
         history = effects.attrs.get("history", pd.DataFrame(columns=EVENT_COLS))
-        for name, df in (("challenger_teams", teams_df), ("challenger_games", games_df), ("news_effects", effects),
-                         ("challenger_events", history)):
+        tables = [("challenger_teams", teams_df), ("challenger_games", games_df), ("news_effects", effects),
+                  ("challenger_events", history)]
+        # Kauden kysymysten Uutiskorjattu-käyrä (6.11., skenaario.md J2/V7): koko historia.
+        hist = history_dir / "challenger_history.csv" if history_dir else None
+        if hist and hist.exists():
+            tables.append(("challenger_history", pd.read_csv(hist, dtype={"snapshot_date": str})))
+        for name, df in tables:
             con.register("_df", df)
             con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _df").fetchall()
             con.unregister("_df")

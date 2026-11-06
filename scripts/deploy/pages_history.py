@@ -21,7 +21,8 @@ DB = Path(__file__).resolve().parents[2] / "data" / "liiga.duckdb"
 # Sijaintijakauma ja 14 parhaan raja päivittäin (6.11.): etusivun kelaus. Ensimmäisellä
 # ajolla CSV:tä ei ole, joten pohjana on repon kannan (git-versioista ja
 # uudelleenlaskennasta täydennetty) historia.
-TABLES = ("prediction_history", "prediction_games", "position_distribution_history", "line_history")
+# Kauden kysymysten lukituskysymykset (6.11., scripts/tools/season_questions.py).
+TABLES = ("prediction_history", "prediction_games", "position_distribution_history", "line_history", "scenario_history")
 
 
 def _q(con, sql: str, params: list | None = None) -> list:

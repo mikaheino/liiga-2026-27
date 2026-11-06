@@ -53,6 +53,7 @@ def main(sync: bool = True, grace_hours: int = 8) -> None:
     # backends cannot drift apart in the model math.
     res = forecast(cfg=cfg)
     persist(res)
+    _season_questions()
 
     print(f"updated: {res['n_played']}/{res['n_total']} games played, "
           f"crowd weight {res['crowd_weight']:.2f}")
@@ -64,6 +65,20 @@ def main(sync: bool = True, grace_hours: int = 8) -> None:
     if sync:
         sync_all(quiet=True)
     _news()
+
+
+def _season_questions() -> None:
+    """Kauden kysymysten lukituskysymykset päivän ennusteesta (scripts/tools/season_questions.py,
+    6.11.2026). Sekä Macilla että Pagesissa; Pages tallentaa taulun vain aamuajossa.
+    Paras yritys: puute ei kaada ennusteajoa."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "tools"))
+    try:
+        import season_questions
+        season_questions.record()
+    except Exception as exc:                                # noqa: BLE001
+        print(f"kauden kysymykset: ohitettu ({exc})")
 
 
 def _news() -> None:
