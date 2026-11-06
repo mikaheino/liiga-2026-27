@@ -41,7 +41,7 @@ uutistekstiä; uutisista kulkee vain id/enum/luku/päivä-kenttiä.
 | J1/V0 | tarkistukset | ✅ 6.11. |
 | J1/V1 | moottori: k-matriisi, stakes, ankkuroitu requirement, p_top10, game_id, from/until, player_id, tyhjä skenaario json-tilassa, MODE, kanoninen JSON + sha | ✅ paikallisesti 6.11. (Snowflake CI:llä) |
 | J1/V2 | skenaariopaneeli identtiseksi (Snowflake CALL, Pages JSON) | ✅ paikallisesti + Pages-käännös 6.11. (Snowflake CI:llä) |
-| J1/V3 | paikallinen agentti A: `scripts/local/liiga_mcp.py` | |
+| J1/V3 | paikallinen agentti A: `scripts/local/liiga_mcp.py` | ✅ paikallisesti 6.11. |
 | J1/V4 | panokset + napautuslukitus | |
 | J1/V5 | "kuvaile skenaario omin sanoin" (SubjectType `scenario`) | |
 | J1 | demokäsikirjoitus | |
@@ -69,3 +69,18 @@ ei ole → aja deploy.yml ensin), Pages `scenario_static.py` → `public/skenaar
 (17 tiedostoa, ~15 s, 724 kt). Pagesissa ei "Kysy agentilta" -nappia. Avoinna: sovelluspalvelun
 oikeus CALLiin todennetaan STAGINGissa; Cortex-agentin työkalun toimivuus DEFAULT-parametrin
 kanssa todennetaan DEV-agentilla CI:ssä.
+
+**V3 paikallinen agentti (6.11.).** `scripts/local/liiga_mcp.py`: MCP stdio ilman riippuvuuksia,
+työkalut `liiga_skenaario` (skenaario.py, tekstitila), `liiga_kokoonpanot` (kokoonpanot.py),
+`liiga_tieto` (deploy_knowledge.chunks(), haku 6 merkin sananalkujen osumilla, otsikko ×3).
+Nimet, kuvaukset ja syöteskeemat suoraan `deploy_agent.spec(dev=True)`:stä (testi vertaa).
+`lib/localClaude.ts`: `--tools "" --strict-mcp-config --mcp-config <json> --allowedTools
+mcp__liiga__…`; työkalukutsu → sama tilarivi (`lib/agentTools.ts`) ja `done.tools` Jälkeen.
+Todennettu: "KooKoo voittaa 5" → liiga_skenaario, sama luku kuin moottori; tiedosto- ja
+komentopyyntö → "ei työkaluja". liiga_ennuste/liiga_kausi tilannekuvasta vaiheeseen B asti.
+
+**LIIGA_APP (6.11.).** Sovelluspalvelut (LIIGA_ENNUSTE, _STAGING, _DEV) omistaa LIIGA_DEPLOYER
+→ sovelluksen agenttikutsut ajetaan julkaisuroolin oikeuksin. `snowflake/_account/roles/LIIGA_APP.sql`
+= kapea rooli (MODEL luku, KORTTI_VASTAUS INSERT/UPDATE, proseduurit, agentti, LIIGA_WH),
+annettu LIIGA_DEPLOYERille. Käyttöönotto: rooli ACCOUNTADMINina → omistuksen siirto
+DEV-palvelulle ja testi → STAGING → tuotanto (deploy-app.yml siirtää omistuksen julkaisussa).

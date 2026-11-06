@@ -1,19 +1,26 @@
 // Paikallinen "Kysy agentilta" (17.10.): koneella ajettaessa keskustelu käyttää
 // paikallista Claude Codea (`claude -p`) eikä Snowflaken agenttia. Claude saa
-// ilman työkaluja tiiviin tilannekuvan samasta datasta kuin sivut (DuckDB), joten
-// se vastaa vain siitä mitä tiedetään -- Snowflaken agentilla on enemmän työkaluja
-// (mitä jos -simulaattori, kokoonpanot, tietopankki).
+// tiiviin tilannekuvan samasta datasta kuin sivut (DuckDB) ja 6.11. alkaen samat
+// työkalut kuin Snowflaken agentti MCP:n kautta (scripts/local/liiga_mcp.py):
+// liiga_skenaario, liiga_kokoonpanot ja liiga_tieto samoilla nimillä, kuvauksilla
+// ja toteutuksilla. liiga_ennuste/liiga_kausi tulevat vaiheessa B (VQR); siihen
+// asti niistä vastataan tilannekuvasta. Muita työkaluja ei ole: --tools "" +
+// --allowedTools vain mcp__liiga__* (todennettu 6.11., docs/claude/skenaario.md).
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Event, Turn } from "@/lib/agent";
+import { TOOL } from "@/lib/agentTools";
 import { CONTEXT_RULE, type PageRef, pageContext } from "@/lib/pageContext";
 import { loadFixtures, loadHistory, loadLog, loadMeta, loadPosition, loadTeams } from "@/lib/data";
 import { modelSaid, scoreboard } from "@/lib/fixtures";
 import { seasonTable, teamPoints } from "@/lib/table";
 
 // Claude Code asentuu ~/.local/bin:iin, joka ei aina ole palvelinprosessin PATHissa.
+const REPO = process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ process.cwd(), "../../../../..");
+const MCP_TOOLS = ["liiga_skenaario", "liiga_kokoonpanot", "liiga_tieto"];
+const MCP = JSON.stringify({ mcpServers: { liiga: { command: path.join(REPO, ".venv/bin/python"), args: [path.join(REPO, "scripts/local/liiga_mcp.py")] } } });
 const CLAUDE = process.env.CLAUDE_BIN ?? [path.join(os.homedir(), ".local/bin/claude"), "/opt/homebrew/bin/claude", "/usr/local/bin/claude"].find((p) => fs.existsSync(p)) ?? "claude";
 const f1 = (x: number) => x.toFixed(1).replace(".", ",");
 const day = (ts: string) => `${Number(ts.slice(8, 10))}.${Number(ts.slice(5, 7))}.`;
@@ -42,7 +49,7 @@ async function context(): Promise<string> {
 }
 
 const SYSTEM = `Olet Liiga Ennustaja, Liigan kauden 2026-27 asiallinen analyytikko tämän projektin ennustemallin pohjalta. Vastaa AINA suomeksi.
-Käytä vain alla annettua tilannekuvaa; älä keksi lukuja. Jos kysytty asia ei ole tilannekuvassa (esim. pelaajatilastot, kokoonpanot, mitä jos -laskelmat), sano yhdellä lauseella, että paikallinen versio ei sitä tiedä ja että Snowflaken agentti osaa sen.
+Käytä vain alla annettua tilannekuvaa ja työkaluja; älä keksi lukuja. Työkalut: liiga_skenaario (mitä jos, loukkaantumiset, mitä vaaditaan -- luvut tulevat vain siitä, älä laske itse), liiga_kokoonpanot (pelipäivän kokoonpanot ja 1X2), liiga_tieto (miten malli toimii, rajoitukset, lähteet). Jos kysytty asia ei ole tilannekuvassa eikä työkaluissa (esim. pelaajatilastot), sano se yhdellä lauseella.
 Lyhyesti: vastaus yhdellä lauseella, tarvittaessa enintään 10 rivin taulukko, enintään kaksi lausetta tulkintaa. Prosentit yhdellä desimaalilla, desimaalipilkku.
 "Mestaruus" tarkoittaa tässä runkosarjan voittoa: malli ei ennusta pudotuspelejä. Vyöhykkeet: 1-6 puolivälierät, 7-10 karsinta, 15-17 putoaa. Vertaa mallin osuvuutta siihen, että kotijoukkue voittaa aina.
 Vedonlyönnistä: anna luvut, älä kehota pelaamaan.
@@ -59,18 +66,24 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
   // Sivun tilannekuva samalla tavalla kuin Snowflaken agentille (lib/pageContext.ts).
   const view = page ? await pageContext(page) : "";
   const prompt = `TILANNEKUVA\n${await context()}\n\n${view ? `NÄKYMÄ\n${CONTEXT_RULE}\n${view}\n\n` : ""}KESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
+  const tools = new Set<string>();
   const result = await new Promise<string>((resolve, reject) => {
-    // Ilman työkaluja ja MCP:tä, väliaikaishakemistossa (ei projektin CLAUDE.md:tä), ei istuntohistoriaa.
+    // Vain liigan MCP-työkalut, väliaikaishakemistossa (ei projektin CLAUDE.md:tä), ei istuntohistoriaa.
     const p = spawn(CLAUDE, ["-p", "--tools", "", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
-      "--no-session-persistence", "--strict-mcp-config",
+      "--no-session-persistence", "--strict-mcp-config", "--mcp-config", MCP,
+      "--allowedTools", MCP_TOOLS.map((t) => `mcp__liiga__${t}`).join(","),
       "--model", process.env.LIIGA_LOCAL_MODEL ?? "sonnet", "--append-system-prompt", SYSTEM], { cwd: os.tmpdir() });
     let buf = "", e = "", final: string | null = null;
     p.stdout.on("data", (b) => {
       buf += b;
       for (let i; (i = buf.indexOf("\n")) >= 0;) {
         const line = buf.slice(0, i); buf = buf.slice(i + 1);
-        let j: { type?: string; event?: { type?: string; delta?: { type?: string; text?: string } }; result?: string; is_error?: boolean };
+        let j: { type?: string; event?: { type?: string; delta?: { type?: string; text?: string } }; result?: string; is_error?: boolean;
+          message?: { content?: { type?: string; name?: string }[] } };
         try { j = JSON.parse(line); } catch { continue; }
+        // Työkalukutsu: sama tilarivi ja Jälki-nimi kuin Snowflaken agentilla.
+        const use = j.type === "assistant" ? j.message?.content?.find((c) => c.type === "tool_use") : undefined;
+        if (use?.name) { const n = use.name.replace(/^mcp__liiga__/, ""); tools.add(n); emit({ t: "status", text: TOOL[n] ?? "Haetaan tietoja" }); }
         if (j.type === "stream_event" && j.event?.type === "content_block_delta" && j.event.delta?.type === "text_delta") emit({ t: "delta", text: j.event.delta.text ?? "" });
         else if (j.type === "result") { if (j.is_error || !j.result) return reject(new Error(j.result || "Paikallinen Claude ei vastannut.")); final = j.result; }
       }
@@ -83,5 +96,5 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
   // Jatkokysymykset viimeiseltä JATKO-riviltä, kuten Snowflaken agentin suggested_queries.
   const m = result.match(/\n?\s*JATKO:\s*(.+)\s*$/);
   const suggestions = m ? m[1].split("|").map((q) => q.trim()).filter(Boolean).slice(0, 3) : [];
-  emit({ t: "done", text: m ? result.slice(0, m.index).trimEnd() : result, ms: Date.now() - t0, suggestions });
+  emit({ t: "done", text: m ? result.slice(0, m.index).trimEnd() : result, ms: Date.now() - t0, suggestions, tools: [...tools] });
 }

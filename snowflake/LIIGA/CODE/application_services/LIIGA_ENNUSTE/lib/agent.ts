@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { parse } from "smol-toml";
 import { askLocal } from "@/lib/localClaude";
+import { TOOL } from "@/lib/agentTools";
 import { CONTEXT_RULE, type PageRef, pageContext } from "@/lib/pageContext";
 import { DATA_MODE, query } from "@/lib/snowflake";
 
@@ -86,10 +87,6 @@ function render(parts: Part[]): { text: string; suggestions: string[]; tools: st
 }
 
 // --- Tilaviestit suomeksi ----------------------------------------------------
-const TOOL: Record<string, string> = {
-  liiga_ennuste: "Haetaan ennustetta", liiga_kausi: "Haetaan kauden tilastoja", liiga_skenaario: "Simuloidaan 10 000 kautta",
-  liiga_kokoonpanot: "Haetaan illan kokoonpanoja", liiga_tieto: "Haetaan tietopankista", system_execute_sql: "Ajetaan kysely",
-};
 const STATUS: Record<string, string> = {
   planning: "Suunnitellaan", sandbox_provisioning: "Valmistellaan", sandbox_ready: "Valmistellaan",
   extracting_tool_calls: "Valitaan tietolähde", reasoning_agent_stop: "Tarkistetaan tulokset", reevaluating_plan: "Tarkistetaan tulokset",
