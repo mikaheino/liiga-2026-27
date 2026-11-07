@@ -65,7 +65,10 @@ export default function ScenarioParams({ orig, onApply }: { orig: Item[]; onAppl
   const [sh, setSh] = useState<Record<string, number>>({});
   const [all, setAll] = useState(false);
   const [opts, setOpts] = useState<Opts | null>(null);
-  const teams = [...new Set([team, ...shifts.map((s) => s.team)].filter(Boolean))] as string[];
+  // Poissaolojen joukkueet labelista "Nimi (Joukkue) poissa …": maalivahtien kohdalla näytetään, kuka
+  // on maalissa (7.11.: "missä Olkinuora" -- säädöissä näkyivät vain poissa olevat vahdit).
+  const injTeam = (i: Item) => /\(([^)]+)\)/.exec(String(i.label ?? ""))?.[1];
+  const teams = [...new Set([team, ...shifts.map((s) => s.team), ...injuries.map(injTeam)].filter(Boolean))] as string[];
   useEffect(() => {
     if (!teams.length) return;
     fetch(`/api/skenaario/parametrit?teams=${encodeURIComponent(teams.join(","))}`, { cache: "no-store" }).then((r) => r.json()).then(setOpts).catch(() => {});
@@ -140,12 +143,20 @@ export default function ScenarioParams({ orig, onApply }: { orig: Item[]; onAppl
         );
       })}
       {games.length > 6 && n > 5 && <button type="button" className="sp-more" onClick={() => setAll(!all)}>{all ? "Näytä vähemmän" : `Näytä kaikki ${n} ottelua`}</button>}
+      {teams.map((t) => {
+        const g = opts?.goalies[t];
+        const outNames = injuries.filter((i) => injTeam(i) === t).map((i) => String(i.label ?? i.injury));
+        const isOut = (n: string) => outNames.some((l) => l.startsWith(n));
+        if (!g || (!isOut(g.starter) && !(g.backup && isOut(g.backup)))) return null;
+        const keep = [g.starter, g.backup].filter((n): n is string => !!n && !isOut(n));
+        return keep.length ? <div key={`gk-${t}`} className="sp-row sp-gk"><span>Maalissa ({t})</span><b>{keep.join(", ")}</b></div> : null;
+      })}
       {injuries.map((i) => {
         const v = inj[String(i.injury)] ?? i.games;
         return (
           <label key={String(i.injury)} className="sp-row">
             <span>{String(i.label ?? i.injury).replace(/ poissa .*$/, "")} poissa</span>
-            <input type="range" min={1} max={45} value={v} onChange={(e) => setInj({ ...inj, [String(i.injury)]: Number(e.target.value) })} />
+            <input type="range" min={1} max={Math.max(60, i.games)} value={v} onChange={(e) => setInj({ ...inj, [String(i.injury)]: Number(e.target.value) })} />
             <b>{v} ott.</b>
           </label>
         );

@@ -1443,6 +1443,7 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .sp-h { font: 600 14px var(--sans); color: var(--ink); }
 .sp-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 2fr) auto; align-items: center; gap: 12px; font-size: 13.5px; color: var(--body); }
 .sp-row b { font: 600 13px var(--sans); color: var(--gold-hi); font-variant-numeric: tabular-nums; min-width: 70px; text-align: right; }
+.sp-row.sp-gk { grid-template-columns: minmax(0, 1fr) auto; }
 .sp input[type="range"] { accent-color: #ebca68; width: 100%; }
 .sp-game { display: grid; grid-template-columns: 150px auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
 .sp-g { font-size: 13px; color: var(--body); white-space: nowrap; }
