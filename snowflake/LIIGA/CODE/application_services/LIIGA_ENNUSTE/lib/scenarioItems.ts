@@ -4,7 +4,8 @@
 // Skenaarion rivimäärän yläraja (7.11.2026: 10 -> 64, käyttäjä: "skenaario pitäisi mennä koko
 // kaudelle"): yhden joukkueen koko runkosarja. Moottorissa ei ole omaa rajaa.
 export const MAX_ITEMS = 64;
-const RESULTS = new Set(["home_win", "away_win", "home_reg", "home_ot", "away_ot", "away_reg"]);
+// + jatkoaika ja pisteet (7.11.2026): overtime, regulation, home_point, away_point.
+const RESULTS = new Set(["home_win", "away_win", "home_reg", "home_ot", "away_ot", "away_reg", "overtime", "regulation", "home_point", "away_point"]);
 const GOALS = new Set(["avoid_relegation", "top10", "top6", "win"]);
 const int = (v: unknown, lo: number, hi: number) => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
 

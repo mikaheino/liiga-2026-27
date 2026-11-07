@@ -72,17 +72,24 @@ PTS = {"reg_win": 3, "ot_win": 2, "ot_loss": 1, "reg_loss": 0}
 CANON = ("home_reg", "home_ot", "away_ot", "away_reg")     # tuloskoodit 0..3 (k-matriisi)
 GAME_RESULTS = {"home_win": ("home_reg", "home_ot"), "away_win": ("away_ot", "away_reg"),
                 "home_reg": ("home_reg",), "home_ot": ("home_ot",), "away_ot": ("away_ot",),
-                "away_reg": ("away_reg",)}
+                "away_reg": ("away_reg",),
+                # Jatkoaika ja pisteet (7.11.2026, käyttäjä: "tuki jatkoaika"): menee jatkoajalle
+                # (kumpi tahansa voittaa), ratkeaa varsinaisella ajalla, joukkue saa vähintään pisteen.
+                "overtime": ("home_ot", "away_ot"), "regulation": ("home_reg", "away_reg"),
+                "home_point": ("home_reg", "home_ot", "away_ot"), "away_point": ("home_ot", "away_ot", "away_reg")}
 # Tavoite -> julkaistun ennusteen kenttä (ja onko se komplementti).
 GOAL_PUB = {"win": ("p_title", False), "top6": ("p_top6", False), "top10": ("p_top10", False),
             "avoid_relegation": ("p_relegation", True)}
 RESULTS = {
     "win": ("home_reg", "home_ot"), "reg_win": ("home_reg",), "ot_win": ("home_ot",),
     "loss": ("away_reg", "away_ot"), "reg_loss": ("away_reg",), "ot_loss": ("away_ot",),
+    "ot": ("home_ot", "away_ot"), "regulation": ("home_reg", "away_reg"), "point": ("home_reg", "home_ot", "away_ot"),
 }
 FLIP = {"home_reg": "away_reg", "home_ot": "away_ot", "away_reg": "home_reg", "away_ot": "home_ot"}
 ALIASES = {"voitto": "win", "tappio": "loss", "häviö": "loss", "jatkoaikavoitto": "ot_win",
-           "jatkoaikatappio": "ot_loss", "regulation_win": "reg_win", "regulation_loss": "reg_loss"}
+           "jatkoaikatappio": "ot_loss", "regulation_win": "reg_win", "regulation_loss": "reg_loss",
+           "jatkoaika": "ot", "jatkoajalle": "ot", "overtime": "ot", "piste": "point", "pisteet": "point",
+           "vähintään piste": "point", "varsinainen": "regulation", "varsinaisella": "regulation"}
 
 
 # Mallin vakiot (config.yaml, src/liiga/pipeline.py). tests/test_simulate_scenario.py
@@ -618,7 +625,11 @@ def _lock_label(gm: dict, allowed: tuple[str, ...]) -> str:
             ("home_reg",): f"{gm['home_team']} voittaa varsinaisella peliajalla",
             ("home_ot",): f"{gm['home_team']} voittaa jatkoajalla",
             ("away_ot",): f"{gm['away_team']} voittaa jatkoajalla",
-            ("away_reg",): f"{gm['away_team']} voittaa varsinaisella peliajalla"}.get(key, "/".join(key))
+            ("away_reg",): f"{gm['away_team']} voittaa varsinaisella peliajalla",
+            ("home_ot", "away_ot"): "menee jatkoajalle",
+            ("home_reg", "away_reg"): "ratkeaa varsinaisella peliajalla",
+            ("home_reg", "home_ot", "away_ot"): f"{gm['home_team']} saa vähintään pisteen",
+            ("home_ot", "away_ot", "away_reg"): f"{gm['away_team']} saa vähintään pisteen"}.get(key, "/".join(key))
 
 
 def canonical(fixed: dict, games: list[dict], injury_info: list[dict], goals: list[dict],

@@ -293,3 +293,17 @@ def test_team_xg_share_shift_moves_team_and_is_canonical():
     assert abs(next(r for r in again["teams"] if r["team"] == team)["points_scenario"] - row["points_scenario"]) < 1e-9
     with pytest.raises(sim.ScenarioError):
         sim.compute([{"team": team, "xg_share": 0.3}], games, banked, pub, w, model=model)
+
+
+def test_overtime_and_point_locks():
+    """Jatkoaika ja pisteet (7.11.2026): "menee jatkoajalle" ja "vähintään piste" lukitsevat oikeat
+    tulokset, kanoninen rivi kelpaa syötteeksi, ja todennäköisyys on osatulosten summa."""
+    games, banked, pub, w, _ = _load()
+    g = games[0]
+    ot = sim.compute([{"team": g["home_team"], "result": "ot", "games": 1}], games, banked, pub, w)   # testiaineistossa ei game_id:tä
+    assert ot["scenario_canonical"][0]["result"] == "overtime" and "jatkoajalle" in ot["scenario_canonical"][0]["label"]
+    p = sim._outcome_probs(g)
+    assert abs(ot["plausibility"] - (p["home_ot"] + p["away_ot"])) < 1e-9
+    pt = sim.compute([{"team": g["away_team"], "result": "point", "games": 1}], games, banked, pub, w)
+    assert pt["scenario_canonical"][0]["result"] == "away_point"
+    assert abs(pt["plausibility"] - (1 - p["home_reg"])) < 1e-9

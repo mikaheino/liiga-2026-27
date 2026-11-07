@@ -274,3 +274,12 @@ Käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia", "Entä jos
   (`SIGNING`, myös "Hyökkääjä X Kouvolaan" ja "debyytti"), jatkosopimukset pois; loukkaantuminen =
   "loukkaantunut" (agentti käyttää kestolle oletusta). Valikossa 2 omaa hakua + uutiset, yhteensä 10.
   7.11.: 12 ehdotusta (2 poissaoloa, 8 hankintaa, 2 loukkaantumista).
+
+## Jatkoaika ja pisteet, ruutuun mahtuminen (7.11.2026)
+
+- Moottori: uudet tulokset `ot` (menee jatkoajalle, kumpi tahansa voittaa), `point` (vähintään
+  piste), `regulation` (ratkeaa varsinaisella ajalla); ottelukohtaisesti `overtime`, `regulation`,
+  `home_point`, `away_point`. Labelit "menee jatkoajalle" / "X saa vähintään pisteen". Testi lisätty.
+  Testattu: "Sport–HPK 14.11. menee jatkoajalle", "KooKoo saa pisteen jokaisesta viidestä seuraavasta".
+- Etusivu: kenttä ~kolmanneksen korkeudella, ehdotuslista enintään 52 vh (vierii sisällään), pitkä
+  lähdetieto lyhennetään.

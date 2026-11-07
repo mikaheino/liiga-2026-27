@@ -1352,3 +1352,13 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .fr > section.gs:not(.has-res) { min-height: calc(100dvh - 72px - 66px - env(safe-area-inset-bottom)); padding-bottom: 6vh; }
 }
 .fr:has(> section.gs) .fr-links { display: none !important; }   /* alavalikko kattaa osiot */
+/* Kaikki mahtuu ruutuun (7.11.2026): kenttä kolmanneksen korkeudelle kuten Googlessa, ehdotuslista
+   korkeintaan ruudun loppuun asti (vierii sisällään), pitkä lähdetieto lyhennetään. */
+.fr > section.gs:not(.has-res) { padding-bottom: 34vh; }
+.gs-sugs { max-height: min(52vh, 560px); overflow-y: auto; overscroll-behavior: contain; }
+.gs-sm { max-width: 34%; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+@media (max-width: 860px) {
+  .fr > section.gs:not(.has-res) { padding-bottom: 38dvh; }
+  .gs-sugs { max-height: 46dvh; }
+  .gs-sm { max-width: none; text-align: left; }
+}
