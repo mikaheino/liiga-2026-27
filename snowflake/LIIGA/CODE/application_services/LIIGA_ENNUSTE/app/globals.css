@@ -1298,3 +1298,16 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .sc-pbar i { display: block; height: 100%; border-radius: 4px; background: #ebca68; }
 .sc-p { font: 600 12.5px var(--mono); color: var(--ink); text-align: right; }
 @media (max-width: 860px) { .sc-games li { grid-template-columns: minmax(0, 1fr) 70px 40px; } }
+/* Vastaus ilman vieritystä (7.11.2026): auki olevassa haussa pienempi sanamerkki ja tiiviit välit;
+   valmiit vaiheet + lähteet yhtenä avattavana rivinä. */
+.gs.has-res { padding-top: 8px; gap: 12px; }
+.gs.has-res .gs-logo { font-size: 30px; }
+.gs-trace summary { cursor: pointer; font-size: 12.5px; color: var(--muted); list-style: none; }
+.gs-trace summary::-webkit-details-marker { display: none; }
+.gs-trace summary:hover { color: var(--gold-hi); }
+.gs-trace .gs-steps { margin-top: 8px; }
+.gs-trace pre { margin: 8px 0 0; padding: 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); color: var(--body);
+  font: 11px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; }
+.gs-ai.done { gap: 8px; padding: 14px 18px; }
+.gs .gs-results { margin-top: 0; }
+@media (max-width: 860px) { .gs.has-res .gs-logo { font-size: 24px; } .fr > section.gs.has-res { min-height: 0; } }

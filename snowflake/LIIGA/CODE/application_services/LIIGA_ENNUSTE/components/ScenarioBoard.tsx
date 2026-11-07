@@ -149,7 +149,7 @@ export default function ScenarioBoard() {
   // Sirut moottorin kanonisista riveistä (moottorin label); poisto = loput rivit uudelleen.
   const chips = res?.scenario_canonical ?? items;
   return (
-    <section className={`gs ${busy ? "busy" : ""} ${items.length ? "has-res" : ""}`} aria-label="Oma skenaario">
+    <section className={`gs ${busy ? "busy" : ""} ${items.length || live ? "has-res" : ""}`} aria-label="Oma skenaario">
       <h2 className="gs-logo">Entä jos<span>?</span></h2>
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
         {/* Ei erillisiä nappeja: Enter tai suurennuslasi lähettää. */}
@@ -164,15 +164,25 @@ export default function ScenarioBoard() {
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
           <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
           {live.saved?.stale && <p className="gs-stale">Vanha perusta: ennuste on päivittynyt haun jälkeen. Teksti on haun hetkeltä, luvut lasketaan nykyisellä ennusteella.</p>}
-          <ol className="gs-steps">
-            {live.steps.map((st, i) => {
-              const now = !live.done && i === live.steps.length - 1;
-              return <li key={i} className={now ? "run" : "ok"}><i aria-hidden>{now ? "" : "✓"}</i>{st}</li>;
-            })}
-            {live.done && busy && (
-              <li className="run"><i aria-hidden />Lasketaan vaikutukset nykyisellä ennusteella: 10 000 simuloitua kautta</li>
-            )}
-          </ol>
+          {/* Vastaus heti hakukentän alle (7.11.2026, käyttäjä: "vastaus alle, ei skrollausta"):
+              valmiina vaiheet ja lähteet tiivistyvät yhdeksi avattavaksi riviksi. */}
+          {!live.done || busy ? (
+            <ol className="gs-steps">
+              {live.steps.map((st, i) => {
+                const now = !live.done && i === live.steps.length - 1;
+                return <li key={i} className={now ? "run" : "ok"}><i aria-hidden>{now ? "" : "✓"}</i>{st}</li>;
+              })}
+              {live.done && busy && (
+                <li className="run"><i aria-hidden />Lasketaan vaikutukset nykyisellä ennusteella: 10 000 simuloitua kautta</li>
+              )}
+            </ol>
+          ) : live.steps.length > 0 && (
+            <details className="gs-trace">
+              <summary>✓ {live.steps.length} vaihetta{live.tools.length ? ` · ${live.tools.join(" · ")}` : ""}{live.sql.length ? ` · ${live.sql.length} SQL-kyselyä` : ""}</summary>
+              <ol className="gs-steps">{live.steps.map((st, i) => <li key={i} className="ok"><i aria-hidden>✓</i>{st}</li>)}</ol>
+              {live.sql.map((q, i) => <pre key={i}>{q}</pre>)}
+            </details>
+          )}
           {live.text && <p className="gs-ai-t">{live.text}</p>}
           {live.error && <div className="ag-err">{live.error}</div>}
           {live.done && !live.error && live.items === 0 && live.text && (
@@ -182,55 +192,20 @@ export default function ScenarioBoard() {
               <button type="submit" disabled={!reply.trim()}>Vastaa</button>
             </form>
           )}
-          {(live.sql.length > 0 || live.tools.length > 0) && (
-            <details className="gs-src">
-              <summary>Lähteet: {live.tools.join(" · ") || "data"}{live.sql.length ? ` · ${live.sql.length} SQL-kyselyä` : ""}</summary>
-              {live.sql.map((q, i) => <pre key={i}>{q}</pre>)}
-            </details>
-          )}
         </div>
-      )}
-      {items.length > 0 && (
-        <div className="gs-chips" aria-label="Lukitut tulokset">
-          {(allChips || chips.length <= 8 ? chips : chips.slice(0, 6)).map((c) => (
-            <button key={itemKey(c)} type="button" className="gs-chip" title="Poista"
-              onClick={() => setLocks(chips.filter((x) => itemKey(x) !== itemKey(c)))}>{c.label}<span aria-hidden>✕</span></button>
-          ))}
-          {/* Koko kauden skenaariossa voi olla kymmeniä otteluita: tiivistetään (7.11.2026). */}
-          {chips.length > 8 && (
-            <button type="button" className="gs-chip more" onClick={() => setAllChips(!allChips)}>
-              {allChips ? "Näytä vähemmän" : `+${chips.length - 6} muuta ottelua`}</button>
-          )}
-        </div>
-      )}
-      {haut.length > 0 && !building && (
-        <details className="gs-hist" open={!live}>
-          <summary>Aiemmat skenaariot ({haut.length})</summary>
-          <ul>
-            {haut.map((h) => (
-              <li key={h.id}>
-                <button type="button" onClick={() => open(h)}>
-                  <b>{h.question}</b>
-                  <span>{when(h.askedAt)} · {h.status === "done" ? `${h.items.length} ${h.items.length === 1 ? "rivi" : "riviä"}` : h.status === "clarify" ? "tarkennus kysytty" : "virhe"}
-                    {h.forecastTs && stamp && h.forecastTs !== stamp ? " · vanha perusta" : ""}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </details>
       )}
       {!items.length && !live && <p className="gs-hint">Tekoäly hakee tarvittavan datan, rakentaa skenaarion ja laskee sen ennustemallilla. Voit myös lukita tuloksia ottelukorteista.</p>}
       {err && <div className="ag-err gs-status">{err}</div>}
       {items.length > 0 && res && (
         <div className="gs-results">
-          <p className="gs-stats">
-            {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{res.plausibility < 0.001 ? "alle 0,1" : fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
-            ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
-          </p>
           {/* Agentin valitsema kuvaaja; jos agentti ei valinnut (vanha haku), sama sääntö kuin sen ohjeessa.
               Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
           <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
             charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />
+          <p className="gs-stats">
+            {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{res.plausibility < 0.001 ? "alle 0,1" : fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
+            ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
+          </p>
           {res.requirements.map((r) => <p key={r.team + r.goal} className="gs-req">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
           {rows.length ? rows.map((r) => {
             // Otsikkona joukkueen suurin muutos, katkelmana muut liikkuneet luvut.
@@ -254,6 +229,35 @@ export default function ScenarioBoard() {
             <button type="button" className="ag-tr" onClick={() => setLocks([])}>Tyhjennä</button>
           </div>
         </div>
+      )}
+      {items.length > 0 && (
+        <div className="gs-chips" aria-label="Lukitut tulokset">
+          {(allChips || chips.length <= 4 ? chips : []).map((c) => (
+            <button key={itemKey(c)} type="button" className="gs-chip" title="Poista"
+              onClick={() => setLocks(chips.filter((x) => itemKey(x) !== itemKey(c)))}>{c.label}<span aria-hidden>✕</span></button>
+          ))}
+          {/* Koko kauden skenaariossa voi olla kymmeniä otteluita: tiivistetään (7.11.2026). */}
+          {chips.length > 4 && (
+            <button type="button" className="gs-chip more" onClick={() => setAllChips(!allChips)}>
+              {allChips ? "Piilota lukitut tulokset" : `${chips.length} lukittua tulosta · näytä`}</button>
+          )}
+        </div>
+      )}
+      {haut.length > 0 && !building && (
+        <details className="gs-hist" open={!live}>
+          <summary>Aiemmat skenaariot ({haut.length})</summary>
+          <ul>
+            {haut.map((h) => (
+              <li key={h.id}>
+                <button type="button" onClick={() => open(h)}>
+                  <b>{h.question}</b>
+                  <span>{when(h.askedAt)} · {h.status === "done" ? `${h.items.length} ${h.items.length === 1 ? "rivi" : "riviä"}` : h.status === "clarify" ? "tarkennus kysytty" : "virhe"}
+                    {h.forecastTs && stamp && h.forecastTs !== stamp ? " · vanha perusta" : ""}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </section>
   );
