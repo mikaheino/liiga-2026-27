@@ -269,3 +269,8 @@ Käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia", "Entä jos
   tuloksia on.
 - Huom. kehityspalvelin: `cat >>` -lisäys olemassa olevaan moduuliin jäi Turbopackin välimuistiin
   ("is not a function"); uusi tiedosto (`newsSuggestions.ts`) ratkaisi.
+- Laajennus 7.11. ("uutisia enemmän"): ikkuna 30 pv, enintään 12; pelaaja myös otsikosta/tiivistelmästä
+  `news_roster`ia vasten (siirroissa vain otsikosta); siirroksi kelpaa vain sopimukseen viittaava otsikko
+  (`SIGNING`, myös "Hyökkääjä X Kouvolaan" ja "debyytti"), jatkosopimukset pois; loukkaantuminen =
+  "loukkaantunut" (agentti käyttää kestolle oletusta). Valikossa 2 omaa hakua + uutiset, yhteensä 10.
+  7.11.: 12 ehdotusta (2 poissaoloa, 8 hankintaa, 2 loukkaantumista).

@@ -162,9 +162,9 @@ export default function ScenarioBoard() {
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
   const opts: Opt[] = [
-    ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 4).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
+    ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 2).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
     ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: "news" as const })),
-  ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 8);
+  ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 10);
   const showSugs = focus && !building && opts.length > 0;
   // Nollaus (7.11.2026, käyttäjä: "miten nollata"): ✕ tai Esc tyhjentää kentän, vastauksen ja
   // skenaarion, jolloin näkymä palaa tyhjäksi etusivuksi.
