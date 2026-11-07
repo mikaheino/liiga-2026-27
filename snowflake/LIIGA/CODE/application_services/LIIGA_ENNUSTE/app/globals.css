@@ -1259,5 +1259,8 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-hist button:hover b { color: var(--gold-hi); }
 .gs-hist button:focus-visible { outline: 2px solid var(--gold-mid); outline-offset: -2px; }
 .gs-stale { margin: 0; font-size: 12.5px; color: var(--warn); }
-/* Lisää skenaarioon -nappi on ensisijainen, kun skenaario on auki (7.11.2026). */
-.gs-btns button.primary { border-color: var(--gold-dim); color: var(--gold-hi); }
+/* Suurennuslasi lähettää haun (7.11.2026: ei erillisiä nappeja). */
+.gs-go { all: unset; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.gs-go:disabled { cursor: default; }
+.gs-go:not(:disabled):hover .gs-ico { stroke: var(--gold-hi); }
+.gs-go:focus-visible { outline: 2px solid var(--gold-mid); outline-offset: 3px; }

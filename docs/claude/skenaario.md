@@ -188,9 +188,11 @@ Käyttäjä: "Haluan että skenaariot tallentuvat ja niiden vastaukset."
 
 ## Skenaario skenaarion päälle (7.11.2026)
 
-Käyttäjä: "skenaario skenaarion päälle tarvitaan". Kun skenaario on auki, napit ovat
-**Lisää skenaarioon** (ensisijainen, myös Enter) ja **Uusi skenaario**. Lisäyksessä selain lähettää
-nykyiset rivit `base`-kenttänä ([{item, label}], palvelin tarkistaa `validItem`illä, ≤ 64), ja
-`describe()` antaa ne agentille: rivit liiga_skenaario-kutsuun sellaisinaan + uudet rivit, joten
-tekstin luvut koskevat koko yhdistelmää. Tarkennuskierros käyttää samaa pohjaa. Testattu: 3 Tapparan
-voittoa + "Bartosak loukkaantuu 10 ottelua" -> 4 riviä, teksti kuvaa yhdistelmän.
+Käyttäjä: "skenaario skenaarion päälle tarvitaan" ja heti perään "Ei mitään nappeja, vaan
+tietoisuus". Ei lisää/uusi-nappeja eikä edes Rakenna-nappia: Enter tai suurennuslasi lähettää.
+Selain lähettää nykyisen skenaarion aina `base`-kenttänä ([{item, label}], palvelin tarkistaa
+`validItem`illä, ≤ 64), ja `BASE_RULE` käskee agentin päättämään itse: JATKA (viittaus nykyiseen tai
+luonteva täydennys -> nykyiset rivit sellaisinaan + uudet) tai ALOITA UUSI (itsenäinen kysymys), ja
+sanomaan valintansa yhteenvedon alussa. Agentin palauttama skenaario korvaa sirut; tarkennus käyttää
+samaa pohjaa. Testattu samalla pohjalla (3 Tapparan voittoa): "Bartosak loukkaantuu myös 10 ottelua"
+-> jatkoi (4 riviä), "Mitä jos Kärpät voittaa loppukauden kaikki kotiottelunsa?" -> uusi (21 riviä).

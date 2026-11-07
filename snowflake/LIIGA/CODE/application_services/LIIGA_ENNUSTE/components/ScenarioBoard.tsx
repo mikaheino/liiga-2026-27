@@ -95,7 +95,7 @@ export default function ScenarioBoard() {
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const run = async (follow?: string, add = false) => {
+  const run = async (follow?: string) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
     const q = follow && live ? live.q : text.trim();
@@ -105,9 +105,10 @@ export default function ScenarioBoard() {
     setReply("");
     // Uusi haku = uusi skenaario (7.11.2026, käyttäjä: "kun kysyn jotain niin se on konkreettista"):
     // vanhat sirut pois heti, jotta tekoälyn teksti ja alla olevat luvut koskevat samaa skenaariota.
-    // Lisäys (7.11.2026: "skenaario skenaarion päälle tarvitaan"): nykyiset rivit pohjaksi.
-    const base = follow && live ? live.base : add && items.length ? items.map((i) => ({ item: engineItem(i), label: i.label })) : undefined;
-    if (!base) setLocks([]);
+    // Nykyinen skenaario kulkee aina agentille tiedoksi (7.11.2026: "skenaario skenaarion päälle" ja
+    // "ei mitään nappeja, vaan tietoisuus"): agentti päättää, jatkaako se sitä vai aloittaako uuden,
+    // ja sen palauttama skenaario korvaa sirut. Tarkennuskierros käyttää samaa pohjaa.
+    const base = follow && live ? live.base : items.length ? items.map((i) => ({ item: engineItem(i), label: i.label })) : undefined;
     setAllChips(false);
     setLive({ q, prompt, base, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
@@ -146,21 +147,18 @@ export default function ScenarioBoard() {
   return (
     <section className={`gs ${busy ? "busy" : ""} ${items.length ? "has-res" : ""}`} aria-label="Oma skenaario">
       <h2 className="gs-logo">Entä jos<span>?</span></h2>
-      <form onSubmit={(e) => { e.preventDefault(); run(undefined, items.length > 0); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
-        <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+      <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
+        {/* Ei erillisiä nappeja: Enter tai suurennuslasi lähettää. */}
+        <button type="submit" className="gs-go" aria-label="Rakenna skenaario" disabled={building || text.trim().length < 3}>
+          <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+        </button>
         <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={building} enterKeyHint="search"
-          placeholder={items.length ? "Lisää skenaarioon, esim. Bartosak loukkaantuu 10 ottelua" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
+          placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
         {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
       </form>
-      <div className="gs-btns">
-        {items.length > 0 ? (<>
-          <button type="button" className="primary" onClick={() => run(undefined, true)} disabled={building || text.trim().length < 3}>Lisää skenaarioon</button>
-          <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Uusi skenaario</button>
-        </>) : <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>}
-      </div>
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
-          <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : live.base?.length ? `Tekoäly lisää skenaarioon (${live.base.length} riviä pohjana)` : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
+          <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
           {live.saved?.stale && <p className="gs-stale">Vanha perusta: ennuste on päivittynyt haun jälkeen. Teksti on haun hetkeltä, luvut lasketaan nykyisellä ennusteella.</p>}
           <ol className="gs-steps">
             {live.steps.map((st, i) => {

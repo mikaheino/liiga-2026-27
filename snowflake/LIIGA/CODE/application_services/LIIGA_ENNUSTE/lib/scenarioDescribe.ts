@@ -48,10 +48,15 @@ async function schedule(text: string, teams: string[]): Promise<string> {
 // Skenaario skenaarion päälle (7.11.2026, käyttäjä: "skenaario skenaarion päälle tarvitaan"):
 // pohja = selaimen nykyinen skenaario moottorin kanonisina riveinä (palvelin on tarkistanut ne).
 // Agentti ottaa ne mukaan sellaisinaan, jolloin sen tekstin luvut koskevat koko yhdistelmää.
-const BASE_RULE = (base: Record<string, unknown>[], labels: string[]) => `NYKYINEN SKENAARIO (käyttäjä rakentaa tämän päälle):
+// Ei nappeja (käyttäjä 7.11.: "Ei mitään nappeja, vaan tietoisuus"): agentti päättää itse, jatkaako
+// se nykyistä skenaariota vai aloittaako uuden, ja sanoo valintansa yhteenvedon alussa.
+const BASE_RULE = (base: Record<string, unknown>[], labels: string[]) => `NYKYINEN SKENAARIO (käyttäjällä auki juuri nyt):
 ${labels.map((l) => `- ${l}`).join("\n")}
 Samat rivit moottorin muodossa: ${JSON.stringify(base)}
-Ota nämä rivit liiga_skenaario-kutsuun SELLAISINAAN ja lisää käyttäjän kuvaamat uudet rivit. Jos käyttäjä haluaa muuttaa tai poistaa jonkin nykyisen rivin, tee se. Yhteenvedossa kerro, mitä lisäsit, ja anna luvut koko yhdistetystä skenaariosta.`;
+Päätä itse, jatkaako käyttäjä tätä skenaariota vai kysyykö uutta:
+- JATKA, jos kuvaus viittaa nykyiseen ("tähän", "päälle", "myös", "lisäksi", "vielä", "entä jos sen lisäksi") tai täydentää sitä luontevasti (esim. pelkkä uusi loukkaantuminen tai tulos samoihin joukkueisiin). Ota silloin nämä rivit liiga_skenaario-kutsuun SELLAISINAAN ja lisää uudet; muuta tai poista nykyinen rivi, jos käyttäjä niin pyytää.
+- ALOITA UUSI, jos kuvaus on itsenäinen kokonaisuus, joka ei liity nykyiseen (esim. "Mitä jos Kärpät voittaa loppukauden"). Älä silloin ota nykyisiä rivejä mukaan.
+- Aloita yhteenveto sanomalla valintasi lyhyesti: "Lisäsin nykyiseen skenaarioon …" tai "Aloitin uuden skenaarion: …". Luvut koskevat aina sitä skenaariota, jonka työkalu laski.`;
 
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
   pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null): Promise<Described> {
