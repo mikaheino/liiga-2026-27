@@ -1344,3 +1344,11 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 }
 /* Kuvaajan akselit tavallisella fontilla (NHL 95 -kerroksen pikselifontti ei sovi hakusivulle). */
 .sc-chart .axis { font-family: var(--sans) !important; font-weight: 400 !important; letter-spacing: 0; font-size: 11px; }
+/* Yksi tasainen ruutu (7.11.2026, "tasaisuus per screen"): tyhjä etusivu = yläpalkin alla oleva
+   tila, jonka keskellä on hakukenttä (ei vierityspalkkia, ei alhaalta työntävää sisältöä). */
+.front.fr:has(> section.gs:not(.has-res)) { padding-top: 0; padding-bottom: 0; }
+.fr > section.gs:not(.has-res) { min-height: calc(100vh - 72px); margin-bottom: 0; padding: 0 0 8vh; align-content: center; }
+@media (max-width: 860px) {
+  .fr > section.gs:not(.has-res) { min-height: calc(100dvh - 72px - 66px - env(safe-area-inset-bottom)); padding-bottom: 6vh; }
+}
+.fr:has(> section.gs) .fr-links { display: none !important; }   /* alavalikko kattaa osiot */

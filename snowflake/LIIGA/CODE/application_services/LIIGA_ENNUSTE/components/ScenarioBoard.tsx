@@ -162,7 +162,7 @@ export default function ScenarioBoard() {
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
   const opts: Opt[] = [
-    ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 3).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
+    ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 4).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
     ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: "news" as const })),
   ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 8);
   const showSugs = focus && !building && opts.length > 0;
@@ -258,7 +258,6 @@ export default function ScenarioBoard() {
           )}
         </div>
       )}
-      {!items.length && !live && <p className="gs-hint">Tekoäly hakee tarvittavan datan, rakentaa skenaarion ja laskee sen ennustemallilla. Voit myös lukita tuloksia ottelukorteista.</p>}
       {err && <div className="ag-err gs-status">{err}</div>}
       {items.length > 0 && res && (
         <div className="gs-results">
@@ -307,22 +306,8 @@ export default function ScenarioBoard() {
           )}
         </div>
       )}
-      {haut.length > 0 && !building && (
-        <details className="gs-hist">
-          <summary>Aiemmat skenaariot ({haut.length})</summary>
-          <ul>
-            {haut.map((h) => (
-              <li key={h.id}>
-                <button type="button" onClick={() => open(h)}>
-                  <b>{h.question}</b>
-                  <span>{when(h.askedAt)} · {h.status === "done" ? `${h.items.length} ${h.items.length === 1 ? "rivi" : "riviä"}` : h.status === "clarify" ? "tarkennus kysytty" : "virhe"}
-                    {h.forecastTs && stamp && h.forecastTs !== stamp ? " · vanha perusta" : ""}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      {/* Aiemmat skenaariot -lista poistettu 7.11.2026 ("tasaisuus per screen"): samat haut
+          ovat hakukentän ehdotuksissa (🕘), jolloin etusivu mahtuu yhdelle ruudulle. */}
     </section>
   );
 }
