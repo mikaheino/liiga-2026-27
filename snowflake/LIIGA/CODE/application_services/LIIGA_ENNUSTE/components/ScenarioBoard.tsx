@@ -169,6 +169,17 @@ export default function ScenarioBoard() {
   // Nollaus (7.11.2026, käyttäjä: "miten nollata"): ✕ tai Esc tyhjentää kentän, vastauksen ja
   // skenaarion, jolloin näkymä palaa tyhjäksi etusivuksi.
   const reset = () => { setText(""); setLive(null); setReply(""); setLocks([]); setRes(null); setErr(""); preset.current = null; setHi(-1); };
+  // Ei nollausnappia (käyttäjä: "ei nappi"): kuten Googlessa, logo ja alavalikon Koti (linkit
+  // etusivulle) palauttavat tyhjän näkymän. Next ei lataa samaa sivua uudelleen, joten kuunnellaan
+  // klikkauksia etusivulinkeihin.
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a");
+      if (a && a.getAttribute("href") === "/" && window.location.pathname === "/") reset();
+    };
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  });
   const choose = (o: Opt) => {
     setFocus(false); setHi(-1);
     if (o.haku) { setText(""); open(o.haku); } else { setText(o.q); run(undefined, o.q); }
@@ -195,10 +206,7 @@ export default function ScenarioBoard() {
           onKeyUp={(e) => { if (e.key === "Escape" && !showSugs && !building) reset(); }}
           role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
           placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
-        {(text || live || items.length > 0) && !building && (
-          <button type="button" className="gs-x" aria-label="Tyhjennä haku ja skenaario" title="Tyhjennä"
-            onClick={reset}>✕</button>
-        )}
+
         {showSugs && (
           <ul className="gs-sugs" id="gs-sugs" role="listbox">
             {opts.map((o, i) => (
