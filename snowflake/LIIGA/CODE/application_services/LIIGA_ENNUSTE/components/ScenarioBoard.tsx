@@ -45,17 +45,17 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
   base?: { item: unknown; label: string }[];
   saved?: { at: string; stale: boolean }; refreshed?: string; chart?: ChartPick; news?: string[];
-  exploring?: boolean; related?: { q: string; line: string }[]; roster?: string[] };
+  exploring?: boolean; related?: { q: string; line: string }[]; roster?: string[]; id?: string; version?: string | null; parentId?: string | null };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] } | { t: "exploring" }
   | { t: "related"; items: { q: string; line: string }[] }
-  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; roster?: string[]; tools: string[]; error?: string };
+  | { t: "done"; id?: string; version?: string | null; parentId?: string | null; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; roster?: string[]; tools: string[]; error?: string };
 // Tallennettu haku (lib/skenaarioHaut.ts, /api/skenaario/haut).
 type Haku = { id: string; question: string; followup: string | null; answer: string; items: Item[]; result: Res | null; tools: string[];
   sqlCount: number; forecastTs: string; askedAt: string; status: "done" | "clarify" | "error" };
 const when = (ts: string) => new Intl.DateTimeFormat("fi-FI", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Helsinki" }).format(new Date(ts));
 const keyOf = (l: Item[]) => l.map(itemKey).join("|");
 
-async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[] }, on: (m: Msg) => void) {
+async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[]; parent?: string }, on: (m: Msg) => void) {
   const r = await fetch("/api/skenaario/rakenna", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify(body) });
   if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? `Virhe ${r.status}`); }
   const rd = r.body.getReader(), dec = new TextDecoder();
@@ -125,7 +125,13 @@ export default function ScenarioBoard() {
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
     const q = follow && live ? live.q : (asked ?? text).trim();
     if (q.length < 3 || building || (follow != null && follow.trim().length < 1)) return;
-    const prompt = follow && live ? `${live.prompt ?? live.q}\n\nAgentti kysyi: ${live.text}\nKäyttäjä vastasi: ${follow.trim()}` : q;
+    // Jatkopolku hakukentässä (7.11.2026, käyttäjä: "jatkopolku, kaikki muokkaus Google-chatissa"):
+    // agentti saa edellisen kysymyksen ja vastauksen, jotta "entä jos painotetaan Eloa" tai "hän"
+    // ymmärretään jatkoksi. Tarkennusvastaus kulkee kuten ennen.
+    const prev = !follow && live?.done && live.text && items.length ? live : null;
+    const prompt = follow && live ? `${live.prompt ?? live.q}\n\nAgentti kysyi: ${live.text}\nKäyttäjä vastasi: ${follow.trim()}`
+      : prev ? `EDELLINEN KYSYMYS: ${prev.q}\nEDELLINEN VASTAUS (lyhennetty): ${prev.text.slice(0, 600)}\n\nJATKOKYSYMYS: ${q}` : q;
+    const parent = follow && live ? live.parentId ?? undefined : prev?.id;
     preset.current = null;
     setReply("");
     // Uusi haku = uusi skenaario (7.11.2026, käyttäjä: "kun kysyn jotain niin se on konkreettista"):
@@ -138,7 +144,7 @@ export default function ScenarioBoard() {
     setLive({ q, prompt, base, refreshed, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
-      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}) }, (m) => {
+      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}), ...(parent ? { parent } : {}) }, (m) => {
         if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
         else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
@@ -146,7 +152,7 @@ export default function ScenarioBoard() {
         else if (m.t === "related") up((l) => ({ ...l, exploring: false, related: m.items }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
-          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [], roster: m.roster ?? [] }));
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [], roster: m.roster ?? [], id: m.id, version: m.version, parentId: m.parentId }));
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText(""); setOrig(m.items); setAdjusted(false);
@@ -236,6 +242,7 @@ export default function ScenarioBoard() {
       </form>
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
+          {live.version && <div className="gs-ver" title="Hyperversio: sama skenaario samalla ennusteella = sama tunniste">versio {live.version}{live.parentId ? " · jatkoa edelliselle" : ""}</div>}
           <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
           {live.refreshed && <p className="gs-fresh">Päivitetty tämän päivän ennusteella (alkuperäinen haku {when(live.refreshed)}).</p>}
           {live.saved?.stale && <p className="gs-stale">Vanha perusta: ennuste on päivittynyt haun jälkeen. Teksti on haun hetkeltä, luvut lasketaan nykyisellä ennusteella.</p>}

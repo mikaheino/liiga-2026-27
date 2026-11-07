@@ -15,7 +15,14 @@ export type Haku = {
   id: string; season: number; question: string; followup: string | null; answer: string;
   items: Record<string, unknown>[]; result: Summary | null; tools: string[]; sql: string[];
   forecastTs: string; askedAt: string; ms: number; status: "done" | "clarify" | "error"; source: string;
+  version?: string | null; parentId?: string | null;
 };
+
+/** Hyperversio: sama skenaario samalla ennusteella = sama tunniste (kanoniset rivit ilman labeleita). */
+export function versionOf(items: Record<string, unknown>[], forecastTs: string): string {
+  const key = items.map(({ label: _l, ...x }) => JSON.stringify(x, Object.keys(x).sort())).sort().join("|") + "@" + forecastTs;
+  return crypto.createHash("sha256").update(key).digest("hex").slice(0, 12);
+}
 // Moottorin vastaus tiivistettynä: samat luvut, jotka hakutuloksissa näkyvät.
 // charts + chart + locked_games: kuvaajadata ja agentin valinta (7.11.2026), jotta tallennettu haku
 // avautuu samalla kuvaajalla.
@@ -48,10 +55,10 @@ export async function saveHaku(h: Omit<Haku, "id" | "askedAt">): Promise<string>
     return id;
   }
   // VARIANT/ARRAY: PARSE_JSON ei käy VALUES-lausekkeessa, joten INSERT ... SELECT.
-  await query(`INSERT INTO ${TABLE} (id, season, question, followup, answer, items, result, tools, sql_text, forecast_ts, ms, status, source)
-    SELECT ?, ?, ?, ?, ?, PARSE_JSON(?), PARSE_JSON(?), PARSE_JSON(?), PARSE_JSON(?), ?, ?, ?, ?`,
+  await query(`INSERT INTO ${TABLE} (id, season, question, followup, answer, items, result, tools, sql_text, forecast_ts, ms, status, source, version, parent_id)
+    SELECT ?, ?, ?, ?, ?, PARSE_JSON(?), PARSE_JSON(?), PARSE_JSON(?), PARSE_JSON(?), ?, ?, ?, ?, ?, ?`,
   [id, h.season, h.question, h.followup, h.answer, JSON.stringify(h.items), JSON.stringify(h.result), JSON.stringify(h.tools),
-    JSON.stringify(h.sql), h.forecastTs, h.ms, h.status, h.source]);
+    JSON.stringify(h.sql), h.forecastTs, h.ms, h.status, h.source, h.version ?? null, h.parentId ?? null]);
   return id;
 }
 
@@ -64,12 +71,13 @@ export async function listHaut(limit = 20, id?: string): Promise<Haku[]> {
     return id ? all.filter((h) => h.id === id) : all.slice(0, limit);
   }
   const rows = await query(`
-    SELECT id, season, question, followup, answer, items, result, tools, sql_text, forecast_ts,
+    SELECT id, season, question, followup, answer, items, result, tools, sql_text, forecast_ts, version, parent_id,
            TO_VARCHAR(asked_at, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') AS asked_at, ms, status, source
     FROM ${TABLE} ${id ? "WHERE id = ?" : ""} ORDER BY asked_at DESC LIMIT ${id ? 1 : Math.min(Math.max(1, limit), 100)}`, id ? [id] : []);
   return rows.map((r) => ({
     id: String(r.ID), season: Number(r.SEASON), question: String(r.QUESTION), followup: r.FOLLOWUP == null ? null : String(r.FOLLOWUP),
     answer: String(r.ANSWER ?? ""), items: json(r.ITEMS, []), result: json(r.RESULT, null), tools: json(r.TOOLS, []), sql: json(r.SQL_TEXT, []),
     forecastTs: String(r.FORECAST_TS ?? ""), askedAt: String(r.ASKED_AT), ms: Number(r.MS ?? 0), status: String(r.STATUS) as Haku["status"], source: String(r.SOURCE ?? ""),
+    version: r.VERSION == null ? null : String(r.VERSION), parentId: r.PARENT_ID == null ? null : String(r.PARENT_ID),
   }));
 }

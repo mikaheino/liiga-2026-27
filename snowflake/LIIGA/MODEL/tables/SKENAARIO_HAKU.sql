@@ -24,3 +24,10 @@ CREATE TABLE IF NOT EXISTS LIIGA.MODEL.SKENAARIO_HAKU (
   source       STRING                 COMMENT 'snowflake = LIIGA_ENNUSTAJA, local = kehityskoneen Claude'
 )
 COMMENT = 'Liiga Ennuste: etusivun skenaariohaut ja vastaukset (ScenarioBoard.tsx).';
+
+-- Hyperversiointi (7.11.2026, käyttäjä: "tämä moottori tallentaa mutta on hyperversioitu, kaikki on
+-- mahdollista"): version = sha256(kanoniset rivit ilman labeleita + ennusteen aikaleima)[:12], joten
+-- sama skenaario samalla ennusteella = sama versio; parent_id = haku, jonka jatkona tämä tehtiin
+-- (versiopuu). Lisätään idempotentisti olemassa olevaan tauluun.
+ALTER TABLE LIIGA.MODEL.SKENAARIO_HAKU ADD COLUMN IF NOT EXISTS version STRING COMMENT 'sha256(kanoniset rivit + forecast_ts)[:12]';
+ALTER TABLE LIIGA.MODEL.SKENAARIO_HAKU ADD COLUMN IF NOT EXISTS parent_id STRING COMMENT 'Haku, jonka jatkona tämä tehtiin';

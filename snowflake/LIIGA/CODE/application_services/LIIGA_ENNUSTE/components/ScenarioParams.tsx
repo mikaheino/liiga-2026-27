@@ -54,6 +54,9 @@ export default function ScenarioParams({ orig, onApply }: { orig: Item[]; onAppl
   const shifts = orig.filter((i) => "xg_share" in i) as (Item & { team: string; xg_share: number })[];
   // Muut rivit sellaisinaan: tavoitteet ja jo ottelukohtaiset poissaolot.
   const rest = orig.filter((i) => "goal" in i || ("injury" in i && "from" in i));
+  // Mallin säätö (7.11.2026, vaihe 1): liukusäätimet, kun skenaariossa on mallirivi.
+  const model0 = (orig.find((i) => "model" in i) as (Item & { model: Record<string, unknown> }) | undefined)?.model;
+  const [mdl, setMdl] = useState<Record<string, number>>({});
   const [res, setRes] = useState<Record<number, Res>>({});
   const [n, setN] = useState(games.length);
   const [gk, setGk] = useState<Set<number>>(new Set());
@@ -84,12 +87,20 @@ export default function ScenarioParams({ orig, onApply }: { orig: Item[]; onAppl
       for (const i of injuries) items.push({ ...i, games: inj[String(i.injury)] ?? i.games });
       for (const s of shifts) items.push({ ...s, xg_share: Math.round((sh[s.team] ?? s.xg_share) * 1000) / 1000 });
       items.push(...rest);
+      if (model0) items.push({ model: { ...model0, ...mdl }, label: "" } as unknown as Item);
       onApply(items);
     }, 350);
     return () => clearTimeout(t);
-  }, [res, n, gk, out, inj, sh]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [res, n, gk, out, inj, sh, mdl]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!games.length && !injuries.length && !shifts.length) return null;
+  if (!games.length && !injuries.length && !shifts.length && !model0) return null;
+  const KNOBS: [string, string, number, number, number, number, (v: number) => string][] = [
+    ["poisson_weight", "Pelaajamallin osuus (loput Elo)", 0, 1, 0.05, 0.4, (v) => `${Math.round(100 * v)} %`],
+    ["home_ice", "Kotietu", 0.9, 1.3, 0.01, 1.08, (v) => v.toFixed(2).replace(".", ",")],
+    ["league_avg", "Maalitaso (maalia/joukkue)", 2, 4, 0.05, 2.9, (v) => v.toFixed(2).replace(".", ",")],
+    ["ot_scale", "Jatkoaikojen yleisyys", 0.5, 1.6, 0.05, 1, (v) => `×${v.toFixed(2).replace(".", ",")}`],
+    ["ot_lean", "Suosikin jatkoaikavoitto", 0.4, 0.7, 0.01, 0.52, (v) => `${Math.round(100 * v)} %`],
+  ];
   const toggle = <T,>(s: Set<T>, v: T) => { const x = new Set(s); if (x.has(v)) x.delete(v); else x.add(v); return x; };
   const shown = all || games.length <= 6 ? games.slice(0, n) : games.slice(0, Math.min(n, 5));
   const goalie = team ? opts?.goalies[team] : undefined;
@@ -139,6 +150,19 @@ export default function ScenarioParams({ orig, onApply }: { orig: Item[]; onAppl
           </label>
         );
       })}
+      {model0 && (<>
+        <div className="sp-sub">Malli (kokeiluversio, virallinen ennuste ei muutu)</div>
+        {KNOBS.map(([k, label, lo, hi, step, def, fmt]) => {
+          const v = mdl[k] ?? (typeof model0[k] === "number" ? (model0[k] as number) : def);
+          return (
+            <label key={k} className="sp-row">
+              <span>{label}</span>
+              <input type="range" min={lo} max={hi} step={step} value={v} onChange={(e) => setMdl({ ...mdl, [k]: Number(e.target.value) })} />
+              <b>{fmt(v)}</b>
+            </label>
+          );
+        })}
+      </>)}
       {shifts.map((s) => {
         const v = sh[s.team] ?? s.xg_share;
         return (

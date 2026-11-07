@@ -23,6 +23,16 @@ export function validItem(x: unknown, teams: Set<string>): boolean {
       && (o.ramp_games === undefined || int(o.ramp_games, 0, 20))
       && (o.ramp_effect === undefined || (typeof o.ramp_effect === "number" && o.ramp_effect >= 0 && o.ramp_effect <= 1));
   }
+  // Mallin säätö (7.11.2026, vaihe 1): samat rajat kuin moottorissa (simulate_scenario.py MODEL_KNOBS).
+  if ("model" in o) {
+    const m = o.model as Record<string, unknown>;
+    if (!only("model") || !m || typeof m !== "object") return false;
+    const KN: Record<string, [number, number]> = { poisson_weight: [0, 1], home_ice: [0.9, 1.3], league_avg: [2, 4], ot_scale: [0.5, 1.6], ot_lean: [0.4, 0.7] };
+    return Object.entries(m).every(([k, v]) => k === "strength"
+      ? !!v && typeof v === "object" && Object.entries(v as Record<string, { off?: number; def?: number }>).every(([t, f]) => teams.has(t)
+        && [f.off ?? 1, f.def ?? 1].every((x) => typeof x === "number" && x >= 0.6 && x <= 1.4))
+      : k in KN && typeof v === "number" && v >= KN[k][0] && v <= KN[k][1]);
+  }
   // Joukkueen muutos (7.11.2026): xG-osuuden siirto ±0,15, valinnainen jakso tai otteluiden määrä.
   if ("xg_share" in o) {
     const day = (v: unknown) => v === undefined || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v));

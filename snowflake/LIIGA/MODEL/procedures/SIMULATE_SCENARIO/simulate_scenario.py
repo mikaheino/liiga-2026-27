@@ -384,6 +384,95 @@ def _reprice(gm: dict, o: tuple, n: tuple, w: float) -> dict:
             "p_home_ot_win": min(1.0, max(0.0, gm["p_home_ot_win"] + w * (n[3] - o[3])))}
 
 
+# --------------------------------------------- mallin säätö (7.11.2026, vaihe 1)
+# Käyttäjä: "Simulaatiomoottori laskee jatkossa vielä edemmän eli voi malliakin säätää ... irrallinen
+# leijuva iteraatio olemassa olevasta moottorista ... hyperversioitu, kaikki on mahdollista". Virallinen
+# ennuste ei muutu: säätö on skenaariorivi {"model": {...}}, ja moottori kokoaa ottelutodennäköisyydet
+# uudelleen. Julkaistu todennäköisyys = w0 * Poisson + (1 - w0) * Elo, joten Elo-osa puretaan:
+# Elo = (julkaistu - w0 * Poisson) / (1 - w0), ja uusi = w * Poisson' + (1 - w) * Elo, missä Poisson'
+# lasketaan uusilla kotiedulla, maalitasolla ja joukkueiden vahvuuksilla. Jatkoaikojen yleisyys skaalaa
+# tasapelit. Syvät säädöt (Elon k, ikäkäyrä, liigakertoimet, maalivahtien paino) vaativat koko
+# ennusteputken ajon: ne ovat vaihe 2 eivätkä kuulu tähän.
+MODEL_KNOBS = {"poisson_weight": (0.0, 1.0), "home_ice": (0.9, 1.3), "league_avg": (2.0, 4.0),
+               "ot_scale": (0.5, 1.6), "ot_lean": (0.4, 0.7)}
+STRENGTH_RANGE = (0.6, 1.4)
+
+
+def _model_params(items: list[dict], teams: set[str]) -> dict:
+    """Yhdistää {"model": {...}}-rivit (viimeinen voittaa) ja tarkistaa rajat."""
+    m: dict = {}
+    for it in items:
+        for k, v in (it.get("model") or {}).items():
+            if k == "strength":
+                m.setdefault("strength", {}).update(v or {})
+            else:
+                m[k] = v
+    lower = {t.lower(): t for t in teams}
+    for k, v in list(m.items()):
+        if k == "strength":
+            norm = {}
+            for t, f in v.items():
+                team = _team_of(lower, t)
+                off, dfn = float(f.get("off", 1.0)), float(f.get("def", 1.0))
+                if not all(STRENGTH_RANGE[0] <= x <= STRENGTH_RANGE[1] for x in (off, dfn)):
+                    raise ScenarioError(f"{team}: vahvuuskertoimen pitää olla {STRENGTH_RANGE[0]}–{STRENGTH_RANGE[1]}")
+                norm[team] = {"off": round(off, 3), "def": round(dfn, 3)}
+            m["strength"] = norm
+        elif k in MODEL_KNOBS:
+            lo, hi = MODEL_KNOBS[k]
+            if not lo <= float(v) <= hi:
+                raise ScenarioError(f"mallin säätö {k}={v} rajojen {lo}–{hi} ulkopuolella")
+            m[k] = round(float(v), 4)
+        else:
+            raise ScenarioError(f"tuntematon mallin säätö {k!r} (vaihe 1: {', '.join([*MODEL_KNOBS, 'strength'])})")
+    return m
+
+
+def apply_model(m: dict, games: list[dict], model: dict) -> list[dict]:
+    if not m:
+        return games
+    strength = model["strength"]
+    w0, w = POISSON_WEIGHT, float(m.get("poisson_weight", POISSON_WEIGHT))
+    hi, la = float(m.get("home_ice", HOME_ICE)), float(m.get("league_avg", LEAGUE_AVG))
+    ots, lean = float(m.get("ot_scale", 1.0)), float(m.get("ot_lean", OT_LEAN))
+    fs = m.get("strength", {})
+    out = []
+    for gm in games:
+        h, a = strength[gm["home_team"]], strength[gm["away_team"]]
+        fh, fa = fs.get(gm["home_team"], {"off": 1, "def": 1}), fs.get(gm["away_team"], {"off": 1, "def": 1})
+        o = _poisson(LEAGUE_AVG * h["off_rating"] * a["def_rating"] * HOME_ICE, LEAGUE_AVG * a["off_rating"] * h["def_rating"])
+        lh = la * h["off_rating"] * fh["off"] * a["def_rating"] * fa["def"] * hi
+        lv = la * a["off_rating"] * fa["off"] * h["def_rating"] * fh["def"]
+        n = _poisson(lh, lv)
+        n = (n[0], n[1], n[2], lean if lh >= lv else 1 - lean)
+        hreg, ot = gm["p_home_reg"], gm["p_overtime"]
+        blend = (hreg, max(0.0, 1 - hreg - ot), ot, gm["p_home_ot_win"])
+        elo = [min(1.0, max(0.0, (b - w0 * x) / (1 - w0))) for b, x in zip(blend, o)] if w0 < 1 else list(o)
+        new = [w * x + (1 - w) * e for x, e in zip(n, elo)]
+        new[2] *= ots
+        tot = new[0] + new[1] + new[2]
+        out.append({**gm, "p_home_reg": new[0] / tot, "p_overtime": new[2] / tot, "p_home_ot_win": min(1.0, max(0.0, new[3]))})
+    return out
+
+
+def _model_label(m: dict) -> str:
+    f = lambda x, d=2: f"{x:.{d}f}".replace(".", ",")  # noqa: E731
+    parts = []
+    if "poisson_weight" in m:
+        parts.append(f"pelaajat {round(100 * m['poisson_weight'])} % / Elo {round(100 * (1 - m['poisson_weight']))} %")
+    if "home_ice" in m:
+        parts.append(f"kotietu {f(m['home_ice'])}")
+    if "league_avg" in m:
+        parts.append(f"maalitaso {f(m['league_avg'], 1)}")
+    if "ot_scale" in m:
+        parts.append(f"jatkoajat ×{f(m['ot_scale'])}")
+    if "ot_lean" in m:
+        parts.append(f"suosikin jatkoaikavoitto {round(100 * m['ot_lean'])} %")
+    for t, v in m.get("strength", {}).items():
+        parts.append(f"{t} hyökkäys {round(100 * (v['off'] - 1)):+d} %, puolustus {round(100 * (1 - v['def'])):+d} %")
+    return "Malli: " + ", ".join(parts)
+
+
 # --------------------------------------------- joukkueen tason muutos (7.11.2026)
 # Käyttäjä: "Kärpät vaihtavat valmentajaa" -> malli ei tunne valmentajia, joten muutos
 # annetaan joukkueen maaliodottamien osuuden (xG-osuus) siirtona: {"team", "xg_share": +0.06,
@@ -732,21 +821,28 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
     injuries = [it for it in scenario if it.get("injury") is not None or it.get("player_id") is not None]
     stake_opts = [it["stakes"] for it in scenario if it.get("stakes")]
     shifts = [it for it in scenario if it.get("xg_share") is not None]
-    locks = [it for it in scenario if not it.get("goal") and it not in injuries and it not in shifts and not it.get("stakes")]
+    models = [it for it in scenario if it.get("model") is not None]
+    locks = [it for it in scenario if not it.get("goal") and it not in injuries and it not in shifts and it not in models
+             and not it.get("stakes")]
+    mparams = _model_params(models, set(teams))
     fixed = resolve(locks, games, set(teams))
     injury_info: list[dict] = []
     games_scn = games
+    if mparams:
+        if not model:
+            raise ScenarioError("mallin säätö tarvitsee joukkuedatan")
+        games_scn = apply_model(mparams, games_scn, model)
     if injuries:
         if not model:
             raise ScenarioError("loukkaantumisskenaario tarvitsee pelaaja- ja joukkuedatan")
-        games_scn, injury_info = apply_injuries(injuries, games, model, today)
+        games_scn, injury_info = apply_injuries(injuries, games_scn, model, today)
     shift_info: list[dict] = []
     if shifts:
         if not model:
             raise ScenarioError("joukkueen muutos tarvitsee joukkuedatan")
         games_scn, shift_info = apply_strength(shifts, games_scn, model, today)
     base = base or simulate(games, banked, teams)
-    scn = simulate(games_scn, banked, teams, fixed) if (fixed or injuries or shifts) else base
+    scn = simulate(games_scn, banked, teams, fixed) if (fixed or injuries or shifts or mparams) else base
     reqs = _requirements(goals, scn, base, games, banked, teams, played, published, bool(injuries))
     locked, plaus = [], 1.0
     for g, allowed in sorted(fixed.items()):
@@ -756,13 +852,16 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
         locked.append({"date": gm["date"], "game": f"{gm['home_team']}–{gm['away_team']}",
                        "game_id": gm.get("game_id"), "result": _lock_label(gm, allowed), "p_model": p})
     canon = canonical(fixed, games, injury_info, goals, shift_info)
+    if mparams:
+        canon.append({"model": mparams, "label": _model_label(mparams)})
     st = [x for o in stake_opts for x in stakes(scn, base, games, teams, published,
                                                 o if isinstance(o, dict) else {"days": int(o)}, today)]
     return {"locked_games": locked, "teams": sorted(_team_rows(teams, published, scn, base, crowd_weight),
                                                     key=lambda x: x["rank_scenario"]),
             "requirements": reqs, "injuries": injury_info, "shifts": shift_info, "plausibility": plaus if fixed else None,
             "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st,
-            "charts": charts(scn, base, games, teams, banked, fixed, published, crowd_weight) if (fixed or injuries or shifts) else None}
+            "model": mparams or None,
+            "charts": charts(scn, base, games, teams, banked, fixed, published, crowd_weight) if (fixed or injuries or shifts or mparams) else None}
 
 
 # ------------------------------------------------------- kuvaajat (sovellus, json-tila)
@@ -977,7 +1076,9 @@ def render(res: dict, forecast_date: str) -> str:
     if res["locked_games"]:
         L.append("Lukitut ottelut:")
         L += [f"- {g['date']} {g['game']}: {g['result']}" for g in res["locked_games"]]
-    if not res["locked_games"] and not res.get("injuries") and not res.get("shifts"):
+    if res.get("model"):
+        L.append("MALLIN SÄÄTÖ (kokeiluversio, virallinen ennuste ei muutu): " + _model_label(res["model"])[7:])
+    if not res["locked_games"] and not res.get("injuries") and not res.get("shifts") and not res.get("model"):
         return "\n".join(L)
     involved = {t for g in res["locked_games"] for t in g["game"].split("–")} | {x["team"] for x in res.get("shifts", [])}
     # Jatkoon (sijat 1-10) mukaan 7.11.2026: agentti vastaa ensin siihen, pääseekö joukkue jatkoon.
@@ -1106,7 +1207,8 @@ def to_json(res: dict, forecast_date: str) -> str:
 
 
 def needs_model(sc: list[dict]) -> bool:
-    return any(it.get("injury") is not None or it.get("player_id") is not None or it.get("xg_share") is not None for it in sc)
+    return any(it.get("injury") is not None or it.get("player_id") is not None or it.get("xg_share") is not None
+               or it.get("model") is not None for it in sc)
 
 
 def load_lineups(session) -> list[dict]:

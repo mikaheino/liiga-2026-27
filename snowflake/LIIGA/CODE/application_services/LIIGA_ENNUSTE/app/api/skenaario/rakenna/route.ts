@@ -19,7 +19,7 @@ import { loadTeams } from "@/lib/data";
 import { describe, splitChart } from "@/lib/scenarioDescribe";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
-import { saveHaku, summarize } from "@/lib/skenaarioHaut";
+import { saveHaku, summarize, versionOf } from "@/lib/skenaarioHaut";
 import { explore, factCheck, rewrite } from "@/lib/subagents";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,8 @@ export const maxDuration = 300;
 const SEASON = 2027;
 
 export async function POST(req: Request) {
-  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown; base?: unknown };
+  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown; base?: unknown; parent?: unknown };
+  const parentId = typeof b.parent === "string" && /^[0-9a-f-]{36}$/.test(b.parent) ? b.parent : null;
   const text = typeof b.text === "string" ? b.text.trim() : "";
   const followup = typeof b.followup === "string" && b.followup.trim() ? b.followup.trim().slice(0, 300) : null;
   // 1500: tarkennuskierros lähettää alkuperäisen kuvauksen, agentin kysymyksen ja vastauksen.
@@ -74,9 +75,10 @@ export async function POST(req: Request) {
           }
         }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";
+        const version = d.items.length ? versionOf(d.items, forecastTs) : null;
         const id = await save({ season: SEASON, question: text, followup, answer: d.error ? `${d.answer}\n\n${d.error}`.trim() : d.answer,
-          items: d.items, result: result ? { ...summarize(result, d.chart), news: d.news ?? [] } : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
-        send({ t: "done", id, answer: d.answer, items: d.items, result, chart: d.chart ?? null, news: d.news ?? [], roster: d.roster ?? [], tools: d.tools, ...(d.error ? { error: d.error } : {}) });
+          items: d.items, result: result ? { ...summarize(result, d.chart), news: d.news ?? [] } : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE, version, parentId });
+        send({ t: "done", id, version, parentId, answer: d.answer, items: d.items, result, chart: d.chart ?? null, news: d.news ?? [], roster: d.roster ?? [], tools: d.tools, ...(d.error ? { error: d.error } : {}) });
         // Tutkija-aliagentti vastauksen jälkeen: kolme lähiskenaariota, luvut moottorilta rinnakkain.
         if (result && d.items.length) {
           send({ t: "exploring" });

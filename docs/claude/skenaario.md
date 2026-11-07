@@ -330,3 +330,23 @@ Käyttäjä: "KAIKKI PITÄÄ TOIMIA SNOWFLAKE". Tämän päivän haun osat, jotk
 - Ylläpitäjän GRANTit julkaisun jälkeen: `_account/roles/LIIGA_APP.sql` (SKENAARIO_HAKU, ROSTER_REQUESTS).
 - Todennettu liiga_ci-yhteydellä: NEWS_SIGNALS 26 / NEWS_ABSENCE_LOG 8 riviä, vihjekysely ja
   PLAYER_RATES (Kumpulainen mukana) toimivat Snowflakessa.
+
+## Mallin säätö ja hyperversiointi (7.11.2026, vaihe 1)
+
+Käyttäjä: "Simulaatiomoottori laskee jatkossa vielä edemmän eli voi malliakin säätää ... irrallinen
+leijuva iteraatio ... hyperversioitu, kaikki on mahdollista"; osana hakukokemusta ("ei erillistä sivua"),
+"kaikki" säädöt, "jatkopolku, kaikki muokkaus Google-chatissa", "sano suoraan että A/B-testaus ei onnistu".
+- Moottori: rivi `{"model": {poisson_weight, home_ice, league_avg, ot_scale, ot_lean, strength}}`.
+  Julkaistu = w0·Poisson + (1−w0)·Elo -> Elo puretaan, uusi = w·Poisson' + (1−w)·Elo (Poisson' uusilla
+  kotiedulla, maalitasolla, vahvuuksilla), jatkoajat skaalataan. Oletusarvoilla tasan 0 muutosta (7.11.
+  oikealla datalla; testissä ≤ 0,001). Virallinen ennuste ei muutu. Testi lisätty (19/19).
+- Agentti tuntee säädöt ja sanoo mallia säädettäessä suoraan, ettei malliversiota voi A/B-testata
+  etukäteen. Säätöpaneelissa Malli-osio liukusäätimin, kun mallirivi on mukana.
+- Jatkopolku: hakukentän uusi kysymys auki olevan vastauksen jälkeen saa edellisen kysymyksen ja
+  vastauksen (prompt) sekä pohjan; `parent` kulkee reitille.
+- Hyperversio: `version = sha256(kanoniset rivit ilman labeleita + forecast_ts)[:12]`, `parent_id`
+  (SKENAARIO_HAKU: ALTER ADD COLUMN IF NOT EXISTS). Paneelissa "versio … · jatkoa edelliselle".
+- Testattu: "Pääseekö Tappara kärkikuusikkoon?" -> jatko "Entä jos malli painottaa pelaajia 80 %" ->
+  top 6 65,2 -> 80,4 %, A/B-lause, versio 7420b5f9d317 <- 536029bbdd45. Eval-osajoukko 3/3.
+- **Vaihe 2 (ei vielä):** syvät säädöt (Elon k, ikäkäyrä, liigakertoimet, maalivahtien paino,
+  yleisöpaino) vaativat ennusteputken ajon per versio -> taustatyö.

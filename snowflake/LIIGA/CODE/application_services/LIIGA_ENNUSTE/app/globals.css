@@ -1459,3 +1459,5 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .sp-game { grid-template-columns: 1fr; gap: 6px; }
   .sp-row { grid-template-columns: 1fr auto; } .sp-row input { grid-column: 1 / -1; }
 }
+.gs-ver { justify-self: end; font: 500 11px var(--mono); color: var(--faint); letter-spacing: .02em; }
+.sp-sub { font: 600 12.5px var(--sans); color: var(--muted); margin-top: 4px; }

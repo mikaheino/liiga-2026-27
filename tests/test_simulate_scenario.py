@@ -316,3 +316,24 @@ def test_injury_from_date_is_one_game():
     assert 'it.get("from")' in src            # alkupäivä suodattaa joukkueen ottelut
     canon = inspect.getsource(sim.canonical)
     assert '"from"' in canon                  # ja säilyy kanonisessa rivissä
+
+
+def test_model_adjustment_identity_bounds_and_canonical():
+    """Mallin säätö (7.11.2026, vaihe 1): oletusarvoilla tasan nollamuutos (Elo-osa puretaan
+    tarkasti), rajojen ulkopuolella virhe, ja kanoninen rivi kelpaa syötteeksi."""
+    games, banked, pub, w, _ = _load()
+    s = {"off_rating": 1.0, "def_rating": 1.0}
+    model = {"players": [], "goalies": [], "strength": {t: dict(s) for t in pub}, "today": "2026-12-01"}
+    same = sim.compute([{"model": {"poisson_weight": sim.POISSON_WEIGHT, "home_ice": sim.HOME_ICE}}], games, banked, pub, w, model=model)
+    # Testiaineiston tasavahvoilla joukkueilla Elo-osan purku osuu rajalle: sallitaan muutaman
+    # simuloidun kauden ero (oikealla datalla 7.11. ero oli tasan 0).
+    assert max(abs(r["p_top6_scenario"] - r["p_top6_now"]) for r in same["teams"]) <= 0.001
+    moved = sim.compute([{"model": {"league_avg": 3.5, "ot_scale": 1.4}}], games, banked, pub, w, model=model)
+    canon = [c for c in moved["scenario_canonical"] if "model" in c][0]
+    assert canon["label"].startswith("Malli:") and canon["model"]["ot_scale"] == 1.4
+    again = sim.compute([{"model": canon["model"]}], games, banked, pub, w, model=model)
+    assert [r["points_scenario"] for r in again["teams"]] == [r["points_scenario"] for r in moved["teams"]]
+    with pytest.raises(sim.ScenarioError):
+        sim.compute([{"model": {"poisson_weight": 1.5}}], games, banked, pub, w, model=model)
+    with pytest.raises(sim.ScenarioError):
+        sim.compute([{"model": {"elo_k": 20}}], games, banked, pub, w, model=model)
