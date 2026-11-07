@@ -13,6 +13,7 @@ import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
+import { normalize, withNews } from "@/lib/scenarioRules";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
@@ -40,19 +41,13 @@ const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa L
 - Nojaa dataan: jos kuvaus riippuu otteluohjelmasta, vastustajista, sarjatilanteesta tai pelaajista, hae ne ensin datatyökaluilla (esim. jäljellä olevat ottelut tai joukkueen nykyinen sija), älä arvaa.
 - Ottelut: {"team", "result": win|loss|reg_win|ot_win|ot_loss|reg_loss|ot|point|regulation} (ot = menee jatkoajalle, kumpi tahansa voittaa; point = joukkue saa vähintään pisteen eli voittaa tai häviää jatkoajalla; regulation = ratkeaa varsinaisella peliajalla) ja joko "games": N (seuraavat N) tai jakso "from"/"until" (YYYY-MM-DD, until mukaan lukien), valinnainen "opponent".
 - Yksittäinen ottelu: {"team", "result", "from": "<pvm>", "until": "<sama pvm>"}. Näin saa myös epäsäännölliset kuviot, esim. "joka toinen ottelu" = lukitse joka toinen alla listatuista OTTELUOHJELMA-riveistä (koko loppukausi listattu; enintään 64 riviä). Ellei käyttäjä rajaa jaksoa, kuvio koskee koko loppukautta.
-- Mallin säätö (kokeiluversio, virallinen ennuste ei muutu): {"model": {"poisson_weight": 0..1 (pelaajamallin osuus, nyt 0,4; loput Elo), "home_ice": 0,9..1,3 (nyt 1,08), "league_avg": 2..4 (maalitaso, nyt 2,9), "ot_scale": 0,5..1,6 (jatkoaikojen yleisyys, 1 = nykyinen), "ot_lean": 0,4..0,7 (suosikin jatkoaikavoitto, nyt 0,52), "strength": {"<joukkue>": {"off": 0,6..1,4, "def": 0,6..1,4}} (hyökkäys- ja puolustuskerroin, def < 1 = parempi puolustus)}}. Käytä, kun käyttäjä haluaa muuttaa itse mallia ("painota Eloa", "entä jos kotietua ei olisi", "maaleja tehdään enemmän"). Sano tällöin vastauksessa SUORAAN yhdellä lauseella, että tätä malliversiota ei voi A/B-testata etukäteen: se on kokeilu, ja sen osuvuus selviäisi vasta pelatuista otteluista.
+- Mallin säätö (kokeiluversio, virallinen ennuste ei muutu): {"model": {"poisson_weight": 0..1 (pelaajamallin osuus, nyt 0,4; loput Elo), "home_ice": 0,9..1,3 (nyt 1,08), "league_avg": 2..4 (maalitaso, nyt 2,9), "ot_scale": 0,5..1,6 (jatkoaikojen yleisyys, 1 = nykyinen), "ot_lean": 0,4..0,7 (suosikin jatkoaikavoitto, nyt 0,52), "strength": {"<joukkue>": {"off": 0,6..1,4, "def": 0,6..1,4}} (hyökkäys- ja puolustuskerroin, def < 1 = parempi puolustus)}}. Käytä, kun käyttäjä haluaa muuttaa itse mallia ("painota Eloa", "entä jos kotietua ei olisi", "maaleja tehdään enemmän").
 - Poissaolo: {"injury": "<pelaajan nimi>", "games": N | "until": "YYYY-MM-DD"}. Tavoite: {"team", "goal": avoid_relegation|top6|top10|win}.
 - Joukkueen muutos (valmentajanvaihto, iso hankinta, muotonotkahdus, kaikki mikä muuttaa joukkueen tasoa eikä yksittäistä tulosta): {"team", "xg_share": d, "from"?: "YYYY-MM-DD", "until"?, "games"?}, d = joukkueen maaliodottamien osuuden muutos (−0,15…+0,15; +0,05 = osuus nousee 5 prosenttiyksikköä). Valitse d datasta (esim. alla oleva VALMENTAJANVAIHDOT-näyttö) ja kerro oletus yhdellä lauseella.
 - Yleiset ilmaukset tulkitaan näin (ei tarkennusta): "joulun yli" = from 2026-12-20 until 2027-01-06; "loppukausi" / "kaikki loput" = kaikki jäljellä olevat ottelut (from tänään); "ensi viikolla" = seuraavat 7 päivää.
-- Sovelluksen pitää toimia kenelle tahansa (käyttäjä 7.11.: "Haluan siis että tätä voi käyttää idiottikin"): ÄLÄ kysy tarkennusta, kun järkevä oletus on olemassa. Tee oletus, kerro se yhdellä lauseella ja vastaa. Oletukset: kesto puuttuu -> loukkaantuminen 10 ottelua, muu muutos loppukausi; alkupäivä puuttuu -> heti seuraavasta ottelusta; "voittaa/häviää" ilman määrää -> seuraavat 5 ottelua; pelkkä kysymys ilman muutosta ("pääseekö Kärpät jatkoon?") -> kutsu työkalua tavoitteella (goal) ja vastaa nykyennusteella. Kysy vain, jos kuvauksesta ei saa mitään järkevää skenaariota (esim. tuntematon nimi, jota ei löydy).
-- Skenaarion takana on lähes aina piilokysymys: mitä tämä tarkoittaa joukkueen kaudelle? (7.11.2026, käyttäjä: "mieti konteksti että tässä kysytään myös että pääseekö Pelicans jatkoon".) Vastaa siihen ENSIMMÄISENÄ lauseena työkalun luvuilla, nyt -> skenaario: pääseekö pääjoukkue jatkoon eli pudotuspeleihin (sijat 1–10, työkalun top 10), ja sen mukaan mikä on joukkueen kannalta olennainen raja: suoraan puolivälieriin (top 6), putoamisuhka (15.–17.) tai runkosarjan voitto. Esim. "Pelicans putoaa skenaariossa pois pudotuspeleistä: jatkoon 2 % (nyt 41 %), putoamisuhka 96 %."
-- Sen jälkeen 1–2 lausetta: miten tulkitsit kuvauksen, mihin dataan nojasit ja ketkä muut hyötyvät tai kärsivät eniten. Kerro lyhyesti myös, mitä malli teki muille otteluille, jos lukitsit vain osan kaudesta (esim. "Ennen 16.12. ja tammikuun jälkeen ottelut arvotaan tavalliseen tapaan.").
-- Sävy (käyttäjä 7.11.: "hellävarainen skenaarioemulaattori"): lempeä ja selkokielinen, kuin selittäisit ystävälle, joka ei ole analyytikko. Vältä ammattisanoja tai selitä ne heti (esim. "xG-osuus eli kuinka suuren osan maalipaikoista joukkue saa"). Ei liioittelua, ei pelottelua; epävarmuus sanotaan rauhallisesti ("malli arvioi", "todennäköisesti"). Älä laske lukuja itse. Kirjoita pelkkää tekstiä: ei taulukoita, ei listoja, ei otsikoita (sovellus näyttää luvut itse). Älä kirjoita JATKO-riviä.
-- Sovellus piirtää vastauksen alle yhden kuvaajan. Valitse se viimeisellä rivillä täsmälleen muodossa "KUVAAJA: <tyyppi> <joukkue>":
-  pisteet = kun skenaario on otteluputki, jakso tai poissaolo, joka muuttaa pistekertymää kauden mittaan (odotettu pistekäyrä nyt vs. skenaario);
-  jakauma = kun kysymys koskee lopullista sijaa tai tavoitetta (top 6, pudotuspelit, putoaminen, mestaruus) (sijajakauma 1.–17. nyt vs. skenaario);
-  ottelut = kun lukittuja otteluita on vain muutama ja olennaista on, kuinka todennäköisiä juuri ne tulokset ovat (mallin todennäköisyys kullekin);
-  ei = jos et kutsunut työkalua (esim. kysyit tarkennusta). Joukkue = se, jota kuvaus pääasiassa koskee.`;
+- Sovelluksen pitää toimia kenelle tahansa: ÄLÄ kysy tarkennusta, kun järkevä oletus on olemassa; puuttuvat kestot sovellus täydentää itse (lib/scenarioRules.ts). Pelkkä kysymys ilman muutosta ("pääseekö Kärpät jatkoon?") -> kutsu työkalua tavoitteella (goal). Kysy vain, jos kuvauksesta ei saa mitään järkevää skenaariota.
+- ÄLÄ kirjoita johtopäätöstä äläkä aloita luvuilla: sovellus kirjoittaa ensimmäisen lauseen moottorin luvuista. Kirjoita 1–2 lausetta: miten tulkitsit kuvauksen, mihin dataan nojasit, ketkä muut hyötyvät tai kärsivät eniten ja mitä malli teki muille otteluille, jos lukitsit vain osan kaudesta.
+- Sävy (käyttäjä 7.11.: "hellävarainen skenaarioemulaattori"): lempeä ja selkokielinen, kuin selittäisit ystävälle, joka ei ole analyytikko. Vältä ammattisanoja tai selitä ne heti (esim. "xG-osuus eli kuinka suuren osan maalipaikoista joukkue saa"). Ei liioittelua, ei pelottelua; epävarmuus sanotaan rauhallisesti ("malli arvioi", "todennäköisesti"). Älä laske lukuja itse. Kirjoita pelkkää tekstiä: ei taulukoita, ei listoja, ei otsikoita (sovellus näyttää luvut itse). Älä kirjoita JATKO-riviä.`;
 
 // Valmentajanvaihtojen näyttö (7.11.2026, käyttäjä kysyi "Kärpät vaihtavat valmentajaa"): tämän
 // kauden vaihdot ja joukkueen pisteet/ottelu sekä xG-osuus ennen ja jälkeen, haun hetkellä
@@ -128,7 +123,7 @@ Päätä itse, jatkaako käyttäjä tätä skenaariota vai kysyykö uutta:
 // hyväksymättömät uutiset vain mainitaan. Agentti ei näe uutistekstiä, vain nämä kentät.
 const NEWS_RULE = (abs: NewsAbsence[], hints: NewsHint[]) => [
   abs.length ? `UUTISISTA HYVÄKSYTYT POISSAOLOT (tosiasioita, lähtötilanne):\n${abs.map((a) => `- ${a.player} (${a.team}) poissa ${a.until} asti`).join("\n")}
-Ota nämä AINA mukaan liiga_skenaario-kutsuun muodossa {"injury": "<nimi>", "until": "<pvm>"}, ellei käyttäjä pyydä jättämään jotakin pois (esim. "ilman Wernblomia" / "ilman uutisia"). Jos ne vaikuttavat kysyttyyn joukkueeseen, sano yhteenvedossa lyhyesti, että ne on huomioitu.` : "",
+Sovellus lisää nämä skenaarioon itse (ellei käyttäjä sano "ilman X" / "ilman uutisia"); sinun ei tarvitse. Jos ne vaikuttavat kysyttyyn joukkueeseen, voit mainita lyhyesti, että ne on huomioitu.` : "",
   hints.length ? `UUTISVIHJEET (EI hyväksytty, älä lisää skenaarioon ilman pyyntöä):\n${hints.map((h) => `- ${h.player} (${h.team}): ${h.kind}uutinen`).join("\n")}
 Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan X saattaa olla sivussa; sitä ei ole huomioitu – kirjoita 'X poissa', niin lasken sen mukaan."` : "",
 ].filter(Boolean).join("\n\n");
@@ -167,7 +162,9 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     let parsed: unknown;
     try { parsed = JSON.parse(raw); } catch { return { ...base, items: [], error: "agentin skenaario ei ollut JSONia", status: 422 }; }
     // Vain lukitukset, poissaolot, tavoitteet ja joukkueen muutokset siruiksi; panospyyntöjä ei.
-    const list = (Array.isArray(parsed) ? parsed : [parsed]).filter((x) => x && typeof x === "object" && !("stakes" in (x as object)));
+    // Säännöt koodina (lib/scenarioRules.ts): oletuskestot ja uutisten hyväksytyt poissaolot.
+    const list = withNews(normalize((Array.isArray(parsed) ? parsed : [parsed])
+      .filter((x) => x && typeof x === "object" && !("stakes" in (x as object))) as Record<string, unknown>[]), abs, text);
     progress?.({ status: "Moottori ratkaisee skenaarion otteluiksi" });
     const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[] }>("json", list).catch((e) => ({ error: (e as Error).message } as { error: string; scenario_canonical?: undefined }));
     if (res.error) return { ...base, items: [], error: res.error, status: 422 };

@@ -350,3 +350,11 @@ leijuva iteraatio ... hyperversioitu, kaikki on mahdollista"; osana hakukokemust
   top 6 65,2 -> 80,4 %, A/B-lause, versio 7420b5f9d317 <- 536029bbdd45. Eval-osajoukko 3/3.
 - **Vaihe 2 (ei vielä):** syvät säädöt (Elon k, ikäkäyrä, liigakertoimet, maalivahtien paino,
   yleisöpaino) vaativat ennusteputken ajon per versio -> taustatyö.
+
+## Säännöt koodina (7.11.2026)
+
+`lib/scenarioRules.ts`: oletuskestot (`normalize`), uutispoissaolot (`withNews`), johtopäätöslause
+(`verdict`, pääjoukkue = eniten mainittu skenaarion riveissä), kuvaajan valinta (`pickChart`) ja
+A/B-huomautus (`abNotice`). Agentin ohjeesta poistettu vastaava teksti; agentille jää kieli.
+Tavoite: nämä siirtyvät myöhemmin Snowflake-agentille (LIIGA_ENNUSTAJA) työkaluiksi, jotta
+paikallinen ja Snowflake toimivat samoin myös ilman sovelluskerrosta.

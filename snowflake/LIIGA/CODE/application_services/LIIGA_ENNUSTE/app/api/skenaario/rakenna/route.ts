@@ -17,6 +17,7 @@ import { AGENT_SOURCE } from "@/lib/agent";
 import { forecastStamp } from "@/lib/kortti";
 import { loadTeams } from "@/lib/data";
 import { describe, splitChart } from "@/lib/scenarioDescribe";
+import { abNotice, pickChart, verdict } from "@/lib/scenarioRules";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 import { saveHaku, summarize, versionOf } from "@/lib/skenaarioHaut";
@@ -73,6 +74,13 @@ export async function POST(req: Request) {
             const fixed = await rewrite(text, d.answer, result, bad).catch(() => "");
             if (fixed && factCheck(fixed, result).length < bad.length) d.answer = fixed;
           }
+        }
+        // Säännöt koodina (lib/scenarioRules.ts): johtopäätös luvuista ensimmäiseksi, A/B-lause mallin
+        // säädölle ja kuvaajan valinta rakenteesta (ennen agentin ohjeessa).
+        if (result && d.items.length) {
+          const teams = await loadTeams();
+          d.answer = [verdict(result, d.items, teams), d.answer, abNotice(d.items)].filter(Boolean).join("\n\n");
+          d.chart = pickChart(d.items, result, teams);
         }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";
         const version = d.items.length ? versionOf(d.items, forecastTs) : null;
