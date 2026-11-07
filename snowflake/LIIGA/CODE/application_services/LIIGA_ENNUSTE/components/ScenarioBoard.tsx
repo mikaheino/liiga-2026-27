@@ -18,7 +18,8 @@ type Req = { team: string; goal: string; p: number };
 // charts/locked_games: moottorin kuvaajadata (7.11.2026); chart: agentin valinta tallennetussa haussa.
 type Res = { teams: Row[]; plausibility: number | null; scenario_canonical: Item[]; requirements: Req[]; forecast_date: string; error?: string;
   charts?: Charts | null; locked_games?: LockedGame[]; chart?: ChartPick };
-const COLS = [["p_relegation", "Putoaa"], ["p_top10", "Top 10"], ["p_top6", "Top 6"], ["p_title", "Voitto"]] as const;
+// "Jatkoon" = pudotuspeleihin (sijat 1–10); käyttäjän kieli (7.11.2026), ennen "Top 10".
+const COLS = [["p_relegation", "Putoaa"], ["p_top10", "Jatkoon"], ["p_top6", "Top 6"], ["p_title", "Voitto"]] as const;
 const pct = (p: number) => (p > 0 && p < 0.005 ? "<1" : fi(100 * p, 0));
 const diff = (r: Row, k: string) => Math.abs(Number(r[`${k}_scenario`]) - Number(r[`${k}_now`]));
 const moved = (r: Row) => Math.max(...COLS.map(([k]) => diff(r, k)));
