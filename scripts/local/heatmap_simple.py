@@ -6,7 +6,7 @@ Ilme on sama kuin build_instagram.py:n dioissa: seepiahalli-tausta, kultainen
 kursiivi Arial Black -otsikko, ohut kultaviiva ja kermanvalkoinen laatikko
 numerolle. Kerrontaa ei ole: kausi etenee tilannekuva kerrallaan, ja kultaviiva täyttyy pelattujen otteluiden
 mukaan. Rivit (logo + nimi) liukuvat ennustetun sijan mukaan läpinäkymättöminä
-kortteina: ohittaja piirretään päälle, ja pysähdyksessä ▲▼ kertoo sijamuutoksen.
+kortteina, ja ohittaja piirretään päälle. Ei nuolia eikä kehyksiä (käyttäjä 7.11.).
 Data ja tilannekuvien valinta tulevat heatmap_gif.load():sta.
 """
 from __future__ import annotations
@@ -26,7 +26,6 @@ GOLD, GOLD_HI, GOLD_LO = (217, 182, 84), (247, 231, 173), (169, 130, 44)
 CREAM, INK, MUTED = (242, 236, 224), (21, 15, 9), (168, 152, 128)
 RED = (214, 92, 76)
 EMPTY = (38, 28, 18)
-CARD = (30, 22, 14)                         # rivikortti: peittää alle jäävän rivin ohituksessa
 # Laatan väri: seepiasta kultaan ja kermaan, sama suunta kuin dioissa.
 RAMP = [EMPTY, (74, 54, 26), (128, 96, 42), (182, 142, 60), (226, 190, 98), (247, 231, 173)]
 
@@ -133,10 +132,9 @@ def static_layer(bg: Image.Image) -> Image.Image:
     return img
 
 
-def frame(base: Image.Image, logo: dict, s: dict, ys: dict, moves: dict, settled: bool,
+def frame(base: Image.Image, logo: dict, s: dict, ys: dict, moves: dict,
           played: int, date: str) -> Image.Image:
-    """ys = rivin paikka (liukuluku), moves = sijamuutos edelliseen (+ = nousi),
-    settled = pysähdysruutu, jossa muutos näytetään merkkinä."""
+    """ys = rivin paikka (liukuluku), moves = sijamuutos edelliseen (+ = nousi; piirtojärjestys)."""
     img = base.copy()
     d = ImageDraw.Draw(img)
     # Päivämäärä kermalaatikossa (kuten dian sijanumero) ja otteluita pelattu.
@@ -151,23 +149,14 @@ def frame(base: Image.Image, logo: dict, s: dict, ys: dict, moves: dict, settled
     d.line((lx0, ly, lx1, ly), fill=(70, 54, 30), width=4)
     d.line((lx0, ly, lx0 + (lx1 - lx0) * played / g.TOTAL_GAMES, ly), fill=GOLD, width=4)
 
-    name_f, num_f, badge_f = font(BLACK, 23), font(BLACK, 16), font(BLACK, 17)
+    name_f, num_f = font(BLACK, 23), font(BLACK, 16)
     # Rivi on läpinäkymätön kortti, ja pisimmän matkan liikkuja piirretään päällimmäiseksi: se
     # ohittaa ±1-liikkujat, jotka jäävät hetkeksi osittain sen alle (nousijat piirtäen jälkimmäisinä
     # peittäisivät kolme sijaa putoavan kokonaan, 7.11. kokeiltu).
     for t in sorted(ys, key=lambda t: (abs(moves[t]), moves[t] > 0)):
         y = round(TOP + ys[t] * ROW)
-        mv = moves[t]
-        moving = abs(mv) > 0 and not settled
-        edge = GOLD if mv > 0 else RED if mv < 0 else None
-        d.rectangle((56, y - 3, W - 40, y + ROW - 3), fill=CARD,
-                    outline=edge if (moving or (settled and abs(mv) >= 3)) else None, width=2)
-        if settled and mv:                  # pysähdyksessä: montako sijaa nousi/laski
-            cy = y + (ROW - 6) // 2
-            tri = [(14, cy + 6), (26, cy + 6), (20, cy - 6)] if mv > 0 else \
-                  [(14, cy - 6), (26, cy - 6), (20, cy + 6)]
-            d.polygon(tri, fill=edge)
-            d.text((29, cy), str(abs(mv)), font=badge_f, fill=edge, anchor="lm")
+        box = (56, y - 3, W - 40, y + ROW - 3)
+        img.paste(base.crop(box), box[:2])  # näkymätön kortti: taustaa, mutta peittää alle jäävän
         if t in logo:
             lg = logo[t]
             img.paste(lg, (64 + (40 - lg.width) // 2, y + (ROW - 6 - lg.height) // 2), lg)
@@ -223,11 +212,11 @@ def build(out: Path) -> None:
     base = static_layer(background())
     frames, durs = [], []
 
-    def add(s, ra, rb, f, settled, played, date, ms):
+    def add(s, ra, rb, f, played, date, ms):
         e = f * f * (3 - 2 * f)                       # pehmeä kiihdytys ja jarrutus
         ys = {t: ra[t] + (rb[t] - ra[t]) * e for t in teams}
         moves = {t: ra[t] - rb[t] for t in teams}
-        frames.append(frame(base, logo, s, ys, moves, settled, played, date))
+        frames.append(frame(base, logo, s, ys, moves, played, date))
         durs.append(ms)
 
     for k, s in enumerate(snaps):
@@ -237,13 +226,13 @@ def build(out: Path) -> None:
             for j in range(1, TWEEN + 1):
                 f = j / (TWEEN + 1)
                 played = round(prev["played"] + (s["played"] - prev["played"]) * f)
-                add(mix(prev, s, f), prev["rank"], s["rank"], f, False, played, date, TWEEN_MS)
+                add(mix(prev, s, f), prev["rank"], s["rank"], f, played, date, TWEEN_MS)
         ms = FIRST_MS if k == 0 else LAST_MS if k == len(snaps) - 1 else HOLD_MS
         ra = snaps[k - 1]["rank"] if k else s["rank"]
-        add(s, ra, s["rank"], 1.0, True, s["played"], date, ms)
+        add(s, ra, s["rank"], 1.0, s["played"], date, ms)
 
     pal = Image.new("P", (1, 1))
-    fixed = [EMPTY, CREAM, INK, MUTED, GOLD, GOLD_HI, GOLD_LO, RED, (70, 54, 30), CARD]
+    fixed = [EMPTY, CREAM, INK, MUTED, GOLD, GOLD_HI, GOLD_LO, RED, (70, 54, 30)]
     fixed += [ramp(min(1.0, 0.4 * (i / 63) ** (1 / 0.55))) for i in range(64)]
     # Taustan liukuväri omilla askelillaan, ettei mediaanileikkaus porrasta sitä.
     fixed += [tuple(round(a + (b - a) * i / 47) for a, b in zip(INK, (90, 64, 40))) for i in range(48)]
