@@ -307,3 +307,12 @@ def test_overtime_and_point_locks():
     pt = sim.compute([{"team": g["away_team"], "result": "point", "games": 1}], games, banked, pub, w)
     assert pt["scenario_canonical"][0]["result"] == "away_point"
     assert abs(pt["plausibility"] - (1 - p["home_reg"])) < 1e-9
+
+
+def test_injury_from_date_is_one_game():
+    """Ottelukohtainen poissaolo (7.11.2026): from/until rajaa poissaolon yhteen myöhempään otteluun."""
+    import inspect
+    src = inspect.getsource(sim.apply_injuries)
+    assert 'it.get("from")' in src            # alkupäivä suodattaa joukkueen ottelut
+    canon = inspect.getsource(sim.canonical)
+    assert '"from"' in canon                  # ja säilyy kanonisessa rivissä

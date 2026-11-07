@@ -306,6 +306,10 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
         p = find_player(_who(it), players, goalies)
         d_off, d_def = _player_delta(p, players, goalies, raw_all, scale)
         tg = [i for i, g in enumerate(games) if p["team"] in (g["home_team"], g["away_team"])]
+        # Alkupäivä (7.11.2026, ottelukohtainen parametrisointi: "maalivahti vaihtuu" yhdessä ottelussa):
+        # poissaolo alkaa vasta tästä päivästä; ilman sitä heti seuraavasta ottelusta kuten ennen.
+        if it.get("from"):
+            tg = [i for i in tg if (games[i].get("iso") or "") >= str(it["from"])[:10]]
         if it.get("until"):
             end = str(it["until"])[:10]          # paluupäivä: sinä päivänä jo pelaa
             n_out = sum(1 for i in tg if games[i]["iso"] < end)
@@ -320,7 +324,7 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
         ramp_eff = float(it.get("ramp_effect", 0.5))
         weight = {i: 1.0 for i in tg[:n_out]}
         weight.update({i: ramp_eff for i in tg[n_out:n_out + ramp]})
-        info.append({**p, "games": it.get("games"), "days": it.get("days"), "until": it.get("until"),
+        info.append({**p, "games": it.get("games"), "days": it.get("days"), "until": it.get("until"), "from": it.get("from"),
                      "ramp_games": ramp,
                      "ramp_effect": ramp_eff, "n_games": n_out, "n_ramp": len(tg[n_out:n_out + ramp]),
                      "d_goals_for": d_off * LEAGUE_AVG, "d_goals_against": d_def * LEAGUE_AVG,
@@ -645,9 +649,14 @@ def canonical(fixed: dict, games: list[dict], injury_info: list[dict], goals: li
                       "label": f"{gm['date']} {gm['home_team']}–{gm['away_team']}: {_lock_label(gm, allowed)}"})
     for x in injury_info:
         it = {"injury": x["player_id"] if x.get("player_id") is not None else x["name"], "games": x["n_games"]}
+        if x.get("from"):                       # ottelukohtainen poissaolo säilyy kanonisessa muodossa
+            it = {"injury": it["injury"], "from": str(x["from"])[:10], "until": str(x["until"])[:10]}
         if x["ramp_games"]:
             it.update(ramp_games=x["ramp_games"], ramp_effect=x["ramp_effect"])
-        items.append({**it, "label": f"{x['name']} ({x['team']}) poissa {x['n_games']} ottelua"})
+        out = [r["date"] for r in x.get("game_rows", []) if r["phase"] == "poissa"]
+        when = (f"poissa {out[0]}" if len(out) == 1 else f"poissa {out[0]}–{out[-1]} ({len(out)} ottelua)") if x.get("from") and out \
+            else f"poissa {x['n_games']} ottelua"
+        items.append({**it, "label": f"{x['name']} ({x['team']}) {when}"})
     for g in goals:
         it = {"team": g["team"], "goal": g["goal"]}
         if g.get("rivals"):

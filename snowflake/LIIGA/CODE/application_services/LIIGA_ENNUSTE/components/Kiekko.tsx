@@ -5,14 +5,14 @@
 //   - Jokaisella sivulla hahmo hakee ennakoivan vihjeen (/api/vihje): havainto datasta + kysymys,
 //     jota käyttäjä todennäköisimmin kysyisi seuraavaksi. Kupla aukeaa hetken päästä.
 //   - "Kysy tätä" avaa keskustelukuplan ja lähettää kysymyksen agentille (lib/chatBus.ts ask).
-//   - Hahmon napautus avaa / sulkee keskustelun. "Ei nyt" piilottaa vihjeen tältä sivulta.
+//   - Kuplassa pääkysymys ja kaksi muuta; mikään ei pakota: kupla väistyy itse tai napautuksesta
+//     muualle. Hahmon napautus tuo kuplan takaisin, toinen napautus avaa keskustelun.
 // Korvaa yläpalkin ja alavalikon "Kysy"-kohdat. Pelissä (/mouho) ei näy.
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onChatState, openChat } from "@/lib/chatBus";
 
-type Tip = { text: string | null; q?: string };
-const HIDE = "liiga-kiekko-ohita";
+type Tip = { text: string | null; q?: string; more?: string[] };
 
 export default function Kiekko() {
   const path = usePathname();
@@ -22,30 +22,37 @@ export default function Kiekko() {
   useEffect(() => onChatState(setChat), []);
   useEffect(() => {
     setShow(false); setTip(null);
-    let skip: string[] = [];
-    try { skip = JSON.parse(sessionStorage.getItem(HIDE) ?? "[]"); } catch { /* yksityinen ikkuna */ }
-    if (skip.includes(path)) return;
     let live = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     fetch(`/api/vihje?path=${encodeURIComponent(path)}`, { cache: "no-store" }).then((r) => r.json())
-      .then((t: Tip) => { if (live && t.text) { setTip(t); setTimeout(() => live && setShow(true), 1400); } }).catch(() => {});
-    return () => { live = false; };
+      .then((t: Tip) => {
+        if (!live || !t.text) return;
+        setTip(t);
+        // Ei pakkoa vastata (7.11.: "ei ole pakko hyväksyä tätä"): kupla tulee hetkeksi ja väistyy itse.
+        timers.push(setTimeout(() => live && setShow(true), 1400), setTimeout(() => live && setShow(false), 16000));
+      }).catch(() => {});
+    return () => { live = false; timers.forEach(clearTimeout); };
   }, [path]);
+  // Napautus muualle sulkee kuplan.
+  useEffect(() => {
+    if (!show) return;
+    const h = (e: MouseEvent) => { if (!(e.target as HTMLElement)?.closest?.(".kk")) setShow(false); };
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  }, [show]);
   if (path.startsWith("/mouho")) return null;
-  const dismiss = () => {
-    setShow(false);
-    try { const s = JSON.parse(sessionStorage.getItem(HIDE) ?? "[]"); sessionStorage.setItem(HIDE, JSON.stringify([...s, path])); } catch { /* ohitetaan */ }
-  };
   return (
     <div className={`kk ${chat ? "chat" : ""}`}>
       {show && tip?.text && !chat && (
         <div className="kk-bubble" role="status">
           <p>{tip.text}</p>
-          {tip.q && <button type="button" className="kk-q" onClick={() => { setShow(false); openChat({ ask: tip.q }); }}>{tip.q}</button>}
-          <button type="button" className="kk-no" onClick={dismiss}>Ei nyt</button>
+          {[tip.q, ...(tip.more ?? [])].filter(Boolean).map((q) => (
+            <button key={q} type="button" className="kk-q" onClick={() => { setShow(false); openChat({ ask: q! }); }}>{q}</button>
+          ))}
         </div>
       )}
       <button type="button" className="kk-me" aria-label={chat ? "Sulje keskustelu" : "Kysy avustajalta"} aria-controls="chat" aria-expanded={chat}
-        onClick={() => { setShow(false); openChat({ toggle: true }); }}>
+        onClick={() => { if (tip?.text && !show && !chat) setShow(true); else { setShow(false); openChat({ toggle: true }); } }}>
         <svg viewBox="0 0 64 64" aria-hidden>
           <ellipse cx="32" cy="46" rx="22" ry="7" className="kk-shadow" />
           <ellipse cx="32" cy="38" rx="24" ry="10" className="kk-side" />
