@@ -17,15 +17,54 @@ const surname = (p: string) => p.trim().split(/\s+/).slice(-1)[0];
 // kun jatkopaikka on 99,9 %): kärki -> runkosarjan voitto, keskikasti -> kärkikuusikko tai jatkoon,
 // alapää -> putoamiselta välttyminen. dist = sijajakauma 1..17 (PositionRow.p).
 export type Dist = Record<string, number[]>;
-export function openQuestion(team: string, dist: Dist): string {
+// Vaihtelu (7.11.2026, käyttäjä: "variaatiota kysymyksiin, aina ei pudota tai jatkoon"): joka
+// vyöhykkeellä useampi muotoilu; v valitsee (kiertää listan läpi). Joukkueen nimi vain
+// perusmuodossa, ettei taivutus mene väärin.
+export function openQuestion(team: string, dist: Dist, v = 0): string {
   const p = dist[team];
-  if (!p) return `pääseekö ${team} jatkoon?`;
-  const sum = (a: number, b: number) => p.slice(a - 1, b).reduce((x, y) => x + y, 0);
-  if (sum(15, 17) >= 0.15) return `välttyykö ${team} putoamiselta?`;
-  if (sum(1, 6) >= 0.85) return `voittaako ${team} runkosarjan?`;
-  if (sum(1, 10) >= 0.9) return `nouseeko ${team} kärkikuusikkoon?`;
-  return `pääseekö ${team} jatkoon?`;
+  const sum = (a: number, b: number) => (p ? p.slice(a - 1, b).reduce((x, y) => x + y, 0) : 0);
+  const pick = (xs: string[]) => xs[v % xs.length];
+  if (p && sum(15, 17) >= 0.15) return pick([`välttyykö ${team} putoamiselta?`, `onko ${team} putoamisvaarassa?`, `mihin sijaan ${team} päätyy?`]);
+  if (p && sum(1, 6) >= 0.85) return pick([`voittaako ${team} runkosarjan?`, `pysyykö ${team} kärjessä?`, `muuttuuko mestaruuskisa?`]);
+  if (p && sum(1, 10) >= 0.9) return pick([`nouseeko ${team} kärkikuusikkoon?`, `mihin sijaan ${team} päätyy?`, `riittääkö se suoraan puolivälieriin?`]);
+  return pick([`pääseekö ${team} jatkoon?`, `mihin sijaan ${team} päätyy?`, `nouseeko ${team} kärkikuusikkoon?`]);
 }
+
+// Suomen genetiivi sukunimelle: -nen -> -sen, vokaali -> +n, muuten +in (Hämäläisen, Wernblomin, Saarelan).
+const gen = (name: string) => /nen$/i.test(name) ? name.replace(/nen$/i, "sen") : /[aeiouyäö]$/i.test(name) ? `${name}n` : `${name}in`;
+
+// Kysymyspohjat uutistyypeittäin; k kiertää, jolloin peräkkäiset ehdotukset eroavat.
+type Kind = Suggestion["kind"];
+type T = (x: { player: string; s: string; team: string; q: string }) => string;
+const TEMPLATES: Record<Kind, T[]> = {
+  absence: [
+    (x) => `${x.team} ilman ${x.player} – ${x.q}`,
+    (x) => (x.player.startsWith("pelaajia") ? `Montako pistettä poissaolot vievät (${x.team})?` : `Montako pistettä ${gen(x.s)} poissaolo vie (${x.team})?`),
+    (x) => `Entä jos ${x.s} palaa jo ensi viikolla?`,
+  ],
+  injury: [
+    (x) => `${x.player} loukkaantunut – ${x.q}`,
+    (x) => `Montako pistettä ${gen(x.s)} poissaolo vie (${x.team})?`,
+    (x) => `Entä jos ${x.player} (${x.team}) on sivussa kuukauden?`,
+    (x) => `Kestääkö ${x.team}, jos ${x.player} on sivussa?`,
+  ],
+  suspension: [
+    (x) => `${x.player} pelikiellossa – ${x.q}`,
+    (x) => `Montako pistettä ${gen(x.s)} pelikielto vie (${x.team})?`,
+  ],
+  return: [
+    (x) => `${x.s} palaa kokoonpanoon – ${x.q}`,
+    (x) => `Mitä ${gen(x.s)} paluu tarkoittaa (${x.team})?`,
+  ],
+  signing: [
+    (x) => `Uusi pelaaja ${x.player} – ${x.q}`,
+    (x) => `Mitä ${x.player} (${x.team}) muuttaa kauden ennusteessa?`,
+    (x) => `Montako lisäpistettä ${x.player} (${x.team}) tuo?`,
+    (x) => `Entä jos ${x.player} (${x.team}) tekee pisteen per ottelu loppukauden?`,
+  ],
+};
+const make = (kind: Kind, k: number, player: string, team: string, dist: Dist) =>
+  TEMPLATES[kind][k % TEMPLATES[kind].length]({ player, s: surname(player), team, q: openQuestion(team, dist, Math.floor(k / 2)) });
 
 // Laajennus 7.11.2026 (käyttäjä: "uutisia enemmän"): pelaaja tunnistetaan myös otsikosta ja
 // tiivistelmästä rosteria vasten (news_roster; teksti käsitellään vain tässä, sitä ei näytetä eikä
@@ -63,7 +102,9 @@ export async function suggestions(teams: string[], today: string, dist: Dist = {
   for (const [team, list] of byTeam) {
     const names = list.map((a) => surname(a.player));
     const who = names.length === 1 ? `pelaajaa ${list[0].player}` : `pelaajia ${names.slice(0, -1).join(", ")} ja ${names[names.length - 1]}`;
-    out.push({ kind: "absence", q: `${team} ilman ${who} – ${openQuestion(team, dist)}`,
+    // Monikossa "Entä jos X palaa" ei sovi, joten silloin kahden pohjan kierto.
+    const k = out.length % (names.length === 1 ? 3 : 2);
+    out.push({ kind: "absence", q: TEMPLATES.absence[k]({ player: who, s: names[0], team, q: openQuestion(team, dist, out.length) }),
       meta: `Hyväksytty poissaolo · ${list.map((a) => `${surname(a.player)} ${fiDay(a.until)} asti`).join(", ")}` });
   }
   for (const r of items) {
@@ -79,10 +120,7 @@ export async function suggestions(teams: string[], today: string, dist: Dist = {
     for (const f of found) {
       const team = canon(f.team) ?? newsTeam;
       if (!team || seen.has(f.player) || handled.has(f.player)) continue;
-      const q = kind === "suspension" ? `${f.player} pelikiellossa – ${openQuestion(team, dist)}`
-        : kind === "injury" ? `${f.player} loukkaantunut – ${openQuestion(team, dist)}`
-        : kind === "return" ? `${surname(f.player)} palaa kokoonpanoon – ${openQuestion(team, dist)}`
-        : `Uusi pelaaja ${f.player} – ${openQuestion(team, dist)}`;
+      const q = make(kind, out.length, f.player, team, dist);
       seen.add(f.player);
       out.push({ kind, q, meta });
       if (out.length >= MAX) return out;
