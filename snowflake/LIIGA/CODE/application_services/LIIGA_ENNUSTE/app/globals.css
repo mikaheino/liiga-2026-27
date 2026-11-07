@@ -1244,3 +1244,5 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-reply input:focus { border-color: var(--gold-dim); }
 .gs-reply button { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--surface-2); background: var(--surface-2); color: var(--body); font: 600 14px var(--sans); cursor: pointer; }
 .gs-reply button:disabled { opacity: .5; cursor: default; }
+.gs-chip.more { border-style: dashed; color: var(--muted); background: transparent; }
+.gs-chip.more:hover { color: var(--gold-hi); }

@@ -14,7 +14,7 @@
 import { NextResponse } from "next/server";
 import { loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
-import { validItem } from "@/lib/scenarioItems";
+import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 
 export const dynamic = "force-dynamic";
 const NO_STORE = { "cache-control": "no-store" };
@@ -22,10 +22,10 @@ const GOALS = new Set(["top6", "top10", "avoid_relegation", "win"]);
 const STREAKS = new Set([0, 3, 5, 10]);
 
 // Oma skenaario (lib/lockBus.ts): vain moottorin kanonisia rivejä (lib/scenarioItems.ts),
-// enintään 10. Moottori palauttaa joukkueiden luvut, uskottavuuden ja kanonisen skenaarion.
+// enintään MAX_ITEMS (64). Moottori palauttaa joukkueiden luvut, uskottavuuden ja kanonisen skenaarion.
 async function locks(items: unknown[]) {
   const teams = new Set(await loadTeams());
-  if (!items.length || items.length > 10 || !items.every((x) => validItem(x, teams))) {
+  if (!items.length || items.length > MAX_ITEMS || !items.every((x) => validItem(x, teams))) {
     return NextResponse.json({ error: "virheellinen skenaario" }, { status: 400, headers: NO_STORE });
   }
   try {

@@ -10,7 +10,8 @@ export type Item = GameLock | Injury | Goal;
 /** @deprecated nimi V4:stä */
 export type Lock = GameLock;
 const KEY = "liiga-locks", EVT = "liiga-locks";
-export const MAX_LOCKS = 10;
+export { MAX_ITEMS as MAX_LOCKS } from "@/lib/scenarioItems";
+import { MAX_ITEMS as MAX_LOCKS } from "@/lib/scenarioItems";
 
 export const itemKey = (i: Item) =>
   "game_id" in i ? `g:${i.game_id}` : "injury" in i ? `i:${i.injury}` : `t:${i.team}:${i.goal}`;

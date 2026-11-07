@@ -65,6 +65,7 @@ export default function ScenarioBoard() {
   const building = !!live && !live.done;
   useEffect(() => { setItems(getLocks()); return onLocks(setItems); }, []);
   const [reply, setReply] = useState("");
+  const [allChips, setAllChips] = useState(false);
   const run = async (follow?: string) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
@@ -144,10 +145,15 @@ export default function ScenarioBoard() {
       )}
       {items.length > 0 && (
         <div className="gs-chips" aria-label="Lukitut tulokset">
-          {chips.map((c) => (
+          {(allChips || chips.length <= 8 ? chips : chips.slice(0, 6)).map((c) => (
             <button key={itemKey(c)} type="button" className="gs-chip" title="Poista"
               onClick={() => setLocks(chips.filter((x) => itemKey(x) !== itemKey(c)))}>{c.label}<span aria-hidden>✕</span></button>
           ))}
+          {/* Koko kauden skenaariossa voi olla kymmeniä otteluita: tiivistetään (7.11.2026). */}
+          {chips.length > 8 && (
+            <button type="button" className="gs-chip more" onClick={() => setAllChips(!allChips)}>
+              {allChips ? "Näytä vähemmän" : `+${chips.length - 6} muuta ottelua`}</button>
+          )}
         </div>
       )}
       {!items.length && !live && <p className="gs-hint">Tekoäly hakee tarvittavan datan, rakentaa skenaarion ja laskee sen ennustemallilla. Voit myös lukita tuloksia ottelukorteista.</p>}
@@ -155,7 +161,7 @@ export default function ScenarioBoard() {
       {items.length > 0 && res && (
         <div className="gs-results">
           <p className="gs-stats">
-            {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
+            {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{res.plausibility < 0.001 ? "alle 0,1" : fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
             ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
           </p>
           {res.requirements.map((r) => <p key={r.team + r.goal} className="gs-req">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
