@@ -80,6 +80,11 @@ CURATED_TABLES = [
 ]
 
 
+# Uutisista johdetut rakenteiset taulut (scripts/news/news_signals.py, 7.11.2026): uutiskannasta
+# data/news.duckdb (ei mallikannasta, tests/test_news_db.py) LIIGA.MODELiin. Ei otsikoita eikä tekstiä.
+NEWS_TABLES = ["news_signals", "news_absence_log"]
+
+
 class SyncError(RuntimeError):
     """Raised when the Snowflake side of a publish fails."""
 
@@ -239,6 +244,31 @@ def fetch_git_repo(c: dict | None = None) -> str:
     return rows[0].get("result", "OK") if rows else "OK"
 
 
+def _sync_news(c: dict, done: dict, failures: list, quiet: bool) -> None:
+    """Uutistaulut uutiskannasta (jos olemassa) MODEL-skeemaan. Paras yritys kuten muutkin."""
+    import duckdb
+
+    news = resolve_path(load_config()["database"]["duckdb_path"]).parent / "news.duckdb"
+    if not news.exists():
+        return
+    con = duckdb.connect(str(news), read_only=True)
+    try:
+        have = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
+        with tempfile.TemporaryDirectory() as tmp:
+            for t in [t for t in NEWS_TABLES if t in have]:
+                try:
+                    pq = Path(tmp) / f"{t}.parquet"
+                    n = _export_parquet(con, t, pq)
+                    _load(t, pq, c["model_schema"], c)
+                    done[t] = n
+                    if not quiet:
+                        print(f"  {t:32} {n:>8,} -> {c['database']}.{c['model_schema']}.{t.upper()}")
+                except Exception as exc:                    # noqa: BLE001
+                    failures.append((t, str(exc).splitlines()[0]))
+    finally:
+        con.close()
+
+
 def sync_all(tables: list[str] | None = None, *, strict: bool = False,
              quiet: bool = False) -> dict[str, int]:
     """Publish the model to Snowflake. Returns {table: rows} for successes.
@@ -288,6 +318,8 @@ def sync_all(tables: list[str] | None = None, *, strict: bool = False,
         return done
     finally:
         con.close()
+    if tables is None:
+        _sync_news(c, done, failures, quiet)
 
     if failures:
         msg = "; ".join(f"{t}: {m}" for t, m in failures)

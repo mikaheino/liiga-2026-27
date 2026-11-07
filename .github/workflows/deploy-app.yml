@@ -17,6 +17,7 @@ on:
       - snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/**
       - snowflake/LIIGA/MODEL/tables/KORTTI_VASTAUS.sql
       - snowflake/LIIGA/MODEL/tables/SKENAARIO_HAKU.sql
+      - snowflake/LIIGA/MODEL/tables/ROSTER_REQUESTS.sql
       - snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/**
       - .github/workflows/deploy-app.yml
       - .github/actions/**
@@ -68,6 +69,9 @@ jobs:
       # Etusivun skenaariohaut ja vastaukset (ScenarioBoard.tsx, 7.11.2026). Sama malli.
       - name: Skenaariohakujen taulu
         run: snow sql -c ci -f ../../../MODEL/tables/SKENAARIO_HAKU.sql
+      # Rosterijono (lib/rosterQueue.ts, 7.11.2026). Sama malli.
+      - name: Rosterijonon taulu
+        run: snow sql -c ci -f ../../../MODEL/tables/ROSTER_REQUESTS.sql
       # Joukkuesivun skenaariopaneeli kutsuu samaa proseduuriversiota kuin agentin
       # työkalu liiga_skenaario (deploy.yml julkaisee sen). Nimi app.yml:n
       # ympäristömuuttujaksi; käännös kaatuu, jos proseduuria ei vielä ole.

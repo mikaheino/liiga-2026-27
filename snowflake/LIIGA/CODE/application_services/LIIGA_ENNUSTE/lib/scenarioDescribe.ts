@@ -10,7 +10,7 @@
 import { askOnce, type Answer } from "@/lib/agent";
 import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
-import { query } from "@/lib/snowflake";
+import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
@@ -73,7 +73,7 @@ async function coachingEvidence(): Promise<string> {
            AVG(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.pts END) AS ppg_after,
            SUM(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN tg.xf END) / NULLIF(SUM(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN tg.xf + tg.xa END), 0) AS xg_before,
            SUM(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.xf END) / NULLIF(SUM(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.xf + tg.xa END), 0) AS xg_after
-    FROM ${M}.COACHING_CHANGES c JOIN tg ON tg.team = c.team
+    FROM ${DATA_MODE === "duckdb" ? "coaching_changes" : `${M}.V_COACHING_CHANGES`} c JOIN tg ON tg.team = c.team
     WHERE c.season = (SELECT MAX(season) FROM ${M}.STG_GAMES)
     GROUP BY c.team, c.change_date, c.coach_out, c.coach_in ORDER BY change_date`).catch(() => []);
   if (!rows.length) return "";
@@ -195,7 +195,7 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
       items: r.scenario_canonical ?? [], tools: ["liiga_skenaario"], sql: [], chart: { type: "jakauma", team: scope[0] } };
   };
 
-  const queued = queueRoster(missing, text).map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`);
+  const queued = (await queueRoster(missing, text)).map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`);
   const withRoster = (d: Described): Described => (queued.length ? { ...d, roster: queued } : d);
   let first: Described;
   try { first = withRoster(await attempt(await ask())); } catch (e) { return fallback(`agentti ei vastannut: ${(e as Error).message.split("\n")[0].slice(0, 120)}`); }

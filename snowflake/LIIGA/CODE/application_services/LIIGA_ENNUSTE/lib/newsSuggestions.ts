@@ -1,4 +1,4 @@
-import { activeAbsences } from "@/lib/newsContext";
+import { NT, activeAbsences } from "@/lib/newsContext";
 import { query } from "@/lib/snowflake";
 
 // --- Hakuehdotukset uutisista (7.11.2026, käyttäjä: "olisi mukavaa jos uutiset näkyisivät
@@ -89,34 +89,21 @@ const TEMPLATES: Record<Kind, T[]> = {
 const make = (kind: Kind, k: number, player: string, team: string, dist: Dist, seed = 0) =>
   TEMPLATES[kind][(k + seed) % TEMPLATES[kind].length]({ player, s: surname(player), team, q: openQuestion(team, dist, Math.floor((k + seed) / 2) + seed) });
 
-// Laajennus 7.11.2026 (käyttäjä: "uutisia enemmän"): pelaaja tunnistetaan myös otsikosta ja
-// tiivistelmästä rosteria vasten (news_roster; teksti käsitellään vain tässä, sitä ei näytetä eikä
-// anneta agentille), ikkuna 30 pv, enintään 12. Siirto-lippu on kohinainen (lounaslistat,
-// konsertit), joten siirroksi kelpaa vain sopimukseen viittaava otsikko.
-// Jatkosopimus ei muuta joukkuetta (pelaaja on jo mukana), joten se ei ole skenaario.
-// Myös "Hyökkääjä X Y Kouvolaan" ja "X:n debyytti" (7.11.: Ruuttu ja Ohtamaa jäivät muuten pois).
-const SIGNING = /sopimu|lainalle|lainaan|vahvista|siirty|kaudeksi|kauden loppuun|liittyy|tekee paluun|debyy|riveihin|^(hyökkääjä|puolustaja|maalivahti) /i;
-const EXTENSION = /jatkosopimu|jatkaa/i;
+// Lähde 7.11.2026 alkaen: NEWS_SIGNALS (scripts/news/news_signals.py johtaa sen uutisista: pelaaja
+// otsikosta/tiivistelmästä rosteria vasten, siirroiksi vain sopimukset, ei jatkosopimuksia), joten sama
+// koodi toimii paikallisesti ja Snowflakessa eikä otsikoita tarvita. Ikkuna 30 pv, enintään 12.
 const WINDOW_DAYS = 30, MAX = 12;
 
 export async function suggestions(teams: string[], today: string, dist: Dist = {}, seed = 0): Promise<Suggestion[]> {
-  const canon = (raw: string) => teams.find((t) => raw.split(",").some((x) => x.trim() === t || x.trim().endsWith(` ${t}`))) ?? null;
   const since = new Date(Date.parse(today) - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
   // Pelaajat, joista on jo kirjaus (voimassa tai päättynyt, esim. Harpurin yhden ottelun pelikielto):
   // uutinen on käsitelty, joten siitä ei enää ehdoteta.
-  const [abs, items, cands, roster, done] = await Promise.all([
+  const [abs, signals, done] = await Promise.all([
     activeAbsences(today),
-    query(`SELECT SUBSTR(CAST(published AS VARCHAR), 1, 10) AS d, source, team, flags, title, summary, url
-           FROM news_items WHERE SUBSTR(CAST(published AS VARCHAR), 1, 10) >= '${since}' AND flags IS NOT NULL
-           ORDER BY published DESC`).catch(() => []),
-    query("SELECT url, player, team FROM news_candidates").catch(() => []),
-    query("SELECT player, team FROM news_roster").catch(() => []),
-    query("SELECT DISTINCT player FROM news_absences WHERE player IS NOT NULL").catch(() => []),
+    query(`SELECT published, source, team, kind, player FROM ${NT("news_signals")} WHERE published >= '${since}' ORDER BY published DESC`).catch(() => []),
+    query(`SELECT DISTINCT player FROM ${NT("news_absence_log")} WHERE player IS NOT NULL`).catch(() => []),
   ]);
   const handled = new Set(done.map((r) => String(r.PLAYER)));
-  const byUrl = new Map<string, { player: string; team: string }[]>();
-  for (const c of cands) byUrl.set(String(c.URL), [...(byUrl.get(String(c.URL)) ?? []), { player: String(c.PLAYER), team: String(c.TEAM) }]);
-  const people = roster.map((r) => ({ player: String(r.PLAYER), team: String(r.TEAM) })).filter((r) => r.player.includes(" "));
   const out: Suggestion[] = [];
   const seen = new Set<string>();
   // Saman joukkueen poissaolot yhdeksi ehdotukseksi.
@@ -125,31 +112,18 @@ export async function suggestions(teams: string[], today: string, dist: Dist = {
   for (const [team, list] of byTeam) {
     const names = list.map((a) => surname(a.player));
     const who = names.length === 1 ? `pelaajaa ${list[0].player}` : `pelaajia ${names.slice(0, -1).join(", ")} ja ${names[names.length - 1]}`;
-    // Monikossa "Entä jos X palaa" ei sovi, joten silloin kahden pohjan kierto.
     // Monikossa vain pohjat, jotka eivät puhu yhdestä pelaajasta (indeksi 2 = "Entä jos X palaa").
     const pool = names.length === 1 ? TEMPLATES.absence.map((_, i) => i) : TEMPLATES.absence.map((_, i) => i).filter((i) => i !== 2);
     const k = pool[(out.length + seed) % pool.length];
     out.push({ kind: "absence", q: TEMPLATES.absence[k]({ player: who, s: names[0], team, q: openQuestion(team, dist, out.length + seed) }),
       meta: `Hyväksytty poissaolo · ${list.map((a) => `${surname(a.player)} ${fiDay(a.until)} asti`).join(", ")}` });
   }
-  for (const r of items) {
-    const flags = String(r.FLAGS), title = String(r.TITLE ?? ""), text = `${title} ${String(r.SUMMARY ?? "")}`;
-    const kind = flags.includes("pelikielto") ? "suspension" : flags.includes("loukkaantuminen") ? "injury"
-      : flags.includes("paluu") ? "return" : flags.includes("siirto") && SIGNING.test(title) && !EXTENSION.test(title) ? "signing" : null;
-    if (!kind) continue;
-    const newsTeam = canon(String(r.TEAM ?? ""));
-    const found = [...(byUrl.get(String(r.URL)) ?? []),
-      // Siirroissa vain otsikko (tiivistelmässä mainitaan usein muita pelaajia sivulauseessa).
-      ...people.filter((x) => (kind === "signing" ? title : text).includes(x.player) && (!newsTeam || x.team === newsTeam))];
-    const meta = `${String(r.SOURCE ?? "uutinen")} · ${fiDay(String(r.D))}`;
-    for (const f of found) {
-      const team = canon(f.team) ?? newsTeam;
-      if (!team || seen.has(f.player) || handled.has(f.player)) continue;
-      const q = make(kind, out.length, f.player, team, dist, seed);
-      seen.add(f.player);
-      out.push({ kind, q, meta });
-      if (out.length >= MAX) return out;
-    }
+  for (const r of signals) {
+    const player = String(r.PLAYER), team = String(r.TEAM), kind = String(r.KIND) as Kind;
+    if (!teams.includes(team) || !TEMPLATES[kind] || seen.has(player) || handled.has(player)) continue;
+    seen.add(player);
+    out.push({ kind, q: make(kind, out.length, player, team, dist, seed), meta: `${String(r.SOURCE ?? "uutinen")} · ${fiDay(String(r.PUBLISHED))}` });
+    if (out.length >= MAX) break;
   }
   return out;
 }

@@ -43,7 +43,9 @@ def main() -> int:
     pages = fetch("pages-data", PAGES_CACHE)
     env = {**os.environ, "LIIGA_NEWS_DUCKDB": str(NEWS_DB)}
     py = sys.executable
-    for step in (["scripts/news/load_news.py", str(folder)], ["scripts/news/challenger_season.py", str(folder), str(pages)]):
+    # news_signals.py (7.11.2026): rakenteiset uutistaulut sovellukselle ja Snowflakeen (ei otsikoita).
+    for step in (["scripts/news/load_news.py", str(folder)], ["scripts/news/challenger_season.py", str(folder), str(pages)],
+                 ["scripts/news/news_signals.py"]):
         r = subprocess.run([py, *step], cwd=ROOT, env=env)
         if r.returncode:
             print(f"uutiset: {step[0]} päättyi koodiin {r.returncode}", file=sys.stderr)

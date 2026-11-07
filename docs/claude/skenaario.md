@@ -312,3 +312,21 @@ tallennettu skenaario on muuttunut". `lib/subagents.ts`:
 - **Muuttunut tallennettu haku:** jos ennuste on päivittynyt, haku ajetaan avattaessa uudelleen
   ("Päivitetty tämän päivän ennusteella (alkuperäinen haku …)"). `/api/skenaario` pudottaa jo pelatut
   ottelut (`dropped`) eikä kaadu (myös sirun poisto).
+
+## Kaikki toimii myös Snowflakessa (7.11.2026)
+
+Käyttäjä: "KAIKKI PITÄÄ TOIMIA SNOWFLAKE". Tämän päivän haun osat, jotka eivät toimineet siellä:
+- **Uutiset** (ehdotukset, lähtötilanne, vihjeet, uuden pelaajan joukkue) lukivat raakatauluja
+  (otsikot), joita Snowflakessa ei ole eikä tule. Nyt `scripts/news/news_signals.py` (news_pull.py:n
+  viimeinen vaihe) johtaa `news_signals` (published, source, team, kind, player) ja `news_absence_log`
+  (URL tiivisteenä) -taulut uutiskantaan; `liiga.snowflake_sync._sync_news` julkaisee ne
+  `LIIGA.MODEL.NEWS_SIGNALS` / `NEWS_ABSENCE_LOG`. Sovellus lukee vain näitä (`NT()` valitsee nimen).
+  Huom. tämä on Macin synkka eikä J3:n suunnittelema GitHub-latausrooli; ei otsikoita kummassakaan.
+- **Valmentajanäyttö**: `COACHING_CHANGES` on RAW-skeemassa -> näkymä `LIIGA.MODEL.V_COACHING_CHANGES`
+  (deploy.yml / deploy_views.py).
+- **Rosteritarkistus**: `ROSTER_2026_27` on RAW-skeemassa -> sovellus vertaa `PLAYER_RATES`iin.
+- **Rosterijono**: Snowflakessa `LIIGA.MODEL.ROSTER_REQUESTS` (deploy-app.yml, LIIGA_APP INSERT);
+  `roster_queue.py` lukee ja kuittaa myös sen.
+- Ylläpitäjän GRANTit julkaisun jälkeen: `_account/roles/LIIGA_APP.sql` (SKENAARIO_HAKU, ROSTER_REQUESTS).
+- Todennettu liiga_ci-yhteydellä: NEWS_SIGNALS 26 / NEWS_ABSENCE_LOG 8 riviä, vihjekysely ja
+  PLAYER_RATES (Kumpulainen mukana) toimivat Snowflakessa.

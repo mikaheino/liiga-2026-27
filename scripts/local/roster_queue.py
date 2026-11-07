@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import subprocess
 from pathlib import Path
 
 import duckdb
@@ -46,6 +48,27 @@ def write(rows: list[dict]) -> None:
         w.writerows(rows)
 
 
+# Snowflake-jono (7.11.2026): sovellus kirjoittaa Snowflakessa LIIGA.MODEL.ROSTER_REQUESTS-tauluun.
+SF = "LIIGA.MODEL.ROSTER_REQUESTS"
+
+
+def snowflake(sql: str) -> list[dict]:
+    """liiga_ci-yhteydellä; paras yritys (taulua ei ole ennen julkaisua, yhteys voi puuttua)."""
+    try:
+        r = subprocess.run(["snow", "sql", "-c", "liiga_ci", "--format", "json", "-q", sql],
+                           capture_output=True, text=True, timeout=120, check=True)
+        out = json.loads(r.stdout or "[]")
+        return out if isinstance(out, list) else []
+    except (subprocess.SubprocessError, OSError, json.JSONDecodeError):
+        return []
+
+
+def snowflake_pending() -> list[dict]:
+    rows = snowflake(f"SELECT TO_VARCHAR(requested_at) AS requested_at, player, team, source FROM {SF} WHERE status = 'pending'")
+    return [{"requested_at": r["REQUESTED_AT"], "player": r["PLAYER"], "team": r["TEAM"], "source": r["SOURCE"],
+             "status": "pending", "where": "Snowflake"} for r in rows]
+
+
 def in_roster(con, name: str) -> str | None:
     last = name.split()[-1]
     hit = con.execute("SELECT team FROM roster_2026_27 WHERE last_name ILIKE ? LIMIT 1", [last]).fetchone()
@@ -59,7 +82,8 @@ def set_status(name: str, status: str) -> None:
         if r["player"] == name and r["status"] == "pending":
             r["status"] = status
     write(rows)
-    print(f"{name}: {n} odottavaa -> {status}")
+    snowflake(f"UPDATE {SF} SET status = '{status}' WHERE player = '{name.replace(chr(39), chr(39) * 2)}' AND status = 'pending'")
+    print(f"{name}: {n} odottavaa paikallisesti -> {status} (Snowflake-jono päivitetty, jos yhteys toimi)")
 
 
 def main() -> None:
@@ -70,7 +94,7 @@ def main() -> None:
     if a.done or a.dismiss:
         set_status(a.done or a.dismiss, "done" if a.done else "dismissed")
         return
-    pending = [r for r in read() if r["status"] == "pending"]
+    pending = [{**r, "where": "paikallinen"} for r in read() if r["status"] == "pending"] + snowflake_pending()
     if not pending:
         print("Rosterijono on tyhjä.")
         return
@@ -79,7 +103,7 @@ def main() -> None:
     for r in pending:
         now = in_roster(con, r["player"])
         state = f"JO ROSTERISSA ({now}) -> --done" if now else "puuttuu mallista"
-        print(f"  {r['requested_at'][:10]}  {r['player']:<24} {r['team'] or '?':<9} {state}  · haku: {r['source']}")
+        print(f"  {r['requested_at'][:10]}  {r['player']:<24} {r['team'] or '?':<9} {state}  · {r['where']} · haku: {r['source']}")
     print("\n" + STEPS)
 
 
