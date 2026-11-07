@@ -1362,3 +1362,7 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .gs-sugs { max-height: 46dvh; }
   .gs-sm { max-width: none; text-align: left; }
 }
+/* Lukittu jakso pistekäyrässä (7.11.2026): kultainen tausta + selkokielinen selitys. */
+.sc-band { fill: rgba(235,202,104,.08); stroke: rgba(235,202,104,.25); stroke-width: 1; }
+.sc-band-t { font: 600 10px var(--sans); fill: var(--gold); letter-spacing: .04em; }
+.sc-explain { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--body); }

@@ -44,6 +44,15 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
   const last = pts[pts.length - 1];
   const labelGap = Math.abs(y(last.now) - y(last.scenario)) < 14 ? 8 : 0;   // suorat arvot eivät päälle
   const months = pts.map((p, i) => ({ i, m: p.iso?.slice(5, 7) })).filter((p, k, a) => p.m && (k === 0 || a[k - 1].m !== p.m));
+  // Lukittu jakso näkyviin (7.11.2026, käyttäjä: "tämä pitää näkyä ja kertoa"): yhtenäinen jakso
+  // kultaisena taustana; hajanaiset lukitukset (esim. joka toinen ottelu) pelkkinä pisteinä.
+  const li = pts.map((p, i) => (p.locked ? i : -1)).filter((i) => i >= 0);
+  const span = li.length ? { a: li[0], b: li[li.length - 1] } : null;
+  const solid = !!span && li.length === span.b - span.a + 1;
+  const step = (W - L - R) / Math.max(1, pts.length - 1);
+  const note = !span ? "Käyrät erkanevat siitä ottelusta, jota skenaario ensimmäisenä muuttaa."
+    : solid ? `Ennen ${pts[span.a].date} käyrät kulkevat yhdessä: ne ottelut malli arpoo tavalliseen tapaan. Kultainen alue (${pts[span.a].date}–${pts[span.b].date}) on lukitsemasi jakso, ja sen jälkeen syntynyt ero säilyy loppukauden.`
+    : `Käyrät kulkevat yhdessä ${pts[span.a].date} asti. Jokainen ● on lukittu ottelu, muut ottelut malli arpoo tavalliseen tapaan.`;
   return (
     <figure className="sc-chart">
       <figcaption>{team}: odotettu pistekertymä</figcaption>
@@ -51,8 +60,13 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${team} odotetut pisteet kauden lopussa: nyt ${f1(last.now)}, skenaariossa ${f1(last.scenario)}`}>
         {ticks.map((v) => (<g key={v}><line className="gridl" x1={L} x2={W - R} y1={y(v)} y2={y(v)} /><text className="axis" x={L - 6} y={y(v) + 3} textAnchor="end">{Math.round(v)}</text></g>))}
         {months.map(({ i, m }) => <text key={i} className="axis" x={x(i)} y={H - 10} textAnchor="middle">{Number(m)}/{pts[i].iso!.slice(2, 4)}</text>)}
-        <path d={line("now")} className="sc-now" fill="none" />
+        {solid && span && (<g>
+          <rect className="sc-band" x={x(span.a) - step / 2} y={T} width={(span.b - span.a + 1) * step} height={H - T - B} rx={3} />
+          <text className="sc-band-t" x={x(span.a) - step / 2 + 4} y={T + 11}>lukittu</text>
+        </g>)}
+        {/* Nykyennuste skenaarion päälle: kun käyrät kulkevat yhdessä, katkoviiva näkyy kullan päällä. */}
         <path d={line("scenario")} className="sc-scn" fill="none" />
+        <path d={line("now")} className="sc-now" fill="none" />
         {pts.map((p, i) => p.locked && <circle key={i} className="sc-lock" cx={x(i)} cy={y(p.scenario)} r={4} />)}
         <text className="sc-val" x={W - R + 6} y={y(last.scenario) + 4 - labelGap}>{f1(last.scenario)} skenaario</text>
         <text className="sc-val dim" x={W - R + 6} y={y(last.now) + 4 + labelGap}>{f1(last.now)} nyt</text>
@@ -63,7 +77,8 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
           </rect>
         ))}
       </svg>
-      <p className="sc-note">Pisteet kertyvät ottelu kerrallaan (10 000 simuloitua kautta). ● = skenaariossa lukittu ottelu.</p>
+      <p className="sc-explain">{note}</p>
+      <p className="sc-note">Odotetut pisteet ottelu kerrallaan, 10 000 simuloitua kautta.</p>
     </figure>
   );
 }

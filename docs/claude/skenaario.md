@@ -283,3 +283,16 @@ Käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia", "Entä jos
   Testattu: "Sport–HPK 14.11. menee jatkoajalle", "KooKoo saa pisteen jokaisesta viidestä seuraavasta".
 - Etusivu: kenttä ~kolmanneksen korkeudella, ehdotuslista enintään 52 vh (vierii sisällään), pitkä
   lähdetieto lyhennetään.
+
+## Evaluointi, lukittu jakso näkyviin, hellävarainen sävy (7.11.2026)
+
+- `scripts/dev/search_eval.py`: 23 tapausta + 5 vihamielistä live-reittiä vasten (~6 min).
+  Mitat: vastasi, ei_tark, johtop (1. lause pääjoukkueesta + %), luvut (1. lauseen prosentit
+  löytyvät moottorin tuloksesta ±0,15), rivit (lukitukset, jatkoaika/piste, poissaolo, xg_share,
+  tavoite, uutispoissaolo, pohjan säilyminen/pudotus), kuvaaja. Ensimmäinen ajo 27/28: jatkohaun
+  vastaus alkoi "Aloitin uuden skenaarion" -> ohje: valinta toiseen lauseeseen; uusinta 2/2.
+  Tulos kaikissa: luvut 21/21 (agentti ei keksi prosentteja), vihamieliset 5/5.
+- Pistekäyrä: yhtenäinen lukittu jakso kultaisena taustana ("lukittu"), nykykäyrä piirretään päälle
+  (näkyy, että käyrät kulkevat yhdessä ennen jaksoa), selkokielinen selitys päivineen kuvaajan alla.
+- Sävy (käyttäjä: "hellävarainen skenaarioemulaattori"): lempeä ja selkokielinen, ammattisanat
+  selitetään, epävarmuus rauhallisesti; vastaus kertoo, mitä malli teki muille otteluille.
