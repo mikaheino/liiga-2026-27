@@ -9,7 +9,7 @@
 // lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee uudelleen ilman agenttia.
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
-import { engineItem, getLocks, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
+import { engineItem, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
 import ScenarioChart, { type ChartPick, type Charts, type LockedGame, fallbackPick } from "@/components/ScenarioChart";
 
@@ -76,7 +76,9 @@ export default function ScenarioBoard() {
   const [text, setText] = useState("");
   const [live, setLive] = useState<Live | null>(null);
   const building = !!live && !live.done;
-  useEffect(() => { setItems(getLocks()); return onLocks(setItems); }, []);
+  // Etusivu avautuu aina tyhjänä kuin hakukone (7.11.2026, käyttäjä: "Vieläkin näkyy historiaa"):
+  // edellinen skenaario ei palaa sessiosta; vanhat haut avataan Aiemmat skenaariot -listasta.
+  useEffect(() => { setLocks([]); setItems([]); return onLocks(setItems); }, []);
   const [reply, setReply] = useState("");
   const [allChips, setAllChips] = useState(false);
   // Moottorin luvut tulevat valmiina haun mukana (tallentuvat sen kanssa): effect ei laske uudelleen.
@@ -244,7 +246,7 @@ export default function ScenarioBoard() {
         </div>
       )}
       {haut.length > 0 && !building && (
-        <details className="gs-hist" open={!live}>
+        <details className="gs-hist">
           <summary>Aiemmat skenaariot ({haut.length})</summary>
           <ul>
             {haut.map((h) => (
