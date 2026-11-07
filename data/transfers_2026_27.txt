@@ -416,7 +416,7 @@ Maalivahdit (4): Antti Raanta (2027), Daniel Salonen (2027), Jooa Sammalniemi (2
 
 Puolustajat (9): Jakub Floris (2027), Chris Harpur (2027), Anton Olsson (2027), Peetro Seppälä (2027+1), Jakob Stenqvist (2027), Jirko Tukiainen (2027), Nuutti Viitasalo (2028), Viljami Vuorinen (2027+1), Arttu Välilä (2029)
 
-Keskushyökkääjät (5): Heikki Liedes (2028), Félix Robert (2027), Mikael Ruohomaa (2027), Aapo Vanninen (2028+1), Santeri Virtanen (2028)
+Keskushyökkääjät (6): Heikki Liedes (2028), Félix Robert (2027), Mikael Ruohomaa (2027), Aapo Vanninen (2028+1), Santeri Virtanen (2028), Rasmus Kumpulainen
 
 Laitahyökkääjät (11): Alex Beaucage (2027), Topias Haapanen (2027), Lenni Hämäläinen (2028), Henri Ikonen (2028), Jami Krannila (2027), Jasu Mensonen (2027), Aleksi Saarela (2028), Antti Saarela (2027), Daniil Trakht (2027), Leo Tuuva (2027+1), Vili Pulakka
 
