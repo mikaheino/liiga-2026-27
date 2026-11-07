@@ -26,15 +26,22 @@ export function fallbackPick(locked: number, hasGoal: boolean): ChartPick {
   return { type: "pisteet" };
 }
 
-function Legend() {
+function Legend({ bars = false }: { bars?: boolean }) {
   return (
-    <div className="sc-leg" aria-hidden>
+    <div className={`sc-leg ${bars ? "bars" : ""}`} aria-hidden>
       <span><i className="now" />nyt</span><span><i className="scn" />skenaario</span>
     </div>
   );
 }
 
+// Lukurivi kuvaajan yläpuolella (7.11.2026, käyttäjä: "kuva mukaan kontekstiin tai interaktiivinen"):
+// oletuksena kuvaajan olennainen sisältö sanoina, napautettu / osoitettu kohta korvaa sen.
+function Readout({ text, active }: { text: string; active: boolean }) {
+  return <p className={`sc-read ${active ? "on" : ""}`} aria-live="polite">{text}</p>;
+}
+
 function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
+  const [sel, setSel] = useState<number | null>(null);
   const ys = pts.flatMap((p) => [p.now, p.scenario]);
   const lo = Math.floor(Math.min(...ys) / 10) * 10, hi = Math.ceil(Math.max(...ys) / 10) * 10;
   const x = (i: number) => L + (i / Math.max(1, pts.length - 1)) * (W - L - R);
@@ -57,6 +64,9 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
     <figure className="sc-chart">
       <figcaption>{team}: odotettu pistekertymä</figcaption>
       <Legend />
+      <Readout active={sel != null} text={sel != null
+        ? `${pts[sel].date}${pts[sel].opponent ? ` vs ${pts[sel].opponent}` : ""}${pts[sel].locked ? " (lukittu)" : ""} · nyt ${f1(pts[sel].now)} p → skenaario ${f1(pts[sel].scenario)} p`
+        : `Kauden lopussa ${f1(last.scenario)} pistettä, kun nyt ${f1(last.now)} (${last.scenario >= last.now ? "+" : "−"}${f1(Math.abs(last.scenario - last.now))}). Napauta kuvaajaa nähdäksesi päivän.`} />
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${team} odotetut pisteet kauden lopussa: nyt ${f1(last.now)}, skenaariossa ${f1(last.scenario)}`}>
         {ticks.map((v) => (<g key={v}><line className="gridl" x1={L} x2={W - R} y1={y(v)} y2={y(v)} /><text className="axis" x={L - 6} y={y(v) + 3} textAnchor="end">{Math.round(v)}</text></g>))}
         {months.map(({ i, m }) => <text key={i} className="axis" x={x(i)} y={H - 10} textAnchor="middle">{Number(m)}/{pts[i].iso!.slice(2, 4)}</text>)}
@@ -68,11 +78,17 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
         <path d={line("scenario")} className="sc-scn" fill="none" />
         <path d={line("now")} className="sc-now" fill="none" />
         {pts.map((p, i) => p.locked && <circle key={i} className="sc-lock" cx={x(i)} cy={y(p.scenario)} r={4} />)}
+        {sel != null && (<g>
+          <line className="sc-cross" x1={x(sel)} x2={x(sel)} y1={T} y2={H - B} />
+          <circle className="sc-dot-now" cx={x(sel)} cy={y(pts[sel].now)} r={4} />
+          <circle className="sc-dot-scn" cx={x(sel)} cy={y(pts[sel].scenario)} r={5} />
+        </g>)}
         <text className="sc-val" x={W - R + 6} y={y(last.scenario) + 4 - labelGap}>{f1(last.scenario)} skenaario</text>
         <text className="sc-val dim" x={W - R + 6} y={y(last.now) + 4 + labelGap}>{f1(last.now)} nyt</text>
         {/* Hover: koko sarakkeen levyinen osuma-alue, vihje title-elementissä. */}
         {pts.map((p, i) => (
-          <rect key={`h${i}`} className="sc-hit" x={x(i) - (W - L - R) / Math.max(1, pts.length - 1) / 2} y={T} width={(W - L - R) / Math.max(1, pts.length - 1)} height={H - T - B}>
+          <rect key={`h${i}`} className="sc-hit" x={x(i) - step / 2} y={T} width={step} height={H - T - B}
+            onMouseEnter={() => setSel(i)} onMouseLeave={() => setSel(null)} onClick={() => setSel(sel === i ? null : i)}>
             <title>{`${p.date}${p.opponent ? ` vs ${p.opponent}` : ""}${p.locked ? " (lukittu)" : ""}\nnyt ${f1(p.now)} p · skenaario ${f1(p.scenario)} p`}</title>
           </rect>
         ))}
@@ -84,14 +100,23 @@ function PointsChart({ pts, team }: { pts: Pt[]; team: string }) {
 }
 
 function DistChart({ d, team }: { d: { now: number[]; scenario: number[] }; team: string }) {
+  const [sel, setSel] = useState<number | null>(null);
   const n = d.now.length, top = Math.max(...d.now, ...d.scenario, 0.05);
   const cw = (W - L - 12) / n, bw = (cw - 6) / 2;
   const y = (v: number) => T + (1 - v / top) * (H - T - B);
   const peak = d.scenario.indexOf(Math.max(...d.scenario));
+  const peakNow = d.now.indexOf(Math.max(...d.now));
+  const z = (xs: number[], a: number, b: number) => xs.slice(a - 1, b).reduce((u, v) => u + v, 0);
+  // Kuvaaja sanoina: todennäköisin sija ja vyöhykkeet nyt -> skenaario (vain liikkuneet).
+  const zones = ([["kärkikuusikko", 1, 6], ["jatkoon", 1, 10], ["putoamisuhka", 15, 17]] as const)
+    .filter(([, a, b]) => Math.abs(z(d.scenario, a, b) - z(d.now, a, b)) >= 0.01)
+    .map(([l, a, b]) => `${l} ${pc(z(d.now, a, b))} → ${pc(z(d.scenario, a, b))} %`);
+  const summary = `Todennäköisin sija: nyt ${peakNow + 1}. (${pc(d.now[peakNow])} %), skenaariossa ${peak + 1}. (${pc(d.scenario[peak])} %).${zones.length ? ` ${zones.join(", ").replace(/^./, (c) => c.toUpperCase())}.` : ""}`;
   return (
     <figure className="sc-chart">
       <figcaption>{team}: todennäköisyys päätyä kullekin sijalle</figcaption>
-      <Legend />
+      <Legend bars />
+      <Readout active={sel != null} text={sel != null ? `${sel + 1}. sija: nyt ${pc(d.now[sel])} % → skenaario ${pc(d.scenario[sel])} %` : summary} />
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${team} sijajakauma: todennäköisin sija skenaariossa ${peak + 1}.`}>
         {[0, top / 2, top].map((v) => (<g key={v}><line className="gridl" x1={L} x2={W - 12} y1={y(v)} y2={y(v)} /><text className="axis" x={L - 6} y={y(v) + 3} textAnchor="end">{pc(v)} %</text></g>))}
         {/* Vyöhykerajat: suoraan puolivälieriin 1–6, säälipudotus 7–10, putoaminen 15–17. */}
@@ -99,11 +124,14 @@ function DistChart({ d, team }: { d: { now: number[]; scenario: number[] }; team
         {d.now.map((v, i) => {
           const s = d.scenario[i], x0 = L + i * cw + 2;
           return (
-            <g key={i}>
+            <g key={i} className={sel === i ? "sc-sel" : ""}>
+              {sel === i && <rect className="sc-col" x={L + i * cw} y={T} width={cw} height={H - T - B} rx={3} />}
               <rect className="sc-bar-now" x={x0} y={y(v)} width={bw} height={Math.max(0, H - B - y(v))} rx={2} />
               <rect className="sc-bar-scn" x={x0 + bw + 2} y={y(s)} width={bw} height={Math.max(0, H - B - y(s))} rx={2} />
               <text className="axis" x={x0 + bw + 1} y={H - 10} textAnchor="middle">{i + 1}</text>
-              <rect className="sc-hit" x={L + i * cw} y={T} width={cw} height={H - T - B}><title>{`${i + 1}. sija\nnyt ${pc(v)} % · skenaario ${pc(s)} %`}</title></rect>
+              <rect className="sc-hit" x={L + i * cw} y={T} width={cw} height={H - T - B}
+                onMouseEnter={() => setSel(i)} onMouseLeave={() => setSel(null)} onClick={() => setSel(sel === i ? null : i)}>
+                <title>{`${i + 1}. sija\nnyt ${pc(v)} % · skenaario ${pc(s)} %`}</title></rect>
             </g>
           );
         })}

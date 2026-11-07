@@ -1366,3 +1366,15 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .sc-band { fill: rgba(235,202,104,.08); stroke: rgba(235,202,104,.25); stroke-width: 1; }
 .sc-band-t { font: 600 10px var(--sans); fill: var(--gold); letter-spacing: .04em; }
 .sc-explain { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--body); }
+/* Kuvaaja kontekstiin ja interaktiiviseksi (7.11.2026): lukurivi kuvaajan yläpuolella (oletuksena
+   kuvaajan pääasia sanoina, napautus/osoitus näyttää valitun kohdan), valittu sarake korostuu. */
+.sc-read { margin: 2px 0 4px; min-height: 1.5em; font-size: 14px; color: var(--body); }
+.sc-read.on { color: var(--ink); font-weight: 600; }
+.sc-col { fill: rgba(235,202,104,.07); }
+.sc-cross { stroke: var(--line-2); stroke-width: 1; }
+.sc-dot-now { fill: #8f8573; stroke: var(--surface); stroke-width: 2; }
+.sc-dot-scn { fill: #ebca68; stroke: var(--surface); stroke-width: 2; }
+.sc-hit { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sc-leg.bars i { width: 10px; height: 10px; border: 0; border-radius: 2px; }
+.sc-leg.bars i.now { background: #8f8573; opacity: .55; }
+.sc-leg.bars i.scn { background: #ebca68; }
