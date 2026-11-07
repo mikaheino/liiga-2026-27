@@ -34,7 +34,8 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 
 // Live-rakennus (7.11.2026): /api/skenaario/rakenna striimaa agentin vaiheet (datahaku SQL:llä,
 // simulointi mallilla), yhteenvedon ja ajetut SQL-lauseet; valmiit rivit lukitaan siruiksi.
-type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string };
+// items = montako riviä valmistui; 0 + teksti = agentti kysyi tarkennusta (vastauskenttä näkyviin).
+type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
   | { t: "done"; answer: string; items: Item[]; tools: string[]; error?: string };
 
@@ -63,19 +64,24 @@ export default function ScenarioBoard() {
   const [live, setLive] = useState<Live | null>(null);
   const building = !!live && !live.done;
   useEffect(() => { setItems(getLocks()); return onLocks(setItems); }, []);
-  const run = async () => {
-    const q = text.trim();
-    if (q.length < 3 || building) return;
-    setLive({ q, steps: [], text: "", sql: [], tools: [], done: false });
+  const [reply, setReply] = useState("");
+  const run = async (follow?: string) => {
+    // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
+    // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
+    const q = follow && live ? live.q : text.trim();
+    if (q.length < 3 || building || (follow != null && follow.trim().length < 1)) return;
+    const prompt = follow && live ? `${live.prompt ?? live.q}\n\nAgentti kysyi: ${live.text}\nKäyttäjä vastasi: ${follow.trim()}` : q;
+    setReply("");
+    setLive({ q, prompt, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
-      await build(q, (m) => {
+      await build(prompt, (m) => {
         if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
         else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
-          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error }));
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0 }));
           if (m.items?.length) { mergeItems(m.items); setText(""); }
         }
       });
@@ -105,7 +111,7 @@ export default function ScenarioBoard() {
         {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
       </form>
       <div className="gs-btns">
-        <button type="button" onClick={run} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>
+        <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>
       </div>
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
@@ -121,6 +127,13 @@ export default function ScenarioBoard() {
           </ol>
           {live.text && <p className="gs-ai-t">{live.text}</p>}
           {live.error && <div className="ag-err">{live.error}</div>}
+          {live.done && !live.error && live.items === 0 && live.text && (
+            <form className="gs-reply" onSubmit={(e) => { e.preventDefault(); run(reply); }}>
+              <input value={reply} onChange={(e) => setReply(e.target.value)} maxLength={300} enterKeyHint="send" autoFocus
+                placeholder="Vastaa tarkennukseen, esim. seuraavat 20 ottelua" aria-label="Vastaa agentin tarkennukseen" />
+              <button type="submit" disabled={!reply.trim()}>Vastaa</button>
+            </form>
+          )}
           {(live.sql.length > 0 || live.tools.length > 0) && (
             <details className="gs-src">
               <summary>Lähteet: {live.tools.join(" · ") || "data"}{live.sql.length ? ` · ${live.sql.length} SQL-kyselyä` : ""}</summary>

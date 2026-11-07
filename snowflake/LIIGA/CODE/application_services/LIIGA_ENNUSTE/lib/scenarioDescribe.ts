@@ -8,7 +8,7 @@
 // ennusteessa); sovellus lukee kutsun syötteen ja ratkaisee sen moottorilla kanonisiksi
 // riveiksi (sirut). Luvut tulevat aina moottorista, eivät agentilta.
 import { askOnce, type Answer } from "@/lib/agent";
-import { loadTeams } from "@/lib/data";
+import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 
 export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number };
@@ -17,14 +17,29 @@ const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa L
 - Tänään on ${today}. Joukkueiden tarkat nimet: ${teams.join(", ")}.
 - Nojaa dataan: jos kuvaus riippuu otteluohjelmasta, vastustajista, sarjatilanteesta tai pelaajista, hae ne ensin datatyökaluilla (esim. jäljellä olevat ottelut tai joukkueen nykyinen sija), älä arvaa.
 - Ottelut: {"team", "result": win|loss|reg_win|ot_win|ot_loss|reg_loss} ja joko "games": N (seuraavat N) tai jakso "from"/"until" (YYYY-MM-DD, until mukaan lukien), valinnainen "opponent".
+- Yksittäinen ottelu: {"team", "result", "from": "<pvm>", "until": "<sama pvm>"}. Näin saa myös epäsäännölliset kuviot, esim. "joka toinen ottelu" = lukitse joka toinen alla listatuista OTTELUOHJELMA-riveistä (enintään 10 riviä; jos kuvio vaatisi enemmän, kerro että rajasit 10 ensimmäiseen).
 - Poissaolo: {"injury": "<pelaajan nimi>", "games": N | "until": "YYYY-MM-DD"}. Tavoite: {"team", "goal": avoid_relegation|top6|top10|win}.
 - Yleiset ilmaukset tulkitaan näin (ei tarkennusta): "joulun yli" = from 2026-12-20 until 2027-01-06; "loppukausi" / "kaikki loput" = kaikki jäljellä olevat ottelut (from tänään); "ensi viikolla" = seuraavat 7 päivää.
 - Jos kuvaus on silti monitulkintainen (esim. kaksi samannimistä pelaajaa, epäselvä joukkue tai ajanjakso), ÄLÄ kutsu työkalua vaan kysy yksi lyhyt tarkentava kysymys.
 - Työkalun jälkeen kirjoita 2–3 lauseen yhteenveto: miten tulkitsit kuvauksen, mihin dataan nojasit ja mitä työkalun luvut kertovat. Älä laske lukuja itse. Älä kirjoita JATKO-riviä.`;
 
+// Kuvauksessa mainittujen joukkueiden seuraavat ottelut (7.11.2026): ilman niitä agentti ei
+// voinut rakentaa kuviota kuten "joka toinen peli" (tilannekuvassa vain liigan 16 seuraavaa).
+const DAY = (ts: string) => new Date(ts).toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
+async function schedule(text: string, teams: string[]): Promise<string> {
+  const low = text.toLowerCase();
+  const named = teams.filter((t) => low.includes(t.toLowerCase()));
+  if (!named.length) return "";
+  const coming = (await loadFixtures()).filter((f) => !f.ended);
+  return named.map((t) => `OTTELUOHJELMA ${t} (seuraavat 20):\n` + coming.filter((f) => f.home === t || f.away === t).slice(0, 20)
+    .map((f, i) => `${i + 1}. ${DAY(f.start_ts)} ${f.home}–${f.away} (${f.home === t ? "koti" : "vieras"})`).join("\n")).join("\n\n");
+}
+
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2]): Promise<Described> {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
-  const a: Answer = await askOnce(text, RULE(today, await loadTeams()), progress);
+  const teams = await loadTeams();
+  const sched = await schedule(text, teams);
+  const a: Answer = await askOnce(text, RULE(today, teams) + (sched ? `\n\n${sched}` : ""), progress);
   const base = { answer: a.text, tools: a.tools, sql: a.sql };
   const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
   const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;

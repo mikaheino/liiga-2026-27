@@ -1238,3 +1238,9 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   font: 11px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; }
 .gs-hint { max-width: 52ch; }
 @media (max-width: 860px) { .fr > section.gs:not(.has-res) { min-height: 38vh; } .gs-ai { padding: 14px; } }
+/* Vastaus agentin tarkennukseen (7.11.2026): sama pyöreä kenttä pienempänä paneelin sisällä. */
+.gs-reply { display: flex; gap: 8px; align-items: center; }
+.gs-reply input { flex: 1; min-width: 0; height: 42px; padding: 0 16px; border-radius: 21px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--ink); font: 15px var(--sans); outline: 0; }
+.gs-reply input:focus { border-color: var(--gold-dim); }
+.gs-reply button { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--surface-2); background: var(--surface-2); color: var(--body); font: 600 14px var(--sans); cursor: pointer; }
+.gs-reply button:disabled { opacity: .5; cursor: default; }
