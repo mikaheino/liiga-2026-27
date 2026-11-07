@@ -4,7 +4,9 @@
 // tapahtuu: agentin työkalukutsut (datahaku SQL:llä, simulointi mallilla), yhteenvedon teksti,
 // ajetut SQL-lauseet, moottorin kanoniset rivit ja moottorin luvut. Valmis haku tallennetaan
 // (lib/skenaarioHaut.ts; käyttäjä: "Haluan että skenaariot tallentuvat ja niiden vastaukset").
-//   POST { text, followup? } -> NDJSON (followup = vastaus agentin tarkentavaan kysymykseen;
+//   POST { text, prompt?, followup?, base? } -> NDJSON (base = nykyinen skenaario: [{item, label}],
+//                               jonka päälle rakennetaan; rivit tarkistetaan kuten /api/skenaario)
+//                               (followup = vastaus agentin tarkentavaan kysymykseen;
 //                               text on silloin alkuperäinen haku ja prompt koko ketju):
 //     {t:"step", text}        uusi vaihe (edellinen valmis)
 //     {t:"text", text}        yhteenveto tähän asti (koko teksti, ei pala)
@@ -13,8 +15,10 @@
 //     {t:"error", text}
 import { AGENT_SOURCE } from "@/lib/agent";
 import { forecastStamp } from "@/lib/kortti";
+import { loadTeams } from "@/lib/data";
 import { describe } from "@/lib/scenarioDescribe";
 import { runEngine } from "@/lib/scenarioEngine";
+import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 import { saveHaku, summarize } from "@/lib/skenaarioHaut";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +26,18 @@ export const maxDuration = 300;
 const SEASON = 2027;
 
 export async function POST(req: Request) {
-  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown };
+  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown; base?: unknown };
   const text = typeof b.text === "string" ? b.text.trim() : "";
   const followup = typeof b.followup === "string" && b.followup.trim() ? b.followup.trim().slice(0, 300) : null;
   // 1500: tarkennuskierros lähettää alkuperäisen kuvauksen, agentin kysymyksen ja vastauksen.
   const prompt = typeof b.prompt === "string" && b.prompt.trim() ? b.prompt.trim() : text;
   if (text.length < 3 || text.length > 300 || prompt.length > 1500) return Response.json({ error: "kuvaa skenaario 3–300 merkillä" }, { status: 400 });
+  // Pohjaskenaario: vain moottorin kanonisia rivejä; label on näyttöteksti (rajattu, ei ohjeita).
+  const raw = Array.isArray(b.base) ? (b.base as { item?: unknown; label?: unknown }[]) : [];
+  const teams = new Set(await loadTeams());
+  if (raw.length > MAX_ITEMS || !raw.every((x) => x && validItem(x.item, teams))) return Response.json({ error: "virheellinen pohjaskenaario" }, { status: 400 });
+  const base = raw.length ? { items: raw.map((x) => x.item as Record<string, unknown>),
+    labels: raw.map((x) => String(x.label ?? "").replace(/[\r\n]/g, " ").slice(0, 120)) } : null;
   const enc = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctl) {
@@ -42,7 +52,7 @@ export async function POST(req: Request) {
         const d = await describe(prompt, (p) => {
           if (p.status) step(p.status);
           if (p.partial) send({ t: "text", text: p.partial });
-        });
+        }, base);
         if (d.sql.length) send({ t: "sql", sql: d.sql.slice(0, 5) });
         // Vaikutukset lasketaan tässä eikä selaimessa, jotta luvut tallentuvat haun mukana.
         let result: Record<string, unknown> | null = null;

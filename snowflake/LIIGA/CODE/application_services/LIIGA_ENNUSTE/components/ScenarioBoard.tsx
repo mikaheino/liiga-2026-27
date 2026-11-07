@@ -36,7 +36,9 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 // simulointi mallilla), yhteenvedon ja ajetut SQL-lauseet; valmiit rivit lukitaan siruiksi.
 // items = montako riviä valmistui; 0 + teksti = agentti kysyi tarkennusta (vastauskenttä näkyviin).
 // saved = avattu tallennetuista hauista (stale = haun jälkeen ennuste on päivittynyt).
+// base = pohjaskenaario, jonka päälle haku rakennettiin (tarkennus käyttää samaa pohjaa).
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
+  base?: { item: unknown; label: string }[];
   saved?: { at: string; stale: boolean } };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
   | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; tools: string[]; error?: string };
@@ -46,7 +48,7 @@ type Haku = { id: string; question: string; followup: string | null; answer: str
 const when = (ts: string) => new Intl.DateTimeFormat("fi-FI", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Helsinki" }).format(new Date(ts));
 const keyOf = (l: Item[]) => l.map(itemKey).join("|");
 
-async function build(body: { text: string; prompt: string; followup?: string }, on: (m: Msg) => void) {
+async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[] }, on: (m: Msg) => void) {
   const r = await fetch("/api/skenaario/rakenna", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify(body) });
   if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? `Virhe ${r.status}`); }
   const rd = r.body.getReader(), dec = new TextDecoder();
@@ -93,7 +95,7 @@ export default function ScenarioBoard() {
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const run = async (follow?: string) => {
+  const run = async (follow?: string, add = false) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
     const q = follow && live ? live.q : text.trim();
@@ -103,11 +105,14 @@ export default function ScenarioBoard() {
     setReply("");
     // Uusi haku = uusi skenaario (7.11.2026, käyttäjä: "kun kysyn jotain niin se on konkreettista"):
     // vanhat sirut pois heti, jotta tekoälyn teksti ja alla olevat luvut koskevat samaa skenaariota.
-    setLocks([]); setAllChips(false);
-    setLive({ q, prompt, steps: [], text: "", sql: [], tools: [], done: false });
+    // Lisäys (7.11.2026: "skenaario skenaarion päälle tarvitaan"): nykyiset rivit pohjaksi.
+    const base = follow && live ? live.base : add && items.length ? items.map((i) => ({ item: engineItem(i), label: i.label })) : undefined;
+    if (!base) setLocks([]);
+    setAllChips(false);
+    setLive({ q, prompt, base, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
-      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}) }, (m) => {
+      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}) }, (m) => {
         if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
         else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
@@ -141,18 +146,21 @@ export default function ScenarioBoard() {
   return (
     <section className={`gs ${busy ? "busy" : ""} ${items.length ? "has-res" : ""}`} aria-label="Oma skenaario">
       <h2 className="gs-logo">Entä jos<span>?</span></h2>
-      <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
+      <form onSubmit={(e) => { e.preventDefault(); run(undefined, items.length > 0); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
         <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
         <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={building} enterKeyHint="search"
-          placeholder="Kuvaile skenaario omin sanoin" aria-label="Kuvaile skenaario omin sanoin" />
+          placeholder={items.length ? "Lisää skenaarioon, esim. Bartosak loukkaantuu 10 ottelua" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
         {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
       </form>
       <div className="gs-btns">
-        <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>
+        {items.length > 0 ? (<>
+          <button type="button" className="primary" onClick={() => run(undefined, true)} disabled={building || text.trim().length < 3}>Lisää skenaarioon</button>
+          <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Uusi skenaario</button>
+        </>) : <button type="button" onClick={() => run()} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>}
       </div>
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
-          <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
+          <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : live.base?.length ? `Tekoäly lisää skenaarioon (${live.base.length} riviä pohjana)` : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
           {live.saved?.stale && <p className="gs-stale">Vanha perusta: ennuste on päivittynyt haun jälkeen. Teksti on haun hetkeltä, luvut lasketaan nykyisellä ennusteella.</p>}
           <ol className="gs-steps">
             {live.steps.map((st, i) => {

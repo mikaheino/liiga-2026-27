@@ -45,11 +45,21 @@ async function schedule(text: string, teams: string[]): Promise<string> {
     .map((f, i) => `${i + 1}. ${DAY(f.start_ts)} ${f.home}–${f.away} (${f.home === t ? "koti" : "vieras"})`).join("\n")).join("\n\n");
 }
 
-export async function describe(text: string, progress?: Parameters<typeof askOnce>[2]): Promise<Described> {
+// Skenaario skenaarion päälle (7.11.2026, käyttäjä: "skenaario skenaarion päälle tarvitaan"):
+// pohja = selaimen nykyinen skenaario moottorin kanonisina riveinä (palvelin on tarkistanut ne).
+// Agentti ottaa ne mukaan sellaisinaan, jolloin sen tekstin luvut koskevat koko yhdistelmää.
+const BASE_RULE = (base: Record<string, unknown>[], labels: string[]) => `NYKYINEN SKENAARIO (käyttäjä rakentaa tämän päälle):
+${labels.map((l) => `- ${l}`).join("\n")}
+Samat rivit moottorin muodossa: ${JSON.stringify(base)}
+Ota nämä rivit liiga_skenaario-kutsuun SELLAISINAAN ja lisää käyttäjän kuvaamat uudet rivit. Jos käyttäjä haluaa muuttaa tai poistaa jonkin nykyisen rivin, tee se. Yhteenvedossa kerro, mitä lisäsit, ja anna luvut koko yhdistetystä skenaariosta.`;
+
+export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
+  pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null): Promise<Described> {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const teams = await loadTeams();
-  const sched = await schedule(text, teams);
-  const a: Answer = await askOnce(text, RULE(today, teams) + (sched ? `\n\n${sched}` : ""), progress);
+  const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "");
+  const a: Answer = await askOnce(text, ctx, progress);
   const base = { answer: a.text, tools: a.tools, sql: a.sql };
   const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
   const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;

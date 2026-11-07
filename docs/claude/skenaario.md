@@ -185,3 +185,12 @@ Käyttäjä: "Haluan että skenaariot tallentuvat ja niiden vastaukset."
   paneeli sanoo "Vanha perusta".
 - Selain ei enää laske vaikutuksia uudestaan haun jälkeen (luvut tulevat haun mukana, `preset`).
 - ⚠️ Snowflake-polku (INSERT ... SELECT PARSE_JSON) ajetaan ensimmäisen kerran julkaisun jälkeen.
+
+## Skenaario skenaarion päälle (7.11.2026)
+
+Käyttäjä: "skenaario skenaarion päälle tarvitaan". Kun skenaario on auki, napit ovat
+**Lisää skenaarioon** (ensisijainen, myös Enter) ja **Uusi skenaario**. Lisäyksessä selain lähettää
+nykyiset rivit `base`-kenttänä ([{item, label}], palvelin tarkistaa `validItem`illä, ≤ 64), ja
+`describe()` antaa ne agentille: rivit liiga_skenaario-kutsuun sellaisinaan + uudet rivit, joten
+tekstin luvut koskevat koko yhdistelmää. Tarkennuskierros käyttää samaa pohjaa. Testattu: 3 Tapparan
+voittoa + "Bartosak loukkaantuu 10 ottelua" -> 4 riviä, teksti kuvaa yhdistelmän.
