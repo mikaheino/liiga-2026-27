@@ -20,6 +20,7 @@ import { describe, splitChart } from "@/lib/scenarioDescribe";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 import { saveHaku, summarize } from "@/lib/skenaarioHaut";
+import { explore, factCheck, rewrite } from "@/lib/subagents";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -61,10 +62,27 @@ export async function POST(req: Request) {
           result = await runEngine("json", d.items.map(({ label: _l, ...x }) => x));
           if (result?.error) { d.error = String(result.error); result = null; }
         }
+        // Faktantarkistus (aliagentit, 7.11.2026): jokainen prosentti moottorista; muuten kirjoittaja-
+        // aliagentti kirjoittaa tekstin uudelleen moottorin luvuilla (kerran).
+        if (result && d.answer) {
+          const bad = factCheck(d.answer, result);
+          if (bad.length) {
+            step("Tarkistetaan luvut datasta");
+            console.log(`[skenaario] faktantarkistus: ${bad.join(", ")} % ei moottorissa -> uudelleenkirjoitus`);
+            const fixed = await rewrite(text, d.answer, result, bad).catch(() => "");
+            if (fixed && factCheck(fixed, result).length < bad.length) d.answer = fixed;
+          }
+        }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";
         const id = await save({ season: SEASON, question: text, followup, answer: d.error ? `${d.answer}\n\n${d.error}`.trim() : d.answer,
           items: d.items, result: result ? { ...summarize(result, d.chart), news: d.news ?? [] } : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
         send({ t: "done", id, answer: d.answer, items: d.items, result, chart: d.chart ?? null, news: d.news ?? [], tools: d.tools, ...(d.error ? { error: d.error } : {}) });
+        // Tutkija-aliagentti vastauksen jälkeen: kolme lähiskenaariota, luvut moottorilta rinnakkain.
+        if (result && d.items.length) {
+          send({ t: "exploring" });
+          const related = await explore(text, d.items).catch((e) => { console.log(`[skenaario] tutkija: ${(e as Error).message}`); return []; });
+          send({ t: "related", items: related });
+        }
       } catch (e) {
         const msg = String((e as Error).message).split("\n")[0].slice(0, 300);
         await save({ season: SEASON, question: text, followup, answer: msg, items: [], result: null, tools: [], sql: [], forecastTs, ms: Date.now() - t0, status: "error", source: AGENT_SOURCE });

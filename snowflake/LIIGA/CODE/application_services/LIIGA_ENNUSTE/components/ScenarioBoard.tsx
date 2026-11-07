@@ -43,8 +43,10 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 // base = pohjaskenaario, jonka päälle haku rakennettiin (tarkennus käyttää samaa pohjaa).
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
   base?: { item: unknown; label: string }[];
-  saved?: { at: string; stale: boolean }; chart?: ChartPick; news?: string[] };
-type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
+  saved?: { at: string; stale: boolean }; refreshed?: string; chart?: ChartPick; news?: string[];
+  exploring?: boolean; related?: { q: string; line: string }[] };
+type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] } | { t: "exploring" }
+  | { t: "related"; items: { q: string; line: string }[] }
   | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; tools: string[]; error?: string };
 // Tallennettu haku (lib/skenaarioHaut.ts, /api/skenaario/haut).
 type Haku = { id: string; question: string; followup: string | null; answer: string; items: Item[]; result: Res | null; tools: string[];
@@ -104,6 +106,9 @@ export default function ScenarioBoard() {
   // muuten moottori laskee ne nykyisellä ennusteella (VANHA PERUSTA -merkintä).
   const open = (h: Haku) => {
     const stale = !!h.forecastTs && !!stamp && h.forecastTs !== stamp;
+    // Ennuste on päivittynyt haun jälkeen: haku ajetaan uudelleen tuoreella ennusteella, jolloin
+    // teksti ja luvut täsmäävät (ja jo pelatut ottelut eivät ole enää lukittavina).
+    if (stale && h.status === "done") { setLocks([]); run(undefined, h.followup ? `${h.question} ${h.followup}` : h.question, h.askedAt); return; }
     setAllChips(false); setReply("");
     setLive({ q: h.question, steps: [], text: h.answer, sql: [], tools: h.tools, done: true, items: h.items.length,
       error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart, news: (h.result as { news?: string[] } | null)?.news ?? [] });
@@ -111,7 +116,7 @@ export default function ScenarioBoard() {
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const run = async (follow?: string, asked?: string) => {
+  const run = async (follow?: string, asked?: string, refreshed?: string) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
     const q = follow && live ? live.q : (asked ?? text).trim();
@@ -126,13 +131,15 @@ export default function ScenarioBoard() {
     // ja sen palauttama skenaario korvaa sirut. Tarkennuskierros käyttää samaa pohjaa.
     const base = follow && live ? live.base : items.length ? items.map((i) => ({ item: engineItem(i), label: i.label })) : undefined;
     setAllChips(false);
-    setLive({ q, prompt, base, steps: [], text: "", sql: [], tools: [], done: false });
+    setLive({ q, prompt, base, refreshed, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
       await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}) }, (m) => {
         if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
         else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
+        else if (m.t === "exploring") up((l) => ({ ...l, exploring: true }));
+        else if (m.t === "related") up((l) => ({ ...l, exploring: false, related: m.items }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
           up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [] }));
@@ -143,7 +150,7 @@ export default function ScenarioBoard() {
           loadHaut();
         }
       });
-      up((l) => ({ ...l, done: true }));
+      up((l) => ({ ...l, done: true, exploring: false }));
     } catch (e) { up((l) => ({ ...l, done: true, error: (e as Error).message })); }
   };
   useEffect(() => {
@@ -226,6 +233,7 @@ export default function ScenarioBoard() {
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
           <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
+          {live.refreshed && <p className="gs-fresh">Päivitetty tämän päivän ennusteella (alkuperäinen haku {when(live.refreshed)}).</p>}
           {live.saved?.stale && <p className="gs-stale">Vanha perusta: ennuste on päivittynyt haun jälkeen. Teksti on haun hetkeltä, luvut lasketaan nykyisellä ennusteella.</p>}
           {/* Vastaus heti hakukentän alle (7.11.2026, käyttäjä: "vastaus alle, ei skrollausta"):
               valmiina vaiheet ja lähteet tiivistyvät yhdeksi avattavaksi riviksi. */}
@@ -287,6 +295,18 @@ export default function ScenarioBoard() {
               </article>
             );
           }) : <p className="gs-status">Luvut eivät liiku yli prosenttiyksikköä.</p>}
+          {/* Tutkija-aliagentin lähiskenaariot (7.11.2026): luvut moottorilta, napautus ajaa haun. */}
+          {(live?.exploring || (live?.related?.length ?? 0) > 0) && (
+            <div className="gs-rel">
+              <div className="gs-rel-h">Myös kannattaa katsoa</div>
+              {live?.exploring && !live.related && <p className="gs-rel-wait">Tutkija-agentti laskee lähiskenaarioita…</p>}
+              {live?.related?.map((r) => (
+                <button key={r.q} type="button" className="gs-rel-i" onClick={() => { setText(r.q); run(undefined, r.q); }}>
+                  <span className="gs-rel-q">{r.q}</span><span className="gs-rel-l">{r.line}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="gs-actions">
             <button type="button" className="ag-tr" onClick={() => openChat({ seed: [
               { role: "user", text: "Mitä tämä skenaario tarkoittaa?" }, { role: "assistant", text: summary(res, rows) }] })}>▸ Kysy agentilta tästä</button>

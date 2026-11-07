@@ -296,3 +296,19 @@ Käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia", "Entä jos
   (näkyy, että käyrät kulkevat yhdessä ennen jaksoa), selkokielinen selitys päivineen kuvaajan alla.
 - Sävy (käyttäjä: "hellävarainen skenaarioemulaattori"): lempeä ja selkokielinen, ammattisanat
   selitetään, epävarmuus rauhallisesti; vastaus kertoo, mitä malli teki muille otteluille.
+
+## Aliagentit, faktantarkistus ja muuttunut tallennettu haku (7.11.2026)
+
+Käyttäjä: "agentti voisi käynnistää subagenttia. kaikki totuus kuitenkin datassa" ja "entä jos
+tallennettu skenaario on muuttunut". `lib/subagents.ts`:
+- **Faktantarkistus (koodi):** vastauksen jokainen prosentti löytyy moottorin tuloksesta (joukkueiden
+  p_*, vaatimukset, ottelut, uskottavuus, joukkueen muutoksen xG-osuudet, varmuustasot 50/80/90/95).
+  Muuten kirjoittaja-aliagentti saa moottorin taulukon ja kirjoittaa tekstin uudelleen (kerran).
+- **Tutkija-aliagentti** vastauksen jälkeen (ei hidasta päävastausta): kolme lähiskenaariota pelkkinä
+  rakenteina, moottori laskee rinnakkain. Rivi tehdään moottorin kanonisista riveistä ("Pelicans
+  häviää × 5 · Pelicans: jatkoon 37,2 → 17,4 %"), koska aliagentin kysymys ja skenaario voivat erota
+  (7.11. "vain 2 ottelua" laski viisi). Käyttäjän oman skenaarion kopiot karsitaan. UI: "Myös kannattaa
+  katsoa", napautus ajaa haun.
+- **Muuttunut tallennettu haku:** jos ennuste on päivittynyt, haku ajetaan avattaessa uudelleen
+  ("Päivitetty tämän päivän ennusteella (alkuperäinen haku …)"). `/api/skenaario` pudottaa jo pelatut
+  ottelut (`dropped`) eikä kaadu (myös sirun poisto).

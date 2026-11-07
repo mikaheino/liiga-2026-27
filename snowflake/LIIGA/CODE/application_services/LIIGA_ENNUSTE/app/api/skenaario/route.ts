@@ -29,8 +29,20 @@ async function locks(items: unknown[]) {
     return NextResponse.json({ error: "virheellinen skenaario" }, { status: 400, headers: NO_STORE });
   }
   try {
-    const res = await runEngine("json", items);
-    return NextResponse.json(res, { status: res.error ? 422 : 200, headers: NO_STORE });
+    // Tallennettu skenaario voi sisältää jo pelattuja otteluita (7.11.2026, käyttäjä: "entä jos
+    // tallennettu skenaario on muuttunut"): moottori ei löydä niitä pelaamattomista, joten ne
+    // pudotetaan ja lasketaan uudelleen (enintään 64 kierrosta = rivien määrä).
+    let rest = items as Record<string, unknown>[];
+    const dropped: unknown[] = [];
+    for (let k = 0; k <= MAX_ITEMS; k++) {
+      const res = await runEngine("json", rest);
+      const gone = /ottelua (\d+) ei löydy pelaamattomista/.exec(String(res.error ?? ""));
+      if (!gone) return NextResponse.json({ ...res, dropped }, { status: res.error ? 422 : 200, headers: NO_STORE });
+      dropped.push(Number(gone[1]));
+      rest = rest.filter((x) => Number(x.game_id) !== Number(gone[1]));
+      if (!rest.length) return NextResponse.json({ error: "kaikki lukitut ottelut on jo pelattu", dropped }, { status: 422, headers: NO_STORE });
+    }
+    return NextResponse.json({ error: "skenaariota ei voitu laskea" }, { status: 422, headers: NO_STORE });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502, headers: NO_STORE });
   }
