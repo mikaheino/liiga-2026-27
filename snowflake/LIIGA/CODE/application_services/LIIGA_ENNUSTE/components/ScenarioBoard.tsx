@@ -3,13 +3,13 @@
 // (käyttäjä: "Googlemaiseksi liittymäksi" ja "AI rakentaa livenä skenaarion, mutta hyödyntää
 // SQL dataa ja koneoppimismalleja. Tiputa valmiit skenaariot pois"): keskitetty hakukenttä ja
 // yksi nappi; tekoälyn vaiheet näkyvät livenä (app/api/skenaario/rakenna), valmiit rivit
-// lukitaan siruiksi ja vaikutukset näytetään hakutuloksina. Rivejä voi lukita myös
+// korvaavat edellisen skenaarion siruina (uusi haku = uusi skenaario) ja vaikutukset näytetään hakutuloksina. Rivejä voi lukita myös
 // ottelukortin "Lukitse"-napista (lib/lockBus.ts). Moottori laskee koko skenaarion
 // (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen, uskottavuus =
 // lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee uudelleen ilman agenttia.
 import { Fragment, useEffect, useState } from "react";
 import { openChat } from "@/lib/chatBus";
-import { engineItem, getLocks, itemKey, mergeItems, onLocks, setLocks, type Item } from "@/lib/lockBus";
+import { engineItem, getLocks, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
 
 type Row = { team: string } & Record<string, number | string>;
@@ -73,6 +73,9 @@ export default function ScenarioBoard() {
     if (q.length < 3 || building || (follow != null && follow.trim().length < 1)) return;
     const prompt = follow && live ? `${live.prompt ?? live.q}\n\nAgentti kysyi: ${live.text}\nKäyttäjä vastasi: ${follow.trim()}` : q;
     setReply("");
+    // Uusi haku = uusi skenaario (7.11.2026, käyttäjä: "kun kysyn jotain niin se on konkreettista"):
+    // vanhat sirut pois heti, jotta tekoälyn teksti ja alla olevat luvut koskevat samaa skenaariota.
+    setLocks([]); setAllChips(false);
     setLive({ q, prompt, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
@@ -83,7 +86,7 @@ export default function ScenarioBoard() {
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
           up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0 }));
-          if (m.items?.length) { mergeItems(m.items); setText(""); }
+          if (m.items?.length) { setLocks(m.items); setText(""); }
         }
       });
       up((l) => ({ ...l, done: true }));
