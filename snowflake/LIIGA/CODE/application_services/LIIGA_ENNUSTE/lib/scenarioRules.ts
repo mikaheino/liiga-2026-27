@@ -121,3 +121,25 @@ export const SEASON_END = "2027-04-30";
 export function goalieItems(m: { others: string[] }): Row[] {
   return m.others.map((n) => ({ injury: n, until: SEASON_END }));
 }
+
+/** Kysymyksen pelaajat datasta (7.11.2026, "Mikko Kousa tekee jatkossa 3 pistettä per peli" -> agentti
+ *  ei löytänyt joukkuetta). Koko nimi tai sukunimen vartalo (taivutus: Kousan, Olkinuoran). Agentti
+ *  saa joukkueen, pelipaikan ja kauden tilastot, eikä kysy niitä käyttäjältä. */
+export type PlayerRef = { name: string; team: string; position?: string; gp?: number; points?: number; goals?: number; starts?: number };
+export function playersIn(userText: string, pool: PlayerRef[]): PlayerRef[] {
+  const low = userText.toLowerCase();
+  const stem = (w: string) => w.slice(0, Math.max(4, w.length - 2));
+  const full = pool.filter((p) => low.includes(p.name.toLowerCase()));
+  const hits = full.length ? full : pool.filter((p) => {
+    const last = p.name.split(" ").slice(-1)[0].toLowerCase();
+    return last.length >= 4 && new RegExp(`(^|[^a-zåäö])${stem(last)}`).test(low);
+  });
+  return hits.filter((p, i, a) => a.findIndex((q) => q.name === p.name && q.team === p.team) === i).slice(0, 6);
+}
+export function playersRule(ps: PlayerRef[]): string {
+  if (!ps.length) return "";
+  const line = (p: PlayerRef) => p.starts != null
+    ? `${p.name} (${p.team}, maalivahti, ${p.starts} aloitusta)`
+    : `${p.name} (${p.team}${p.position ? `, ${p.position}` : ""}${p.gp != null ? `, ${p.gp} ott. ${p.goals ?? 0}+${(p.points ?? 0) - (p.goals ?? 0)}=${p.points ?? 0}` : ""})`;
+  return `KYSYMYKSEN PELAAJAT (datasta, älä kysy joukkuetta): ${ps.map(line).join("; ")}. Jos sama sukunimi on useammalla, kysy kumpi. Pelaajan oman tason nousu tai lasku mallinnetaan joukkueen muutoksena (xg_share): huomattava parannus +0,01…+0,03; kerro oletus lempeästi, myös jos toive on epärealistinen (esim. 3 pistettä per ottelu).`;
+}

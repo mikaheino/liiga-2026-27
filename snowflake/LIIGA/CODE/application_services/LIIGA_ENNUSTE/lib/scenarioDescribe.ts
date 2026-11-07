@@ -13,7 +13,7 @@ import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
-import { goalieAll, goalieItems, normalize, withNews } from "@/lib/scenarioRules";
+import { goalieAll, goalieItems, normalize, playersIn, playersRule, withNews } from "@/lib/scenarioRules";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
@@ -142,9 +142,11 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const missing = await missingPlayers(text, teams).catch(() => []);
   const rosterRule = missing.length ? `PELAAJA EI VIELÄ MALLIN ROSTERISSA: ${missing.map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`).join(", ")}.
 Älä yritä poissaoloa hänelle. Mallinna hänen vaikutuksensa joukkueen muutoksena (xg_share): tavallinen hankinta +0,005…+0,015, tähtipelaaja enintään +0,03, ja kerro oletus. Kerro lempeästi yhdellä lauseella, että pelaaja ei ole vielä mallissa ja että hänet on kirjattu rosterijonoon: kun hänet lisätään standardipolulla, haku lasketaan hänen omilla tilastoillaan.` : "";
-  const gAll = goalieAll(text, (await loadPlayers().catch(() => ({ goalies: [] }))).goalies);
+  const pl = await loadPlayers().catch(() => ({ skaters: [], goalies: [] }));
+  const gAll = goalieAll(text, pl.goalies);
+  const playerRule = playersRule(playersIn(`${text} ${pohja?.labels.join(" ") ?? ""}`, [...pl.skaters, ...pl.goalies]));
   const goalieRule = gAll ? `MAALIVAHTI: ${gAll.goalie.name} on joukkueen ${gAll.goalie.team} maalivahti. Joukkueen muut vahdit: ${gAll.others.join(", ")}. "Pelaa kaikki loput" = muut vahdit poissa loppukauden: ${JSON.stringify(goalieItems(gAll))}. Käytä tätä, älä kysy joukkuetta.` : "";
-  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "") + (goalieRule ? `\n\n${goalieRule}` : "");
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "") + (goalieRule ? `\n\n${goalieRule}` : "") + (playerRule ? `\n\n${playerRule}` : "");
   // "Moottori ei hyydy koskaan" (käyttäjä 7.11.2026): agentin kaatuminen yritetään uudelleen,
   // moottorin hylkäämä skenaario palautetaan agentille korjattavaksi kerran, ja jos kumpikaan ei
   // auta, vastataan kysyttyjen joukkueiden nykyennusteella (moottori laskee, syy kerrotaan).
