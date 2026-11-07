@@ -166,6 +166,9 @@ export default function ScenarioBoard() {
     ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: "news" as const })),
   ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 8);
   const showSugs = focus && !building && opts.length > 0;
+  // Nollaus (7.11.2026, käyttäjä: "miten nollata"): ✕ tai Esc tyhjentää kentän, vastauksen ja
+  // skenaarion, jolloin näkymä palaa tyhjäksi etusivuksi.
+  const reset = () => { setText(""); setLive(null); setReply(""); setLocks([]); setRes(null); setErr(""); preset.current = null; setHi(-1); };
   const choose = (o: Opt) => {
     setFocus(false); setHi(-1);
     if (o.haku) { setText(""); open(o.haku); } else { setText(o.q); run(undefined, o.q); }
@@ -189,9 +192,13 @@ export default function ScenarioBoard() {
             else if (e.key === "Enter" && hi >= 0) { e.preventDefault(); choose(opts[hi]); }
             else if (e.key === "Escape") { setFocus(false); }
           }}
+          onKeyUp={(e) => { if (e.key === "Escape" && !showSugs && !building) reset(); }}
           role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
           placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
-        {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
+        {(text || live || items.length > 0) && !building && (
+          <button type="button" className="gs-x" aria-label="Tyhjennä haku ja skenaario" title="Tyhjennä"
+            onClick={reset}>✕</button>
+        )}
         {showSugs && (
           <ul className="gs-sugs" id="gs-sugs" role="listbox">
             {opts.map((o, i) => (

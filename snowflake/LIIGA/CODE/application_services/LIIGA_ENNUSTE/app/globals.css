@@ -1342,3 +1342,5 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
   .gs-sm { grid-column: 2; margin-top: -4px; }
   .gs-sq { white-space: normal; font-size: 15px; }
 }
+/* Kuvaajan akselit tavallisella fontilla (NHL 95 -kerroksen pikselifontti ei sovi hakusivulle). */
+.sc-chart .axis { font-family: var(--sans) !important; font-weight: 400 !important; letter-spacing: 0; font-size: 11px; }
