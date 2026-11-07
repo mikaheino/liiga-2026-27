@@ -8,12 +8,12 @@
 // ennusteessa); sovellus lukee kutsun syötteen ja ratkaisee sen moottorilla kanonisiksi
 // riveiksi (sirut). Luvut tulevat aina moottorista, eivät agentilta.
 import { askOnce, type Answer } from "@/lib/agent";
-import { loadFixtures, loadTeams } from "@/lib/data";
+import { loadFixtures, loadPlayers, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
-import { normalize, withNews } from "@/lib/scenarioRules";
+import { goalieAll, goalieItems, normalize, withNews } from "@/lib/scenarioRules";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
@@ -142,7 +142,9 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const missing = await missingPlayers(text, teams).catch(() => []);
   const rosterRule = missing.length ? `PELAAJA EI VIELÄ MALLIN ROSTERISSA: ${missing.map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`).join(", ")}.
 Älä yritä poissaoloa hänelle. Mallinna hänen vaikutuksensa joukkueen muutoksena (xg_share): tavallinen hankinta +0,005…+0,015, tähtipelaaja enintään +0,03, ja kerro oletus. Kerro lempeästi yhdellä lauseella, että pelaaja ei ole vielä mallissa ja että hänet on kirjattu rosterijonoon: kun hänet lisätään standardipolulla, haku lasketaan hänen omilla tilastoillaan.` : "";
-  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "");
+  const gAll = goalieAll(text, (await loadPlayers().catch(() => ({ goalies: [] }))).goalies);
+  const goalieRule = gAll ? `MAALIVAHTI: ${gAll.goalie.name} on joukkueen ${gAll.goalie.team} maalivahti. Joukkueen muut vahdit: ${gAll.others.join(", ")}. "Pelaa kaikki loput" = muut vahdit poissa loppukauden: ${JSON.stringify(goalieItems(gAll))}. Käytä tätä, älä kysy joukkuetta.` : "";
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "") + (goalieRule ? `\n\n${goalieRule}` : "");
   // "Moottori ei hyydy koskaan" (käyttäjä 7.11.2026): agentin kaatuminen yritetään uudelleen,
   // moottorin hylkäämä skenaario palautetaan agentille korjattavaksi kerran, ja jos kumpikaan ei
   // auta, vastataan kysyttyjen joukkueiden nykyennusteella (moottori laskee, syy kerrotaan).
@@ -158,9 +160,12 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
     const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
     const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;
-    if (!raw) return { ...base, items: [] };
+    // Maalivahtisääntö koodina: jos agentti ei rakentanut skenaariota, rivit tulevat datasta.
+    const fromCode = !raw && gAll ? JSON.stringify(goalieItems(gAll)) : null;
+    if (!raw && !fromCode) return { ...base, items: [] };
+    if (fromCode) base.answer = `${gAll!.goalie.name} pelaa kaikki loput ottelut (${gAll!.goalie.team}), eli ${gAll!.others.join(" ja ")} ei pelaa loppukaudella.`;
     let parsed: unknown;
-    try { parsed = JSON.parse(raw); } catch { return { ...base, items: [], error: "agentin skenaario ei ollut JSONia", status: 422 }; }
+    try { parsed = JSON.parse(raw ?? fromCode!); } catch { return { ...base, items: [], error: "agentin skenaario ei ollut JSONia", status: 422 }; }
     // Vain lukitukset, poissaolot, tavoitteet ja joukkueen muutokset siruiksi; panospyyntöjä ei.
     // Säännöt koodina (lib/scenarioRules.ts): oletuskestot ja uutisten hyväksytyt poissaolot.
     const list = withNews(normalize((Array.isArray(parsed) ? parsed : [parsed])

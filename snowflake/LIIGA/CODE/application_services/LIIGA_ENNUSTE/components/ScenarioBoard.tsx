@@ -156,6 +156,10 @@ export default function ScenarioBoard() {
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText(""); setOrig(m.items); setAdjusted(false);
+          } else if (!follow) {
+            // Ei skenaariota (tarkennus tai pelkkä vastaus): edellisen haun luvut ja kuvaaja pois, jotta
+            // ruudulla ei näy toisen joukkueen kuvaajaa uuden kysymyksen alla (7.11.: "ei saa tulla TPS").
+            setLocks([]); setOrig([]);
           }
           loadHaut();
         }
@@ -274,7 +278,7 @@ export default function ScenarioBoard() {
           {/* Kuvaaja vastauksen jatkona samassa paneelissa (7.11.2026, käyttäjä: "miksi grafiikka ei tule
               samaan paikkaan? looginen jatko kysymyksille"). Agentin valitsema kuvaaja; jos agentti ei valinnut (vanha haku), sama sääntö kuin sen ohjeessa.
               Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
-          {res && items.length > 0 && <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
+          {res && items.length > 0 && live.done && <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
             charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />}
           {/* Parametrisointi (7.11.2026): säätö ilman kirjoittamista, luvut moottorilta. */}
           {live.done && orig.length > 0 && (

@@ -100,3 +100,24 @@ export function abNotice(items: Row[]): string {
     ? "Tätä malliversiota ei voi A/B-testata etukäteen: se on kokeilu, ja sen osuvuus selviäisi vasta pelatuista otteluista."
     : "";
 }
+
+/** Maalivahti pelaa kaikki (7.11.2026, "Olkinuora pelaa kaikki loput pelit" -> agentti ei tiennyt
+ *  joukkuetta ja kysyi tarkennusta; ruutuun jäi edellisen haun kuvaaja). Nimetty vahti tunnistetaan
+ *  datasta (loadPlayers: kauden vahdit), ja "pelaa kaikki" = joukkueen muut vahdit poissa loppukauden. */
+export type GoalieRef = { name: string; team: string };
+const ALL_GAMES = /(pelaa|torjuu|aloittaa|maalissa)\b.*\b(kaikki|loput|jokaisen|joka)|\b(kaikki|loput)\b.*\b(pelit|ottelut|matsit)\b.*\b(maalissa|tolppien)/;
+export function goalieAll(userText: string, goalies: GoalieRef[]): { goalie: GoalieRef; others: string[] } | null {
+  const low = userText.toLowerCase();
+  if (!ALL_GAMES.test(low)) return null;
+  const g = goalies.find((x) => {
+    const last = x.name.split(" ").slice(-1)[0].toLowerCase();
+    return last.length > 2 && new RegExp(`\\b${last.slice(0, Math.max(4, last.length - 2))}`).test(low);
+  });
+  if (!g) return null;
+  const others = [...new Set(goalies.filter((x) => x.team === g.team && x.name !== g.name).map((x) => x.name))];
+  return others.length ? { goalie: g, others } : null;
+}
+export const SEASON_END = "2027-04-30";
+export function goalieItems(m: { others: string[] }): Row[] {
+  return m.others.map((n) => ({ injury: n, until: SEASON_END }));
+}

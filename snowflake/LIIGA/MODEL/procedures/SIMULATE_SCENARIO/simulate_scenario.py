@@ -1112,7 +1112,8 @@ def _injury_span(x: dict) -> str:
 def _render_injury(x: dict) -> list[str]:
     L: list[str] = []
     pos = {"F": "hyökkääjä", "D": "puolustaja", "G": "maalivahti"}[x["position_group"]]
-    rate = (f"torjuntaennuste {x['rate'] * 100:.1f} %".replace(".", ",") if x["position_group"] == "G"
+    rate = ("ei torjuntaennustetta (vaikutus 0)" if x["rate"] is None
+            else f"torjuntaennuste {x['rate'] * 100:.1f} %".replace(".", ",") if x["position_group"] == "G"
             else f"ennuste {x['rate']:.2f} maalia/ottelu".replace(".", ","))
     span = _injury_span(x)
     L.append(f"LOUKKAANTUMINEN: {x['name']} ({x['team']}, {pos}, {rate}) poissa: {span}")
