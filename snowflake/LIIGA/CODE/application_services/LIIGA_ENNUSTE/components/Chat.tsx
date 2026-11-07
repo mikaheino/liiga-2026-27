@@ -74,13 +74,16 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
   const [live, setLive] = useState("");       // striimattava vastaus ennen valmista
   const [status, setStatus] = useState("");   // mitä agentti tekee juuri nyt
   const end = useRef<HTMLDivElement>(null);
+  // Avustajan ehdottama kysymys odottaa, kunnes kupla on auki (send käyttää ajantasaista tilaa).
+  const [ask, setAsk] = useState<string | null>(null);
 
   useEffect(() => { setTurns(load()); }, []);
   // Suora linkki keskusteluun: /sarjataulukko#agentti avaa paneelin valmiiksi.
   useEffect(() => { if (window.location.hash === "#agentti") setOpen(true); }, [path]);
   // Avaajat: navigaation Kysy (toggle) ja kortin "Jatka keskustelua" (seed).
   useEffect(() => onOpenChat((o) => {
-    if (o.seed?.length) { setTurns((t) => [...t, ...o.seed!]); setOpen(true); }
+    if (o.ask) { setOpen(true); setAsk(o.ask); }
+    else if (o.seed?.length) { setTurns((t) => [...t, ...o.seed!]); setOpen(true); }
     else setOpen((v) => (o.toggle ? !v : true));
   }), []);
   useEffect(() => { chatState(open && !hidden); }, [open, hidden]);
@@ -95,14 +98,16 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
   useEffect(() => { if (live) end.current?.scrollIntoView({ block: "end" }); }, [live]);
   useEffect(() => { if (busy == null) return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [busy]);
 
-  // Telakointi: sivu väistää paneelin sen sijaan että paneeli peittäisi sivun.
-  // Luokka bodyssa, koska kavennettava sisältö on muualla (Shell, etusivu, alavalikko).
+  // Kupla hahmon yläpuolella (7.11.2026, "ei yläruutu vaan hoverointi"): sivu ei enää kavennu
+  // paneelin verran, joten body saa vain merkintäluokan (ei asettelusääntöjä).
   useEffect(() => {
     const on = open && !hidden;
-    document.body.classList.toggle("chat-open", on);
-    document.body.classList.toggle("chat-wide", on && wide);
-    return () => { document.body.classList.remove("chat-open", "chat-wide"); };
+    document.body.classList.toggle("chat-float", on);
+    return () => { document.body.classList.remove("chat-float"); };
   }, [open, hidden, wide]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open && ask && busy == null) { const q = ask; setAsk(null); send(q); } }, [open, ask, busy]);
 
   // Vastaus striimataan (NDJSON): tila ja teksti päivittyvät sitä mukaa kuin agentti etenee.
   async function send(text: string) {

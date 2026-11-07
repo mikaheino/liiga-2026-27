@@ -1,6 +1,5 @@
 // Yläpalkki: brändi (= etusivulle), osiot ja ennusteen aikaleima.
 import Link from "next/link";
-import AskButton from "@/components/AskButton";
 import { MOUHO_PAGES, STATIC } from "@/lib/target";
 
 export function stamp(iso: string) {
@@ -29,8 +28,7 @@ export default function Top({ updatedAt, active }: { updatedAt?: string; active:
         {SECTIONS.map(([href, label]) => href.startsWith("http")
           ? <a key={href} href={href}>{label}</a>
           : <Link key={href} href={href} className={active === href ? "on" : ""}>{label}</Link>)}
-        {/* Vapaa keskustelu osiona muiden joukossa (6.11.); Pagesissa ei agenttia. */}
-        {!STATIC && <AskButton className="topnav-ask">Kysy</AskButton>}
+        {/* "Kysy" korvattu avustajahahmolla (components/Kiekko.tsx, 7.11.2026). */}
       </nav>
       <div className="fresh"><span className="dot" />{updatedAt ? stamp(updatedAt) : "–"}</div>
     </header>

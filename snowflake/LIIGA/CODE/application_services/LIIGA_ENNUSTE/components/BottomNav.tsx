@@ -4,7 +4,6 @@
 // ovista. Peukalon ulottuvilla, näkyy vain alle 860 px:n leveydellä (globals.css).
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import AskButton from "@/components/AskButton";
 import { STATIC } from "@/lib/target";
 
 const P = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -19,12 +18,11 @@ const ITEMS: [string, string, React.ReactNode][] = [
   ...(STATIC ? [["/uutiset", "Uutiset", <path key="i" {...P} d="M4 5h13v14H6a2 2 0 0 1-2-2ZM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4" />] as [string, string, React.ReactNode]] : []),
 ];
 
-// "Kysy" avaa vapaan keskustelun alalaatikkoon (6.11.); Pagesissa ei agenttia.
-const ASK = <path {...P} d="M4 5h16v11H9l-5 4Z M8 9.5h8M8 12.5h5" />;
 
 export default function BottomNav() {
   const path = usePathname();
-  const n = ITEMS.length + (STATIC ? 0 : 1);
+  // "Kysy" korvattu avustajahahmolla (components/Kiekko.tsx, 7.11.2026).
+  const n = ITEMS.length;
   return (
     <nav className="bnav" aria-label="Osiot" data-n={n} style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
       {ITEMS.map(([href, label, icon]) => {
@@ -36,7 +34,6 @@ export default function BottomNav() {
           </Link>
         );
       })}
-      {!STATIC && <AskButton className="bnav-ask"><svg viewBox="0 0 24 24" aria-hidden>{ASK}</svg><span>Kysy</span></AskButton>}
     </nav>
   );
 }

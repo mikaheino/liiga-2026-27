@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Roboto_Mono, Silkscreen } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import Chat from "@/components/Chat";
+import Kiekko from "@/components/Kiekko";
 import NavTrack from "@/components/NavTrack";
 import VersionCheck from "@/components/VersionCheck";
 import { AGENT_SOURCE } from "@/lib/agent";
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fi" className={`${hanken.variable} ${mono.variable} ${pixel.variable}`}>
       {/* Vapaa keskustelu ilman kelluvaa nappia (6.11.): avataan navigaation Kysy-kohdasta
           tai kortin "Jatka keskustelua" -rivistä (lib/chatBus.ts). Pagesissa ei agenttia. */}
-      <body>{children}<BottomNav /><NavTrack /><VersionCheck />{!STATIC && <Chat source={AGENT_SOURCE} />}</body>
+      <body>{children}<BottomNav /><NavTrack /><VersionCheck />{!STATIC && <Chat source={AGENT_SOURCE} />}{!STATIC && <Kiekko />}</body>
     </html>
   );
 }
