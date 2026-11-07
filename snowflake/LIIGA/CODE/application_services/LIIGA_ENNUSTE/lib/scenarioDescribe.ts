@@ -11,11 +11,14 @@ import { askOnce, type Answer } from "@/lib/agent";
 import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { query } from "@/lib/snowflake";
+import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
 export type Chart = { type: "pisteet" | "jakauma" | "ottelut"; team?: string } | null;
-export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number; chart?: Chart };
+// news = skenaariossa mukana olevat uutisista hyväksytyt poissaolot (rivien labelit).
+export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number; chart?: Chart;
+  news?: string[] };
 
 // Agentin viimeinen rivi "KUVAAJA: <tyyppi> [joukkue]" luetaan ja poistetaan näkyvästä tekstistä.
 const CHART_LINE = /\n?\s*KUVAAJA:\s*(pisteet|jakauma|ottelut|ei)\b\s*([^\n]*)\s*$/i;
@@ -90,10 +93,13 @@ const ALIAS: Record<string, string[]> = {
   KooKoo: ["kouvola", "kookoo"], "Kärpät": ["kärpi", "oulu"], Lukko: ["raum", "lukko"], Pelicans: ["pelsu", "pelikaan", "lahti", "lahde", "lahte"],
   SaiPa: ["lappeenran", "saipa"], Sport: ["vaasa", "vaasan"], TPS: ["turku", "turu"], Tappara: ["tapsa", "tappara"], "Ässät": ["pori", "ässi", "ässä"],
 };
-async function schedule(text: string, teams: string[]): Promise<string> {
+function namedTeams(text: string, teams: string[]): string[] {
   const low = text.toLowerCase();
   const hit = (w: string) => new RegExp(`(^|[^a-zåäö])${w.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}`).test(low);
-  const named = teams.filter((t) => hit(t.toLowerCase()) || (ALIAS[t] ?? []).some(hit));
+  return teams.filter((t) => hit(t.toLowerCase()) || (ALIAS[t] ?? []).some(hit));
+}
+async function schedule(text: string, teams: string[]): Promise<string> {
+  const named = namedTeams(text, teams);
   if (!named.length) return "";
   const coming = (await loadFixtures()).filter((f) => !f.ended);
   return named.map((t) => `OTTELUOHJELMA ${t} (koko loppukausi):\n` + coming.filter((f) => f.home === t || f.away === t)
@@ -113,13 +119,26 @@ Päätä itse, jatkaako käyttäjä tätä skenaariota vai kysyykö uutta:
 - ALOITA UUSI, jos kuvaus on itsenäinen kokonaisuus, joka ei liity nykyiseen (esim. "Mitä jos Kärpät voittaa loppukauden"). Älä silloin ota nykyisiä rivejä mukaan.
 - Aloita yhteenveto sanomalla valintasi lyhyesti: "Lisäsin nykyiseen skenaarioon …" tai "Aloitin uuden skenaarion: …". Luvut koskevat aina sitä skenaariota, jonka työkalu laski.`;
 
+// Uutiset (lib/newsContext.ts): hyväksytyt poissaolot ovat lähtötilanne kysytyille joukkueille,
+// hyväksymättömät uutiset vain mainitaan. Agentti ei näe uutistekstiä, vain nämä kentät.
+const NEWS_RULE = (abs: NewsAbsence[], hints: NewsHint[]) => [
+  abs.length ? `UUTISISTA HYVÄKSYTYT POISSAOLOT (tosiasioita, lähtötilanne):\n${abs.map((a) => `- ${a.player} (${a.team}) poissa ${a.until} asti`).join("\n")}
+Ota nämä AINA mukaan liiga_skenaario-kutsuun muodossa {"injury": "<nimi>", "until": "<pvm>"}, ellei käyttäjä pyydä jättämään jotakin pois (esim. "ilman Wernblomia" / "ilman uutisia"). Jos ne vaikuttavat kysyttyyn joukkueeseen, sano yhteenvedossa lyhyesti, että ne on huomioitu.` : "",
+  hints.length ? `UUTISVIHJEET (EI hyväksytty, älä lisää skenaarioon ilman pyyntöä):\n${hints.map((h) => `- ${h.player} (${h.team}): ${h.kind}uutinen`).join("\n")}
+Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan X saattaa olla sivussa; sitä ei ole huomioitu – kirjoita 'X poissa', niin lasken sen mukaan."` : "",
+].filter(Boolean).join("\n\n");
+
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
   pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null): Promise<Described> {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const teams = await loadTeams();
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
   const coach = COACH_WORDS.test(text) ? await coachingEvidence() : "";
-  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "");
+  const scope = namedTeams(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
+  const [absAll, hints] = await Promise.all([activeAbsences(today), injuryHints(scope, today)]);
+  const abs = absAll.filter((a) => scope.includes(a.team));
+  const news = NEWS_RULE(abs, hints);
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "");
   const a: Answer = await askOnce(text, ctx, progress);
   const sc = splitChart(a.text);
   const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
@@ -139,5 +158,6 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     return { ...base, items: [], status: 422,
       error: `Skenaariossa on ${items.length} riviä (esim. lukittua ottelua); enintään ${MAX_ITEMS}. Rajaa jaksoa tai otteluiden määrää.` };
   }
-  return { ...base, items };
+  const newsUsed = items.filter((i) => "injury" in i && abs.some((a) => String(i.label ?? "").includes(a.player))).map((i) => String(i.label));
+  return { ...base, items, news: newsUsed };
 }

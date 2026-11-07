@@ -237,3 +237,19 @@ kysymyksiin vastata" ja "Haluan siis että tätä voi käyttää idiottikin".
   loukkaantuu" -> 10 ottelua; "Pääseekö Jokerit jatkoon?" -> 7,0 %. Ei yhtään tarkennuskysymystä.
 - ⚠️ Snowflaken agentin työkalukuvaus (deploy_agent.spec) ei vielä mainitse xg_sharea; sovelluksen
   ohje kertoo sen agentille. Proseduuri julkaistaan deploy.yml:llä.
+
+## Uutiset skenaariossa (7.11.2026)
+
+Käyttäjä: "Miten pagesissa olevassa uutisominaisuus otetaan skenaarioon mukaan luontevasti" -> "aloita".
+`lib/newsContext.ts`, vain rakenteiset kentät (ei otsikoita eikä tekstiä agentille):
+- **Lähtötilanne:** voimassa olevat hyväksytyt poissaolot (`news_absences`, sama sääntö kuin
+  `absences.py active()`: pelaajan viimeisin out/back, dismiss peruu) niille joukkueille, joita haku
+  tai auki oleva skenaario koskee. Agentti ottaa ne liiga_skenaario-kutsuun (`{"injury", "until"}`),
+  ellei käyttäjä pyydä pois ("ilman Wernblomia"). Vastauksen alla "Mukana uutisista: …"
+  (`Described.news`, tallentuu `result.news`).
+- **Vihjeet:** hyväksymättömät loukkaantumis-/pelikieltouutiset (`news_candidates` + `flags`, 21 pv,
+  ei kirjausta) kysytyille joukkueille; agentti mainitsee ne, ei laske.
+- Hyväksyntä pysyy uutissivulla kirjautumisen takana (vaikuttaisi kaikkien ennusteeseen).
+- Snowflakessa uutistauluja ei vielä ole (J3): kyselyt kaatuvat hiljaa ja listat ovat tyhjiä.
+- Testattu 7.11.: "Pääseekö TPS jatkoon?" -> Wernblom mukana, 54,2 % (ilman 55,5 %); "Lukko häviää
+  kolme seuraavaa" -> Hämäläinen ja Virtanen mukana; HIFK ei vihjeitä (viimeisin 10.10. > 21 pv).

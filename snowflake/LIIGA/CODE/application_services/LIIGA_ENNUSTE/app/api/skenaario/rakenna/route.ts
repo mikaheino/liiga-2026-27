@@ -63,8 +63,8 @@ export async function POST(req: Request) {
         }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";
         const id = await save({ season: SEASON, question: text, followup, answer: d.error ? `${d.answer}\n\n${d.error}`.trim() : d.answer,
-          items: d.items, result: result ? summarize(result, d.chart) : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
-        send({ t: "done", id, answer: d.answer, items: d.items, result, chart: d.chart ?? null, tools: d.tools, ...(d.error ? { error: d.error } : {}) });
+          items: d.items, result: result ? { ...summarize(result, d.chart), news: d.news ?? [] } : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
+        send({ t: "done", id, answer: d.answer, items: d.items, result, chart: d.chart ?? null, news: d.news ?? [], tools: d.tools, ...(d.error ? { error: d.error } : {}) });
       } catch (e) {
         const msg = String((e as Error).message).split("\n")[0].slice(0, 300);
         await save({ season: SEASON, question: text, followup, answer: msg, items: [], result: null, tools: [], sql: [], forecastTs, ms: Date.now() - t0, status: "error", source: AGENT_SOURCE });

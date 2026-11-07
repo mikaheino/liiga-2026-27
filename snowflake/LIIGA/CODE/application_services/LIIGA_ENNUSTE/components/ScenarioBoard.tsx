@@ -43,9 +43,9 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 // base = pohjaskenaario, jonka päälle haku rakennettiin (tarkennus käyttää samaa pohjaa).
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
   base?: { item: unknown; label: string }[];
-  saved?: { at: string; stale: boolean }; chart?: ChartPick };
+  saved?: { at: string; stale: boolean }; chart?: ChartPick; news?: string[] };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
-  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; tools: string[]; error?: string };
+  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; tools: string[]; error?: string };
 // Tallennettu haku (lib/skenaarioHaut.ts, /api/skenaario/haut).
 type Haku = { id: string; question: string; followup: string | null; answer: string; items: Item[]; result: Res | null; tools: string[];
   sqlCount: number; forecastTs: string; askedAt: string; status: "done" | "clarify" | "error" };
@@ -96,7 +96,7 @@ export default function ScenarioBoard() {
     const stale = !!h.forecastTs && !!stamp && h.forecastTs !== stamp;
     setAllChips(false); setReply("");
     setLive({ q: h.question, steps: [], text: h.answer, sql: [], tools: h.tools, done: true, items: h.items.length,
-      error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart });
+      error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart, news: (h.result as { news?: string[] } | null)?.news ?? [] });
     preset.current = !stale && h.result && h.items.length ? { key: keyOf(h.items), res: h.result } : null;
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -125,7 +125,7 @@ export default function ScenarioBoard() {
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
-          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart }));
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [] }));
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText("");
@@ -186,6 +186,8 @@ export default function ScenarioBoard() {
             </details>
           )}
           {live.text && <p className="gs-ai-t">{live.text}</p>}
+          {/* Uutisista hyväksytyt poissaolot, jotka ovat skenaariossa lähtötilanteena (7.11.2026). */}
+          {live.news && live.news.length > 0 && <p className="gs-news">Mukana uutisista: {live.news.join(" · ")}</p>}
           {live.error && <div className="ag-err">{live.error}</div>}
           {live.done && !live.error && live.items === 0 && live.text && (
             <form className="gs-reply" onSubmit={(e) => { e.preventDefault(); run(reply); }}>

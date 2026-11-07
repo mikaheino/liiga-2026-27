@@ -20,7 +20,7 @@ export type Haku = {
 // charts + chart + locked_games: kuvaajadata ja agentin valinta (7.11.2026), jotta tallennettu haku
 // avautuu samalla kuvaajalla.
 export type Summary = { plausibility: number | null; forecast_date: string; requirements: unknown[]; teams: Record<string, number | string>[];
-  charts?: unknown; chart?: unknown; locked_games?: unknown[] };
+  charts?: unknown; chart?: unknown; locked_games?: unknown[]; news?: string[] };
 
 const TABLE = "LIIGA.MODEL.SKENAARIO_HAKU";
 const LOCAL = path.join(os.homedir(), ".cache", "liiga-ennuste", "skenaariot.json");
