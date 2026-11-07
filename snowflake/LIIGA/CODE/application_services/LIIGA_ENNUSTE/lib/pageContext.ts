@@ -27,13 +27,13 @@ const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/H
 // Sivun nimi ja se, mitä sivulla on. Sama sanasto kuin käyttöliittymässä, jotta
 // agentti puhuu samoista asioista samoilla nimillä kuin ruutu.
 const PAGES: [RegExp, string, string][] = [
-  [/^\/$/, "Etusivu", "kauden tilanne, sijaintijakauma, seuraava kierros ja linkit osioihin"],
+  [/^\/$/, "Etusivu", "oma skenaario hakukenttänä (Entä jos?), päivän tarina, kauden kysymykset ja linkit osioihin"],
   [/^\/joukkue\//, "Joukkuesivu", "yhden joukkueen sijajakauma, ennuste, viimeiset ja seuraavat ottelut"],
   [/^\/sarjataulukko/, "Sarjataulukko", "sarjatilanne nyt, välilehdet koti/vieras, maalit ja erikoistilanteet"],
   [/^\/voittaja/, "Runkosarjan voittaja", "voittotodennäköisyydet ja kerätyt pisteet"],
-  [/^\/ottelut/, "Ottelut", "kuukauden ottelut tuloksineen ja mallin ennusteineen"],
+  [/^\/ottelut/, "Ottelut", "päivän ratkaisupeli ja seuraava kierros, kuukauden ottelut tuloksineen ja mallin ennusteineen"],
   [/^\/liike/, "Ennusteen liike", "miten ennuste on muuttunut esikaudesta"],
-  [/^\/sijainti/, "Sijainnit", "ennustettu lopputaulukko ja vyöhykkeet"],
+  [/^\/sijainti/, "Sijainnit", "sijaintijakauma (heatmap) kelattavana kauden yli, rajat ja vyöhykkeet"],
   [/^\/uutiset/, "Uutiset", "uutishaastajan poissaolot ja niiden vaikutus"],
   [/^\/pelaajat/, "Pelaajat", "pistepörssi ja maalivahdit, ero esikauden odotukseen"],
   [/^\/linkedin/, "LinkedIn-osasto", "diojen ja postausten vienti"],

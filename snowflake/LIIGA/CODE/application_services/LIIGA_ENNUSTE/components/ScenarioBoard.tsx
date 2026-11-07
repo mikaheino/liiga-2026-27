@@ -1,5 +1,8 @@
 "use client";
-// Oma skenaario (6.11.2026, docs/claude/skenaario.md V4-V5). Kaksi tapaa koota:
+// Oma skenaario (6.11.2026, docs/claude/skenaario.md V4-V5). Hakukoneen ilme 7.11.2026
+// (käyttäjä: "Googlemaiseksi liittymäksi"): keskitetty hakukenttä, kaksi nappia (Laske /
+// Kokeile esimerkkiä), lukitut tulokset suodatinsiruina ja vaikutukset hakutuloksina.
+// Logiikka ennallaan. Kaksi tapaa koota:
 // ottelukortin "Lukitse" (lib/lockBus.ts) ja "Kuvaile omin sanoin" -kenttä, jonka agentti
 // muuntaa moottorin skenaarioksi (app/api/skenaario/kuvaile). Moottori laskee koko
 // skenaarion (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen,
@@ -27,31 +30,43 @@ function summary(res: Res, rows: Row[]): string {
   ].filter(Boolean).join("\n");
 }
 
-function Describe() {
+// Esimerkit "Kokeile esimerkkiä" -napille (vastine Googlen "Kokeilen onneani" -napille).
+const EXAMPLES = ["HPK häviää joulun yli kaikki", "Tappara voittaa seuraavat viisi ottelua", "KooKoo voittaa kaikki kotiottelunsa"];
+const LABEL: Record<string, string> = Object.fromEntries(COLS);
+const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
+
+function Search() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ex, setEx] = useState(0);
   const [msg, setMsg] = useState<{ answer?: string; error?: string } | null>(null);
-  const send = async () => {
-    if (text.trim().length < 3 || busy) return;
+  const send = async (q: string) => {
+    if (q.trim().length < 3 || busy) return;
     setBusy(true); setMsg(null);
     try {
-      const r = await fetch("/api/skenaario/kuvaile", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ text }) });
+      const r = await fetch("/api/skenaario/kuvaile", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ text: q }) });
       const j = (await r.json()) as { answer?: string; items?: Item[]; error?: string };
       if (j.items?.length) { mergeItems(j.items); setText(""); }
       setMsg({ answer: j.items?.length ? undefined : j.answer, error: j.error });
     } catch (e) { setMsg({ error: (e as Error).message }); } finally { setBusy(false); }
   };
+  const tryExample = () => { const q = EXAMPLES[ex % EXAMPLES.length]; setEx(ex + 1); setText(q); send(q); };
   return (
-    <div className="scb-desc">
-      <form onSubmit={(e) => { e.preventDefault(); send(); }} className="ag-in">
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={busy}
-          placeholder="Kuvaile skenaario, esim. HPK häviää joulun yli kaikki" aria-label="Kuvaile skenaario omin sanoin" />
-        <button type="submit" disabled={busy || text.trim().length < 3}>{busy ? "…" : "Laske"}</button>
+    <>
+      <form onSubmit={(e) => { e.preventDefault(); send(text); }} className={`gs-box ${busy ? "busy" : ""}`} role="search">
+        <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={busy} enterKeyHint="search"
+          placeholder="Kuvaile skenaario omin sanoin" aria-label="Kuvaile skenaario omin sanoin" />
+        {text && !busy && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
       </form>
-      {busy && <p className="dim sc-basis">Agentti muuntaa kuvauksen skenaarioksi, moottori laskee…</p>}
-      {msg?.answer && <p className="sc-line">{msg.answer}</p>}
-      {msg?.error && <div className="ag-err">{msg.error}</div>}
-    </div>
+      <div className="gs-btns">
+        <button type="button" onClick={() => send(text)} disabled={busy || text.trim().length < 3}>Laske skenaario</button>
+        <button type="button" onClick={tryExample} disabled={busy}>Kokeile esimerkkiä</button>
+      </div>
+      {busy && <p className="gs-status">Agentti muuntaa kuvauksen skenaarioksi, moottori laskee…</p>}
+      {msg?.answer && <p className="gs-status">{msg.answer}</p>}
+      {msg?.error && <div className="ag-err gs-status">{msg.error}</div>}
+    </>
   );
 }
 
@@ -75,44 +90,49 @@ export default function ScenarioBoard() {
   // Sirut moottorin kanonisista riveistä (moottorin label); poisto = loput rivit uudelleen.
   const chips = res?.scenario_canonical ?? items;
   return (
-    <section className={`mc-box scb ${busy ? "busy" : ""}`} aria-label="Oma skenaario">
-      <div className="label">Oma skenaario</div>
-      <Describe />
+    <section className={`gs ${busy ? "busy" : ""} ${items.length ? "has-res" : ""}`} aria-label="Oma skenaario">
+      <h2 className="gs-logo">Entä jos<span>?</span></h2>
+      <Search />
       {items.length > 0 && (
-        <div className="sc-goals">
+        <div className="gs-chips" aria-label="Lukitut tulokset">
           {chips.map((c) => (
-            <button key={itemKey(c)} type="button" className="sc-chip on" title="Poista"
-              onClick={() => setLocks(chips.filter((x) => itemKey(x) !== itemKey(c)))}>{c.label} ✕</button>
+            <button key={itemKey(c)} type="button" className="gs-chip" title="Poista"
+              onClick={() => setLocks(chips.filter((x) => itemKey(x) !== itemKey(c)))}>{c.label}<span aria-hidden>✕</span></button>
           ))}
         </div>
       )}
-      {!items.length && <p className="dim sc-basis">Tai lukitse tuloksia ottelukorteista (Panos → Lukitse).</p>}
-      {err && <div className="ag-err">{err}</div>}
-      {items.length > 0 && res && (<>
-        {res.plausibility != null && (
-          <p className="sc-line">Mallin mukaan kaikki lukitut tulokset toteutuvat <b>{fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä.</p>
-        )}
-        {res.requirements.map((r) => <p key={r.team + r.goal} className="sc-line">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
-        {rows.length ? (
-          <div className="scb-table">
-            <span className="h">Joukkue</span>{COLS.map(([, l]) => <span key={l} className="h">{l} %</span>)}
-            {rows.map((r) => (<Fragment key={r.team}>
-              <span>{r.team}</span>
-              {COLS.map(([k]) => {
-                const a = Number(r[`${k}_now`]), b = Number(r[`${k}_scenario`]);
-                const good = k === "p_relegation" ? b < a : b > a;
-                return <span key={k} className={Math.abs(b - a) >= 0.01 ? (good ? "up" : "down") : "dim"}>{pct(a)}→{pct(b)}</span>;
-              })}
-            </Fragment>))}
+      {!items.length && <p className="gs-hint">Tai lukitse tuloksia ottelukorteista (Panos → Lukitse).</p>}
+      {err && <div className="ag-err gs-status">{err}</div>}
+      {items.length > 0 && res && (
+        <div className="gs-results">
+          <p className="gs-stats">
+            {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
+            ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
+          </p>
+          {res.requirements.map((r) => <p key={r.team + r.goal} className="gs-req">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
+          {rows.length ? rows.map((r) => {
+            // Otsikkona joukkueen suurin muutos, katkelmana muut liikkuneet luvut.
+            const ks = COLS.map(([k]) => k).filter((k) => diff(r, k) >= 0.01).sort((a, b) => diff(r, b) - diff(r, a));
+            const part = (k: string) => {
+              const a = Number(r[`${k}_now`]), b = Number(r[`${k}_scenario`]);
+              const good = k === "p_relegation" ? b < a : b > a;
+              return <span key={k}>{LABEL[k]} {pct(a)} → <b className={good ? "up" : "down"}>{pct(b)} %</b></span>;
+            };
+            return (
+              <article key={r.team} className="gs-r">
+                <div className="gs-crumb">liiga-ennuste › joukkue › {r.team}</div>
+                <a className="gs-t" href={href(r.team)}>{r.team}: {part(ks[0])}</a>
+                {ks.length > 1 && <p className="gs-snip">{ks.slice(1).map((k, i) => <Fragment key={k}>{i ? " · " : ""}{part(k)}</Fragment>)}</p>}
+              </article>
+            );
+          }) : <p className="gs-status">Luvut eivät liiku yli prosenttiyksikköä.</p>}
+          <div className="gs-actions">
+            <button type="button" className="ag-tr" onClick={() => openChat({ seed: [
+              { role: "user", text: "Mitä tämä skenaario tarkoittaa?" }, { role: "assistant", text: summary(res, rows) }] })}>▸ Kysy agentilta tästä</button>
+            <button type="button" className="ag-tr" onClick={() => setLocks([])}>Tyhjennä</button>
           </div>
-        ) : <p className="dim">Luvut eivät liiku yli prosenttiyksikköä.</p>}
-        <p className="sc-basis dim">ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · enintään 10 riviä</p>
-        <div className="scb-actions">
-          <button type="button" className="ag-tr" onClick={() => openChat({ seed: [
-            { role: "user", text: "Mitä tämä skenaario tarkoittaa?" }, { role: "assistant", text: summary(res, rows) }] })}>▸ Kysy agentilta tästä</button>
-          <button type="button" className="ag-tr" onClick={() => setLocks([])}>Tyhjennä</button>
         </div>
-      </>)}
+      )}
     </section>
   );
 }
