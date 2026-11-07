@@ -33,7 +33,7 @@ BLACK = "/System/Library/Fonts/Supplemental/Arial Black.ttf"
 BODY = str(ROOT / "site/assets/fonts/hanken-grotesk-400-latin.woff2")
 SHEAR = 0.2                                 # kursiivi: Arial Blackissa ei ole kursiivileikkausta
 
-TWEEN, TWEEN_MS, HOLD_MS = 4, 80, 1100
+TWEEN, TWEEN_MS, HOLD_MS = 4, 80, 1800
 FIRST_MS, LAST_MS = 2600, 5000
 
 # Asettelu
