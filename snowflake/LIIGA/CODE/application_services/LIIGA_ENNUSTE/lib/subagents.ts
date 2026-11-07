@@ -75,7 +75,10 @@ KÄYTTÄJÄN SKENAARIO (moottorin muodossa): ${JSON.stringify(items.map(({ label
     if (!r || r.error) return null;
     const canon = r.scenario_canonical ?? [];
     if (!keyOf(canon) || keyOf(canon) === own) return null;
-    const line = headline(r);
+    // Skenaarion omat joukkueet kanonisista riveistä (joukkuekenttä tai labelin joukkueet).
+    const teamsIn = [...new Set(canon.flatMap((x) => [String(x.team ?? ""), ...String(x.label ?? "").match(/\(([^)]+)\)/g)?.map((m) => m.slice(1, -1)) ?? [],
+      ...(String(x.label ?? "").split(": ")[1]?.match(/^(\S+) /)?.slice(1) ?? [])]).filter(Boolean))];
+    const line = headline(r, teamsIn);
     return line ? { q: p.q.slice(0, 140), line: `${describeCanon(canon)} · ${line}` } : null;
   }));
   const seen = new Set<string>();
@@ -109,15 +112,17 @@ function describeCanon(rows: Record<string, unknown>[]): string {
   return [...[...counts].map(([w, n]) => (n > 1 ? `${w} × ${n}` : w)), ...other].join(", ");
 }
 
-// Pääjoukkue = suurin muutos jatkopaikassa tai pisteissä.
-function mainTeam(res: Res): string | null {
+// Pääjoukkue = suurin muutos jatkopaikassa tai pisteissä, ensisijaisesti skenaarion omista joukkueista
+// (7.11.: Lukko-skenaarion rivi näytti KalPan 5,2 -> 5,2 %, koska pienet muutokset ovat kohinaa).
+function mainTeam(res: Res, among: string[] = []): string | null {
   const d = (r: Row) => Math.abs(Number(r.p_top10_scenario) - Number(r.p_top10_now)) + Math.abs(Number(r.points_scenario) - Number(r.points_now)) / 100;
-  return [...(res.teams ?? [])].sort((a, b) => d(b) - d(a))[0]?.team as string ?? null;
+  const rows = (res.teams ?? []).filter((r) => !among.length || among.includes(String(r.team)));
+  return [...(rows.length ? rows : res.teams ?? [])].sort((a, b) => d(b) - d(a))[0]?.team as string ?? null;
 }
 
 // Rivi luvuista (moottori, ei kielimalli): eniten liikkuneen joukkueen eniten liikkunut mittari.
-function headline(r: Res): string {
-  const team = (r.teams ?? []).find((x) => x.team === mainTeam(r));
+function headline(r: Res, among: string[] = []): string {
+  const team = (r.teams ?? []).find((x) => x.team === mainTeam(r, among));
   if (!team) return "";
   const [k, l] = [...KEYS].sort(([a], [b]) => Math.abs(Number(team[`${b}_scenario`]) - Number(team[`${b}_now`])) - Math.abs(Number(team[`${a}_scenario`]) - Number(team[`${a}_now`])))[0];
   return `${team.team}: ${l} ${pc(Number(team[`${k}_now`]))} → ${pc(Number(team[`${k}_scenario`]))} %`;
