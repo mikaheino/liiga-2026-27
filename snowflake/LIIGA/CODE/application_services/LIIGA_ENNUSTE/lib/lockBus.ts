@@ -5,7 +5,7 @@
 // tekstiä. Tila on katsojan oma (sessionStorage) eikä tallennu muualle.
 export type GameLock = { game_id: number; result: "home_win" | "away_win" | "home_reg" | "home_ot" | "away_ot" | "away_reg"
   | "overtime" | "regulation" | "home_point" | "away_point"; label: string };
-export type Injury = { injury: number | string; games: number; ramp_games?: number; ramp_effect?: number; label: string };
+export type Injury = { injury: number | string; games?: number; from?: string; until?: string; ramp_games?: number; ramp_effect?: number; label: string };
 export type Goal = { team: string; goal: "avoid_relegation" | "top10" | "top6" | "win"; rivals?: string[]; label: string };
 // Joukkueen muutos (7.11.2026, esim. valmentajanvaihto): xG-osuuden siirto jaksolle.
 export type Shift = { team: string; xg_share: number; from?: string; until?: string; games?: number; label: string };

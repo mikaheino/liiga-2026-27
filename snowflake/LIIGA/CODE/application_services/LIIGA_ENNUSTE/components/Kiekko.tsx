@@ -7,7 +7,7 @@
 //   - "Kysy tätä" avaa keskustelukuplan ja lähettää kysymyksen agentille (lib/chatBus.ts ask).
 //   - Kuplassa pääkysymys ja kaksi muuta; mikään ei pakota: kupla väistyy itse tai napautuksesta
 //     muualle. Hahmon napautus tuo kuplan takaisin, toinen napautus avaa keskustelun.
-// Korvaa yläpalkin ja alavalikon "Kysy"-kohdat. Pelissä (/mouho) ei näy.
+// Korvaa yläpalkin ja alavalikon "Kysy"-kohdat. Ei näy skenaariosivulla (etusivu) eikä pelissä (/mouho).
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onChatState, openChat } from "@/lib/chatBus";
@@ -24,6 +24,7 @@ export default function Kiekko() {
     setShow(false); setTip(null);
     let live = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    if (path === "/") return;
     fetch(`/api/vihje?path=${encodeURIComponent(path)}`, { cache: "no-store" }).then((r) => r.json())
       .then((t: Tip) => {
         if (!live || !t.text) return;
@@ -40,7 +41,9 @@ export default function Kiekko() {
     document.addEventListener("click", h);
     return () => document.removeEventListener("click", h);
   }, [show]);
-  if (path.startsWith("/mouho")) return null;
+  // Ei koskaan skenaariosivulla (etusivu "/", käyttäjä 7.11.: "clippy ei näy skenaario sivulla KOSKAAN"):
+  // siellä haku on itse avustaja. Ei myöskään pelissä.
+  if (path === "/" || path.startsWith("/mouho")) return null;
   return (
     <div className={`kk ${chat ? "chat" : ""}`}>
       {show && tip?.text && !chat && (

@@ -16,6 +16,9 @@ export function validItem(x: unknown, teams: Set<string>): boolean {
   if ("game_id" in o) return only("game_id", "result") && int(o.game_id, 1, 1e9) && RESULTS.has(String(o.result));
   if ("injury" in o) {
     const who = int(o.injury, 1, 1e9) || (typeof o.injury === "string" && /^[\p{L} .'-]{2,60}$/u.test(o.injury));
+    // from/until (7.11.2026): ottelukohtainen poissaolo (säätö "maalivahti vaihtuu", uutisten pelaajat).
+    const day = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if ("from" in o) return only("injury", "from", "until") && who && day(o.from) && day(o.until);
     return only("injury", "games", "ramp_games", "ramp_effect") && who && int(o.games, 0, 64)
       && (o.ramp_games === undefined || int(o.ramp_games, 0, 20))
       && (o.ramp_effect === undefined || (typeof o.ramp_effect === "number" && o.ramp_effect >= 0 && o.ramp_effect <= 1));

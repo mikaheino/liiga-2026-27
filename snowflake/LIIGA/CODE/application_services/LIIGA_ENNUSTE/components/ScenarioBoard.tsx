@@ -11,6 +11,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
 import { engineItem, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
+import ScenarioParams from "@/components/ScenarioParams";
 import ScenarioChart, { type ChartPick, type Charts, type LockedGame, fallbackPick } from "@/components/ScenarioChart";
 
 type Row = { team: string } & Record<string, number | string>;
@@ -83,6 +84,9 @@ export default function ScenarioBoard() {
   useEffect(() => { setLocks([]); setItems([]); return onLocks(setItems); }, []);
   const [reply, setReply] = useState("");
   const [allChips, setAllChips] = useState(false);
+  // Säätö (ScenarioParams): alkuperäiset kanoniset rivit, joista säätimet tehdään, ja tieto säädöstä.
+  const [orig, setOrig] = useState<Item[]>([]);
+  const [adjusted, setAdjusted] = useState(false);
   // Moottorin luvut tulevat valmiina haun mukana (tallentuvat sen kanssa): effect ei laske uudelleen.
   const preset = useRef<{ key: string; res: Res } | null>(null);
   const [haut, setHaut] = useState<Haku[]>([]);
@@ -113,7 +117,7 @@ export default function ScenarioBoard() {
     setLive({ q: h.question, steps: [], text: h.answer, sql: [], tools: h.tools, done: true, items: h.items.length,
       error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart, news: (h.result as { news?: string[] } | null)?.news ?? [] });
     preset.current = !stale && h.result && h.items.length ? { key: keyOf(h.items), res: h.result } : null;
-    setLocks(h.items);
+    setLocks(h.items); setOrig(h.items); setAdjusted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const run = async (follow?: string, asked?: string, refreshed?: string) => {
@@ -145,7 +149,7 @@ export default function ScenarioBoard() {
           up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [], roster: m.roster ?? [] }));
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
-            setLocks(m.items); setText("");
+            setLocks(m.items); setText(""); setOrig(m.items); setAdjusted(false);
           }
           loadHaut();
         }
@@ -254,7 +258,8 @@ export default function ScenarioBoard() {
               {live.sql.map((q, i) => <pre key={i}>{q}</pre>)}
             </details>
           )}
-          {live.text && <p className="gs-ai-t">{live.text}</p>}
+          {live.text && <p className={`gs-ai-t ${adjusted ? "dim" : ""}`}>{live.text}</p>}
+          {adjusted && <p className="gs-adj">Säädit skenaariota: teksti kertoo alkuperäisestä, luvut ja kuvaaja ovat säädön mukaiset.</p>}
           {/* Uutisista hyväksytyt poissaolot, jotka ovat skenaariossa lähtötilanteena (7.11.2026). */}
           {live.news && live.news.length > 0 && <p className="gs-news">Mukana uutisista: {live.news.join(" · ")}</p>}
           {/* Uusi pelaaja, jota mallissa ei vielä ole (7.11.2026): kirjattu rosterijonoon standardipolkua varten. */}
@@ -264,6 +269,10 @@ export default function ScenarioBoard() {
               Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
           {res && items.length > 0 && <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
             charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />}
+          {/* Parametrisointi (7.11.2026): säätö ilman kirjoittamista, luvut moottorilta. */}
+          {live.done && orig.length > 0 && (
+            <ScenarioParams key={keyOf(orig)} orig={orig} onApply={(it) => { preset.current = null; setAdjusted(true); setLocks(it); }} />
+          )}
 
           {live.error && <div className="ag-err">{live.error}</div>}
           {live.done && !live.error && live.items === 0 && live.text && (

@@ -1437,3 +1437,25 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 }
 .kk-bubble .kk-q { display: block; padding: 6px 0; border-top: 1px solid var(--line); }
 .kk-bubble .kk-q:first-of-type { border-top: 0; padding-top: 0; }
+/* Skenaarion säätö (7.11.2026, ScenarioParams.tsx): ottelukohtaiset tulokset, maalivahti ja uutisten
+   pelaajat sekä liukusäätimet; muutos lasketaan suoraan moottorilla. */
+.sp { display: grid; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sp-h { font: 600 14px var(--sans); color: var(--ink); }
+.sp-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 2fr) auto; align-items: center; gap: 12px; font-size: 13.5px; color: var(--body); }
+.sp-row b { font: 600 13px var(--sans); color: var(--gold-hi); font-variant-numeric: tabular-nums; min-width: 70px; text-align: right; }
+.sp input[type="range"] { accent-color: #ebca68; width: 100%; }
+.sp-game { display: grid; grid-template-columns: 150px auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.sp-g { font-size: 13px; color: var(--body); white-space: nowrap; }
+.sp-seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.sp-seg button { all: unset; cursor: pointer; padding: 4px 9px; font: 600 12px var(--sans); color: var(--muted); }
+.sp-seg button.on { background: rgba(235,202,104,.14); color: var(--gold-hi); }
+.sp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-chip { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 14px; border: 1px solid var(--line-2); font: 500 12px var(--sans); color: var(--muted); }
+.sp-chip.on { border-color: var(--gold-dim); color: var(--gold-hi); background: rgba(235,202,104,.08); }
+.sp-more { all: unset; cursor: pointer; font-size: 12.5px; color: var(--gold); }
+.gs-ai-t.dim { color: var(--muted); }
+.gs-adj { margin: 0; font-size: 12.5px; color: var(--gold); }
+@media (max-width: 860px) {
+  .sp-game { grid-template-columns: 1fr; gap: 6px; }
+  .sp-row { grid-template-columns: 1fr auto; } .sp-row input { grid-column: 1 / -1; }
+}
