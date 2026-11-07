@@ -7,9 +7,6 @@ import VersionCheck from "@/components/VersionCheck";
 import { AGENT_SOURCE } from "@/lib/agent";
 import { STATIC } from "@/lib/target";
 import "./globals.css";
-// Rauhallinen kerros (7.11.2026): ohittaa globals.css:n koristeet (hehkut, pikselifontti,
-// jatkuvat animaatiot). Poista tämä rivi, niin entinen ilme palaa sellaisenaan.
-import "./calm.css";
 
 // Fontit käännösvaiheessa sovellukseen (next/font): ei ulkoista hakua ajon
 // aikana, joten ilme ei riipu verkosta -- Streamlit-versio nojasi Google Fontsiin.
