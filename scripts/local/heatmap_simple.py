@@ -4,10 +4,9 @@
 
 Ilme on sama kuin build_instagram.py:n dioissa: seepiahalli-tausta, kultainen
 kursiivi Arial Black -otsikko, ohut kultaviiva ja kermanvalkoinen laatikko
-numerolle. Kerrontaa ei ole: kausi etenee tilannekuva kerrallaan, solut
-vaihtavat sävyä, ja kultaviiva täyttyy pelattujen otteluiden
-mukaan. Rivien järjestys on kiinteä (viimeisin ennuste), jotta katsoja näkee
-lävistäjän muodostuvan; liukuvat rivit menivät välikuvissa päällekkäin.
+numerolle. Kerrontaa ei ole: kausi etenee tilannekuva kerrallaan, ja kultaviiva täyttyy pelattujen otteluiden
+mukaan. Rivit (logo + nimi) liukuvat ennustetun sijan mukaan läpinäkymättöminä
+kortteina: ohittaja piirretään päälle, ja pysähdyksessä ▲▼ kertoo sijamuutoksen.
 Data ja tilannekuvien valinta tulevat heatmap_gif.load():sta.
 """
 from __future__ import annotations
@@ -27,6 +26,7 @@ GOLD, GOLD_HI, GOLD_LO = (217, 182, 84), (247, 231, 173), (169, 130, 44)
 CREAM, INK, MUTED = (242, 236, 224), (21, 15, 9), (168, 152, 128)
 RED = (214, 92, 76)
 EMPTY = (38, 28, 18)
+CARD = (30, 22, 14)                         # rivikortti: peittää alle jäävän rivin ohituksessa
 # Laatan väri: seepiasta kultaan ja kermaan, sama suunta kuin dioissa.
 RAMP = [EMPTY, (74, 54, 26), (128, 96, 42), (182, 142, 60), (226, 190, 98), (247, 231, 173)]
 
@@ -34,7 +34,7 @@ BLACK = "/System/Library/Fonts/Supplemental/Arial Black.ttf"
 BODY = str(ROOT / "site/assets/fonts/hanken-grotesk-400-latin.woff2")
 SHEAR = 0.2                                 # kursiivi: Arial Blackissa ei ole kursiivileikkausta
 
-TWEEN, TWEEN_MS, HOLD_MS = 2, 120, 450
+TWEEN, TWEEN_MS, HOLD_MS = 4, 80, 1100
 FIRST_MS, LAST_MS = 2600, 5000
 
 # Asettelu
@@ -104,7 +104,7 @@ def fi(iso: str) -> str:
     return f"{int(iso[8:10])}.{int(iso[5:7])}."
 
 
-def static_layer(bg: Image.Image, order_date: str) -> Image.Image:
+def static_layer(bg: Image.Image) -> Image.Image:
     img = bg.copy()
     d = ImageDraw.Draw(img)
     italic(img, (64, 60), "LIIGA 2026–27 · KAUSIENNUSTE", font(BLACK, 20), fill=CREAM, spacing=5)
@@ -129,11 +129,14 @@ def static_layer(bg: Image.Image, order_date: str) -> Image.Image:
     foot = font(BODY, 21)
     d.text((64, H - 66), "Solu = todennäköisyys päätyä sijalle (%), 10 000 simuloitua kautta.",
            font=foot, fill=MUTED)
-    d.text((64, H - 38), f"Rivit {fi(order_date)} ennusteen mukaan · data liiga.fi", font=foot, fill=MUTED)
+    d.text((64, H - 38), "Rivit ennustetun sijan mukaan · data liiga.fi", font=foot, fill=MUTED)
     return img
 
 
-def frame(base: Image.Image, logo: dict, s: dict, order: list, played: int, date: str) -> Image.Image:
+def frame(base: Image.Image, logo: dict, s: dict, ys: dict, moves: dict, settled: bool,
+          played: int, date: str) -> Image.Image:
+    """ys = rivin paikka (liukuluku), moves = sijamuutos edelliseen (+ = nousi),
+    settled = pysähdysruutu, jossa muutos näytetään merkkinä."""
     img = base.copy()
     d = ImageDraw.Draw(img)
     # Päivämäärä kermalaatikossa (kuten dian sijanumero) ja otteluita pelattu.
@@ -148,9 +151,23 @@ def frame(base: Image.Image, logo: dict, s: dict, order: list, played: int, date
     d.line((lx0, ly, lx1, ly), fill=(70, 54, 30), width=4)
     d.line((lx0, ly, lx0 + (lx1 - lx0) * played / g.TOTAL_GAMES, ly), fill=GOLD, width=4)
 
-    name_f, num_f = font(BLACK, 23), font(BLACK, 16)
-    for r, t in enumerate(order):
-        y = TOP + r * ROW
+    name_f, num_f, badge_f = font(BLACK, 23), font(BLACK, 16), font(BLACK, 17)
+    # Rivi on läpinäkymätön kortti, ja pisimmän matkan liikkuja piirretään päällimmäiseksi: se
+    # ohittaa ±1-liikkujat, jotka jäävät hetkeksi osittain sen alle (nousijat piirtäen jälkimmäisinä
+    # peittäisivät kolme sijaa putoavan kokonaan, 7.11. kokeiltu).
+    for t in sorted(ys, key=lambda t: (abs(moves[t]), moves[t] > 0)):
+        y = round(TOP + ys[t] * ROW)
+        mv = moves[t]
+        moving = abs(mv) > 0 and not settled
+        edge = GOLD if mv > 0 else RED if mv < 0 else None
+        d.rectangle((56, y - 3, W - 40, y + ROW - 3), fill=CARD,
+                    outline=edge if (moving or (settled and abs(mv) >= 3)) else None, width=2)
+        if settled and mv:                  # pysähdyksessä: montako sijaa nousi/laski
+            cy = y + (ROW - 6) // 2
+            tri = [(14, cy + 6), (26, cy + 6), (20, cy - 6)] if mv > 0 else \
+                  [(14, cy - 6), (26, cy - 6), (20, cy + 6)]
+            d.polygon(tri, fill=edge)
+            d.text((29, cy), str(abs(mv)), font=badge_f, fill=edge, anchor="lm")
         if t in logo:
             lg = logo[t]
             img.paste(lg, (64 + (40 - lg.width) // 2, y + (ROW - 6 - lg.height) // 2), lg)
@@ -189,16 +206,28 @@ def delta(q: list[Image.Image]) -> list[Image.Image]:
     return out
 
 
+def weekly(snaps: list[dict]) -> list[dict]:
+    """Lähtötila ja kunkin viikon viimeinen tilannekuva: liikkuvat rivit vaihtavat koko ruudukon
+    joka ruudussa, joten päivittäin GIF kasvaisi yli 5 Mt:n, ja viikon liike on helpompi seurata."""
+    from datetime import date
+    out: dict = {}
+    for s in snaps[1:]:
+        out[date.fromisoformat(s["date"]).isocalendar()[:2]] = s
+    return snaps[:1] + list(out.values())
+
+
 def build(out: Path) -> None:
-    snaps = g.load()
+    snaps = weekly(g.load())
     teams = list(snaps[-1]["p"])
     logo = g.logos(teams, 38)
-    order = sorted(teams, key=snaps[-1]["rank"].get)
-    base = static_layer(background(), snaps[-1]["date"])
+    base = static_layer(background())
     frames, durs = [], []
 
-    def add(s, played, date, ms):
-        frames.append(frame(base, logo, s, order, played, date))
+    def add(s, ra, rb, f, settled, played, date, ms):
+        e = f * f * (3 - 2 * f)                       # pehmeä kiihdytys ja jarrutus
+        ys = {t: ra[t] + (rb[t] - ra[t]) * e for t in teams}
+        moves = {t: ra[t] - rb[t] for t in teams}
+        frames.append(frame(base, logo, s, ys, moves, settled, played, date))
         durs.append(ms)
 
     for k, s in enumerate(snaps):
@@ -208,12 +237,13 @@ def build(out: Path) -> None:
             for j in range(1, TWEEN + 1):
                 f = j / (TWEEN + 1)
                 played = round(prev["played"] + (s["played"] - prev["played"]) * f)
-                add(mix(prev, s, f), played, date, TWEEN_MS)
+                add(mix(prev, s, f), prev["rank"], s["rank"], f, False, played, date, TWEEN_MS)
         ms = FIRST_MS if k == 0 else LAST_MS if k == len(snaps) - 1 else HOLD_MS
-        add(s, s["played"], date, ms)
+        ra = snaps[k - 1]["rank"] if k else s["rank"]
+        add(s, ra, s["rank"], 1.0, True, s["played"], date, ms)
 
     pal = Image.new("P", (1, 1))
-    fixed = [EMPTY, CREAM, INK, MUTED, GOLD, GOLD_HI, GOLD_LO, RED, (70, 54, 30)]
+    fixed = [EMPTY, CREAM, INK, MUTED, GOLD, GOLD_HI, GOLD_LO, RED, (70, 54, 30), CARD]
     fixed += [ramp(min(1.0, 0.4 * (i / 63) ** (1 / 0.55))) for i in range(64)]
     # Taustan liukuväri omilla askelillaan, ettei mediaanileikkaus porrasta sitä.
     fixed += [tuple(round(a + (b - a) * i / 47) for a, b in zip(INK, (90, 64, 40))) for i in range(48)]
