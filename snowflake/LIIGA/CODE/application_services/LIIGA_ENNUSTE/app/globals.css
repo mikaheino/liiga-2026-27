@@ -1215,3 +1215,26 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .ot-today .nround { margin: 0 0 24px; }
 .fr > section.gs { margin: 0 auto 44px; }
 @media (max-width: 860px) { .fr > section.gs { margin-bottom: 32px; } }
+
+/* Tekoäly rakentaa skenaarion livenä (7.11.2026, /api/skenaario/rakenna). Hakukoneen
+   tekoälyyhteenvedon tapaan: vaiheet tikkeinä, käynnissä oleva pyörii, yhteenveto ja
+   lähteet (työkalut + ajetut SQL-lauseet) avattavana. Ei valmiita esimerkkejä. */
+.fr > section.gs:not(.has-res) { min-height: 46vh; align-content: center; }
+.gs-ai { justify-self: stretch; display: grid; gap: 12px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); }
+.gs-ai-h { font: 600 13px var(--sans); color: var(--muted); }
+.gs-ai-h span { color: var(--body); }
+.gs-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.gs-steps li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--body); }
+.gs-steps li.ok { color: var(--muted); }
+.gs-steps i { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font: 700 11px var(--sans); font-style: normal; color: var(--gold-hi); }
+.gs-steps li.ok i { background: rgba(204,167,82,.14); }
+.gs-steps li.run i { border: 2px solid var(--gold-dim); border-top-color: var(--gold-hi); animation: gs-spin .8s linear infinite; }
+@keyframes gs-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gs-steps li.run i { animation: none; } }
+.gs-ai-t { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); white-space: pre-line; }
+.gs-src summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.gs-src summary:hover { color: var(--gold-hi); }
+.gs-src pre { margin: 8px 0 0; padding: 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); color: var(--body);
+  font: 11px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; }
+.gs-hint { max-width: 52ch; }
+@media (max-width: 860px) { .fr > section.gs:not(.has-res) { min-height: 38vh; } .gs-ai { padding: 14px; } }

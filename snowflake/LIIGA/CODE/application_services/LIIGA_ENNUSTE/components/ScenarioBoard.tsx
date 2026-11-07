@@ -1,13 +1,12 @@
 "use client";
 // Oma skenaario (6.11.2026, docs/claude/skenaario.md V4-V5). Hakukoneen ilme 7.11.2026
-// (käyttäjä: "Googlemaiseksi liittymäksi"): keskitetty hakukenttä, kaksi nappia (Laske /
-// Kokeile esimerkkiä), lukitut tulokset suodatinsiruina ja vaikutukset hakutuloksina.
-// Logiikka ennallaan. Kaksi tapaa koota:
-// ottelukortin "Lukitse" (lib/lockBus.ts) ja "Kuvaile omin sanoin" -kenttä, jonka agentti
-// muuntaa moottorin skenaarioksi (app/api/skenaario/kuvaile). Moottori laskee koko
-// skenaarion (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen,
-// uskottavuus = lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee
-// uudelleen ilman agenttia.
+// (käyttäjä: "Googlemaiseksi liittymäksi" ja "AI rakentaa livenä skenaarion, mutta hyödyntää
+// SQL dataa ja koneoppimismalleja. Tiputa valmiit skenaariot pois"): keskitetty hakukenttä ja
+// yksi nappi; tekoälyn vaiheet näkyvät livenä (app/api/skenaario/rakenna), valmiit rivit
+// lukitaan siruiksi ja vaikutukset näytetään hakutuloksina. Rivejä voi lukita myös
+// ottelukortin "Lukitse"-napista (lib/lockBus.ts). Moottori laskee koko skenaarion
+// (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen, uskottavuus =
+// lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee uudelleen ilman agenttia.
 import { Fragment, useEffect, useState } from "react";
 import { openChat } from "@/lib/chatBus";
 import { engineItem, getLocks, itemKey, mergeItems, onLocks, setLocks, type Item } from "@/lib/lockBus";
@@ -30,44 +29,29 @@ function summary(res: Res, rows: Row[]): string {
   ].filter(Boolean).join("\n");
 }
 
-// Esimerkit "Kokeile esimerkkiä" -napille (vastine Googlen "Kokeilen onneani" -napille).
-const EXAMPLES = ["HPK häviää joulun yli kaikki", "Tappara voittaa seuraavat viisi ottelua", "KooKoo voittaa kaikki kotiottelunsa"];
 const LABEL: Record<string, string> = Object.fromEntries(COLS);
 const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 
-function Search() {
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [ex, setEx] = useState(0);
-  const [msg, setMsg] = useState<{ answer?: string; error?: string } | null>(null);
-  const send = async (q: string) => {
-    if (q.trim().length < 3 || busy) return;
-    setBusy(true); setMsg(null);
-    try {
-      const r = await fetch("/api/skenaario/kuvaile", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ text: q }) });
-      const j = (await r.json()) as { answer?: string; items?: Item[]; error?: string };
-      if (j.items?.length) { mergeItems(j.items); setText(""); }
-      setMsg({ answer: j.items?.length ? undefined : j.answer, error: j.error });
-    } catch (e) { setMsg({ error: (e as Error).message }); } finally { setBusy(false); }
-  };
-  const tryExample = () => { const q = EXAMPLES[ex % EXAMPLES.length]; setEx(ex + 1); setText(q); send(q); };
-  return (
-    <>
-      <form onSubmit={(e) => { e.preventDefault(); send(text); }} className={`gs-box ${busy ? "busy" : ""}`} role="search">
-        <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={busy} enterKeyHint="search"
-          placeholder="Kuvaile skenaario omin sanoin" aria-label="Kuvaile skenaario omin sanoin" />
-        {text && !busy && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
-      </form>
-      <div className="gs-btns">
-        <button type="button" onClick={() => send(text)} disabled={busy || text.trim().length < 3}>Laske skenaario</button>
-        <button type="button" onClick={tryExample} disabled={busy}>Kokeile esimerkkiä</button>
-      </div>
-      {busy && <p className="gs-status">Agentti muuntaa kuvauksen skenaarioksi, moottori laskee…</p>}
-      {msg?.answer && <p className="gs-status">{msg.answer}</p>}
-      {msg?.error && <div className="ag-err gs-status">{msg.error}</div>}
-    </>
-  );
+// Live-rakennus (7.11.2026): /api/skenaario/rakenna striimaa agentin vaiheet (datahaku SQL:llä,
+// simulointi mallilla), yhteenvedon ja ajetut SQL-lauseet; valmiit rivit lukitaan siruiksi.
+type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string };
+type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
+  | { t: "done"; answer: string; items: Item[]; tools: string[]; error?: string };
+
+async function build(q: string, on: (m: Msg) => void) {
+  const r = await fetch("/api/skenaario/rakenna", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ text: q }) });
+  if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? `Virhe ${r.status}`); }
+  const rd = r.body.getReader(), dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await rd.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    for (let i; (i = buf.indexOf("\n")) >= 0;) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 1);
+      try { on(JSON.parse(line) as Msg); } catch { /* osittainen rivi */ }
+    }
+  }
 }
 
 export default function ScenarioBoard() {
@@ -75,7 +59,29 @@ export default function ScenarioBoard() {
   const [res, setRes] = useState<Res | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [text, setText] = useState("");
+  const [live, setLive] = useState<Live | null>(null);
+  const building = !!live && !live.done;
   useEffect(() => { setItems(getLocks()); return onLocks(setItems); }, []);
+  const run = async () => {
+    const q = text.trim();
+    if (q.length < 3 || building) return;
+    setLive({ q, steps: [], text: "", sql: [], tools: [], done: false });
+    const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
+    try {
+      await build(q, (m) => {
+        if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
+        else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
+        else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
+        else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
+        else if (m.t === "done") {
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error }));
+          if (m.items?.length) { mergeItems(m.items); setText(""); }
+        }
+      });
+      up((l) => ({ ...l, done: true }));
+    } catch (e) { up((l) => ({ ...l, done: true, error: (e as Error).message })); }
+  };
   useEffect(() => {
     if (!items.length) { setRes(null); return; }
     let live = true;
@@ -92,7 +98,37 @@ export default function ScenarioBoard() {
   return (
     <section className={`gs ${busy ? "busy" : ""} ${items.length ? "has-res" : ""}`} aria-label="Oma skenaario">
       <h2 className="gs-logo">Entä jos<span>?</span></h2>
-      <Search />
+      <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
+        <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={building} enterKeyHint="search"
+          placeholder="Kuvaile skenaario omin sanoin" aria-label="Kuvaile skenaario omin sanoin" />
+        {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
+      </form>
+      <div className="gs-btns">
+        <button type="button" onClick={run} disabled={building || text.trim().length < 3}>Rakenna skenaario</button>
+      </div>
+      {live && (
+        <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
+          <div className="gs-ai-h">Tekoäly rakentaa skenaariota <span>“{live.q}”</span></div>
+          <ol className="gs-steps">
+            {live.steps.map((st, i) => {
+              const now = !live.done && i === live.steps.length - 1;
+              return <li key={i} className={now ? "run" : "ok"}><i aria-hidden>{now ? "" : "✓"}</i>{st}</li>;
+            })}
+            {live.done && !live.error && items.length > 0 && (
+              <li className={busy ? "run" : "ok"}><i aria-hidden>{busy ? "" : "✓"}</i>Lasketaan vaikutukset: 10 000 simuloitua kautta (malli: pelaajat 40 % · Elo 60 %)</li>
+            )}
+          </ol>
+          {live.text && <p className="gs-ai-t">{live.text}</p>}
+          {live.error && <div className="ag-err">{live.error}</div>}
+          {(live.sql.length > 0 || live.tools.length > 0) && (
+            <details className="gs-src">
+              <summary>Lähteet: {live.tools.join(" · ") || "data"}{live.sql.length ? ` · ${live.sql.length} SQL-kyselyä` : ""}</summary>
+              {live.sql.map((q, i) => <pre key={i}>{q}</pre>)}
+            </details>
+          )}
+        </div>
+      )}
       {items.length > 0 && (
         <div className="gs-chips" aria-label="Lukitut tulokset">
           {chips.map((c) => (
@@ -101,7 +137,7 @@ export default function ScenarioBoard() {
           ))}
         </div>
       )}
-      {!items.length && <p className="gs-hint">Tai lukitse tuloksia ottelukorteista (Panos → Lukitse).</p>}
+      {!items.length && !live && <p className="gs-hint">Tekoäly hakee tarvittavan datan, rakentaa skenaarion ja laskee sen ennustemallilla. Voit myös lukita tuloksia ottelukorteista.</p>}
       {err && <div className="ag-err gs-status">{err}</div>}
       {items.length > 0 && res && (
         <div className="gs-results">

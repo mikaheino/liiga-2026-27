@@ -153,3 +153,18 @@ Kuollut raja: alle 3 % tai yli 97 % seitsemän päivää → kortti himmenee. Jo
 myös pages-data-haaran (challenger_history). **Snowflake:** käyrät sijajakaumahistoriasta ja
 lukituskysymyksen tämä päivä proseduurilta; lukituskysymyksen historia ja Uutiskorjattu-käyrä
 tulevat J3:n latausreittiä (`sync_all` ei sovi: selainkirjautuminen ja Macin ennuste).
+
+## Etusivun hakukenttä: tekoäly rakentaa skenaarion livenä (7.11.2026)
+
+Käyttäjä: "Enemmän google liittymä, haluan että AI rakentaa livenä skenaarion, mutta hyödyntää
+SQL dataa ja koneoppimismalleja. Tiputa valmiit skenaariot pois."
+- `components/ScenarioBoard.tsx`: "Entä jos?" -sanamerkki, pyöreä hakukenttä ja yksi nappi
+  (Rakenna skenaario). Esimerkkinappi ja etusivun Kauden kysymykset (valmiit skenaariot) poistettu
+  (`SeasonQuestions` elää yhä joukkuesivulla).
+- `app/api/skenaario/rakenna` striimaa NDJSONina vaiheet (`step`), yhteenvedon (`text`),
+  agentin SQL-lauseet (`sql`, vain Snowflake) ja lopuksi kanoniset rivit (`done`). Selain lukitsee
+  rivit siruiksi, ja `/api/skenaario` laskee vaikutukset moottorilla (10 000 kautta).
+- Logiikka on `lib/scenarioDescribe.ts`:ssä (sama kuin `/api/skenaario/kuvaile`). Ohje kehottaa
+  hakemaan datan (liiga_kausi/liiga_ennuste = SQL) ennen skenaariota eikä arvaamaan.
+- Mitattu paikallisesti 7.11.: "KooKoo voittaa seuraavat viisi ottelua" valmis ~14 s:ssa, ja
+  "HPK häviää kolme seuraavaa" palautti kolme oikeaa ottelua (13.11., 14.11., 18.11.).
