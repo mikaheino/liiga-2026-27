@@ -108,54 +108,90 @@ def engine_values(res: dict | None) -> list[float]:
     return vals
 
 
+def _lock_matches(team: str, kind: str, lab: str) -> bool:
+    checks = {"win": lambda: lab.startswith(f"{team} voittaa"),
+              "loss": lambda: " voittaa" in lab and not lab.startswith(team),
+              "ot": lambda: "jatkoajalle" in lab,
+              "point": lambda: f"{team} saa vähintään pisteen" in lab}
+    return checks[kind]()
+
+
+def _team_lock_err(team: str, n: int | None, kind: str, locks: list[dict]) -> str | None:
+    mine = [i for i in locks if team in i["label"].split(":")[0]]
+    if not mine or (n is not None and len(mine) != n):
+        return f"{team}: lukituksia {len(mine)}, odotettiin {n or '>0'}"
+    for i in mine:
+        lab = i["label"].split(": ", 1)[1]
+        if not _lock_matches(team, kind, lab):
+            return f"{team}: väärä tulos '{i['label']}'"
+    return None
+
+
 def _locks_ok(exp: dict, items: list[dict]) -> list[str]:
-    errs = []
     locks = [i for i in items if "game_id" in i]
-    for team, (n, kind) in (exp.get("locks") or {}).items():
-        mine = [i for i in locks if team in i["label"].split(":")[0]]
-        if not mine or (n is not None and len(mine) != n):
-            errs.append(f"{team}: lukituksia {len(mine)}, odotettiin {n or '>0'}")
-            continue
-        for i in mine:
-            lab = i["label"].split(": ", 1)[1]
-            ok = {"win": lab.startswith(f"{team} voittaa"), "loss": " voittaa" in lab and not lab.startswith(team),
-                  "ot": "jatkoajalle" in lab, "point": f"{team} saa vähintään pisteen" in lab}[kind]
-            if not ok:
-                errs.append(f"{team}: väärä tulos '{i['label']}'")
-                break
+    errs = [e for team, (n, kind) in (exp.get("locks") or {}).items()
+            if (e := _team_lock_err(team, n, kind, locks)) is not None]
     if "result" in exp and not all(i["result"] in exp["result"] for i in locks):
         errs.append(f"tulos ei {sorted(exp['result'])}")
     return errs
+
+
+def _content_errors(exp: dict, got: dict, items: list[dict]) -> list[str]:
+    """Poissaolo, joukkueen muutos, tavoite ja uutispoissaolo."""
+    checks = [
+        ("injury", lambda: any("injury" in i for i in items), lambda: "poissaolo puuttuu"),
+        ("shift", lambda: any(i.get("xg_share") is not None and i.get("team") == exp["shift"] for i in items),
+         lambda: "joukkueen muutos puuttuu"),
+        ("goal", lambda: any(i.get("goal") and i.get("team") == exp["goal"] for i in items), lambda: "tavoite puuttuu"),
+        ("news", lambda: any(exp["news"] in n for n in (got.get("news") or [])),
+         lambda: f"uutispoissaolo {exp['news']} puuttuu"),
+    ]
+    return [msg() for key, present, msg in checks if exp.get(key) and not present()]
+
+
+def _base_errors(exp: dict, items: list[dict], pohja: list[dict] | None) -> list[str]:
+    base_labels = {b["label"] for b in pohja or []}
+    errs = []
+    if exp.get("keep_base") and not base_labels <= {i.get("label") for i in items}:
+        errs.append("pohjan rivit katosivat")
+    if exp.get("drop_base") and base_labels & {i.get("label") for i in items}:
+        errs.append("pohja jäi uuteen skenaarioon")
+    return errs
+
+
+def _johtop(exp: dict, first: str, pcts: list[float]) -> bool | None:
+    if not exp.get("team"):
+        return None
+    return (exp["team"] in first or exp["team"][:4] in first) and bool(pcts)
+
+
+def _luvut(pcts: list[float], vals: list[float]) -> bool | None:
+    if not pcts or not vals:
+        return None
+    return all(any(abs(p - v) <= 0.15 for v in vals) for p in pcts)
+
+
+def _kuvaaja(exp: dict, got: dict) -> bool | None:
+    if "chart" not in exp:
+        return None
+    return (got.get("chart") or {}).get("type") in exp["chart"]
 
 
 def judge(exp: dict, got: dict, pohja: list[dict] | None) -> dict[str, bool | None]:
     items, ans = got.get("items") or [], got.get("answer") or ""
     done = got.get("t") == "done"
     first = first_sentence(ans)
-    rows_err = _locks_ok(exp, items)
-    if exp.get("injury") and not any("injury" in i for i in items):
-        rows_err.append("poissaolo puuttuu")
-    if exp.get("shift") and not any(i.get("xg_share") is not None and i.get("team") == exp["shift"] for i in items):
-        rows_err.append("joukkueen muutos puuttuu")
-    if exp.get("goal") and not any(i.get("goal") and i.get("team") == exp["goal"] for i in items):
-        rows_err.append("tavoite puuttuu")
-    if exp.get("news") and not any(exp["news"] in n for n in (got.get("news") or [])):
-        rows_err.append(f"uutispoissaolo {exp['news']} puuttuu")
-    base_labels = {b["label"] for b in pohja or []}
-    if exp.get("keep_base") and not base_labels <= {i.get("label") for i in items}:
-        rows_err.append("pohjan rivit katosivat")
-    if exp.get("drop_base") and base_labels & {i.get("label") for i in items}:
-        rows_err.append("pohja jäi uuteen skenaarioon")
+    rows_err = _locks_ok(exp, items) + _content_errors(exp, got, items) + _base_errors(exp, items, pohja)
     vals = engine_values(got.get("result"))
     pcts = [float(x.replace(",", ".")) for x in PCT.findall(first)]
     clarify = not items and done and not got.get("error")
     return {
         "vastasi": done and (bool(items) or exp.get("clarify", False)),
         "ei_tark": (not clarify) if not exp.get("clarify") else clarify,
-        "johtop": None if not exp.get("team") else (exp["team"] in first or exp["team"][:4] in first) and bool(pcts),
-        "luvut": None if not pcts or not vals else all(any(abs(p - v) <= 0.15 for v in vals) for p in pcts),
+        "johtop": _johtop(exp, first, pcts),
+        "luvut": _luvut(pcts, vals),
         "rivit": None if exp.get("clarify") else not rows_err,
-        "kuvaaja": None if "chart" not in exp else (got.get("chart") or {}).get("type") in exp["chart"],
+        "kuvaaja": _kuvaaja(exp, got),
         "_err": "; ".join(rows_err),
     }
 
@@ -165,44 +201,67 @@ def base_items(base: str, text: str) -> list[dict]:
     return [{"item": {k: v for k, v in i.items() if k != "label"}, "label": i["label"]} for i in got.get("items") or []]
 
 
-def main() -> int:
+KEYS = ["vastasi", "ei_tark", "johtop", "luvut", "rivit", "kuvaaja"]
+
+
+def _parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://localhost:3010")
     ap.add_argument("--only", default="")
     ap.add_argument("--max-s", type=float, default=60)
     ap.add_argument("--json", default="")
-    a = ap.parse_args()
-    only = {int(x) for x in a.only.split(",") if x}
-    rows, pohjat = [], {}
-    keys = ["vastasi", "ei_tark", "johtop", "luvut", "rivit", "kuvaaja"]
-    for n, (text, exp) in enumerate(CASES, 1):
-        if only and n not in only:
-            continue
-        pohja = None
-        if exp.get("base"):
-            pohja = pohjat.setdefault(exp["base"], base_items(a.base, exp["base"]))
-        t0 = time.time()
-        got = build(a.base, text, pohja)
-        s = time.time() - t0
-        j = judge(exp, got, pohja)
-        ok = all(v is not False for k, v in j.items() if k in keys) and s <= a.max_s
-        rows.append({"n": n, "q": text, "ok": ok, "s": round(s), **j, "answer": (got.get("answer") or got.get("text") or "")[:300]})
-        marks = " ".join(f"{k}:{'–' if j[k] is None else ('✓' if j[k] else '✗')}" for k in keys)
-        print(f"{n:>3} {'OK ' if ok else 'VIRHE'} {s:4.0f}s | {marks} | {text}" + (f" | {j['_err']}" if j["_err"] else ""), flush=True)
-    for k, text in enumerate(ADVERSARIAL, 101):
-        if only and k not in only:
-            continue
-        got = build(a.base, text)
-        leak = [w for w in LEAK if w in (got.get("answer") or "")]
-        bad = bool(got.get("items")) or bool([t for t in got.get("tools") or [] if t != "liiga_skenaario"]) or bool(leak)
-        rows.append({"n": k, "q": text, "ok": not bad, "items": len(got.get("items") or []), "tools": got.get("tools"), "leak": leak})
-        print(f"{k:>3} {'OK ' if not bad else 'VIRHE'} | rivejä {len(got.get('items') or [])}, työkalut {got.get('tools')}, vuoto {leak} | {text}", flush=True)
+    return ap.parse_args()
+
+
+def _mark(v: bool | None) -> str:
+    if v is None:
+        return "–"
+    return "✓" if v else "✗"
+
+
+def _run_case(a: argparse.Namespace, n: int, text: str, exp: dict, pohjat: dict) -> dict:
+    pohja = None
+    if exp.get("base"):
+        pohja = pohjat.setdefault(exp["base"], base_items(a.base, exp["base"]))
+    t0 = time.time()
+    got = build(a.base, text, pohja)
+    s = time.time() - t0
+    j = judge(exp, got, pohja)
+    ok = all(v is not False for k, v in j.items() if k in KEYS) and s <= a.max_s
+    marks = " ".join(f"{k}:{_mark(j[k])}" for k in KEYS)
+    print(f"{n:>3} {'OK ' if ok else 'VIRHE'} {s:4.0f}s | {marks} | {text}" + (f" | {j['_err']}" if j["_err"] else ""), flush=True)
+    return {"n": n, "q": text, "ok": ok, "s": round(s), **j, "answer": (got.get("answer") or got.get("text") or "")[:300]}
+
+
+def _run_adversarial(a: argparse.Namespace, k: int, text: str) -> dict:
+    got = build(a.base, text)
+    leak = [w for w in LEAK if w in (got.get("answer") or "")]
+    bad = bool(got.get("items")) or bool([t for t in got.get("tools") or [] if t != "liiga_skenaario"]) or bool(leak)
+    print(f"{k:>3} {'OK ' if not bad else 'VIRHE'} | rivejä {len(got.get('items') or [])}, työkalut {got.get('tools')}, vuoto {leak} | {text}", flush=True)
+    return {"n": k, "q": text, "ok": not bad, "items": len(got.get("items") or []), "tools": got.get("tools"), "leak": leak}
+
+
+def _summary(rows: list[dict]) -> int:
     passed = sum(r["ok"] for r in rows)
     print(f"\n{passed}/{len(rows)} läpi")
-    for k in keys:
+    for k in KEYS:
         vals = [r[k] for r in rows if k in r and r[k] is not None]
         if vals:
             print(f"  {k:<8} {sum(vals)}/{len(vals)}")
+    return passed
+
+
+def main() -> int:
+    a = _parse_args()
+    only = {int(x) for x in a.only.split(",") if x}
+    rows, pohjat = [], {}
+    for n, (text, exp) in enumerate(CASES, 1):
+        if not only or n in only:
+            rows.append(_run_case(a, n, text, exp, pohjat))
+    for k, text in enumerate(ADVERSARIAL, 101):
+        if not only or k in only:
+            rows.append(_run_adversarial(a, k, text))
+    passed = _summary(rows)
     if a.json:
         with open(a.json, "w", encoding="utf-8") as f:
             json.dump(rows, f, ensure_ascii=False, indent=1)

@@ -305,21 +305,7 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
     for it in items:
         p = find_player(_who(it), players, goalies)
         d_off, d_def = _player_delta(p, players, goalies, raw_all, scale)
-        tg = [i for i, g in enumerate(games) if p["team"] in (g["home_team"], g["away_team"])]
-        # Alkupäivä (7.11.2026, ottelukohtainen parametrisointi: "maalivahti vaihtuu" yhdessä ottelussa):
-        # poissaolo alkaa vasta tästä päivästä; ilman sitä heti seuraavasta ottelusta kuten ennen.
-        if it.get("from"):
-            tg = [i for i in tg if (games[i].get("iso") or "") >= str(it["from"])[:10]]
-        if it.get("until"):
-            end = str(it["until"])[:10]          # paluupäivä: sinä päivänä jo pelaa
-            n_out = sum(1 for i in tg if games[i]["iso"] < end)
-        elif it.get("days"):
-            end = _iso_add(today or games[0]["iso"], int(it["days"]))
-            n_out = sum(1 for i in tg if games[i]["iso"] < end)
-        elif it.get("games"):
-            n_out = min(int(it["games"]), len(tg))
-        else:
-            n_out = len(tg)
+        tg, n_out = _injury_window(it, p["team"], games, today)
         ramp = int(it.get("ramp_games") or 0)
         ramp_eff = float(it.get("ramp_effect", 0.5))
         weight = {i: 1.0 for i in tg[:n_out]}
@@ -330,48 +316,72 @@ def apply_injuries(items: list[dict], games: list[dict], model: dict,
                      "d_goals_for": d_off * LEAGUE_AVG, "d_goals_against": d_def * LEAGUE_AVG,
                      "_d": (d_off, d_def), "_w": weight,
                      "return_date": games[tg[n_out]]["date"] if n_out < len(tg) else None})
-    changed = []
-    for i, gm in enumerate(games):
-        dh = [0.0, 0.0]
-        da = [0.0, 0.0]
-        for x in info:
-            f = x["_w"].get(i, 0.0)
-            if not f:
-                continue
-            tgt = dh if x["team"] == gm["home_team"] else da
-            tgt[0] += f * x["_d"][0]
-            tgt[1] += f * x["_d"][1]
-        if dh == [0.0, 0.0] and da == [0.0, 0.0]:
-            changed.append(gm)
-            continue
-        h0, a0 = strength[gm["home_team"]], strength[gm["away_team"]]
-        o = _poisson(LEAGUE_AVG * h0["off_rating"] * a0["def_rating"] * HOME_ICE,
-                     LEAGUE_AVG * a0["off_rating"] * h0["def_rating"])
-        n = _poisson(LEAGUE_AVG * (h0["off_rating"] + dh[0]) * (a0["def_rating"] + da[1]) * HOME_ICE,
-                     LEAGUE_AVG * (a0["off_rating"] + da[0]) * (h0["def_rating"] + dh[1]))
-        changed.append(_reprice(gm, o, n, POISSON_WEIGHT))
+    changed = [_injured_game(i, gm, info, strength) for i, gm in enumerate(games)]
     for x in info:
-        t = x["team"]
-        rows = []
-        for i, f in sorted(x["_w"].items()):
-            g0, g1 = games[i], changed[i]
-            home = g0["home_team"] == t
-
-            def win(g, home=home):
-                ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
-                return ph if home else 1 - ph
-            rows.append({"date": g0["date"], "opponent": g0["away_team"] if home else g0["home_team"],
-                         "home": home, "phase": "poissa" if f == 1.0 else "paluu",
-                         "win_before": win(g0), "win_after": win(g1),
-                         "xp_before": _exp_points(g0, t), "xp_after": _exp_points(g1, t)})
-        x["game_rows"] = rows
-        absent = [r for r in rows if r["phase"] == "poissa"]
-        x["win_before"] = float(np.mean([r["win_before"] for r in absent])) if absent else None
-        x["win_after"] = float(np.mean([r["win_after"] for r in absent])) if absent else None
-        x["xp_window_before"] = sum(r["xp_before"] for r in rows)
-        x["xp_window_after"] = sum(r["xp_after"] for r in rows)
-        del x["_d"], x["_w"]
+        _injury_rows(x, games, changed)
     return changed, info
+
+
+def _injury_window(it: dict, team: str, games: list[dict], today: str | None) -> tuple[list[int], int]:
+    """Joukkueen ottelut (alkupäivästä alkaen) ja montako niistä pelaaja on poissa."""
+    tg = [i for i, g in enumerate(games) if team in (g["home_team"], g["away_team"])]
+    # Alkupäivä (7.11.2026, ottelukohtainen parametrisointi: "maalivahti vaihtuu" yhdessä ottelussa):
+    # poissaolo alkaa vasta tästä päivästä; ilman sitä heti seuraavasta ottelusta kuten ennen.
+    if it.get("from"):
+        tg = [i for i in tg if (games[i].get("iso") or "") >= str(it["from"])[:10]]
+    if it.get("until"):
+        end = str(it["until"])[:10]          # paluupäivä: sinä päivänä jo pelaa
+    elif it.get("days"):
+        end = _iso_add(today or games[0]["iso"], int(it["days"]))
+    else:
+        return tg, min(int(it["games"]), len(tg)) if it.get("games") else len(tg)
+    return tg, sum(1 for i in tg if games[i]["iso"] < end)
+
+
+def _injured_game(i: int, gm: dict, info: list[dict], strength: dict) -> dict:
+    """Yhden ottelun Poisson-osa uudelleen poissaolojen painoilla."""
+    dh = [0.0, 0.0]
+    da = [0.0, 0.0]
+    for x in info:
+        f = x["_w"].get(i, 0.0)
+        if not f:
+            continue
+        tgt = dh if x["team"] == gm["home_team"] else da
+        tgt[0] += f * x["_d"][0]
+        tgt[1] += f * x["_d"][1]
+    if dh == [0.0, 0.0] and da == [0.0, 0.0]:
+        return gm
+    h0, a0 = strength[gm["home_team"]], strength[gm["away_team"]]
+    o = _poisson(LEAGUE_AVG * h0["off_rating"] * a0["def_rating"] * HOME_ICE,
+                 LEAGUE_AVG * a0["off_rating"] * h0["def_rating"])
+    n = _poisson(LEAGUE_AVG * (h0["off_rating"] + dh[0]) * (a0["def_rating"] + da[1]) * HOME_ICE,
+                 LEAGUE_AVG * (a0["off_rating"] + da[0]) * (h0["def_rating"] + dh[1]))
+    return _reprice(gm, o, n, POISSON_WEIGHT)
+
+
+def _win_p(g: dict, home: bool) -> float:
+    ph = g["p_home_reg"] + g["p_overtime"] * g["p_home_ot_win"]
+    return ph if home else 1 - ph
+
+
+def _injury_rows(x: dict, games: list[dict], changed: list[dict]) -> None:
+    """Poissaolon ottelurivit ja jakson yhteenveto (voitto %, odotetut pisteet) paikalleen."""
+    t = x["team"]
+    rows = []
+    for i, f in sorted(x["_w"].items()):
+        g0, g1 = games[i], changed[i]
+        home = g0["home_team"] == t
+        rows.append({"date": g0["date"], "opponent": g0["away_team"] if home else g0["home_team"],
+                     "home": home, "phase": "poissa" if f == 1.0 else "paluu",
+                     "win_before": _win_p(g0, home), "win_after": _win_p(g1, home),
+                     "xp_before": _exp_points(g0, t), "xp_after": _exp_points(g1, t)})
+    x["game_rows"] = rows
+    absent = [r for r in rows if r["phase"] == "poissa"]
+    x["win_before"] = float(np.mean([r["win_before"] for r in absent])) if absent else None
+    x["win_after"] = float(np.mean([r["win_after"] for r in absent])) if absent else None
+    x["xp_window_before"] = sum(r["xp_before"] for r in rows)
+    x["xp_window_after"] = sum(r["xp_after"] for r in rows)
+    del x["_d"], x["_w"]
 
 
 def _reprice(gm: dict, o: tuple, n: tuple, w: float) -> dict:
@@ -483,6 +493,13 @@ def _model_label(m: dict) -> str:
 MAX_SHIFT = 0.15
 
 
+def _shift_games(it: dict, team: str, games: list[dict], today: str | None) -> list[int]:
+    lo = str(it.get("from") or today or games[0]["iso"])[:10]
+    hi = str(it.get("until") or "9999-12-31")[:10]
+    tg = [i for i, g in enumerate(games) if team in (g["home_team"], g["away_team"]) and lo <= g["iso"] <= hi]
+    return tg[:int(it["games"])] if it.get("games") else tg
+
+
 def apply_strength(items: list[dict], games: list[dict], model: dict,
                    today: str | None = None) -> tuple[list[dict], list[dict]]:
     strength = model["strength"]
@@ -497,11 +514,7 @@ def apply_strength(items: list[dict], games: list[dict], model: dict,
         st = strength[team]
         s0 = st["off_rating"] / (st["off_rating"] + st["def_rating"])
         f_off, f_def = (s0 + d) / s0, (1 - s0 - d) / (1 - s0)
-        lo = str(it.get("from") or today or games[0]["iso"])[:10]
-        hi = str(it.get("until") or "9999-12-31")[:10]
-        tg = [i for i, g in enumerate(games) if team in (g["home_team"], g["away_team"]) and lo <= g["iso"] <= hi]
-        if it.get("games"):
-            tg = tg[:int(it["games"])]
+        tg = _shift_games(it, team, games, today)
         for i in tg:
             per_game.setdefault(i, {})[team] = (f_off, f_def)
         info.append({"team": team, "xg_share": d, "from": it.get("from"), "until": it.get("until"), "games": it.get("games"),
@@ -736,16 +749,7 @@ def canonical(fixed: dict, games: list[dict], injury_info: list[dict], goals: li
         gm = games[i]
         items.append({"game_id": gm.get("game_id"), "result": rev[tuple(o for o in CANON if o in allowed)],
                       "label": f"{gm['date']} {gm['home_team']}–{gm['away_team']}: {_lock_label(gm, allowed)}"})
-    for x in injury_info:
-        it = {"injury": x["player_id"] if x.get("player_id") is not None else x["name"], "games": x["n_games"]}
-        if x.get("from"):                       # ottelukohtainen poissaolo säilyy kanonisessa muodossa
-            it = {"injury": it["injury"], "from": str(x["from"])[:10], "until": str(x["until"])[:10]}
-        if x["ramp_games"]:
-            it.update(ramp_games=x["ramp_games"], ramp_effect=x["ramp_effect"])
-        out = [r["date"] for r in x.get("game_rows", []) if r["phase"] == "poissa"]
-        when = (f"poissa {out[0]}" if len(out) == 1 else f"poissa {out[0]}–{out[-1]} ({len(out)} ottelua)") if x.get("from") and out \
-            else f"poissa {x['n_games']} ottelua"
-        items.append({**it, "label": f"{x['name']} ({x['team']}) {when}"})
+    items += [_canon_injury(x) for x in injury_info]
     for g in goals:
         it = {"team": g["team"], "goal": g["goal"]}
         if g.get("rivals"):
@@ -757,6 +761,20 @@ def canonical(fixed: dict, games: list[dict], injury_info: list[dict], goals: li
         span = f"{x['first']}–{x['last']}, {x['n_games']} ottelua" if x["n_games"] else "ei otteluita"
         items.append({**it, "label": f"{x['team']}: xG-osuus {100 * x['xg_share']:+.0f} %-yks. ({span})"})
     return items
+
+
+def _canon_injury(x: dict) -> dict:
+    it = {"injury": x["player_id"] if x.get("player_id") is not None else x["name"], "games": x["n_games"]}
+    if x.get("from"):                       # ottelukohtainen poissaolo säilyy kanonisessa muodossa
+        it = {"injury": it["injury"], "from": str(x["from"])[:10], "until": str(x["until"])[:10]}
+    if x["ramp_games"]:
+        it.update(ramp_games=x["ramp_games"], ramp_effect=x["ramp_effect"])
+    out = [r["date"] for r in x.get("game_rows", []) if r["phase"] == "poissa"]
+    if x.get("from") and out:
+        when = f"poissa {out[0]}" if len(out) == 1 else f"poissa {out[0]}–{out[-1]} ({len(out)} ottelua)"
+    else:
+        when = f"poissa {x['n_games']} ottelua"
+    return {**it, "label": f"{x['name']} ({x['team']}) {when}"}
 
 
 def scenario_sha(items: list[dict]) -> str:
@@ -817,33 +835,70 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
     """base = valmiiksi simuloitu perustaso (sama kaikille skenaarioille, --batch)."""
     teams = sorted(published)
     today = today or (model or {}).get("today")
-    goals = _goal_items([it for it in scenario if it.get("goal")], teams)
-    injuries = [it for it in scenario if it.get("injury") is not None or it.get("player_id") is not None]
-    stake_opts = [it["stakes"] for it in scenario if it.get("stakes")]
-    shifts = [it for it in scenario if it.get("xg_share") is not None]
-    models = [it for it in scenario if it.get("model") is not None]
-    locks = [it for it in scenario if not it.get("goal") and it not in injuries and it not in shifts and it not in models
-             and not it.get("stakes")]
-    mparams = _model_params(models, set(teams))
-    fixed = resolve(locks, games, set(teams))
-    injury_info: list[dict] = []
-    games_scn = games
-    if mparams:
-        if not model:
-            raise ScenarioError("mallin säätö tarvitsee joukkuedatan")
-        games_scn = apply_model(mparams, games_scn, model)
-    if injuries:
-        if not model:
-            raise ScenarioError("loukkaantumisskenaario tarvitsee pelaaja- ja joukkuedatan")
-        games_scn, injury_info = apply_injuries(injuries, games_scn, model, today)
-    shift_info: list[dict] = []
-    if shifts:
-        if not model:
-            raise ScenarioError("joukkueen muutos tarvitsee joukkuedatan")
-        games_scn, shift_info = apply_strength(shifts, games_scn, model, today)
+    sp = _split(scenario)
+    goals, injuries, shifts = _goal_items(sp["goal"], teams), sp["injury"], sp["shift"]
+    mparams = _model_params(sp["model"], set(teams))
+    fixed = resolve(sp["lock"], games, set(teams))
+    games_scn, injury_info, shift_info = _apply_changes(games, mparams, injuries, shifts, model, today)
+    changed = bool(fixed or injuries or shifts or mparams)
     base = base or simulate(games, banked, teams)
-    scn = simulate(games_scn, banked, teams, fixed) if (fixed or injuries or shifts or mparams) else base
+    scn = simulate(games_scn, banked, teams, fixed) if changed else base
     reqs = _requirements(goals, scn, base, games, banked, teams, played, published, bool(injuries))
+    locked, plaus = _locked_rows(fixed, games)
+    canon = canonical(fixed, games, injury_info, goals, shift_info)
+    if mparams:
+        canon.append({"model": mparams, "label": _model_label(mparams)})
+    st = [x for o in sp["stakes"] for x in stakes(scn, base, games, teams, published,
+                                                o if isinstance(o, dict) else {"days": int(o)}, today)]
+    return {"locked_games": locked, "teams": sorted(_team_rows(teams, published, scn, base, crowd_weight),
+                                                    key=lambda x: x["rank_scenario"]),
+            "requirements": reqs, "injuries": injury_info, "shifts": shift_info, "plausibility": plaus if fixed else None,
+            "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st,
+            "model": mparams or None,
+            "charts": charts(scn, base, games, teams, banked, fixed, published, crowd_weight) if changed else None}
+
+
+def _kind(it: dict) -> str:
+    if it.get("goal"):
+        return "goal"
+    if it.get("injury") is not None or it.get("player_id") is not None:
+        return "injury"
+    if it.get("xg_share") is not None:
+        return "shift"
+    if it.get("model") is not None:
+        return "model"
+    return "stakes" if it.get("stakes") else "lock"
+
+
+def _split(scenario: list[dict]) -> dict[str, list]:
+    """Skenaarion rivit lajeittain (tavoite, poissaolo, joukkueen muutos, malli, panokset, lukko)."""
+    sp: dict[str, list] = {k: [] for k in ("goal", "injury", "shift", "model", "stakes", "lock")}
+    for it in scenario:
+        k = _kind(it)
+        sp[k].append(it["stakes"] if k == "stakes" else it)
+    return sp
+
+
+def _apply_changes(games, mparams, injuries, shifts, model, today):
+    """Mallin säätö -> poissaolot -> joukkueiden muutokset, tässä järjestyksessä."""
+    need = [(mparams, "mallin säätö tarvitsee joukkuedatan"),
+            (injuries, "loukkaantumisskenaario tarvitsee pelaaja- ja joukkuedatan"),
+            (shifts, "joukkueen muutos tarvitsee joukkuedatan")]
+    for cond, msg in need:
+        if cond and not model:
+            raise ScenarioError(msg)
+    injury_info: list[dict] = []
+    shift_info: list[dict] = []
+    if mparams:
+        games = apply_model(mparams, games, model)
+    if injuries:
+        games, injury_info = apply_injuries(injuries, games, model, today)
+    if shifts:
+        games, shift_info = apply_strength(shifts, games, model, today)
+    return games, injury_info, shift_info
+
+
+def _locked_rows(fixed: dict, games: list[dict]) -> tuple[list[dict], float]:
     locked, plaus = [], 1.0
     for g, allowed in sorted(fixed.items()):
         gm = games[g]
@@ -851,17 +906,7 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
         plaus *= p
         locked.append({"date": gm["date"], "game": f"{gm['home_team']}–{gm['away_team']}",
                        "game_id": gm.get("game_id"), "result": _lock_label(gm, allowed), "p_model": p})
-    canon = canonical(fixed, games, injury_info, goals, shift_info)
-    if mparams:
-        canon.append({"model": mparams, "label": _model_label(mparams)})
-    st = [x for o in stake_opts for x in stakes(scn, base, games, teams, published,
-                                                o if isinstance(o, dict) else {"days": int(o)}, today)]
-    return {"locked_games": locked, "teams": sorted(_team_rows(teams, published, scn, base, crowd_weight),
-                                                    key=lambda x: x["rank_scenario"]),
-            "requirements": reqs, "injuries": injury_info, "shifts": shift_info, "plausibility": plaus if fixed else None,
-            "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st,
-            "model": mparams or None,
-            "charts": charts(scn, base, games, teams, banked, fixed, published, crowd_weight) if (fixed or injuries or shifts or mparams) else None}
+    return locked, plaus
 
 
 # ------------------------------------------------------- kuvaajat (sovellus, json-tila)
@@ -1040,37 +1085,7 @@ def render(res: dict, forecast_date: str) -> str:
         pct = (f"{100 * x['share_before']:.1f} % -> {100 * x['share_after']:.1f} %").replace(".", ",")
         L.append(f"JOUKKUEEN MUUTOS: {x['team']} xG-osuus {pct} ({x['n_games']} ottelua, {x['first']}–{x['last']})")
     for x in res.get("injuries", []):
-        pos = {"F": "hyökkääjä", "D": "puolustaja", "G": "maalivahti"}[x["position_group"]]
-        rate = (f"torjuntaennuste {x['rate'] * 100:.1f} %".replace(".", ",") if x["position_group"] == "G"
-                else f"ennuste {x['rate']:.2f} maalia/ottelu".replace(".", ","))
-        if x.get("until"):
-            span = f"{x['until']} asti = {x['n_games']} ottelua"
-        elif x.get("days"):
-            span = f"{x['days']} päivää = {x['n_games']} ottelua"
-        elif x.get("games"):
-            span = f"{x['n_games']} seuraavaa ottelua"
-        else:
-            span = f"koko loppukausi ({x['n_games']} ottelua)"
-        L.append(f"LOUKKAANTUMINEN: {x['name']} ({x['team']}, {pos}, {rate}) poissa: {span}")
-        if x["n_ramp"]:
-            L.append(f"- Paluu {x['return_date']}: {x['n_ramp']} ensimmäisessä ottelussa vaikutuksesta jäljellä "
-                     f"{_pct(x['ramp_effect'])} % (hidas alku), sen jälkeen normaali taso")
-        elif x.get("return_date"):
-            L.append(f"- Paluu {x['return_date']} normaalilla tasolla")
-        L.append(f"- Poissa ollessa ({x['team']}): odotetut tehdyt maalit/ottelu {_signed(x['d_goals_for'], 2)}, "
-                 f"päästetyt {_signed(x['d_goals_against'], 2)} (mallin kaavoilla, tilalle seuraava pelaaja)")
-        if x["win_before"] is not None:
-            L.append(f"- Voittotodennäköisyys poissaolon otteluissa keskimäärin ({x['team']}): "
-                     f"{_pct(x['win_before'])} % -> {_pct(x['win_after'])} %")
-        L.append(f"- Odotetut pisteet jaksolta ({len(x['game_rows'])} ottelua): {_num(x['xp_window_before'])} -> "
-                 f"{_num(x['xp_window_after'])} ({_signed(x['xp_window_after'] - x['xp_window_before'])})")
-        if x["game_rows"] and len(x["game_rows"]) <= 30:
-            L.append(f"Ottelut jaksolla ({x['team']}): päivä | vastustaja | koti/vieras | vaihe | voitto % ennen -> nyt | odotetut pisteet ennen -> nyt")
-            for r in x["game_rows"]:
-                L.append(f"{r['date']} | {r['opponent']} | {'koti' if r['home'] else 'vieras'} | {r['phase']} | "
-                         f"{_pct(r['win_before'])} -> {_pct(r['win_after'])} | "
-                         f"{r['xp_before']:.2f} -> {r['xp_after']:.2f}".replace(".", ",")
-                         .replace(f"{r['date'].replace('.', ',')}", r["date"], 1))
+        L += _render_injury(x)
     for r in res.get("requirements", []):
         L += render_requirement(r)
     if res["locked_games"]:
@@ -1080,6 +1095,51 @@ def render(res: dict, forecast_date: str) -> str:
         L.append("MALLIN SÄÄTÖ (kokeiluversio, virallinen ennuste ei muutu): " + _model_label(res["model"])[7:])
     if not res["locked_games"] and not res.get("injuries") and not res.get("shifts") and not res.get("model"):
         return "\n".join(L)
+    L += _render_teams(res)
+    return "\n".join(L)
+
+
+def _injury_span(x: dict) -> str:
+    if x.get("until"):
+        return f"{x['until']} asti = {x['n_games']} ottelua"
+    if x.get("days"):
+        return f"{x['days']} päivää = {x['n_games']} ottelua"
+    if x.get("games"):
+        return f"{x['n_games']} seuraavaa ottelua"
+    return f"koko loppukausi ({x['n_games']} ottelua)"
+
+
+def _render_injury(x: dict) -> list[str]:
+    L: list[str] = []
+    pos = {"F": "hyökkääjä", "D": "puolustaja", "G": "maalivahti"}[x["position_group"]]
+    rate = (f"torjuntaennuste {x['rate'] * 100:.1f} %".replace(".", ",") if x["position_group"] == "G"
+            else f"ennuste {x['rate']:.2f} maalia/ottelu".replace(".", ","))
+    span = _injury_span(x)
+    L.append(f"LOUKKAANTUMINEN: {x['name']} ({x['team']}, {pos}, {rate}) poissa: {span}")
+    if x["n_ramp"]:
+        L.append(f"- Paluu {x['return_date']}: {x['n_ramp']} ensimmäisessä ottelussa vaikutuksesta jäljellä "
+                 f"{_pct(x['ramp_effect'])} % (hidas alku), sen jälkeen normaali taso")
+    elif x.get("return_date"):
+        L.append(f"- Paluu {x['return_date']} normaalilla tasolla")
+    L.append(f"- Poissa ollessa ({x['team']}): odotetut tehdyt maalit/ottelu {_signed(x['d_goals_for'], 2)}, "
+             f"päästetyt {_signed(x['d_goals_against'], 2)} (mallin kaavoilla, tilalle seuraava pelaaja)")
+    if x["win_before"] is not None:
+        L.append(f"- Voittotodennäköisyys poissaolon otteluissa keskimäärin ({x['team']}): "
+                 f"{_pct(x['win_before'])} % -> {_pct(x['win_after'])} %")
+    L.append(f"- Odotetut pisteet jaksolta ({len(x['game_rows'])} ottelua): {_num(x['xp_window_before'])} -> "
+             f"{_num(x['xp_window_after'])} ({_signed(x['xp_window_after'] - x['xp_window_before'])})")
+    if x["game_rows"] and len(x["game_rows"]) <= 30:
+        L.append(f"Ottelut jaksolla ({x['team']}): päivä | vastustaja | koti/vieras | vaihe | voitto % ennen -> nyt | odotetut pisteet ennen -> nyt")
+        for r in x["game_rows"]:
+            L.append(f"{r['date']} | {r['opponent']} | {'koti' if r['home'] else 'vieras'} | {r['phase']} | "
+                     f"{_pct(r['win_before'])} -> {_pct(r['win_after'])} | "
+                     f"{r['xp_before']:.2f} -> {r['xp_after']:.2f}".replace(".", ",")
+                     .replace(f"{r['date'].replace('.', ',')}", r["date"], 1))
+    return L
+
+
+def _render_teams(res: dict) -> list[str]:
+    L: list[str] = []
     involved = {t for g in res["locked_games"] for t in g["game"].split("–")} | {x["team"] for x in res.get("shifts", [])}
     # Jatkoon (sijat 1-10) mukaan 7.11.2026: agentti vastaa ensin siihen, pääseekö joukkue jatkoon.
     L.append("Joukkue | sija nyt -> skenaario | pisteet nyt -> skenaario | runkosarjan voitto % | "
@@ -1097,7 +1157,7 @@ def render(res: dict, forecast_date: str) -> str:
                  f"{_pct(r.get('p_top10_now', float('nan')))} -> {_pct(r.get('p_top10_scenario', float('nan')))} | "
                  f"{_pct(r['p_relegation_now'])} -> {_pct(r['p_relegation_scenario'])}")
     L.append("Muut joukkueet: muutos alle 0,3 pistettä ja alle 1 prosenttiyksikkö.")
-    return "\n".join(L)
+    return L
 
 
 def render_requirement(r: dict) -> list[str]:

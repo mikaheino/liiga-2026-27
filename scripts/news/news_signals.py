@@ -52,12 +52,20 @@ def canon(raw: str, teams: list[str]) -> str | None:
     return next((t for t in teams if any(p == t or p.endswith(f" {t}") for p in parts)), None)
 
 
-def build(con) -> tuple[list[tuple], list[tuple]]:
-    teams = [r[0] for r in con.execute("SELECT DISTINCT team FROM model.roster_2026_27").fetchall()]
-    roster = [(r[0], r[1]) for r in con.execute("SELECT player, team FROM news_roster WHERE player LIKE '% %'").fetchall()]
+def _candidates(con) -> dict[str, list[tuple[str, str]]]:
     cands: dict[str, list[tuple[str, str]]] = {}
     for url, player, team in con.execute("SELECT url, player, team FROM news_candidates").fetchall():
         cands.setdefault(url, []).append((player, team))
+    return cands
+
+
+def _found_players(kind: str, title: str | None, summary: str | None, url: str, news_team: str | None,
+                   cands: dict[str, list[tuple[str, str]]], roster: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    text = title if kind == "signing" else f"{title or ''} {summary or ''}"
+    return cands.get(url, []) + [(p, t) for p, t in roster if p in (text or "") and (not news_team or t == news_team)]
+
+
+def _signals(con, teams: list[str], roster: list[tuple[str, str]], cands: dict[str, list[tuple[str, str]]]) -> list[tuple]:
     signals, seen = [], set()
     for d, source, team, flags, title, summary, url in con.execute(
             "SELECT SUBSTR(CAST(published AS VARCHAR), 1, 10), source, team, flags, title, summary, url "
@@ -66,14 +74,24 @@ def build(con) -> tuple[list[tuple], list[tuple]]:
         if not kind:
             continue
         news_team = canon(team, teams)
-        text = title if kind == "signing" else f"{title or ''} {summary or ''}"
-        found = cands.get(url, []) + [(p, t) for p, t in roster if p in (text or "") and (not news_team or t == news_team)]
-        for player, pteam in found:
+        for player, pteam in _found_players(kind, title, summary, url, news_team, cands, roster):
             t = canon(pteam, teams) or news_team
             if t and (player, kind) not in seen:
                 seen.add((player, kind))
                 signals.append((d, source, t, kind, player))
-    log = [(a, hashlib.sha1((u or "").encode()).hexdigest()[:12] if u else "", p, t, k, s, e)
+    return signals
+
+
+def _url_hash(u: str | None) -> str:
+    return hashlib.sha1((u or "").encode()).hexdigest()[:12] if u else ""
+
+
+def build(con) -> tuple[list[tuple], list[tuple]]:
+    teams = [r[0] for r in con.execute("SELECT DISTINCT team FROM model.roster_2026_27").fetchall()]
+    roster = [(r[0], r[1]) for r in con.execute("SELECT player, team FROM news_roster WHERE player LIKE '% %'").fetchall()]
+    cands = _candidates(con)
+    signals = _signals(con, teams, roster, cands)
+    log = [(a, _url_hash(u), p, t, k, s, e)
            for a, u, p, t, k, s, e in con.execute(
                "SELECT approved_at, url, player, team, kind, start, until FROM news_absences ORDER BY approved_at").fetchall()]
     return signals, log
