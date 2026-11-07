@@ -99,7 +99,7 @@ function DistChart({ d, team }: { d: { now: number[]; scenario: number[] }; team
   );
 }
 
-function GamesChart({ games, plausibility }: { games: LockedGame[]; plausibility: number | null }) {
+function GamesChart({ games }: { games: LockedGame[] }) {
   return (
     <figure className="sc-chart">
       <figcaption>Lukitut ottelut: kuinka todennäköisenä malli pitää kutakin tulosta</figcaption>
@@ -108,12 +108,12 @@ function GamesChart({ games, plausibility }: { games: LockedGame[]; plausibility
           <li key={i}>
             <span className="sc-g">{g.date} {g.game}: <b>{g.result}</b></span>
             <span className="sc-pbar" role="img" aria-label={`${pc(g.p_model)} %`}><i style={{ width: `${Math.max(2, 100 * g.p_model)}%` }} /></span>
-            <span className="sc-p">{pc(g.p_model)} %</span>
+            <span className="sc-p">{pc(g.p_model)}&nbsp;%</span>
           </li>
         ))}
       </ul>
       {games.length > 12 && <p className="sc-note">+{games.length - 12} muuta ottelua</p>}
-      {plausibility != null && <p className="sc-note">Kaikki yhdessä: {plausibility < 0.001 ? "alle 0,1" : f1(100 * plausibility)} %.</p>}
+      {/* Yhteistodennäköisyys on yhteenvetorivillä kuvaajan alla; ei toisteta. */}
     </figure>
   );
 }
@@ -126,7 +126,7 @@ export default function ScenarioChart({ pick, charts, locked, plausibility }: {
   const [team, setTeam] = useState<string | undefined>(undefined);
   const t = team && focus.includes(team) ? team : want;
   if (!pick) return null;
-  if (pick.type === "ottelut") return locked.length ? <GamesChart games={locked} plausibility={plausibility} /> : null;
+  if (pick.type === "ottelut") return locked.length ? <GamesChart games={locked} /> : null;
   if (!charts || !t) return null;
   return (
     <div className="sc-wrap">

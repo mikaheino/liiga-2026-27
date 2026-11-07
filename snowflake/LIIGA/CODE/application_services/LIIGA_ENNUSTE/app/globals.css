@@ -1311,3 +1311,7 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-ai.done { gap: 8px; padding: 14px 18px; }
 .gs .gs-results { margin-top: 0; }
 @media (max-width: 860px) { .gs.has-res .gs-logo { font-size: 24px; } .fr > section.gs.has-res { min-height: 0; } }
+/* Hakusivun linkit tavallisella fontilla (7.11.2026, "iso google fiilis"): ei pikselifonttia. */
+.gs-actions .ag-tr { font: 500 13.5px var(--sans) !important; letter-spacing: 0; text-transform: none; color: var(--gold); }
+.gs-actions .ag-tr:hover { color: var(--gold-hi); text-decoration: underline; text-underline-offset: 3px; }
+.sc-p { font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
