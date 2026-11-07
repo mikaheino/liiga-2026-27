@@ -130,7 +130,7 @@ Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan 
 ].filter(Boolean).join("\n\n");
 
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
-  pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null): Promise<Described> {
+  pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null, forced: Record<string, unknown>[] | null = null): Promise<Described> {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const teams = await loadTeams();
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
@@ -207,12 +207,30 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   // Oma kielimalli ensin (7.11.2026, Qwen 3B sovelluskontissa, lib/qwen.ts): uusi kysymys -> koodin
   // säännöt (maalivahti pelaa kaikki) tai Qwen -> moottori. Selitys koodista. Jatkokysymys (pohja) ja
   // kaikki, mitä Qwen ei osaa, menevät agentille kuten ennen.
-  if (!pohja?.items.length) {
+  // Jatkokysymys (7.11.: "jatkokysymyksiä aina jatkokeskustelussa"): valmis lähiskenaario (forced) ajetaan
+  // sellaisenaan; oma jatkokysymys menee Qwenille, jos se nimeää joukkueen tai pelaajan eikä viittaa
+  // edelliseen ("hän", "tämä"); "lisäksi/myös/vielä" lisää rivit edellisen skenaarion päälle.
+  const own = /JATKOKYSYMYS: ([\s\S]*)$/.exec(text)?.[1]?.trim() ?? text;
+  const contin = !!pohja?.items.length;
+  const refers = /\b(hän|häne|tämä|tästä|tätä|sama|edelli|sen |niiden)/i.test(own);
+  const selfContained = namedTeams(own, teams).length > 0 || playersIn(own, [...pl.skaters, ...pl.goalies]).length > 0;
+  if (forced?.length || !contin || (selfContained && !refers)) {
     progress?.({ status: "Tulkitaan kysymys" });
-    const qi = gAll ? goalieItems(gAll) : await qwenScenario(text, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
+    let qi = forced?.length ? forced : gAll ? goalieItems(gAll) : await qwenScenario(own, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
+    // Qwen keksii joskus muita joukkueita (7.11.: "lisäksi Lukko häviää" -> myös Ässät ja Pelicans): vain
+    // kysymyksessä nimetyt joukkueet ja pelaajat (sekä pelaajien joukkueet) kelpaavat.
+    if (qi && !forced?.length && !gAll) {
+      const psOwn = playersIn(own, [...pl.skaters, ...pl.goalies]);
+      const ok = new Set([...namedTeams(own, teams), ...psOwn.map((p) => p.team)]);
+      const names = psOwn.map((p) => p.name.toLowerCase());
+      qi = qi.filter((x) => (x.injury != null ? names.some((n) => n.includes(String(x.injury).toLowerCase().split(" ").slice(-1)[0])) : ok.has(String(x.team))));
+      if (!qi.length) qi = null;
+    }
+    if (qi && !forced?.length && contin && /\b(lisäksi|myös|vielä|sen päälle|samalla)\b/i.test(own)) qi = [...pohja!.items, ...qi];
     if (qi) {
-      const d = await attempt({ text: "", suggestions: [], tools: [gAll ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
+      const d = await attempt({ text: "", suggestions: [], tools: [forced?.length ? "lähiskenaario" : gAll ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
         inputs: [{ name: "liiga_skenaario", input: { scenario: JSON.stringify(qi) } }] });
+      if (d.error) console.log(`[skenaario] oma tulkinta hylätty: ${d.error}`);
       if (!d.error && d.items.length) {
         const labels = d.items.map((i) => String(i.label ?? "")).filter((l) => l && !d.news?.includes(l));
         const fromNews = d.news?.length ? ` Uutisista mukana hyväksytyt poissaolot: ${d.news.join("; ")}.` : "";

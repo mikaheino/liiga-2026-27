@@ -134,9 +134,11 @@ export function playersIn(userText: string, pool: PlayerRef[]): PlayerRef[] {
   const low = userText.toLowerCase();
   const stem = (w: string) => w.slice(0, Math.max(4, w.length - 2));
   const full = pool.filter((p) => low.includes(p.name.toLowerCase()));
+  // Sukunimi vain isolla alkukirjaimella kirjoitettuna sanan alkuna (7.11.: pienellä kirjoitetut tavalliset
+  // sanat osuivat sukunimiin, ja Qwenin rivisuodatin päästi läpi vääriä joukkueita).
   const hits = full.length ? full : pool.filter((p) => {
-    const last = p.name.split(" ").slice(-1)[0].toLowerCase();
-    return last.length >= 4 && new RegExp(`(^|[^a-zåäö])${stem(last)}`).test(low);
+    const last = p.name.split(" ").slice(-1)[0];
+    return last.length >= 4 && new RegExp(`(^|[^\\p{L}])${stem(last)}`, "u").test(userText);
   });
   return hits.filter((p, i, a) => a.findIndex((q) => q.name === p.name && q.team === p.team) === i).slice(0, 6);
 }

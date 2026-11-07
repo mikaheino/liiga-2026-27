@@ -5,6 +5,8 @@
 //                    Jos ei, kirjoittaja-aliagentti saa moottorin luvut ja kirjoittaa tekstin uudelleen.
 //   tutkija          aliagentti ehdottaa kolme lähiskenaariota PELKKINÄ RAKENTEINA (ei lukuja);
 //                    moottori laskee ne rinnakkain ja sovellus muodostaa luvut riville.
+import { proposals } from "@/lib/followups";
+import { loadTeams } from "@/lib/data";
 import { askOnce } from "@/lib/agent";
 import { runEngine } from "@/lib/scenarioEngine";
 
@@ -53,7 +55,7 @@ ${answer}`;
   return a.text.replace(/\n?\s*KUVAAJA:[^\n]*$/i, "").trim();
 }
 
-export type Related = { q: string; line: string };
+export type Related = { q: string; line: string; scenario?: Record<string, unknown>[] };
 
 /** Tutkija: kolme lähiskenaariota rakenteina -> moottori laskee rinnakkain -> rivi luvuista. */
 export async function explore(question: string, items: Record<string, unknown>[]): Promise<Related[]> {
@@ -61,10 +63,13 @@ export async function explore(question: string, items: Record<string, unknown>[]
 Vastaa VAIN JSON-taulukkona: [{"q": "lyhyt kysymys suomeksi", "scenario": [ ...liiga_skenaario-rivejä samassa muodossa kuin alla... ]}, ...]
 Sallitut rivit: {"team","result":win|loss|reg_win|ot_win|ot_loss|reg_loss|ot|point|regulation,"games":N tai "from"/"until"}, {"game_id","result"}, {"injury":"nimi","games":N}, {"team","xg_share":-0.15..0.15}, {"team","goal":top6|top10|avoid_relegation|win}.
 KÄYTTÄJÄN SKENAARIO (moottorin muodossa): ${JSON.stringify(items.map(({ label: _l, ...x }) => x))}`;
-  const a = await askOnce(question, ctx);
-  const json = a.text.slice(a.text.indexOf("["), a.text.lastIndexOf("]") + 1);
-  let props: { q?: unknown; scenario?: unknown }[] = [];
-  try { props = JSON.parse(json); } catch { return []; }
+  // Ensin koodin jatkokysymykset (lib/followups.ts, aina, ei tokeneita); agentti vain jos niitä ei ole.
+  let props: { q?: unknown; scenario?: unknown }[] = proposals(items, await loadTeams());
+  if (!props.length) {
+    const a = await askOnce(question, ctx);
+    const json = a.text.slice(a.text.indexOf("["), a.text.lastIndexOf("]") + 1);
+    try { props = JSON.parse(json); } catch { return []; }
+  }
   // Totuus datassa: rivi kertoo moottorin kanonisista riveistä, mitä oikeasti laskettiin (aliagentin
   // kysymys ja skenaario voivat erota: 7.11. "vain 2 ottelua" laski viisi). Käyttäjän oman skenaarion
   // kopiot (sama ilman tavoiterivejä) karsitaan.
@@ -79,7 +84,7 @@ KÄYTTÄJÄN SKENAARIO (moottorin muodossa): ${JSON.stringify(items.map(({ label
     const teamsIn = [...new Set(canon.flatMap((x) => [String(x.team ?? ""), ...String(x.label ?? "").match(/\(([^)]+)\)/g)?.map((m) => m.slice(1, -1)) ?? [],
       ...(String(x.label ?? "").split(": ")[1]?.match(/^(\S+) /)?.slice(1) ?? [])]).filter(Boolean))];
     const line = headline(r, teamsIn);
-    return line ? { q: p.q.slice(0, 140), line: `${describeCanon(canon)} · ${line}` } : null;
+    return line ? ({ q: p.q.slice(0, 140), line: `${describeCanon(canon)} · ${line}`, scenario: canon.map(({ label: _l, ...x }) => x) } as Related) : null;
   }));
   const seen = new Set<string>();
   return out.filter((x): x is Related => !!x && !seen.has(x.line) && !!seen.add(x.line));
