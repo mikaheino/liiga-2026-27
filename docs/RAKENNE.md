@@ -23,6 +23,7 @@ Snowflake-vastine.
 | `LIIGA/MODEL/procedures/<PROSEDUURI>/` | `SIMULATE_SCENARIO_<sha>`, `LINEUP_FORECAST_<sha>`, `SEND_MORNING_BRIEF_<sha>` | `deploy_tools.py` (CI) |
 | `LIIGA/MODEL/cortex_search/LIIGA_TIETO/*.md` | `LIIGA_TIETO_<sha>` + taulu `AGENT_KNOWLEDGE_<sha>` | `deploy_knowledge.py` (CI) |
 | `LIIGA/MODEL/tables/KORTTI_VASTAUS.sql` | `LIIGA.MODEL.KORTTI_VASTAUS` (ottelukortin ja joukkuesivun agenttivastaukset; sovellus kirjoittaa) | `deploy-app.yml` (CI), `CREATE TABLE IF NOT EXISTS` |
+| `LIIGA/MODEL/tables/SKENAARIO_HAKU.sql` | `LIIGA.MODEL.SKENAARIO_HAKU` (etusivun skenaariohaut ja vastaukset; sovellus kirjoittaa) | `deploy-app.yml` (CI), `CREATE TABLE IF NOT EXISTS` |
 | `LIIGA/EVALS/_schema.sql`, `results/` | `LIIGA.EVALS` (testijoukot, evaluointiajot); `results/` ei gitissä | `agent_eval.py` (CI) |
 | `SNOWFLAKE_INTELLIGENCE/AGENTS/LIIGA_ENNUSTAJA/` | agentti `SNOWFLAKE_INTELLIGENCE.AGENTS.LIIGA_ENNUSTAJA`: viimeisin spec, optimointiloki, vanhat versiot | `deploy_agent.py` (CI) |
 

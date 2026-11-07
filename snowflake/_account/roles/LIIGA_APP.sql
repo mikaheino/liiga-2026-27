@@ -49,6 +49,8 @@ GRANT SELECT ON FUTURE SEMANTIC VIEWS IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_APP;
 
 -- Ainoa kirjoitus: kohteisiin sidotut agenttivastaukset (lib/kortti.ts).
 GRANT INSERT, UPDATE ON TABLE LIIGA.MODEL.KORTTI_VASTAUS TO ROLE LIIGA_APP;
+-- Etusivun skenaariohaut (7.11.2026); taulu luodaan deploy-app.yml:ssä, aja tämä rivi sen jälkeen.
+GRANT INSERT ON TABLE LIIGA.MODEL.SKENAARIO_HAKU TO ROLE LIIGA_APP;
 
 -- Skenaarioproseduuri (joukkuesivun paneeli) ja agentin työkalut.
 GRANT USAGE ON ALL PROCEDURES IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_APP;

@@ -1246,3 +1246,16 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-reply button:disabled { opacity: .5; cursor: default; }
 .gs-chip.more { border-style: dashed; color: var(--muted); background: transparent; }
 .gs-chip.more:hover { color: var(--gold-hi); }
+/* Tallennetut skenaariohaut (7.11.2026, /api/skenaario/haut): hakuhistoria kentän alla. */
+.gs-hist { justify-self: stretch; }
+.gs-hist summary { cursor: pointer; font: 600 13px var(--sans); color: var(--muted); text-align: center; list-style: none; }
+.gs-hist summary::-webkit-details-marker { display: none; }
+.gs-hist summary:hover { color: var(--gold-hi); }
+.gs-hist ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+.gs-hist li { border-bottom: 1px solid var(--line); }
+.gs-hist button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; width: 100%; padding: 10px 4px; }
+.gs-hist button b { font: 600 14px var(--sans); color: var(--body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-hist button span { font-size: 12px; color: var(--faint); }
+.gs-hist button:hover b { color: var(--gold-hi); }
+.gs-hist button:focus-visible { outline: 2px solid var(--gold-mid); outline-offset: -2px; }
+.gs-stale { margin: 0; font-size: 12.5px; color: var(--warn); }

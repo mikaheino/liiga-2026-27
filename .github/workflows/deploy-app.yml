@@ -16,6 +16,7 @@ on:
     paths:
       - snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/**
       - snowflake/LIIGA/MODEL/tables/KORTTI_VASTAUS.sql
+      - snowflake/LIIGA/MODEL/tables/SKENAARIO_HAKU.sql
       - snowflake/LIIGA/MODEL/procedures/SIMULATE_SCENARIO/**
       - .github/workflows/deploy-app.yml
       - .github/actions/**
@@ -64,6 +65,9 @@ jobs:
       # tuotannon kesken, kuten LIIGA.MODELin muutkin taulut; julkaisurooli omistaa sen.
       - name: Ottelukortin vastaustaulu
         run: snow sql -c ci -f ../../../MODEL/tables/KORTTI_VASTAUS.sql
+      # Etusivun skenaariohaut ja vastaukset (ScenarioBoard.tsx, 7.11.2026). Sama malli.
+      - name: Skenaariohakujen taulu
+        run: snow sql -c ci -f ../../../MODEL/tables/SKENAARIO_HAKU.sql
       # Joukkuesivun skenaariopaneeli kutsuu samaa proseduuriversiota kuin agentin
       # työkalu liiga_skenaario (deploy.yml julkaisee sen). Nimi app.yml:n
       # ympäristömuuttujaksi; käännös kaatuu, jos proseduuria ei vielä ole.

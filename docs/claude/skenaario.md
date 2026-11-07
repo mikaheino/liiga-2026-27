@@ -168,3 +168,20 @@ SQL dataa ja koneoppimismalleja. Tiputa valmiit skenaariot pois."
   hakemaan datan (liiga_kausi/liiga_ennuste = SQL) ennen skenaariota eikä arvaamaan.
 - Mitattu paikallisesti 7.11.: "KooKoo voittaa seuraavat viisi ottelua" valmis ~14 s:ssa, ja
   "HPK häviää kolme seuraavaa" palautti kolme oikeaa ottelua (13.11., 14.11., 18.11.).
+
+## Skenaariohaut tallentuvat (7.11.2026)
+
+Käyttäjä: "Haluan että skenaariot tallentuvat ja niiden vastaukset."
+- `app/api/skenaario/rakenna` laskee nyt myös vaikutukset (moottori, json-tila) ja tallentaa
+  haun kerran valmistuttuaan: kysymys, tarkennusvastaus, tekoälyn teksti, kanoniset rivit,
+  moottorin luvut tiivistettynä (`summarize()`: vain ≥1 %-yks. liikkuneet joukkueet), työkalut,
+  SQL, `forecast_ts`, kesto ja tila (`done | clarify | error`).
+- Tallennus `lib/skenaarioHaut.ts`: Snowflakessa `LIIGA.MODEL.SKENAARIO_HAKU`
+  (`snowflake/LIIGA/MODEL/tables/SKENAARIO_HAKU.sql`, deploy-app.yml luo; `LIIGA_APP` saa
+  INSERTin, ks. `_account/roles/LIIGA_APP.sql` -- ylläpitäjä ajaa GRANTin taulun luonnin jälkeen),
+  paikallisesti `~/.cache/liiga-ennuste/skenaariot.json`.
+- `GET /api/skenaario/haut` = 20 uusinta; hakukentän alla "Aiemmat skenaariot". Avaus palauttaa
+  tekstin ja sirut; luvut tallennetuista, jos ennuste on sama, muuten moottori laskee uudelleen ja
+  paneeli sanoo "Vanha perusta".
+- Selain ei enää laske vaikutuksia uudestaan haun jälkeen (luvut tulevat haun mukana, `preset`).
+- ⚠️ Snowflake-polku (INSERT ... SELECT PARSE_JSON) ajetaan ensimmäisen kerran julkaisun jälkeen.
