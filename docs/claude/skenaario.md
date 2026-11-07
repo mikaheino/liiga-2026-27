@@ -358,3 +358,17 @@ leijuva iteraatio ... hyperversioitu, kaikki on mahdollista"; osana hakukokemust
 A/B-huomautus (`abNotice`). Agentin ohjeesta poistettu vastaava teksti; agentille jää kieli.
 Tavoite: nämä siirtyvät myöhemmin Snowflake-agentille (LIIGA_ENNUSTAJA) työkaluiksi, jotta
 paikallinen ja Snowflake toimivat samoin myös ilman sovelluskerrosta.
+
+## Uutiset Snowflakeen ja agentille (7.11.2026, LINJAMUUTOS)
+
+Käyttäjä 7.11.: uutisotsikot ja ingressit saavat olla Snowflakessa, ja agentti saa nähdä ne
+("saa nähdä ja päivittyä samalla kun haetaan uudet data liiga pistää"). Aiempi linja (J3: vain
+rakenteiset signaalit, ei otsikoita agentille) päättyi.
+- Keräimen ydin `src/liiga/news_collect.py` (scripts/news/collect.py on kääre GitHubille).
+- `refresh_results()` -> `news_ingest.ingest_news()` vain Snowflaken sisällä: LIIGA_DAILY lisää uudet
+  jutut tauluun `LIIGA.RAW.NEWS_ITEMS`; virhe ei kaada ajoa (palautuu `got["news"]`).
+- Näkymä `LIIGA.MODEL.V_NEWS_ITEMS` (sovellus, agentti). Paikallisesti news.duckdb:n news_items.
+- Haku: `lib/newsContext.ts headlines()` -> kysymyksen joukkueiden 14 pv:n 8 tuoreinta otsikkoa
+  agentin kontekstiin (taustaksi; skenaarioon vain pyynnöstä).
+- ACCOUNTADMIN (Snowsight): LIIGA_NEWS_RULE.sql -> RAW/tables/NEWS_ITEMS.sql -> LIIGA_NEWS_ACCESS.sql
+  (integraatio + `ALTER NOTEBOOK ... EXTERNAL_ACCESS_INTEGRATIONS`).

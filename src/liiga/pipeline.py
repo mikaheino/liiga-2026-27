@@ -110,6 +110,7 @@ def refresh_results(season: int | None = None, con=None, *,
         # from the standings movement instead.
         rebuilt = reconstruct_games(con, season)
         run_transforms(con)
+        news = _news(con)
         counts = query_df(con, f"""
             SELECT COUNT(*) AS n_total,
                    SUM(CASE WHEN ended THEN 1 ELSE 0 END) AS n_played
@@ -124,7 +125,17 @@ def refresh_results(season: int | None = None, con=None, *,
             "detail_games": detail["games_fetched"],
             "detail_rows": detail["rows"], "detail_failed": detail["failed"],
             "reconstructed": rebuilt.get("resolved", 0),
-            "reconstruct_skipped": rebuilt.get("skipped", 0)}
+            "reconstruct_skipped": rebuilt.get("skipped", 0),
+            "news": news}
+
+
+def _news(con) -> dict:
+    """Uutiset samassa ajossa (vain Snowflakessa, news_ingest.py); ei koskaan kaada ajoa."""
+    from .news_ingest import ingest_news
+    try:
+        return ingest_news(con)
+    except Exception as e:          # noqa: BLE001 -- uutiset eivät saa pysäyttää ennustetta
+        return {"error": f"{type(e).__name__}: {e}"[:300]}
 
 
 def build_prediction(con, cfg) -> tuple[pd.DataFrame, dict, dict]:

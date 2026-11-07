@@ -11,7 +11,7 @@ import { askOnce, type Answer } from "@/lib/agent";
 import { loadFixtures, loadPlayers, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
-import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
+import { activeAbsences, headlines, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
 import { goalieAll, goalieItems, normalize, playersIn, playersRule, withNews } from "@/lib/scenarioRules";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
@@ -120,7 +120,7 @@ Päätä itse, jatkaako käyttäjä tätä skenaariota vai kysyykö uutta:
 - Kerro valintasi TOISESSA lauseessa (ensimmäinen on aina johtopäätös): "Lisäsin tämän nykyiseen skenaarioon …" tai "Tämä on uusi skenaario …". Luvut koskevat aina sitä skenaariota, jonka työkalu laski.`;
 
 // Uutiset (lib/newsContext.ts): hyväksytyt poissaolot ovat lähtötilanne kysytyille joukkueille,
-// hyväksymättömät uutiset vain mainitaan. Agentti ei näe uutistekstiä, vain nämä kentät.
+// hyväksymättömät uutiset vain mainitaan. Otsikot tulevat erikseen (headlines(), 7.11.).
 const NEWS_RULE = (abs: NewsAbsence[], hints: NewsHint[]) => [
   abs.length ? `UUTISISTA HYVÄKSYTYT POISSAOLOT (tosiasioita, lähtötilanne):\n${abs.map((a) => `- ${a.player} (${a.team}) poissa ${a.until} asti`).join("\n")}
 Sovellus lisää nämä skenaarioon itse (ellei käyttäjä sano "ilman X" / "ilman uutisia"); sinun ei tarvitse. Jos ne vaikuttavat kysyttyyn joukkueeseen, voit mainita lyhyesti, että ne on huomioitu.` : "",
@@ -135,9 +135,9 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
   const coach = COACH_WORDS.test(text) ? await coachingEvidence() : "";
   const scope = namedTeams(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
-  const [absAll, hints] = await Promise.all([activeAbsences(today), injuryHints(scope, today)]);
+  const [absAll, hints, heads] = await Promise.all([activeAbsences(today), injuryHints(scope, today), headlines(scope, today)]);
   const abs = absAll.filter((a) => scope.includes(a.team));
-  const news = NEWS_RULE(abs, hints);
+  const news = NEWS_RULE(abs, hints) + (heads.length ? `\n\nUUTISOTSIKOT (14 pv, kysymyksen joukkueet; taustaksi, ei faktaa skenaarioon ellei käyttäjä pyydä):\n${heads.map((h) => `- ${h.date} ${h.team}${h.flags ? ` [${h.flags}]` : ""}: ${h.title}${h.summary ? ` – ${h.summary}` : ""}`).join("\n")}` : "");
   // Uusi pelaaja, jota mallissa ei vielä ole: agentti arvioi joukkuetasolla ja kertoo jonosta.
   const missing = await missingPlayers(text, teams).catch(() => []);
   const rosterRule = missing.length ? `PELAAJA EI VIELÄ MALLIN ROSTERISSA: ${missing.map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`).join(", ")}.
