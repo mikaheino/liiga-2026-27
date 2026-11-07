@@ -253,3 +253,19 @@ Käyttäjä: "Miten pagesissa olevassa uutisominaisuus otetaan skenaarioon mukaa
 - Snowflakessa uutistauluja ei vielä ole (J3): kyselyt kaatuvat hiljaa ja listat ovat tyhjiä.
 - Testattu 7.11.: "Pääseekö TPS jatkoon?" -> Wernblom mukana, 54,2 % (ilman 55,5 %); "Lukko häviää
   kolme seuraavaa" -> Hämäläinen ja Virtanen mukana; HIFK ei vihjeitä (viimeisin 10.10. > 21 pv).
+
+## Hakuehdotukset ja keskitetty haku (7.11.2026)
+
+Käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia", "Entä jos? poista tämä",
+"tiputa keskelle haku ja isommaksi".
+- `GET /api/skenaario/ehdotukset` (`lib/newsSuggestions.ts`): valmiit kysymykset pohjasta rakenteisista
+  kentistä (ei kielimallia, ei otsikoita): hyväksytyt poissaolot joukkueittain, sekä 21 pv:n
+  pelikielto-/loukkaantumis-/paluu-/siirtouutiset, joissa pelaaja tunnistettu ja joista ei ole kirjausta.
+  Kysymys on joukkueelle auki oleva (`openQuestion()`: putoamisuhka ≥ 15 % -> välttyykö putoamiselta,
+  top 6 ≥ 85 % -> runkosarjan voitto, jatkoon ≥ 90 % -> kärkikuusikko, muuten jatkoon).
+- Pudotusvalikko kentän alla: 🕘 kolme viimeisintä omaa hakua (avaa tallennetun) + 📰 uutisehdotukset,
+  suodattuu kirjoittaessa, nuolet/Enter/Esc. Valinta ajaa haun heti.
+- "Entä jos?" -sanamerkki poistettu; kenttä 64 px (puhelin 56 px), pystysuunnassa keskellä, kunnes
+  tuloksia on.
+- Huom. kehityspalvelin: `cat >>` -lisäys olemassa olevaan moduuliin jäi Turbopackin välimuistiin
+  ("is not a function"); uusi tiedosto (`newsSuggestions.ts`) ratkaisi.

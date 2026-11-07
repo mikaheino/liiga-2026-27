@@ -84,6 +84,16 @@ export default function ScenarioBoard() {
   // Moottorin luvut tulevat valmiina haun mukana (tallentuvat sen kanssa): effect ei laske uudelleen.
   const preset = useRef<{ key: string; res: Res } | null>(null);
   const [haut, setHaut] = useState<Haku[]>([]);
+  // Hakuehdotukset (7.11.2026, käyttäjä: "uutiset näkyisivät googlemaiseen tyyliin ehdotuksia"):
+  // kentän alle aukeava lista, 🕘 omat viimeisimmät haut + 📰 uutisista muodostetut kysymykset
+  // (/api/skenaario/ehdotukset). Kirjoittaessa lista suodattuu; nuolet + Enter, Esc sulkee.
+  const [sugs, setSugs] = useState<{ q: string; meta: string; kind: string }[]>([]);
+  const [focus, setFocus] = useState(false);
+  const [hi, setHi] = useState(-1);
+  useEffect(() => {
+    fetch("/api/skenaario/ehdotukset", { cache: "no-store" }).then((r) => r.json())
+      .then((j: { suggestions?: { q: string; meta: string; kind: string }[] }) => setSugs(j.suggestions ?? [])).catch(() => {});
+  }, []);
   const [stamp, setStamp] = useState("");
   const loadHaut = useCallback(() => {
     fetch("/api/skenaario/haut", { cache: "no-store" }).then((r) => r.json())
@@ -101,10 +111,10 @@ export default function ScenarioBoard() {
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const run = async (follow?: string) => {
+  const run = async (follow?: string, asked?: string) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
-    const q = follow && live ? live.q : text.trim();
+    const q = follow && live ? live.q : (asked ?? text).trim();
     if (q.length < 3 || building || (follow != null && follow.trim().length < 1)) return;
     const prompt = follow && live ? `${live.prompt ?? live.q}\n\nAgentti kysyi: ${live.text}\nKäyttäjä vastasi: ${follow.trim()}` : q;
     preset.current = null;
@@ -148,19 +158,54 @@ export default function ScenarioBoard() {
     return () => { live = false; };
   }, [items]);
   const rows = (res?.teams ?? []).filter((r) => moved(r) >= 0.01).sort((a, b) => moved(b) - moved(a)).slice(0, 8);
+  type Opt = { q: string; meta: string; icon: "hist" | "news"; haku?: Haku };
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
+  const opts: Opt[] = [
+    ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 3).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
+    ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: "news" as const })),
+  ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 8);
+  const showSugs = focus && !building && opts.length > 0;
+  const choose = (o: Opt) => {
+    setFocus(false); setHi(-1);
+    if (o.haku) { setText(""); open(o.haku); } else { setText(o.q); run(undefined, o.q); }
+  };
   // Sirut moottorin kanonisista riveistä (moottorin label); poisto = loput rivit uudelleen.
   const chips = res?.scenario_canonical ?? items;
   return (
     <section className={`gs ${busy ? "busy" : ""} ${items.length || live ? "has-res" : ""}`} aria-label="Oma skenaario">
-      <h2 className="gs-logo">Entä jos<span>?</span></h2>
-      <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""}`} role="search">
+      {/* "Entä jos?" -sanamerkki poistettu 7.11.2026 (käyttäjä: "poista tämä"): hakukenttä riittää. */}
+      <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""} ${showSugs ? "open" : ""}`} role="search">
         {/* Ei erillisiä nappeja: Enter tai suurennuslasi lähettää. */}
         <button type="submit" className="gs-go" aria-label="Rakenna skenaario" disabled={building || text.trim().length < 3}>
           <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
         </button>
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} disabled={building} enterKeyHint="search"
+        <input value={text} onChange={(e) => { setText(e.target.value); setHi(-1); }} maxLength={300} disabled={building} enterKeyHint="search"
+          onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 120)}
+          onKeyDown={(e) => {
+            if (!showSugs) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(opts.length - 1, h + 1)); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(-1, h - 1)); }
+            else if (e.key === "Enter" && hi >= 0) { e.preventDefault(); choose(opts[hi]); }
+            else if (e.key === "Escape") { setFocus(false); }
+          }}
+          role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
           placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
         {text && !building && <button type="button" className="gs-x" aria-label="Tyhjennä kenttä" onClick={() => setText("")}>✕</button>}
+        {showSugs && (
+          <ul className="gs-sugs" id="gs-sugs" role="listbox">
+            {opts.map((o, i) => (
+              <li key={o.q} role="option" aria-selected={i === hi} className={i === hi ? "on" : ""}
+                onMouseDown={(e) => { e.preventDefault(); choose(o); }} onMouseEnter={() => setHi(i)}>
+                <svg viewBox="0 0 24 24" aria-hidden className="gs-sico">{o.icon === "hist"
+                  ? <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>
+                  : <><path d="M5 5h11v14H7a2 2 0 0 1-2-2Z" /><path d="M16 9h3v8a2 2 0 0 1-2 2M8 9h5M8 12h5M8 15h3" /></>}</svg>
+                <span className="gs-sq">{o.q}</span>
+                <span className="gs-sm">{o.meta}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </form>
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
