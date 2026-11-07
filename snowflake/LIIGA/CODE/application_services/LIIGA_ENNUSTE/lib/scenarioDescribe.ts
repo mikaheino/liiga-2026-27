@@ -25,7 +25,8 @@ const CHART_LINE = /\n?\s*KUVAAJA:\s*(pisteet|jakauma|ottelut|ei)\b\s*([^\n]*)\s
 // Paikallisen Clauden yleisohje lisää loppuun sovelluslinkin; hakusivulla se on turha.
 const APP_LINK = /\n?\s*Lisää sovelluksessa:[^\n]*/gi;
 export function splitChart(raw: string): { text: string; chart: Chart } {
-  const text = raw.replace(APP_LINK, "");
+  // Markdown-taulukot pois (ohje kieltää, mutta agentti tekee joskus): sovellus näyttää luvut itse.
+  const text = raw.replace(APP_LINK, "").split("\n").filter((l) => !/^\s*\|.*\|\s*$/.test(l)).join("\n").replace(/\n{3,}/g, "\n\n");
   const m = CHART_LINE.exec(text);
   if (!m) return { text: text.replace(/\n?\s*KUVAAJA:[^\n]*$/i, "").trimEnd(), chart: undefined as unknown as Chart };
   const type = m[1].toLowerCase();
@@ -139,25 +140,62 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const abs = absAll.filter((a) => scope.includes(a.team));
   const news = NEWS_RULE(abs, hints);
   const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "");
-  const a: Answer = await askOnce(text, ctx, progress);
-  const sc = splitChart(a.text);
-  const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
-  const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
-  const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;
-  if (!raw) return { ...base, items: [] };
-  let parsed: unknown;
-  try { parsed = JSON.parse(raw); } catch { return { ...base, items: [], error: "agentin skenaario ei ollut JSONia", status: 422 }; }
-  // Vain lukitukset, poissaolot ja tavoitteet siruiksi; panospyyntöjä ei.
-  const list = (Array.isArray(parsed) ? parsed : [parsed]).filter((x) => x && typeof x === "object" && !("stakes" in (x as object)));
-  progress?.({ status: "Moottori ratkaisee skenaarion otteluiksi" });
-  const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[] }>("json", list);
-  if (res.error) return { ...base, items: [], error: res.error, status: 422 };
-  const items = res.scenario_canonical ?? [];
-  // Sama raja kuin omassa skenaariossa (lib/scenarioItems.ts MAX_ITEMS): ei katkaista hiljaa.
-  if (items.length > MAX_ITEMS) {
-    return { ...base, items: [], status: 422,
-      error: `Skenaariossa on ${items.length} riviä (esim. lukittua ottelua); enintään ${MAX_ITEMS}. Rajaa jaksoa tai otteluiden määrää.` };
-  }
-  const newsUsed = items.filter((i) => "injury" in i && abs.some((a) => String(i.label ?? "").includes(a.player))).map((i) => String(i.label));
-  return { ...base, items, news: newsUsed };
+  // "Moottori ei hyydy koskaan" (käyttäjä 7.11.2026): agentin kaatuminen yritetään uudelleen,
+  // moottorin hylkäämä skenaario palautetaan agentille korjattavaksi kerran, ja jos kumpikaan ei
+  // auta, vastataan kysyttyjen joukkueiden nykyennusteella (moottori laskee, syy kerrotaan).
+  const ask = async (extra = ""): Promise<Answer> => {
+    try { return await askOnce(text, ctx + extra, progress); } catch (e) {
+      progress?.({ status: "Yhteys katkesi, yritetään uudelleen" });
+      console.log(`[skenaario] agentti, uusi yritys: ${(e as Error).message}`);
+      return askOnce(text, ctx + extra, progress);
+    }
+  };
+  const attempt = async (a: Answer): Promise<Described> => {
+    const sc = splitChart(a.text);
+    const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
+    const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
+    const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;
+    if (!raw) return { ...base, items: [] };
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { return { ...base, items: [], error: "agentin skenaario ei ollut JSONia", status: 422 }; }
+    // Vain lukitukset, poissaolot, tavoitteet ja joukkueen muutokset siruiksi; panospyyntöjä ei.
+    const list = (Array.isArray(parsed) ? parsed : [parsed]).filter((x) => x && typeof x === "object" && !("stakes" in (x as object)));
+    progress?.({ status: "Moottori ratkaisee skenaarion otteluiksi" });
+    const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[] }>("json", list).catch((e) => ({ error: (e as Error).message } as { error: string; scenario_canonical?: undefined }));
+    if (res.error) return { ...base, items: [], error: res.error, status: 422 };
+    const items = res.scenario_canonical ?? [];
+    // Sama raja kuin omassa skenaariossa (lib/scenarioItems.ts MAX_ITEMS): ei katkaista hiljaa.
+    if (items.length > MAX_ITEMS) {
+      return { ...base, items: [], status: 422,
+        error: `Skenaariossa on ${items.length} riviä (esim. lukittua ottelua); enintään ${MAX_ITEMS}. Rajaa jaksoa tai otteluiden määrää.` };
+    }
+    const newsUsed = items.filter((i) => "injury" in i && abs.some((x) => String(i.label ?? "").includes(x.player))).map((i) => String(i.label));
+    return { ...base, items, news: newsUsed };
+  };
+  // Varavastaus: nykyennuste kysytyille joukkueille tavoiterivillä (goal ei muuta ennustetta).
+  const fallback = async (why: string): Promise<Described> => {
+    const goals = scope.slice(0, 3).map((t) => ({ team: t, goal: "top10" }));
+    if (!goals.length) return { answer: "", items: [], tools: [], sql: [], error: why, status: 422 };
+    progress?.({ status: "Lasketaan nykyennuste" });
+    const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[]; teams?: Record<string, number | string>[] }>("json", goals)
+      .catch((e) => ({ error: (e as Error).message } as { error: string }));
+    if ("error" in res && res.error) return { answer: "", items: [], tools: [], sql: [], error: `${why} (${res.error})`, status: 422 };
+    const r = res as { scenario_canonical?: Record<string, unknown>[]; teams?: Record<string, number | string>[] };
+    const pc = (x: unknown) => `${(100 * Number(x)).toFixed(1).replace(".", ",")} %`;
+    const lines = scope.slice(0, 3).map((t) => r.teams?.find((x) => x.team === t)).filter(Boolean)
+      .map((x) => `${x!.team}: jatkoon ${pc(x!.p_top10_now)}, kärkikuusikkoon ${pc(x!.p_top6_now)}, putoamisuhka ${pc(x!.p_relegation_now)}.`);
+    return { answer: `En pystynyt mallintamaan kuvausta sellaisenaan (${why}), joten tässä nykyennuste. ${lines.join(" ")} Voit tarkentaa kuvausta, niin lasken skenaarion.`,
+      items: r.scenario_canonical ?? [], tools: ["liiga_skenaario"], sql: [], chart: { type: "jakauma", team: scope[0] } };
+  };
+
+  let first: Described;
+  try { first = await attempt(await ask()); } catch (e) { return fallback(`agentti ei vastannut: ${(e as Error).message.split("\n")[0].slice(0, 120)}`); }
+  if (!first.error) return first;
+  // Korjauskierros: moottorin virhe takaisin agentille.
+  progress?.({ status: "Korjataan skenaariota" });
+  let second: Described;
+  try {
+    second = await attempt(await ask(`\n\nEDELLINEN YRITYS EPÄONNISTUI. Moottori sanoi: "${first.error}". Korjaa skenaario (tarkista nimet, kesto, raja ±0,15 ja enintään ${MAX_ITEMS} riviä; tarvittaessa yksinkertaista) ja kutsu liiga_skenaario-työkalua uudelleen.`));
+  } catch { return fallback(first.error ?? "tuntematon virhe"); }
+  return second.error ? fallback(second.error) : second;
 }

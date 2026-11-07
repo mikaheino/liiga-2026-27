@@ -158,12 +158,12 @@ export default function ScenarioBoard() {
     return () => { live = false; };
   }, [items]);
   const rows = (res?.teams ?? []).filter((r) => moved(r) >= 0.01).sort((a, b) => moved(b) - moved(a)).slice(0, 8);
-  type Opt = { q: string; meta: string; icon: "hist" | "news"; haku?: Haku };
+  type Opt = { q: string; meta: string; icon: "hist" | "news" | "data"; haku?: Haku };
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
   const opts: Opt[] = [
     ...haut.filter((h) => h.status === "done").slice(0, text ? 20 : 2).map((h) => ({ q: h.question, meta: when(h.askedAt), icon: "hist" as const, haku: h })),
-    ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: "news" as const })),
+    ...sugs.map((s) => ({ q: s.q, meta: s.meta, icon: s.kind === "data" ? ("data" as const) : ("news" as const) })),
   ].filter((o, i, a) => a.findIndex((x) => x.q === o.q) === i).filter((o) => !text || match(o.q)).slice(0, 10);
   const showSugs = focus && !building && opts.length > 0;
   // Nollaus (7.11.2026, käyttäjä: "miten nollata"): ✕ tai Esc tyhjentää kentän, vastauksen ja
@@ -214,6 +214,7 @@ export default function ScenarioBoard() {
                 onMouseDown={(e) => { e.preventDefault(); choose(o); }} onMouseEnter={() => setHi(i)}>
                 <svg viewBox="0 0 24 24" aria-hidden className="gs-sico">{o.icon === "hist"
                   ? <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>
+                  : o.icon === "data" ? <path d="M4 18 9 12l4 3 7-8M15 7h5v5" />
                   : <><path d="M5 5h11v14H7a2 2 0 0 1-2-2Z" /><path d="M16 9h3v8a2 2 0 0 1-2 2M8 9h5M8 12h5M8 15h3" /></>}</svg>
                 <span className="gs-sq">{o.q}</span>
                 <span className="gs-sm">{o.meta}</span>
