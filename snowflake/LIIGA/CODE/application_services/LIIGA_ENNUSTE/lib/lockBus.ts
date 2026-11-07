@@ -6,7 +6,9 @@
 export type GameLock = { game_id: number; result: "home_win" | "away_win" | "home_reg" | "home_ot" | "away_ot" | "away_reg"; label: string };
 export type Injury = { injury: number | string; games: number; ramp_games?: number; ramp_effect?: number; label: string };
 export type Goal = { team: string; goal: "avoid_relegation" | "top10" | "top6" | "win"; rivals?: string[]; label: string };
-export type Item = GameLock | Injury | Goal;
+// Joukkueen muutos (7.11.2026, esim. valmentajanvaihto): xG-osuuden siirto jaksolle.
+export type Shift = { team: string; xg_share: number; from?: string; until?: string; games?: number; label: string };
+export type Item = GameLock | Injury | Goal | Shift;
 /** @deprecated nimi V4:stä */
 export type Lock = GameLock;
 const KEY = "liiga-locks", EVT = "liiga-locks";
@@ -14,7 +16,7 @@ export { MAX_ITEMS as MAX_LOCKS } from "@/lib/scenarioItems";
 import { MAX_ITEMS as MAX_LOCKS } from "@/lib/scenarioItems";
 
 export const itemKey = (i: Item) =>
-  "game_id" in i ? `g:${i.game_id}` : "injury" in i ? `i:${i.injury}` : `t:${i.team}:${i.goal}`;
+  "game_id" in i ? `g:${i.game_id}` : "injury" in i ? `i:${i.injury}` : "xg_share" in i ? `s:${i.team}` : `t:${i.team}:${i.goal}`;
 /** Moottorille: label pois. */
 export const engineItem = (i: Item) => Object.fromEntries(Object.entries(i).filter(([k]) => k !== "label"));
 

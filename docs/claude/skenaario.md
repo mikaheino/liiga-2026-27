@@ -217,3 +217,23 @@ Käyttäjä: "agentti vois piirtää myös automaattisesti odotetua pelimallia" 
 
 Samana iltana etusivulta poistettiin myös Päivän tarina (käyttäjä: "tarpeeton"); etusivulla on nyt
 vain "Entä jos?" ja puhelimessa osiolinkit.
+
+## Oikeat kysymykset ja "idioottivarmuus" (7.11.2026)
+
+Käyttäjä: "Kärpät vaihtavat valmentajaa" -> agentti kysyi tarkennusta; "mieti näihin oikeisiin
+kysymyksiin vastata" ja "Haluan siis että tätä voi käyttää idiottikin".
+- **Joukkueen muutos** moottorissa (`apply_strength`): `{"team", "xg_share": d, "from"?, "until"?,
+  "games"?}`, |d| ≤ 0,15. Osuus s0 = off/(off+def) mallin vahvuuksista, s0 + d jaetaan hyökkäykseen ja
+  puolustukseen maalimäärä säilyttäen; paino 1 (koko ennuste), toisin kuin pelaajan poissaolo (0,4).
+  Kanoninen rivi + label, `validItem` hyväksyy, `itemKey` = `s:<joukkue>`. Testi lisätty.
+- **Valmentajanvaihtojen näyttö** (`coachingEvidence()`): kun kuvaus mainitsee valmentajan, agentti saa
+  tämän kauden vaihdot ja p/ott + xG-osuus ennen/jälkeen datasta (COACHING_CHANGES + STG_GAMES) sekä
+  keskiarvon ylärajana (regressio keskiarvoon). 7.11.: keskiarvo +6,3 %-yks. neljässä vaihdossa.
+- **Ei tarkennuksia, kun oletus on järkevä**: kesto puuttuu -> loukkaantuminen 10 ottelua, muu muutos
+  loppukausi; alku puuttuu -> heti; "voittaa/häviää" ilman määrää -> 5 ottelua; pelkkä kysymys
+  ("pääseekö X jatkoon?") -> tavoite (goal) nykyennusteella. Oletus sanotaan yhdellä lauseella.
+- Moottorin tekstituloste (agentille) sisältää nyt jatkoon (1.–10.) -sarakkeen ja joukkueen muutoksen.
+- Testattu: "Kärpät vaihtavat valmentajaa" -> +5 %-yks., jatkoon 75,0 % -> 98,8 %; "Bartosak
+  loukkaantuu" -> 10 ottelua; "Pääseekö Jokerit jatkoon?" -> 7,0 %. Ei yhtään tarkennuskysymystä.
+- ⚠️ Snowflaken agentin työkalukuvaus (deploy_agent.spec) ei vielä mainitse xg_sharea; sovelluksen
+  ohje kertoo sen agentille. Proseduuri julkaistaan deploy.yml:llä.

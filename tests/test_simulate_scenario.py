@@ -273,3 +273,23 @@ def test_absence_card_shape(loaded):
         d = out["durations"]["season"]
         assert 0 <= d["p"] <= 1 and 0 <= d["p_now"] <= 1
     assert "error" in json.loads(skenaario.run_absence('{"team": "Eiole"}'))
+
+
+def test_team_xg_share_shift_moves_team_and_is_canonical():
+    """Joukkueen muutos (7.11.2026, valmentajanvaihto): positiivinen xG-osuuden siirto nostaa
+    joukkuetta, rajan yli virhe, ja kanoninen rivi kelpaa sellaisenaan syötteeksi."""
+    games, banked, pub, w, _ = _load()
+    games = [{**g, "iso": g.get("iso") or "2026-12-01"} for g in games]     # testiaineistossa ei päiviä
+    team = games[0]["home_team"]
+    s = {"off_rating": 1.0, "def_rating": 1.0}
+    model = {"players": [], "goalies": [], "strength": {t: dict(s) for t in pub}, "today": "2026-12-01"}
+    res = sim.compute([{"team": team, "xg_share": 0.06}], games, banked, pub, w, model=model)
+    row = next(r for r in res["teams"] if r["team"] == team)
+    assert row["points_scenario"] > row["points_now"]
+    assert res["shifts"][0]["n_games"] > 0 and abs(res["shifts"][0]["share_after"] - 0.56) < 1e-9
+    canon = res["scenario_canonical"]
+    assert canon[0]["team"] == team and canon[0]["xg_share"] == 0.06 and "xG-osuus +6" in canon[0]["label"]
+    again = sim.compute([{k: v for k, v in canon[0].items() if k != "label"}], games, banked, pub, w, model=model)
+    assert abs(next(r for r in again["teams"] if r["team"] == team)["points_scenario"] - row["points_scenario"]) < 1e-9
+    with pytest.raises(sim.ScenarioError):
+        sim.compute([{"team": team, "xg_share": 0.3}], games, banked, pub, w, model=model)

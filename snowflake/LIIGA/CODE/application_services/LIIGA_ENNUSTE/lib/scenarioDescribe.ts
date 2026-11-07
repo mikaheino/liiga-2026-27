@@ -10,6 +10,7 @@
 import { askOnce, type Answer } from "@/lib/agent";
 import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
+import { query } from "@/lib/snowflake";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
@@ -34,8 +35,9 @@ const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa L
 - Ottelut: {"team", "result": win|loss|reg_win|ot_win|ot_loss|reg_loss} ja joko "games": N (seuraavat N) tai jakso "from"/"until" (YYYY-MM-DD, until mukaan lukien), valinnainen "opponent".
 - Yksittäinen ottelu: {"team", "result", "from": "<pvm>", "until": "<sama pvm>"}. Näin saa myös epäsäännölliset kuviot, esim. "joka toinen ottelu" = lukitse joka toinen alla listatuista OTTELUOHJELMA-riveistä (koko loppukausi listattu; enintään 64 riviä). Ellei käyttäjä rajaa jaksoa, kuvio koskee koko loppukautta.
 - Poissaolo: {"injury": "<pelaajan nimi>", "games": N | "until": "YYYY-MM-DD"}. Tavoite: {"team", "goal": avoid_relegation|top6|top10|win}.
+- Joukkueen muutos (valmentajanvaihto, iso hankinta, muotonotkahdus, kaikki mikä muuttaa joukkueen tasoa eikä yksittäistä tulosta): {"team", "xg_share": d, "from"?: "YYYY-MM-DD", "until"?, "games"?}, d = joukkueen maaliodottamien osuuden muutos (−0,15…+0,15; +0,05 = osuus nousee 5 prosenttiyksikköä). Valitse d datasta (esim. alla oleva VALMENTAJANVAIHDOT-näyttö) ja kerro oletus yhdellä lauseella.
 - Yleiset ilmaukset tulkitaan näin (ei tarkennusta): "joulun yli" = from 2026-12-20 until 2027-01-06; "loppukausi" / "kaikki loput" = kaikki jäljellä olevat ottelut (from tänään); "ensi viikolla" = seuraavat 7 päivää.
-- Jos kuvaus on silti monitulkintainen (esim. kaksi samannimistä pelaajaa, epäselvä joukkue tai ajanjakso), ÄLÄ kutsu työkalua vaan kysy yksi lyhyt tarkentava kysymys.
+- Sovelluksen pitää toimia kenelle tahansa (käyttäjä 7.11.: "Haluan siis että tätä voi käyttää idiottikin"): ÄLÄ kysy tarkennusta, kun järkevä oletus on olemassa. Tee oletus, kerro se yhdellä lauseella ja vastaa. Oletukset: kesto puuttuu -> loukkaantuminen 10 ottelua, muu muutos loppukausi; alkupäivä puuttuu -> heti seuraavasta ottelusta; "voittaa/häviää" ilman määrää -> seuraavat 5 ottelua; pelkkä kysymys ilman muutosta ("pääseekö Kärpät jatkoon?") -> kutsu työkalua tavoitteella (goal) ja vastaa nykyennusteella. Kysy vain, jos kuvauksesta ei saa mitään järkevää skenaariota (esim. tuntematon nimi, jota ei löydy).
 - Skenaarion takana on lähes aina piilokysymys: mitä tämä tarkoittaa joukkueen kaudelle? (7.11.2026, käyttäjä: "mieti konteksti että tässä kysytään myös että pääseekö Pelicans jatkoon".) Vastaa siihen ENSIMMÄISENÄ lauseena työkalun luvuilla, nyt -> skenaario: pääseekö pääjoukkue jatkoon eli pudotuspeleihin (sijat 1–10, työkalun top 10), ja sen mukaan mikä on joukkueen kannalta olennainen raja: suoraan puolivälieriin (top 6), putoamisuhka (15.–17.) tai runkosarjan voitto. Esim. "Pelicans putoaa skenaariossa pois pudotuspeleistä: jatkoon 2 % (nyt 41 %), putoamisuhka 96 %."
 - Sen jälkeen 1–2 lausetta: miten tulkitsit kuvauksen, mihin dataan nojasit ja ketkä muut hyötyvät tai kärsivät eniten. Älä laske lukuja itse. Kirjoita pelkkää tekstiä: ei taulukoita, ei listoja, ei otsikoita (sovellus näyttää luvut itse). Älä kirjoita JATKO-riviä.
 - Sovellus piirtää vastauksen alle yhden kuvaajan. Valitse se viimeisellä rivillä täsmälleen muodossa "KUVAAJA: <tyyppi> <joukkue>":
@@ -43,6 +45,39 @@ const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa L
   jakauma = kun kysymys koskee lopullista sijaa tai tavoitetta (top 6, pudotuspelit, putoaminen, mestaruus) (sijajakauma 1.–17. nyt vs. skenaario);
   ottelut = kun lukittuja otteluita on vain muutama ja olennaista on, kuinka todennäköisiä juuri ne tulokset ovat (mallin todennäköisyys kullekin);
   ei = jos et kutsunut työkalua (esim. kysyit tarkennusta). Joukkue = se, jota kuvaus pääasiassa koskee.`;
+
+// Valmentajanvaihtojen näyttö (7.11.2026, käyttäjä kysyi "Kärpät vaihtavat valmentajaa"): tämän
+// kauden vaihdot ja joukkueen pisteet/ottelu sekä xG-osuus ennen ja jälkeen, haun hetkellä
+// datasta. Agentti valitsee tästä joukkueen muutoksen (xg_share) ja kertoo oletuksen.
+const COACH_WORDS = /valmentaj|valmentaa|coach|päävalm|potku/i;
+async function coachingEvidence(): Promise<string> {
+  const M = "LIIGA.MODEL";
+  const rows = await query(`
+    WITH tg AS (
+      SELECT SUBSTR(start_ts, 1, 10) AS d, home_team AS team, home_points AS pts, home_xg AS xf, away_xg AS xa
+      FROM ${M}.STG_GAMES WHERE ended AND season = (SELECT MAX(season) FROM ${M}.STG_GAMES)
+      UNION ALL
+      SELECT SUBSTR(start_ts, 1, 10), away_team, away_points, away_xg, home_xg
+      FROM ${M}.STG_GAMES WHERE ended AND season = (SELECT MAX(season) FROM ${M}.STG_GAMES))
+    SELECT c.team, CAST(c.change_date AS VARCHAR) AS change_date, c.coach_out, c.coach_in,
+           SUM(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN 1 ELSE 0 END) AS n_before,
+           SUM(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN 1 ELSE 0 END) AS n_after,
+           AVG(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN tg.pts END) AS ppg_before,
+           AVG(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.pts END) AS ppg_after,
+           SUM(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN tg.xf END) / NULLIF(SUM(CASE WHEN tg.d < CAST(c.change_date AS VARCHAR) THEN tg.xf + tg.xa END), 0) AS xg_before,
+           SUM(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.xf END) / NULLIF(SUM(CASE WHEN tg.d >= CAST(c.change_date AS VARCHAR) THEN tg.xf + tg.xa END), 0) AS xg_after
+    FROM ${M}.COACHING_CHANGES c JOIN tg ON tg.team = c.team
+    WHERE c.season = (SELECT MAX(season) FROM ${M}.STG_GAMES)
+    GROUP BY c.team, c.change_date, c.coach_out, c.coach_in ORDER BY change_date`).catch(() => []);
+  if (!rows.length) return "";
+  const f = (x: unknown, d = 2) => (x == null ? "?" : Number(x).toFixed(d).replace(".", ","));
+  const deltas = rows.filter((r) => r.XG_BEFORE != null && r.XG_AFTER != null).map((r) => Number(r.XG_AFTER) - Number(r.XG_BEFORE));
+  const avg = deltas.length ? deltas.reduce((a, b) => a + b, 0) / deltas.length : null;
+  return [`VALMENTAJANVAIHDOT TÄLLÄ KAUDELLA (data; p/ott ja xG-osuus ennen -> jälkeen):`,
+    ...rows.map((r) => `- ${r.TEAM} ${r.CHANGE_DATE}: ${r.COACH_OUT} -> ${r.COACH_IN}; p/ott ${f(r.PPG_BEFORE)} -> ${f(r.PPG_AFTER)}, xG-osuus ${f(100 * Number(r.XG_BEFORE), 1)} % -> ${f(100 * Number(r.XG_AFTER), 1)} % (${r.N_BEFORE} / ${r.N_AFTER} ottelua)`),
+    avg != null ? `Keskimääräinen xG-osuuden muutos ${deltas.length} vaihdossa: ${avg >= 0 ? "+" : ""}${f(100 * avg, 1)} %-yks. Otokset ovat pieniä ja heikon alun jälkeen paluu keskitasolle on tavallista, joten käytä tätä ylärajana ja kerro se.` : "",
+  ].filter(Boolean).join("\n");
+}
 
 // Kuvauksessa mainittujen joukkueiden seuraavat ottelut (7.11.2026): ilman niitä agentti ei
 // voinut rakentaa kuviota kuten "joka toinen peli" (tilannekuvassa vain liigan 16 seuraavaa).
@@ -83,7 +118,8 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const teams = await loadTeams();
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
-  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "");
+  const coach = COACH_WORDS.test(text) ? await coachingEvidence() : "";
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "");
   const a: Answer = await askOnce(text, ctx, progress);
   const sc = splitChart(a.text);
   const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
