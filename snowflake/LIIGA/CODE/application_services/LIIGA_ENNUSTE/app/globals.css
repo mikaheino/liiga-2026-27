@@ -1387,3 +1387,8 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-rel-q { font-size: 15px; color: var(--body); }
 .gs-rel-l { font: 600 13px var(--sans); color: var(--gold); font-variant-numeric: tabular-nums; }
 .gs-fresh { margin: 0; font-size: 12.5px; color: var(--gold); }
+/* Kuvaaja vastauspaneelissa: matalampi, jotta teksti ja kuvaaja mahtuvat samaan ruutuun. */
+.gs-ai .sc-wrap { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.gs-ai .sc-chart svg { max-height: 30vh; }
+@media (max-width: 860px) { .gs-ai .sc-chart svg { max-height: 26vh; } }
+.gs-ai > .sc-chart { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }

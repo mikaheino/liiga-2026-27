@@ -259,6 +259,12 @@ export default function ScenarioBoard() {
           {live.news && live.news.length > 0 && <p className="gs-news">Mukana uutisista: {live.news.join(" · ")}</p>}
           {/* Uusi pelaaja, jota mallissa ei vielä ole (7.11.2026): kirjattu rosterijonoon standardipolkua varten. */}
           {live.roster && live.roster.length > 0 && <p className="gs-news">Ei vielä mallissa, kirjattu rosterijonoon: {live.roster.join(" · ")}</p>}
+          {/* Kuvaaja vastauksen jatkona samassa paneelissa (7.11.2026, käyttäjä: "miksi grafiikka ei tule
+              samaan paikkaan? looginen jatko kysymyksille"). Agentin valitsema kuvaaja; jos agentti ei valinnut (vanha haku), sama sääntö kuin sen ohjeessa.
+              Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
+          {res && items.length > 0 && <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
+            charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />}
+
           {live.error && <div className="ag-err">{live.error}</div>}
           {live.done && !live.error && live.items === 0 && live.text && (
             <form className="gs-reply" onSubmit={(e) => { e.preventDefault(); run(reply); }}>
@@ -272,10 +278,6 @@ export default function ScenarioBoard() {
       {err && <div className="ag-err gs-status">{err}</div>}
       {items.length > 0 && res && (
         <div className="gs-results">
-          {/* Agentin valitsema kuvaaja; jos agentti ei valinnut (vanha haku), sama sääntö kuin sen ohjeessa.
-              Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
-          <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
-            charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />
           <p className="gs-stats">
             {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{res.plausibility < 0.001 ? "alle 0,1" : fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
             ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
