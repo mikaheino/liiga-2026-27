@@ -12,13 +12,15 @@ import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { query } from "@/lib/snowflake";
 import { activeAbsences, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
+import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
 export type Chart = { type: "pisteet" | "jakauma" | "ottelut"; team?: string } | null;
 // news = skenaariossa mukana olevat uutisista hyväksytyt poissaolot (rivien labelit).
+// roster = pelaajat, joita mallin rosterissa ei ole ja jotka kirjattiin rosterijonoon (lib/rosterQueue.ts).
 export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number; chart?: Chart;
-  news?: string[] };
+  news?: string[]; roster?: string[] };
 
 // Agentin viimeinen rivi "KUVAAJA: <tyyppi> [joukkue]" luetaan ja poistetaan näkyvästä tekstistä.
 const CHART_LINE = /\n?\s*KUVAAJA:\s*(pisteet|jakauma|ottelut|ei)\b\s*([^\n]*)\s*$/i;
@@ -140,7 +142,11 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const [absAll, hints] = await Promise.all([activeAbsences(today), injuryHints(scope, today)]);
   const abs = absAll.filter((a) => scope.includes(a.team));
   const news = NEWS_RULE(abs, hints);
-  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "");
+  // Uusi pelaaja, jota mallissa ei vielä ole: agentti arvioi joukkuetasolla ja kertoo jonosta.
+  const missing = await missingPlayers(text, teams).catch(() => []);
+  const rosterRule = missing.length ? `PELAAJA EI VIELÄ MALLIN ROSTERISSA: ${missing.map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`).join(", ")}.
+Älä yritä poissaoloa hänelle. Mallinna hänen vaikutuksensa joukkueen muutoksena (xg_share): tavallinen hankinta +0,005…+0,015, tähtipelaaja enintään +0,03, ja kerro oletus. Kerro lempeästi yhdellä lauseella, että pelaaja ei ole vielä mallissa ja että hänet on kirjattu rosterijonoon: kun hänet lisätään standardipolulla, haku lasketaan hänen omilla tilastoillaan.` : "";
+  const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "");
   // "Moottori ei hyydy koskaan" (käyttäjä 7.11.2026): agentin kaatuminen yritetään uudelleen,
   // moottorin hylkäämä skenaario palautetaan agentille korjattavaksi kerran, ja jos kumpikaan ei
   // auta, vastataan kysyttyjen joukkueiden nykyennusteella (moottori laskee, syy kerrotaan).
@@ -189,8 +195,10 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
       items: r.scenario_canonical ?? [], tools: ["liiga_skenaario"], sql: [], chart: { type: "jakauma", team: scope[0] } };
   };
 
+  const queued = queueRoster(missing, text).map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`);
+  const withRoster = (d: Described): Described => (queued.length ? { ...d, roster: queued } : d);
   let first: Described;
-  try { first = await attempt(await ask()); } catch (e) { return fallback(`agentti ei vastannut: ${(e as Error).message.split("\n")[0].slice(0, 120)}`); }
+  try { first = withRoster(await attempt(await ask())); } catch (e) { return fallback(`agentti ei vastannut: ${(e as Error).message.split("\n")[0].slice(0, 120)}`); }
   if (!first.error) return first;
   // Korjauskierros: moottorin virhe takaisin agentille.
   progress?.({ status: "Korjataan skenaariota" });
@@ -198,5 +206,5 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   try {
     second = await attempt(await ask(`\n\nEDELLINEN YRITYS EPÄONNISTUI. Moottori sanoi: "${first.error}". Korjaa skenaario (tarkista nimet, kesto, raja ±0,15 ja enintään ${MAX_ITEMS} riviä; tarvittaessa yksinkertaista) ja kutsu liiga_skenaario-työkalua uudelleen.`));
   } catch { return fallback(first.error ?? "tuntematon virhe"); }
-  return second.error ? fallback(second.error) : second;
+  return second.error ? fallback(second.error) : withRoster(second);
 }

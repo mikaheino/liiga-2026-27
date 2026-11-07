@@ -44,10 +44,10 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
   base?: { item: unknown; label: string }[];
   saved?: { at: string; stale: boolean }; refreshed?: string; chart?: ChartPick; news?: string[];
-  exploring?: boolean; related?: { q: string; line: string }[] };
+  exploring?: boolean; related?: { q: string; line: string }[]; roster?: string[] };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] } | { t: "exploring" }
   | { t: "related"; items: { q: string; line: string }[] }
-  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; tools: string[]; error?: string };
+  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; news?: string[]; roster?: string[]; tools: string[]; error?: string };
 // Tallennettu haku (lib/skenaarioHaut.ts, /api/skenaario/haut).
 type Haku = { id: string; question: string; followup: string | null; answer: string; items: Item[]; result: Res | null; tools: string[];
   sqlCount: number; forecastTs: string; askedAt: string; status: "done" | "clarify" | "error" };
@@ -142,7 +142,7 @@ export default function ScenarioBoard() {
         else if (m.t === "related") up((l) => ({ ...l, exploring: false, related: m.items }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
-          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [] }));
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [], roster: m.roster ?? [] }));
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText("");
@@ -257,6 +257,8 @@ export default function ScenarioBoard() {
           {live.text && <p className="gs-ai-t">{live.text}</p>}
           {/* Uutisista hyväksytyt poissaolot, jotka ovat skenaariossa lähtötilanteena (7.11.2026). */}
           {live.news && live.news.length > 0 && <p className="gs-news">Mukana uutisista: {live.news.join(" · ")}</p>}
+          {/* Uusi pelaaja, jota mallissa ei vielä ole (7.11.2026): kirjattu rosterijonoon standardipolkua varten. */}
+          {live.roster && live.roster.length > 0 && <p className="gs-news">Ei vielä mallissa, kirjattu rosterijonoon: {live.roster.join(" · ")}</p>}
           {live.error && <div className="ag-err">{live.error}</div>}
           {live.done && !live.error && live.items === 0 && live.text && (
             <form className="gs-reply" onSubmit={(e) => { e.preventDefault(); run(reply); }}>

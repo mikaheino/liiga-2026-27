@@ -193,6 +193,21 @@ Avoin päätös siitä miten loukkaantumisiin ja rosterimuutoksiin suhtaudutaan
 jatkossa: `docs/model_improvements_in_season.md`, "TODO — decide the
 in-season roster policy".
 
+## Rosterijono sovelluksesta (7.11.2026)
+
+Käyttäjä: "jos uusi pelaaja niin polku jolla pelaaja rosteriin standardin mukaisesti". Etusivun haku
+tunnistaa pelaajan, jota `roster_2026_27`:ssä ei ole (sukunimi), vastaa silti (vaikutus joukkueen
+muutoksena, xg_share +0,005…+0,03, oletus kerrotaan) ja kirjaa hänet `data/roster_requests.csv`:hen
+(`lib/rosterQueue.ts`, vain paikallisesti). **Sovellus ei koskaan lisää pelaajaa malliin.** Jono:
+
+    .venv/bin/python scripts/local/roster_queue.py            # jono + onko jo rosterissa + vaiheet 1-9
+    .venv/bin/python scripts/local/roster_queue.py --done "Rasmus Kumpulainen"
+    .venv/bin/python scripts/local/roster_queue.py --dismiss "<ei oikea pelaaja>"
+
+Käsittele jono alla olevilla vaiheilla 1–9 ja commitoi `roster_requests.csv` rosterierän mukana.
+Lisäyksen jälkeen ennuste päivittyy, ja tallennettu haku ajetaan avattaessa uudelleen, jolloin pelaaja
+lasketaan omilla tilastoillaan. Ensimmäinen kirjaus 7.11.: Rasmus Kumpulainen (Lukko, laina 6.11.).
+
 ## Adding new players — required steps
 
 When the user says to add a new player (new signing, transfer update):
