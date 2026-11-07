@@ -11,12 +11,12 @@
 //     {t:"step", text}        uusi vaihe (edellinen valmis)
 //     {t:"text", text}        yhteenveto tähän asti (koko teksti, ei pala)
 //     {t:"sql", sql: [...]}   agentin ajamat SQL-lauseet (Snowflake; paikallisesti tyhjä)
-//     {t:"done", id, answer, items, result, tools, error?}
+//     {t:"done", id, answer, items, result (sis. charts), chart (agentin valinta), tools, error?}
 //     {t:"error", text}
 import { AGENT_SOURCE } from "@/lib/agent";
 import { forecastStamp } from "@/lib/kortti";
 import { loadTeams } from "@/lib/data";
-import { describe } from "@/lib/scenarioDescribe";
+import { describe, splitChart } from "@/lib/scenarioDescribe";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 import { saveHaku, summarize } from "@/lib/skenaarioHaut";
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         step("Tulkitaan kuvaus");
         const d = await describe(prompt, (p) => {
           if (p.status) step(p.status);
-          if (p.partial) send({ t: "text", text: p.partial });
+          if (p.partial) send({ t: "text", text: splitChart(p.partial).text });
         }, base);
         if (d.sql.length) send({ t: "sql", sql: d.sql.slice(0, 5) });
         // Vaikutukset lasketaan tässä eikä selaimessa, jotta luvut tallentuvat haun mukana.
@@ -63,8 +63,8 @@ export async function POST(req: Request) {
         }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";
         const id = await save({ season: SEASON, question: text, followup, answer: d.error ? `${d.answer}\n\n${d.error}`.trim() : d.answer,
-          items: d.items, result: result ? summarize(result) : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
-        send({ t: "done", id, answer: d.answer, items: d.items, result, tools: d.tools, ...(d.error ? { error: d.error } : {}) });
+          items: d.items, result: result ? summarize(result, d.chart) : null, tools: d.tools, sql: d.sql, forecastTs, ms: Date.now() - t0, status, source: AGENT_SOURCE });
+        send({ t: "done", id, answer: d.answer, items: d.items, result, chart: d.chart ?? null, tools: d.tools, ...(d.error ? { error: d.error } : {}) });
       } catch (e) {
         const msg = String((e as Error).message).split("\n")[0].slice(0, 300);
         await save({ season: SEASON, question: text, followup, answer: msg, items: [], result: null, tools: [], sql: [], forecastTs, ms: Date.now() - t0, status: "error", source: AGENT_SOURCE });

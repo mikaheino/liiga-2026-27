@@ -27,7 +27,7 @@ const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/H
 // Sivun nimi ja se, mitä sivulla on. Sama sanasto kuin käyttöliittymässä, jotta
 // agentti puhuu samoista asioista samoilla nimillä kuin ruutu.
 const PAGES: [RegExp, string, string][] = [
-  [/^\/$/, "Etusivu", "oma skenaario hakukenttänä (Entä jos?, tekoäly rakentaa sen livenä), päivän tarina ja linkit osioihin"],
+  [/^\/$/, "Etusivu", "oma skenaario hakukenttänä (Entä jos?, tekoäly rakentaa sen livenä) ja linkit osioihin"],
   [/^\/joukkue\//, "Joukkuesivu", "yhden joukkueen sijajakauma, ennuste, viimeiset ja seuraavat ottelut"],
   [/^\/sarjataulukko/, "Sarjataulukko", "sarjatilanne nyt, välilehdet koti/vieras, maalit ja erikoistilanteet"],
   [/^\/voittaja/, "Runkosarjan voittaja", "voittotodennäköisyydet ja kerätyt pisteet"],

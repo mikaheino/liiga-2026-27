@@ -11,10 +11,13 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
 import { engineItem, getLocks, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
+import ScenarioChart, { type ChartPick, type Charts, type LockedGame, fallbackPick } from "@/components/ScenarioChart";
 
 type Row = { team: string } & Record<string, number | string>;
 type Req = { team: string; goal: string; p: number };
-type Res = { teams: Row[]; plausibility: number | null; scenario_canonical: Item[]; requirements: Req[]; forecast_date: string; error?: string };
+// charts/locked_games: moottorin kuvaajadata (7.11.2026); chart: agentin valinta tallennetussa haussa.
+type Res = { teams: Row[]; plausibility: number | null; scenario_canonical: Item[]; requirements: Req[]; forecast_date: string; error?: string;
+  charts?: Charts | null; locked_games?: LockedGame[]; chart?: ChartPick };
 const COLS = [["p_relegation", "Putoaa"], ["p_top10", "Top 10"], ["p_top6", "Top 6"], ["p_title", "Voitto"]] as const;
 const pct = (p: number) => (p > 0 && p < 0.005 ? "<1" : fi(100 * p, 0));
 const diff = (r: Row, k: string) => Math.abs(Number(r[`${k}_scenario`]) - Number(r[`${k}_now`]));
@@ -39,9 +42,9 @@ const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 // base = pohjaskenaario, jonka päälle haku rakennettiin (tarkennus käyttää samaa pohjaa).
 type Live = { q: string; steps: string[]; text: string; sql: string[]; tools: string[]; done: boolean; error?: string; items?: number; prompt?: string;
   base?: { item: unknown; label: string }[];
-  saved?: { at: string; stale: boolean } };
+  saved?: { at: string; stale: boolean }; chart?: ChartPick };
 type Msg = { t: "step" | "text" | "error"; text: string } | { t: "sql"; sql: string[] }
-  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; tools: string[]; error?: string };
+  | { t: "done"; id?: string; answer: string; items: Item[]; result?: Res | null; chart?: ChartPick; tools: string[]; error?: string };
 // Tallennettu haku (lib/skenaarioHaut.ts, /api/skenaario/haut).
 type Haku = { id: string; question: string; followup: string | null; answer: string; items: Item[]; result: Res | null; tools: string[];
   sqlCount: number; forecastTs: string; askedAt: string; status: "done" | "clarify" | "error" };
@@ -90,7 +93,7 @@ export default function ScenarioBoard() {
     const stale = !!h.forecastTs && !!stamp && h.forecastTs !== stamp;
     setAllChips(false); setReply("");
     setLive({ q: h.question, steps: [], text: h.answer, sql: [], tools: h.tools, done: true, items: h.items.length,
-      error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale } });
+      error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart });
     preset.current = !stale && h.result && h.items.length ? { key: keyOf(h.items), res: h.result } : null;
     setLocks(h.items);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -119,7 +122,7 @@ export default function ScenarioBoard() {
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
         else if (m.t === "error") up((l) => ({ ...l, done: true, error: m.text }));
         else if (m.t === "done") {
-          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0 }));
+          up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart }));
           if (m.items?.length) {
             if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText("");
@@ -223,6 +226,10 @@ export default function ScenarioBoard() {
             {res.plausibility != null && <>Kaikki lukitut tulokset toteutuvat mallin mukaan <b>{res.plausibility < 0.001 ? "alle 0,1" : fi(100 * res.plausibility, res.plausibility < 0.1 ? 1 : 0)} %</b>:n todennäköisyydellä · </>}
             ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
           </p>
+          {/* Agentin valitsema kuvaaja; jos agentti ei valinnut (vanha haku), sama sääntö kuin sen ohjeessa.
+              Ilman kuvaajadataa (vanha perusta lasketaan uudelleen) moottori palauttaa sen nyt. */}
+          <ScenarioChart pick={live?.chart === undefined ? fallbackPick(res.locked_games?.length ?? 0, res.requirements.length > 0) : live.chart}
+            charts={res.charts} locked={res.locked_games ?? []} plausibility={res.plausibility} />
           {res.requirements.map((r) => <p key={r.team + r.goal} className="gs-req">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
           {rows.length ? rows.map((r) => {
             // Otsikkona joukkueen suurin muutos, katkelmana muut liikkuneet luvut.

@@ -196,3 +196,24 @@ luonteva täydennys -> nykyiset rivit sellaisinaan + uudet) tai ALOITA UUSI (its
 sanomaan valintansa yhteenvedon alussa. Agentin palauttama skenaario korvaa sirut; tarkennus käyttää
 samaa pohjaa. Testattu samalla pohjalla (3 Tapparan voittoa): "Bartosak loukkaantuu myös 10 ottelua"
 -> jatkoi (4 riviä), "Mitä jos Kärpät voittaa loppukauden kaikki kotiottelunsa?" -> uusi (21 riviä).
+
+## Agentti valitsee kuvaajan (7.11.2026)
+
+Käyttäjä: "agentti vois piirtää myös automaattisesti odotetua pelimallia" -> "Agentti valitsee itse".
+- Moottori (`simulate_scenario.py charts()`, json-tila, vain kun skenaariossa on lukituksia tai
+  poissaoloja): kohdejoukkueet = suurin odotettujen pisteiden muutos (≤ 3); `dist` = sijajakauma nyt
+  vs. skenaario (samat simuloidut kaudet), `points` = odotettu pistekertymä ottelu kerrallaan,
+  ankkuroitu kuten `_team_rows` (loppupiste = taulukon luku; testi `test_charts_match_table…`).
+  `locked_games` (mallin p) oli jo ennestään. Tekstitila (agentin työkalu) ei muutu.
+- Agentti kirjoittaa viimeiseksi riviksi `KUVAAJA: pisteet|jakauma|ottelut|ei <joukkue>`;
+  `splitChart()` poistaa sen tekstistä (myös striimistä). Ilman riviä `fallbackPick()`.
+- `components/ScenarioChart.tsx` piirtää SVG:nä: nyt = harmaa katkoviiva / haalea pylväs, skenaario =
+  kulta #ebca68 (dataviz-validaattori: CVD ΔE 23,5, kontrasti OK; harmaa tarkoituksella väritön,
+  sarja kerrotaan myös viivatyylillä, selitteellä ja suorilla arvoilla). Hover = title-vihjeet.
+- Tallennettu haku säilyttää kuvaajadatan ja valinnan (`result.charts`, `result.chart`).
+- Testattu: "Pelsut häviää joka toisen pelin loppukauden" -> pisteet, "Pääseekö HPK top 6:een jos se
+  voittaa kolme seuraavaa?" -> jakauma, "Mitä jos Ilves voittaa Pelicansin 11.11.?" -> ottelut.
+- ⚠️ Snowflakessa kuvaajat näkyvät vasta, kun deploy.yml on julkaissut uuden proseduuriversion.
+
+Samana iltana etusivulta poistettiin myös Päivän tarina (käyttäjä: "tarpeeton"); etusivulla on nyt
+vain "Entä jos?" ja puhelimessa osiolinkit.

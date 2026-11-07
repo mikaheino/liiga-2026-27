@@ -1264,3 +1264,37 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .gs-go:disabled { cursor: default; }
 .gs-go:not(:disabled):hover .gs-ico { stroke: var(--gold-hi); }
 .gs-go:focus-visible { outline: 2px solid var(--gold-mid); outline-offset: 3px; }
+
+/* Skenaarion kuvaaja (7.11.2026, ScenarioChart.tsx): agentti valitsee tyypin, moottori antaa datan.
+   Nyt = harmaa katkoviiva / haalea pylväs (vertailukohta), skenaario = kulta. Ohuet merkit,
+   hillitty ruudukko, suorat arvot vain loppupisteessä tai huipussa, hover title-vihjeinä. */
+.sc-wrap { display: grid; gap: 10px; }
+.sc-teams { display: flex; gap: 6px; flex-wrap: wrap; }
+.sc-teams button { all: unset; cursor: pointer; padding: 5px 12px; border-radius: 16px; border: 1px solid var(--line-2); font: 600 12.5px var(--sans); color: var(--muted); }
+.sc-teams button.on { color: var(--gold-hi); border-color: var(--gold-dim); }
+.sc-chart { margin: 0; display: grid; gap: 6px; }
+.sc-chart figcaption { font: 600 14px var(--sans); color: var(--ink); }
+.sc-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.sc-leg { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
+.sc-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.sc-leg i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
+.sc-leg i.now { border-color: #8f8573; border-top-style: dashed; }
+.sc-leg i.scn { border-color: #ebca68; }
+.sc-now { stroke: #8f8573; stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
+.sc-scn { stroke: #ebca68; stroke-width: 2; stroke-linejoin: round; }
+.sc-lock { fill: #ebca68; stroke: var(--surface); stroke-width: 2; }
+.sc-val { font: 600 12px var(--sans); fill: var(--ink); }
+.sc-val.dim { fill: var(--muted); }
+.sc-hit { fill: transparent; }
+.sc-hit:hover { fill: rgba(235,202,104,.06); }
+.sc-bar-now { fill: #8f8573; opacity: .55; }
+.sc-bar-scn { fill: #ebca68; }
+.sc-zone { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 3; }
+.sc-note { margin: 0; font-size: 12px; color: var(--faint); }
+.sc-games { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sc-games li { display: grid; grid-template-columns: minmax(0, 1fr) 120px 44px; gap: 10px; align-items: center; font-size: 13px; color: var(--body); }
+.sc-g { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .sc-g b { color: var(--ink); font-weight: 600; }
+.sc-pbar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.sc-pbar i { display: block; height: 100%; border-radius: 4px; background: #ebca68; }
+.sc-p { font: 600 12.5px var(--mono); color: var(--ink); text-align: right; }
+@media (max-width: 860px) { .sc-games li { grid-template-columns: minmax(0, 1fr) 70px 40px; } }

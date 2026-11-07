@@ -12,7 +12,21 @@ import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
-export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number };
+// chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
+export type Chart = { type: "pisteet" | "jakauma" | "ottelut"; team?: string } | null;
+export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number; chart?: Chart };
+
+// Agentin viimeinen rivi "KUVAAJA: <tyyppi> [joukkue]" luetaan ja poistetaan näkyvästä tekstistä.
+const CHART_LINE = /\n?\s*KUVAAJA:\s*(pisteet|jakauma|ottelut|ei)\b\s*([^\n]*)\s*$/i;
+// Paikallisen Clauden yleisohje lisää loppuun sovelluslinkin; hakusivulla se on turha.
+const APP_LINK = /\n?\s*Lisää sovelluksessa:[^\n]*/gi;
+export function splitChart(raw: string): { text: string; chart: Chart } {
+  const text = raw.replace(APP_LINK, "");
+  const m = CHART_LINE.exec(text);
+  if (!m) return { text: text.replace(/\n?\s*KUVAAJA:[^\n]*$/i, "").trimEnd(), chart: undefined as unknown as Chart };
+  const type = m[1].toLowerCase();
+  return { text: text.slice(0, m.index).trimEnd(), chart: type === "ei" ? null : { type: type as "pisteet", ...(m[2].trim() ? { team: m[2].trim() } : {}) } };
+}
 
 const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa Liigan kauden 2026-27 skenaarion omin sanoin. Rakenna siitä liiga_skenaario-työkalun skenaario ja kutsu työkalua täsmälleen kerran.
 - Tänään on ${today}. Joukkueiden tarkat nimet: ${teams.join(", ")}.
@@ -22,7 +36,12 @@ const RULE = (today: string, teams: string[]) => `TEHTÄVÄ: Käyttäjä kuvaa L
 - Poissaolo: {"injury": "<pelaajan nimi>", "games": N | "until": "YYYY-MM-DD"}. Tavoite: {"team", "goal": avoid_relegation|top6|top10|win}.
 - Yleiset ilmaukset tulkitaan näin (ei tarkennusta): "joulun yli" = from 2026-12-20 until 2027-01-06; "loppukausi" / "kaikki loput" = kaikki jäljellä olevat ottelut (from tänään); "ensi viikolla" = seuraavat 7 päivää.
 - Jos kuvaus on silti monitulkintainen (esim. kaksi samannimistä pelaajaa, epäselvä joukkue tai ajanjakso), ÄLÄ kutsu työkalua vaan kysy yksi lyhyt tarkentava kysymys.
-- Työkalun jälkeen kirjoita 2–3 lauseen yhteenveto: miten tulkitsit kuvauksen, mihin dataan nojasit ja mitä työkalun luvut kertovat. Älä laske lukuja itse. Kirjoita pelkkää tekstiä: ei taulukoita, ei listoja, ei otsikoita (sovellus näyttää luvut itse). Älä kirjoita JATKO-riviä.`;
+- Työkalun jälkeen kirjoita 2–3 lauseen yhteenveto: miten tulkitsit kuvauksen, mihin dataan nojasit ja mitä työkalun luvut kertovat. Älä laske lukuja itse. Kirjoita pelkkää tekstiä: ei taulukoita, ei listoja, ei otsikoita (sovellus näyttää luvut itse). Älä kirjoita JATKO-riviä.
+- Sovellus piirtää vastauksen alle yhden kuvaajan. Valitse se viimeisellä rivillä täsmälleen muodossa "KUVAAJA: <tyyppi> <joukkue>":
+  pisteet = kun skenaario on otteluputki, jakso tai poissaolo, joka muuttaa pistekertymää kauden mittaan (odotettu pistekäyrä nyt vs. skenaario);
+  jakauma = kun kysymys koskee lopullista sijaa tai tavoitetta (top 6, pudotuspelit, putoaminen, mestaruus) (sijajakauma 1.–17. nyt vs. skenaario);
+  ottelut = kun lukittuja otteluita on vain muutama ja olennaista on, kuinka todennäköisiä juuri ne tulokset ovat (mallin todennäköisyys kullekin);
+  ei = jos et kutsunut työkalua (esim. kysyit tarkennusta). Joukkue = se, jota kuvaus pääasiassa koskee.`;
 
 // Kuvauksessa mainittujen joukkueiden seuraavat ottelut (7.11.2026): ilman niitä agentti ei
 // voinut rakentaa kuviota kuten "joka toinen peli" (tilannekuvassa vain liigan 16 seuraavaa).
@@ -65,7 +84,8 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
   const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "");
   const a: Answer = await askOnce(text, ctx, progress);
-  const base = { answer: a.text, tools: a.tools, sql: a.sql };
+  const sc = splitChart(a.text);
+  const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
   const call = [...a.inputs].reverse().find((i) => i.name === "liiga_skenaario");
   const raw = typeof call?.input?.scenario === "string" ? call.input.scenario : null;
   if (!raw) return { ...base, items: [] };

@@ -675,7 +675,53 @@ def compute(scenario: list[dict], games: list[dict], banked: dict[str, float],
     return {"locked_games": locked, "teams": sorted(_team_rows(teams, published, scn, base, crowd_weight),
                                                     key=lambda x: x["rank_scenario"]),
             "requirements": reqs, "injuries": injury_info, "plausibility": plaus if fixed else None,
-            "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st}
+            "scenario_canonical": canon, "scenario_sha": scenario_sha(canon), "stakes": st,
+            "charts": charts(scn, base, games, teams, banked, fixed, published, crowd_weight) if (fixed or injuries) else None}
+
+
+# ------------------------------------------------------- kuvaajat (sovellus, json-tila)
+# 7.11.2026, käyttäjä: "agentti vois piirtää myös automaattisesti odotetua pelimallia" ->
+# agentti valitsee kuvaajan. Moottori laskee kaikki kolme samoista simuloiduista kausista:
+#   dist    sijajakauma 1..n nyt (perustaso) ja skenaariossa
+#   points  odotettu pistekertymä päivä kerrallaan (pankki + ottelujen odotusarvot)
+#   locked  lukittujen otteluiden mallitodennäköisyys (compute: locked_games)
+# Kohdejoukkueet = suurin odotettujen pisteiden muutos (enintään 3), jotta vastaus pysyy pienenä.
+_HOME_PTS = np.array([3, 2, 1, 0])        # CANON-järjestys: home_reg, home_ot, away_ot, away_reg
+_AWAY_PTS = np.array([0, 1, 2, 3])
+CHART_TEAMS = 3
+
+
+def charts(scn: dict, base: dict, games: list[dict], teams: list[str], banked: dict[str, float],
+           fixed: dict[int, tuple[str, ...]], published: dict[str, dict], crowd_weight: float) -> dict:
+    moved = np.abs(scn["points"] - base["points"])
+    focus = [teams[i] for i in np.argsort(-moved)[:CHART_TEAMS] if moved[i] >= 0.05]
+    n = len(teams)
+    dist, points = {}, {}
+    for t in focus:
+        i = teams.index(t)
+        dist[t] = {"now": (np.bincount(base["_ranks"][:, i], minlength=n + 1)[1:] / N_SIMS).tolist(),
+                   "scenario": (np.bincount(scn["_ranks"][:, i], minlength=n + 1)[1:] / N_SIMS).tolist()}
+        now = sc = float(banked.get(t, 0.0))
+        series = [{"iso": None, "date": "nyt", "now": now, "scenario": sc, "locked": False}]
+        for g, gm in enumerate(games):
+            side = _HOME_PTS if gm["home_team"] == t else _AWAY_PTS if gm["away_team"] == t else None
+            if side is None:
+                continue
+            now += float(side[base["_k"][:, g]].mean())
+            sc += float(side[scn["_k"][:, g]].mean())
+            series.append({"iso": gm.get("iso"), "date": gm.get("date"), "now": now, "scenario": sc,
+                           "opponent": gm["away_team"] if gm["home_team"] == t else gm["home_team"],
+                           "locked": g in fixed})
+        # Ankkurointi kuten _team_rows: nykykäyrä päättyy julkaistuun pistemäärään ja skenaarion ero
+        # kerrotaan (1 - crowd_weight):lla, joten kuvaaja ja taulukko näyttävät samat loppuluvut.
+        b0, raw_end = series[0]["now"], series[-1]["now"]
+        k = (published[t]["points"] - b0) / (raw_end - b0) if raw_end != b0 else 1.0
+        for pt in series:
+            raw_now, raw_scn = pt["now"], pt["scenario"]
+            pt["now"] = b0 + (raw_now - b0) * k
+            pt["scenario"] = pt["now"] + (1 - crowd_weight) * (raw_scn - raw_now)
+        points[t] = series
+    return {"focus": focus, "dist": dist, "points": points}
 
 
 # ------------------------------------------------------- skenaariopaneeli (sovellus)

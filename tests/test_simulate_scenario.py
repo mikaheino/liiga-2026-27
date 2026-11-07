@@ -93,6 +93,22 @@ def test_locked_win_moves_team_up_and_empty_change_is_zero():
         sim.compute([{"team": "Kiekko-Vantaa", "result": "win"}], games, banked, pub, w)
 
 
+def test_charts_match_table_and_mark_locked_games():
+    """Kuvaajadata (7.11.2026): jakauma summautuu ykköseen, pistekäyrä päättyy taulukon lukuihin
+    ja lukitut ottelut on merkitty; tyhjä skenaario ei tuota kuvaajia."""
+    games, banked, pub, w, _ = _load()
+    team = games[0]["home_team"]
+    res = sim.compute([{"team": team, "result": "reg_win", "games": 3}], games, banked, pub, w)
+    c = res["charts"]
+    assert team in c["focus"] and len(c["focus"]) <= sim.CHART_TEAMS
+    assert abs(sum(c["dist"][team]["scenario"]) - 1) < 1e-9 and len(c["dist"][team]["now"]) == len(pub)
+    row = next(r for r in res["teams"] if r["team"] == team)
+    end = c["points"][team][-1]
+    assert abs(end["now"] - row["points_now"]) < 1e-6 and abs(end["scenario"] - row["points_scenario"]) < 1e-6
+    assert sum(pt["locked"] for pt in c["points"][team]) == 3
+    assert sim.compute([], games, banked, pub, w)["charts"] is None
+
+
 @pytest.mark.skipif(not DB.exists(), reason="ei paikallista kantaa")
 def test_injury_weakens_team():
     import sys

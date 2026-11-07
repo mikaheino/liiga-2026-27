@@ -17,19 +17,23 @@ export type Haku = {
   forecastTs: string; askedAt: string; ms: number; status: "done" | "clarify" | "error"; source: string;
 };
 // Moottorin vastaus tiivistettynä: samat luvut, jotka hakutuloksissa näkyvät.
-export type Summary = { plausibility: number | null; forecast_date: string; requirements: unknown[]; teams: Record<string, number | string>[] };
+// charts + chart + locked_games: kuvaajadata ja agentin valinta (7.11.2026), jotta tallennettu haku
+// avautuu samalla kuvaajalla.
+export type Summary = { plausibility: number | null; forecast_date: string; requirements: unknown[]; teams: Record<string, number | string>[];
+  charts?: unknown; chart?: unknown; locked_games?: unknown[] };
 
 const TABLE = "LIIGA.MODEL.SKENAARIO_HAKU";
 const LOCAL = path.join(os.homedir(), ".cache", "liiga-ennuste", "skenaariot.json");
 const KEYS = ["p_relegation", "p_top10", "p_top6", "p_title"];
 
 /** Moottorin json-vastauksesta talteen vain liikkuneet joukkueet (vähintään 1 %-yks.). */
-export function summarize(res: Record<string, unknown>): Summary {
+export function summarize(res: Record<string, unknown>, chart?: unknown): Summary {
   const teams = ((res.teams ?? []) as Record<string, number | string>[]).filter((r) =>
     KEYS.some((k) => Math.abs(Number(r[`${k}_scenario`]) - Number(r[`${k}_now`])) >= 0.01));
   return {
     plausibility: res.plausibility == null ? null : Number(res.plausibility), forecast_date: String(res.forecast_date ?? ""),
-    requirements: (res.requirements ?? []) as unknown[],
+    requirements: (res.requirements ?? []) as unknown[], charts: res.charts ?? null, chart: chart ?? null,
+    locked_games: (res.locked_games ?? []) as unknown[],
     teams: teams.map((r) => Object.fromEntries([["team", r.team], ...KEYS.flatMap((k) => [[`${k}_now`, r[`${k}_now`]], [`${k}_scenario`, r[`${k}_scenario`]]])])),
   };
 }
