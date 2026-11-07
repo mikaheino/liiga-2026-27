@@ -372,3 +372,13 @@ rakenteiset signaalit, ei otsikoita agentille) päättyi.
   agentin kontekstiin (taustaksi; skenaarioon vain pyynnöstä).
 - ACCOUNTADMIN (Snowsight): LIIGA_NEWS_RULE.sql -> RAW/tables/NEWS_ITEMS.sql -> LIIGA_NEWS_ACCESS.sql
   (integraatio + `ALTER NOTEBOOK ... EXTERNAL_ACCESS_INTEGRATIONS`).
+
+## Qwen 3B sovelluskontissa (7.11.2026)
+
+Käyttäjä: "jos me käynnistetään kontti applikaatiota varten niin miksei QWEN samalla". `lib/qwen.ts`:
+Qwen 2.5 3B Q4 (~2 Gt) node-llama-cpp:llä samassa Node-prosessissa. Uusi kysymys -> koodin säännöt
+(maalivahti pelaa kaikki) -> Qwen (kysymys + PELAAJAT-rivi datasta, JSON-kielioppi, 10 esimerkkiä) ->
+moottori; selitys ja johtopäätös koodista. Jatkokysymykset ja epäonnistumiset agentille (Cortex/Claude).
+Mitattu: pitkä Sonnet-ohje 3B 0/5, 7B 2/5; lyhyt ohje + esimerkit 3B 6/8 (~7 s CPU, ~2 s Mac GPU), 7B 6/8 (~14 s).
+Malli ladataan käännöksessä (app.yml), ei repoon. ⚠️ Todennettava STAGINGissa: lataako Snowflaken
+käännös HF:stä, riittääkö järjestelmäpoolin muisti ja nopeus (lokirivi `[qwen] … ms`). `LIIGA_LLM=off` ohittaa.

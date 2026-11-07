@@ -49,3 +49,6 @@ data/mouho_2027_ilmoittautumiset.csv
 # Uutiskanta (scripts/news/newsdb.py): ei gittiin, repo on julkinen.
 data/news.duckdb
 data/news.duckdb.wal
+
+# Qwen-malli (7.11.2026): ladataan käännöksessä, ei repoon (2 Gt)
+snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/models/

@@ -7,11 +7,14 @@ const nextConfig = STATIC ? {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? "",
   trailingSlash: true,           // joukkue/Kärpät/index.html: Pages tarjoaa hakemiston ilman uudelleenohjauksia
   images: { unoptimized: true },
-  serverExternalPackages: ["snowflake-sdk"],
+  serverExternalPackages: ["snowflake-sdk", "node-llama-cpp"],
   agentRules: false,
 } : {
   output: "standalone",          // App Runtime ajaa .next/standalone/server.js
-  serverExternalPackages: ["snowflake-sdk"],
+  // Qwen (7.11.2026, lib/qwen.ts): llama.cpp:n natiivikirjasto ladataan polusta, jota tiedostojen
+  // jäljitys ei näe -> mukaan käsin. Malli itse (models/) on projektin juuressa, ei standalonessa.
+  outputFileTracingIncludes: { "/api/**": ["node_modules/node-llama-cpp/**", "node_modules/@node-llama-cpp/**"] },
+  serverExternalPackages: ["snowflake-sdk", "node-llama-cpp"],
   agentRules: false,             // ei omaa AGENTS.md:tä: repon ohjeet ovat juuressa
   // Peli (public/mouho) tarkistetaan palvelimelta joka latauksella: välimuistista
   // tullut vanha game.js jätti 16.10. uuden kohtauksen pelaajalta näkymättä.

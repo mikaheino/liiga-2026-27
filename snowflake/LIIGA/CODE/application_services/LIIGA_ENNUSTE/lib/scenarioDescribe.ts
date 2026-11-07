@@ -13,6 +13,7 @@ import { runEngine } from "@/lib/scenarioEngine";
 import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, headlines, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
+import { qwenScenario } from "@/lib/qwen";
 import { goalieAll, goalieItems, normalize, playersIn, playersRule, withNews } from "@/lib/scenarioRules";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
@@ -144,7 +145,8 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
 Älä yritä poissaoloa hänelle. Mallinna hänen vaikutuksensa joukkueen muutoksena (xg_share): tavallinen hankinta +0,005…+0,015, tähtipelaaja enintään +0,03, ja kerro oletus. Kerro lempeästi yhdellä lauseella, että pelaaja ei ole vielä mallissa ja että hänet on kirjattu rosterijonoon: kun hänet lisätään standardipolulla, haku lasketaan hänen omilla tilastoillaan.` : "";
   const pl = await loadPlayers().catch(() => ({ skaters: [], goalies: [] }));
   const gAll = goalieAll(text, pl.goalies);
-  const playerRule = playersRule(playersIn(`${text} ${pohja?.labels.join(" ") ?? ""}`, [...pl.skaters, ...pl.goalies]));
+  const ps = playersIn(`${text} ${pohja?.labels.join(" ") ?? ""}`, [...pl.skaters, ...pl.goalies]);
+  const playerRule = playersRule(ps);
   const goalieRule = gAll ? `MAALIVAHTI: ${gAll.goalie.name} on joukkueen ${gAll.goalie.team} maalivahti. Joukkueen muut vahdit: ${gAll.others.join(", ")}. "Pelaa kaikki loput" = muut vahdit poissa loppukauden: ${JSON.stringify(goalieItems(gAll))}. Käytä tätä, älä kysy joukkuetta.` : "";
   const ctx = RULE(today, teams) + (pohja?.items.length ? `\n\n${BASE_RULE(pohja.items, pohja.labels)}` : "") + (sched ? `\n\n${sched}` : "") + (coach ? `\n\n${coach}` : "") + (news ? `\n\n${news}` : "") + (rosterRule ? `\n\n${rosterRule}` : "") + (goalieRule ? `\n\n${goalieRule}` : "") + (playerRule ? `\n\n${playerRule}` : "");
   // "Moottori ei hyydy koskaan" (käyttäjä 7.11.2026): agentin kaatuminen yritetään uudelleen,
@@ -202,6 +204,22 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
 
   const queued = (await queueRoster(missing, text)).map((m) => `${m.name}${m.team ? ` (${m.team})` : ""}`);
   const withRoster = (d: Described): Described => (queued.length ? { ...d, roster: queued } : d);
+  // Oma kielimalli ensin (7.11.2026, Qwen 3B sovelluskontissa, lib/qwen.ts): uusi kysymys -> koodin
+  // säännöt (maalivahti pelaa kaikki) tai Qwen -> moottori. Selitys koodista. Jatkokysymys (pohja) ja
+  // kaikki, mitä Qwen ei osaa, menevät agentille kuten ennen.
+  if (!pohja?.items.length) {
+    progress?.({ status: "Tulkitaan kysymys" });
+    const qi = gAll ? goalieItems(gAll) : await qwenScenario(text, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
+    if (qi) {
+      const d = await attempt({ text: "", suggestions: [], tools: [gAll ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
+        inputs: [{ name: "liiga_skenaario", input: { scenario: JSON.stringify(qi) } }] });
+      if (!d.error && d.items.length) {
+        const labels = d.items.map((i) => String(i.label ?? "")).filter((l) => l && !d.news?.includes(l));
+        const fromNews = d.news?.length ? ` Uutisista mukana hyväksytyt poissaolot: ${d.news.join("; ")}.` : "";
+        return withRoster({ ...d, answer: `Tulkitsin kysymyksen näin: ${labels.join("; ")}.${fromNews}` });
+      }
+    }
+  }
   let first: Described;
   try { first = withRoster(await attempt(await ask())); } catch (e) { return fallback(`agentti ei vastannut: ${(e as Error).message.split("\n")[0].slice(0, 120)}`); }
   if (!first.error) return first;

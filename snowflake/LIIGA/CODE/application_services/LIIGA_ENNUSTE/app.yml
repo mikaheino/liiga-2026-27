@@ -33,6 +33,7 @@ description: Liigapörssi 2026-27 -- sarjataulukko, vire ja mallin ennuste (LIIG
 
 ignore:
   - node_modules
+  - models
   - .next
   - .env*
   - .git
@@ -43,6 +44,9 @@ install:
 build:
   commands:
     - [npm, run, build]
+    # Qwen 2.5 3B (7.11.2026, lib/qwen.ts): malli kuvaan käännöksessä. Epäonnistunut lataus ei kaada
+    # käännöstä: ilman mallia haku käyttää agenttia kuten ennen ([qwen] ei käytössä -lokirivi).
+    - [sh, -c, "npx --no node-llama-cpp pull --dir models hf:Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M || echo 'qwen: lataus epäonnistui'"]
 run:
   command: [node, .next/standalone/server.js]
 

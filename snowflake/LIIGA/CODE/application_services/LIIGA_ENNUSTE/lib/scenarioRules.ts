@@ -75,6 +75,10 @@ export function verdict(res: Res, items: Row[], teams: string[]): string {
     const l = KEYS.find(([x]) => x === k)![1];
     parts.push(`${l} ${pc(scn(k))} % (nyt ${pc(now(k))} %)`);
   }
+  // Pelkkä kysymys ilman muutosta ("Pääseekö Pelicans jatkoon?"): vastaus on nykyinen todennäköisyys.
+  if (items.length && items.every((x) => x.goal != null)) {
+    return `${r.team}: ${pick.map((k) => `${KEYS.find(([x]) => x === k)![1]} ${pc(now(k))} %`).join(", ")} (mallin nykyennuste).`;
+  }
   const up = rel ? scn("p_relegation") < now("p_relegation") : scn(pick[0]) > now(pick[0]);
   const same = Math.abs(scn(pick[0]) - now(pick[0])) < 0.005;
   const tone = same ? "pysyy skenaariossa lähes ennallaan" : up ? "vahvistuu skenaariossa" : "heikkenee skenaariossa";
