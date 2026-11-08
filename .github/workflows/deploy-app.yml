@@ -118,6 +118,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # proseduurin nimi lasketaan git-historiasta (deploy_tools.suffix)
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
