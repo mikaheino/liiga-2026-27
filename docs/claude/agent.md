@@ -282,3 +282,10 @@ palautus:  deploy_agent --promote VERSION$<vanha>
   hoitaa alias `DEV`. `*_DEV`-semanttiset mallit jäävät DEV-aliaksen käyttöön.
 - **Tagit:** `agent-vN` = Snowflaken `VERSION$N`. Release-muistiinpanoissa
   evaluoinnin tulos. `agent-v2` (010d045) ja `agent-v3` (0a7ce21) on merkitty jälkikäteen.
+
+## Evaluointi vain isoissa agenttimuutoksissa (8.11.2026)
+
+Käyttäjä: "evaluointeja tehdään vain jos tulee major päivitys". deploy.yml laskee agentin määrittelytiedostojen
+(deploy_agent.py, semantic_views*.py, agent_eval.py, deploy_knowledge.py, AGENT_SKILLS, cortex_search, EVALS) muuttuneet rivit;
+evaluointi ajetaan, jos >= 40 riviä, commit-viestissä `[eval]` tai käsiajo. Muuten Release kertoo ohituksen.
+Syy: AI_INFERENCE 14,7 krediittiä 6.-7.11. (36 kysymystä Sonnetilla + 4 Cortex-tuomaria per ajo).

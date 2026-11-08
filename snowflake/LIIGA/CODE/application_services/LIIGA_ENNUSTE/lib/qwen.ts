@@ -70,11 +70,18 @@ async function load(): Promise<State | null> {
   };
 }
 
+const state = () => (g.__qwen ??= load().catch((e) => { console.log(`[qwen] ei käytössä: ${(e as Error).message}`); return null; }));
+
+/** Mallin lataus muistiin taustalla käynnistyksessä (instrumentation.ts). */
+export async function warm(): Promise<void> {
+  const t = Date.now();
+  if (await state()) console.log(`[qwen] malli muistissa ${Date.now() - t} ms`);
+}
+
 /** Kysymys (+ PELAAJAT-rivi koodista) -> skenaariorivit, tai null jos mallia ei ole / tulos ei kelpaa. */
 export async function qwenScenario(question: string, players: string, teams: string[]): Promise<Row[] | null> {
   try {
-    g.__qwen ??= load().catch((e) => { console.log(`[qwen] ei käytössä: ${(e as Error).message}`); return null; });
-    const st = await g.__qwen;
+    const st = await state();
     if (!st) return null;
     const t = Date.now();
     const out = await st.prompt(players ? `${question} PELAAJAT: ${players}` : question, teams);

@@ -100,7 +100,32 @@ jobs:
           V=$(grep -o 'VERSION\$[0-9]* (alias STAGING)' deploy.log | grep -o '[0-9]*' | head -1)
           test -n "$V" || { echo "::error::agenttiversiota ei löytynyt"; exit 1; }
           echo "version=$V" >> "$GITHUB_OUTPUT"
+      # Evaluointi vain isossa agenttimuutoksessa (8.11.2026, käyttäjä: "evaluointeja tehdään vain jos
+      # tulee major päivitys, ajetaan siis jos agentin speci muuttuu rajusti"; AI_INFERENCE 14,7 krediittiä
+      # kahdessa päivässä). Iso = agentin määrittelytiedostoissa (ohje, semanttiset mallit, taidot,
+      # tietopankki, testijoukko) vähintään 40 muuttunutta riviä, commit-viestissä [eval] tai käsiajo.
+      # Pelkät moottori-, proseduuri- ja näkymämuutokset testataan pytestillä ilman Cortexia.
+      - name: Onko agenttimuutos iso?
+        id: chg
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          SPEC='^(scripts/deploy/(deploy_agent|semantic_views|semantic_views_en|agent_eval|deploy_knowledge)\.py|snowflake/LIIGA/CODE/stages/AGENT_SKILLS/|snowflake/LIIGA/MODEL/cortex_search/|snowflake/LIIGA/EVALS/)'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "$MSG" == *"[eval]"* ]] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            N=999
+          else
+            N=$(git diff --numstat "$BEFORE" HEAD | awk -v re="$SPEC" '$3 ~ re {n += $1 + $2} END {print n + 0}')
+          fi
+          echo "Agentin määrittelyssä muuttui $N riviä (iso >= 40)" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$N" -ge 40 ]; then echo "major=true" >> "$GITHUB_OUTPUT"; else
+            echo "major=false" >> "$GITHUB_OUTPUT"
+            mkdir -p snowflake/LIIGA/EVALS/results
+            printf '{"run": "ohitettu", "n": 0, "metrics": {}, "low": [], "skipped": "agentin määrittelyssä %s muuttunutta riviä (< 40)"}\n' "$N" > snowflake/LIIGA/EVALS/results/last_summary.json
+          fi
       - name: Evaluointi ja laatuportti (STAGING)
+        if: steps.chg.outputs.major == 'true'
         run: python scripts/deploy/agent_eval.py --version STAGING --gate
       - uses: actions/upload-artifact@v7
         if: always()
@@ -149,6 +174,9 @@ jobs:
           import json, os
           s = json.load(open("snowflake/LIIGA/EVALS/results/last_summary.json"))
           print(f"Snowflake-agentti `LIIGA_ENNUSTAJA` **VERSION${os.environ['V']}**, alias `PRODUCTION`.\n")
+          if s.get("skipped"):
+              print(f"Evaluointi ohitettu: {s['skipped']}. Iso muutos tai [eval] commit-viestissä ajaa sen.")
+              raise SystemExit
           print(f"Evaluoitu ennen julkaisua aliaksella STAGING, ajo {s['run']} ({s['n']} kysymystä):\n")
           print("| mittari | keskiarvo |\n|---|---:|")
           for k, v in s["metrics"].items():
