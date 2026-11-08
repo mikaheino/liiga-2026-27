@@ -1,0 +1,43 @@
+# LIIGA_DAILY Code Bundle (8.11.2026): src/liiga, data ja bundlen tiedostot -> uusi bundle-versio.
+# Ei hyväksyntää: sama käytös kuin notebookissa, joka lukee repon mainin joka ajolla. Task vaihtuu
+# notebookista bundleen vasta, kun ensimmäinen ajo on onnistunut (snowflake/LIIGA/CODE/tasks/).
+name: Deploy bundle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/liiga/**
+      - config.yaml
+      - snowflake/LIIGA/CODE/code_bundles/**
+      - scripts/deploy/deploy_bundle.py
+      - .github/workflows/deploy-bundle.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-bundle
+  cancel-in-progress: false
+
+env:
+  LIIGA_SNOW_CONNECTION: ci
+  LIIGA_SNOW_ROLE: LIIGA_DEPLOYER
+  LIIGA_SNOW_WAREHOUSE: LIIGA_WH
+  SNOWFLAKE_ACCOUNT: ZUEEMDQ-CONTAINER_SERVICES
+  SNOWFLAKE_USER: LIIGA_CI
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: ./.github/actions/snowflake-setup
+        with:
+          private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      - name: Code Bundle LIIGA_DAILY
+        run: python scripts/deploy/deploy_bundle.py

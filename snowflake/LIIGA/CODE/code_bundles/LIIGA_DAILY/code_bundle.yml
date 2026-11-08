@@ -1,0 +1,17 @@
+# LIIGA_DAILY Code Bundlena (8.11.2026, käyttäjä: "jos Qwen lähtee toimimaan, niin tehdään tämä").
+# Korvaa notebookin LIIGA_DAILY, kun ensimmäinen ajo on onnistunut: koodi tulee versioituna paketista
+# (scripts/deploy/deploy_bundle.py kokoaa src/liiga + data + config), ei kopioituna reposta joka ajolla.
+# Ajo: EXECUTE CODE BUNDLE LIIGA.CODE.LIIGA_DAILY ENTRYPOINT = 'daily.py'  (Task LIIGA_DAILY_RUN).
+bundle:
+  type: custom
+  compute_type: compute_pool
+  language: python
+  compute_options:
+    compute_pool: SYSTEM_COMPUTE_POOL_CPU
+    query_warehouse: LIIGA_WH
+    runtime_version: 'V2.9-CPU-PY3.12'
+  properties:
+    requirements_file: requirements.txt
+  external_access_integrations:
+    - LIIGA_FI_ACCESS
+    - LIIGA_NEWS_ACCESS
