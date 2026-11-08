@@ -243,10 +243,14 @@ export default function ScenarioBoard() {
           onKeyDown={(e) => { if (e.key === "ArrowRight") pickEngine("cortex"); if (e.key === "ArrowLeft") pickEngine("qwen"); }}>
           <span className="gs-eng-puck" aria-hidden />
           {(["qwen", "cortex"] as const).map((k) => (
-            // Hinta näkyviin (8.11.: "miten indikoida että toinen on lokaali ja ilmainen, toinen maksullinen").
+            // Paikallinen vs. pilvi kuvakkeella (8.11.: eurot "tyhmän näköisiä"); hinta vihjeessä.
             <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
               title={k === "qwen" ? "Oma malli sovelluksen kontissa, ei tokenikuluja" : "Snowflake Cortex, maksetaan tokeneista"}
-              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}<small className="gs-eng-cost">{k === "qwen" ? "0 €" : "€"}</small></button>
+              onClick={() => pickEngine(k)}>
+              <svg viewBox="0 0 16 16" aria-hidden className="gs-eng-ico">{k === "qwen"
+                ? <><rect x="4" y="4" width="8" height="8" rx="1.5" /><path d="M6 1.5v2.5M10 1.5v2.5M6 12v2.5M10 12v2.5M1.5 6h2.5M1.5 10h2.5M12 6h2.5M12 10h2.5" /></>
+                : <path d="M4.5 12.5h7.2a2.8 2.8 0 0 0 .3-5.6 4 4 0 0 0-7.7-.6A3.1 3.1 0 0 0 4.5 12.5Z" />}</svg>
+              {k === "qwen" ? "Qwen" : "Cortex"}</button>
           ))}
         </div>
       )}
