@@ -6,6 +6,7 @@ Kohdeskeemat LIIGA.CODE.PIPELINE_SETTINGSista kuten notebookissa (kuiva-ajo vaih
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 
 
@@ -20,9 +21,12 @@ def _here() -> str:
     raise FileNotFoundError(f"paketin juurta ei löytynyt: {os.getcwd()} {os.listdir(os.getcwd())[:20]}")
 
 
-HERE = _here()
-sys.path.insert(0, os.path.join(HERE, "src"))
-os.chdir(HERE)                       # config.yaml ja data/ suhteessa tähän
+# Paketti on vain luku -tilassa (8.11.2026: "Read-only file system"): kopio /tmp:hen, kuten notebook.
+WORK = "/tmp/liiga"
+shutil.rmtree(WORK, ignore_errors=True)
+shutil.copytree(_here(), WORK)
+sys.path.insert(0, os.path.join(WORK, "src"))
+os.chdir(WORK)                       # config.yaml ja data/ suhteessa tähän
 
 
 def session():
