@@ -129,6 +129,22 @@ Sovellus lisää nämä skenaarioon itse (ellei käyttäjä sano "ilman X" / "il
 Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan X saattaa olla sivussa; sitä ei ole huomioitu – kirjoita 'X poissa', niin lasken sen mukaan."` : "",
 ].filter(Boolean).join("\n\n");
 
+/** "Mitkä pelit ratkaisevat X:n ...": joukkueen 5 ottelua, joiden tulos liikuttaa sen avointa tavoitetta eniten. */
+async function stakesAnswer(team: string): Promise<Described> {
+  type Stake = { date: string; home: string; away: string; top: { goal: string; p_now: number; p_home_win: number; p_away_win: number } };
+  const r = await runEngine<{ stakes?: Stake[]; error?: string }>("json", [{ stakes: { team, top: 5 } }]).catch((e) => ({ error: (e as Error).message } as { error: string; stakes?: Stake[] }));
+  if (r.error || !r.stakes?.length) return { answer: "", items: [], tools: ["panokset"], sql: [], error: r.error ?? "ei otteluita", status: 422 };
+  const GOAL: Record<string, string> = { top10: "jatkopaikan", top6: "kärkikuusikon", win: "runkosarjan voiton", avoid_relegation: "sarjapaikan" };
+  const pc = (x: number) => `${(100 * x).toFixed(0)} %`;
+  const g = GOAL[r.stakes[0].top.goal] ?? "tavoitteen";
+  const rows = r.stakes.map((s) => {
+    const home = s.home === team, win = home ? s.top.p_home_win : s.top.p_away_win, loss = home ? s.top.p_away_win : s.top.p_home_win;
+    return `${s.date} ${s.home}–${s.away}: voitolla ${pc(win)}, tappiolla ${pc(loss)}`;
+  });
+  return { answer: `${team}: ${g} todennäköisyys on nyt ${pc(r.stakes[0].top.p_now)}. Eniten sitä liikuttavat nämä ottelut:\n${rows.join("\n")}`,
+    items: [], tools: ["qwen", "panokset"], sql: [] };
+}
+
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
   pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null, forced: Record<string, unknown>[] | null = null,
   engine: "qwen" | "cortex" = "qwen"): Promise<Described> {
@@ -224,9 +240,22 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
       const psOwn = playersIn(own, [...pl.skaters, ...pl.goalies]);
       const ok = new Set([...namedTeams(own, teams), ...psOwn.map((p) => p.team)]);
       const names = psOwn.map((p) => p.name.toLowerCase());
-      qi = qi.filter((x) => (x.injury != null ? names.some((n) => n.includes(String(x.injury).toLowerCase().split(" ").slice(-1)[0])) : ok.has(String(x.team))));
+      qi = qi.filter((x) => (x.injury != null ? names.some((n) => n.includes(String(x.injury).toLowerCase().split(" ").slice(-1)[0])) : ok.has(String(x.team ?? x.stakes_team))));
+      // Qwen täyttää valinnaisia kenttiä esimerkeistä (8.11.: "kaikki kotipelinsä" -> vastustaja Ilves):
+      // vastustaja vain, jos se on nimetty, kenttä vain, jos kysymyksessä on koti-/vieras-sana.
+      const named = new Set(namedTeams(own, teams));
+      const venueOk = /\b(koti|vieras|vierai)/i.test(own);
+      qi = qi.map((x) => {
+        const y = { ...x };
+        if (y.opponent != null && (!named.has(String(y.opponent)) || y.opponent === y.team)) delete y.opponent;
+        if (y.venue != null && !venueOk) delete y.venue;
+        return y;
+      });
       if (!qi.length) qi = null;
     }
+    // Ratkaisevat ottelut (8.11.2026, markkinaidea "Potential Impact"): moottorin panokset ja vastaus koodista.
+    const st = qi?.find((x) => x.stakes_team != null);
+    if (st) return withRoster(await stakesAnswer(String(st.stakes_team)));
     if (qi && !forced?.length && contin && /\b(lisäksi|myös|vielä|sen päälle|samalla)\b/i.test(own)) qi = [...pohja!.items, ...qi];
     if (qi) {
       const d = await attempt({ text: "", suggestions: [], tools: [forced?.length ? "lähiskenaario" : gAll ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",

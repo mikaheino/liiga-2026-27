@@ -15,7 +15,9 @@ const MODEL = process.env.LIIGA_QWEN_MODEL
 
 const SYS = (teams: string[]) => `Muunna Liiga-kysymys skenaarioriveiksi. Palauta vain JSON {"scenario":[...]}.
 Rivityypit:
-- tulos: {"team","result":"win|loss|ot|point|regulation","games":N}  (N seuraavaa ottelua)
+- tulos: {"team","result":"win|loss|ot|point|regulation","games":N}  (N seuraavaa ottelua; kaikki = 99)
+  valinnaiset: "opponent":"<joukkue>" (vain ottelut sitä vastaan), "venue":"home|away" (koti- tai vieraspelit)
+- ratkaisevat ottelut: {"stakes_team":"<joukkue>"}  (mitkä pelit ratkaisevat / ovat tärkeimpiä joukkueelle)
 - poissaolo: {"injury":"<koko nimi>","games":N}  (kuukausi ≈ 12 ottelua, loppukausi = 99)
 - joukkueen tason muutos: {"team","xg_share":d}  (d −0,05…+0,05; pelaajan selvä parannus +0,02, valmentajanvaihto +0,015)
 - tavoite: {"team","goal":"top10|top6|win|avoid_relegation"}  (jatkoon = top10, kärkikuusikko = top6, mestaruus/runkosarjan voitto = win, putoaminen = avoid_relegation)
@@ -30,7 +32,12 @@ K: Jos Korhonen ei pelaa enää tällä kaudella PELAAJAT: Jani Korhonen (JYP) -
 K: Laine alkaa tehdä kaksi maalia per peli PELAAJAT: Eetu Laine (Sport) -> {"scenario":[{"team":"Sport","xg_share":0.02}]}
 K: SaiPa erottaa valmentajan -> {"scenario":[{"team":"SaiPa","xg_share":0.015}]}
 K: Pääseekö Ässät kärkikuusikkoon? -> {"scenario":[{"team":"Ässät","goal":"top6"}]}
-K: Välttääkö KooKoo putoamisen? -> {"scenario":[{"team":"KooKoo","goal":"avoid_relegation"}]}`;
+K: Välttääkö KooKoo putoamisen? -> {"scenario":[{"team":"KooKoo","goal":"avoid_relegation"}]}
+K: Lukko voittaa kaikki kotipelinsä -> {"scenario":[{"team":"Lukko","result":"win","games":99,"venue":"home"}]}
+K: Entä jos Tappara voittaa kaikki pelit Ilvestä vastaan? -> {"scenario":[{"team":"Tappara","result":"win","games":99,"opponent":"Ilves"}]}
+K: HIFK häviää kolme seuraavaa vieraspeliä -> {"scenario":[{"team":"HIFK","result":"loss","games":3,"venue":"away"}]}
+K: Mitkä pelit ratkaisevat Pelicansin jatkopaikan? -> {"scenario":[{"stakes_team":"Pelicans"}]}
+K: Mitkä ovat Kärppien tärkeimmät ottelut? -> {"scenario":[{"stakes_team":"Kärpät"}]}`;
 
 type State = { prompt: (q: string, teams: string[]) => Promise<string> };
 const g = globalThis as unknown as { __qwen?: Promise<State | null> };
@@ -49,7 +56,8 @@ async function load(): Promise<State | null> {
     if (!grammars.has(k)) {
       const T = { type: "string", enum: teams } as const;
       grammars.set(k, await llama.createGrammarForJsonSchema({ type: "object", required: ["scenario"], properties: { scenario: { type: "array", items: { oneOf: [
-        { type: "object", required: ["team", "result", "games"], properties: { team: T, result: { enum: ["win", "loss", "ot", "point", "regulation"] }, games: { type: "integer" } } },
+        { type: "object", required: ["team", "result", "games"], properties: { team: T, result: { enum: ["win", "loss", "ot", "point", "regulation"] }, games: { type: "integer" }, opponent: T, venue: { enum: ["home", "away"] } } },
+        { type: "object", required: ["stakes_team"], properties: { stakes_team: T } },
         { type: "object", required: ["injury", "games"], properties: { injury: { type: "string" }, games: { type: "integer" } } },
         { type: "object", required: ["team", "xg_share"], properties: { team: T, xg_share: { type: "number" } } },
         { type: "object", required: ["team", "goal"], properties: { team: T, goal: { enum: ["top10", "top6", "win", "avoid_relegation"] } } },

@@ -124,18 +124,29 @@ def _result_of(item: dict) -> str:
     return res
 
 
-def _matching(games: list[dict], team: str, opp: str | None, lo: str, hi: str) -> list[int]:
+def _matching(games: list[dict], team: str, opp: str | None, lo: str, hi: str, venue: str = "") -> list[int]:
     both = (team, opp) if opp else (team,)
     hits = [i for i, g in enumerate(games) if all(t in (g["home_team"], g["away_team"]) for t in both)]
+    # Kotona / vieraissa (8.11.2026: "Lukko voittaa kaikki kotipelinsä").
+    if venue in ("home", "away"):
+        hits = [i for i in hits if (games[i]["home_team"] == team) == (venue == "home")]
     if lo or hi:
         hits = [i for i in hits if (lo or "0000") <= games[i]["iso"] <= (hi or "9999")]
     return hits
 
 
+def _wants_all(item: dict, opp: str | None, span: str) -> bool:
+    """"Kaikki" (games >= 99) tai pelkkä vastustaja-/kenttärajaus ilman määrää ja jaksoa = kaikki osumat."""
+    n = int(item.get("games") or 0)
+    return n >= 99 or (bool(opp or item.get("venue")) and not n and not span)
+
+
 def _team_games(item: dict, games: list[dict], team: str, opp: str | None) -> list[int]:
     """Joukkueen lukittavat ottelut: seuraavat N tai jakson from-until (until mukaan lukien)."""
     lo, hi = str(item.get("from") or "")[:10], str(item.get("until") or "")[:10]
-    hits = _matching(games, team, opp, lo, hi)
+    hits = _matching(games, team, opp, lo, hi, str(item.get("venue") or ""))
+    if hits and _wants_all(item, opp, lo or hi):
+        return hits
     if (lo or hi) and not item.get("games"):
         if not hits:
             raise ScenarioError(f"{team}: ei pelaamattomia otteluita jaksolla {lo or '…'}–{hi or '…'}")
