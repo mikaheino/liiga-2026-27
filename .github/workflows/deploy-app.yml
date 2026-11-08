@@ -82,6 +82,16 @@ jobs:
           snow sql -c ci --format json -q "SHOW PROCEDURES LIKE '$proc' IN SCHEMA LIIGA.MODEL" | python -c "import json,sys; assert json.load(sys.stdin), '$proc puuttuu: aja ensin deploy.yml'"
           printf '  - name: LIIGA_SCENARIO_PROC\n    value: "%s"\n' "$proc" >> app.yml
           echo "skenaarioproseduuri: $proc" >> "$GITHUB_STEP_SUMMARY"
+      # Qwen 2.5 3B (8.11.2026): Snowflaken käännösympäristö ei pääse Hugging Faceen ("Failed to fetch
+      # manifest"), joten malli haetaan tässä kerran, pidetään GitHubin välimuistissa ja ladataan
+      # sovelluspaketin mukana. Käynnistyksessä ei verkkohakuja (instrumentation.ts lataa muistiin).
+      - name: Qwen-malli välimuistista
+        uses: actions/cache@v4
+        with:
+          path: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE/models
+          key: qwen2.5-3b-instruct-q4_k_m
+      - name: Qwen-malli (jos ei välimuistissa)
+        run: ls models/*.gguf 2>/dev/null || npx --no node-llama-cpp pull --dir models "hf:Qwen/Qwen2.5-3B-Instruct-GGUF:Q4_K_M"
       - name: Käännös ja ehdokas (LIIGA_ENNUSTE_STAGING)
         run: snow app deploy --target staging -c ci --role LIIGA_APP --no-interactive
       - name: Ehdokas käynnissä
