@@ -39,7 +39,7 @@ K: HIFK häviää kolme seuraavaa vieraspeliä -> {"scenario":[{"team":"HIFK","r
 K: Mitkä pelit ratkaisevat Pelicansin jatkopaikan? -> {"scenario":[{"stakes_team":"Pelicans"}]}
 K: Mitkä ovat Kärppien tärkeimmät ottelut? -> {"scenario":[{"stakes_team":"Kärpät"}]}`;
 
-type State = { prompt: (q: string, teams: string[]) => Promise<string> };
+type State = { prompt: (q: string, teams: string[]) => Promise<string>; chat: (system: string, user: string, onText: (t: string) => void) => Promise<string> };
 const g = globalThis as unknown as { __qwen?: Promise<State | null> };
 
 async function load(): Promise<State | null> {
@@ -65,7 +65,21 @@ async function load(): Promise<State | null> {
     }
     return grammars.get(k)!;
   };
+  // Vapaa keskustelu (8.11.2026, käyttäjä: "lokaalistikin on OK käyttää Qwenia, ei tarvitse kuluttaa
+  // Clauden tokeneita"): oma isompi konteksti tilannekuvalle, ei kielioppia, teksti striimataan.
+  let chatSeq: Awaited<ReturnType<typeof model.createContext>>["getSequence"] extends () => infer S ? S : never;
+  const chatCtx = async () => (chatSeq ??= (await model.createContext({ contextSize: 8192 })).getSequence());
   return {
+    chat: (system, user, onText) => {
+      const run = queue.then(async () => {
+        const sq = await chatCtx();
+        sq.clearHistory();
+        const s = new LlamaChatSession({ contextSequence: sq, systemPrompt: system, autoDisposeSequence: false });
+        try { return await s.prompt(user, { maxTokens: 700, temperature: 0.3, onTextChunk: onText }); } finally { s.dispose({ disposeSequence: false }); }
+      });
+      queue = run.catch(() => {});
+      return run;
+    },
     prompt: (q, teams) => {
       const run = queue.then(async () => {
         seq.clearHistory();
@@ -102,4 +116,12 @@ export async function qwenScenario(question: string, players: string, teams: str
     console.log(`[qwen] virhe: ${(e as Error).message}`);
     return null;
   }
+}
+
+/** Vapaa vastaus Qwenilla (paikallinen keskustelu ja agentin varapolku). null = mallia ei ole. */
+export async function qwenChat(system: string, user: string, onText: (t: string) => void = () => {}): Promise<string | null> {
+  const st = await state();
+  if (!st) return null;
+  // Tilannekuva voi olla pitkä: rajataan, jotta 8k konteksti riittää vastaukselle.
+  return st.chat(system.slice(0, 9000), user.slice(-14000), onText);
 }

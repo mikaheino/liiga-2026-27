@@ -1483,3 +1483,17 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 @media (max-width: 480px) { .gs-engine { width: 136px; } .gs-engine button { font-size: 11px; } }
 .gs-engine button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .gs-eng-ico { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+/* Skenaarion rivit ja omat skenaariot (8.11.2026) */
+.gs-scn { margin: 12px 0 4px; display: grid; gap: 4px; }
+.gs-scn-r { display: grid; grid-template-columns: 72px 1fr; gap: 10px; font: 13.5px var(--sans); color: var(--body); }
+.gs-scn-r dt { font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--gold-hi); padding-top: 2px; }
+.gs-scn-r dd { margin: 0; }
+.gs-own { margin: 14px auto 0; text-align: center; }
+.gs-own-h { border: 0; background: none; color: #a99c7c; font: 500 13px var(--sans); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+.gs-own ul { list-style: none; margin: 10px 0 0; padding: 0; text-align: left; display: grid; gap: 6px; }
+.gs-own li button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid rgba(235, 202, 104, 0.18); background: rgba(235, 202, 104, 0.04); color: var(--ink); cursor: pointer; text-align: left; }
+.gs-own li button:hover { border-color: rgba(235, 202, 104, 0.45); }
+.gs-own-q { font: 600 14px var(--sans); }
+.gs-own-t { grid-row: 1; grid-column: 2; font: 12px var(--sans); color: #a99c7c; }
+.gs-own-l { grid-column: 1 / -1; font: 12.5px var(--sans); color: #a99c7c; }

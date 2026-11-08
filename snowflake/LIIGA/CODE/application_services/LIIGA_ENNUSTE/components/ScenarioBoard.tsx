@@ -7,6 +7,7 @@
 // ottelukortin "Lukitse"-napista (lib/lockBus.ts). Moottori laskee koko skenaarion
 // (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen, uskottavuus =
 // lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee uudelleen ilman agenttia.
+import { KIND_LABEL, summarize as summarizeRows } from "@/lib/scenarioSummary";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
 import { engineItem, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
@@ -215,6 +216,8 @@ export default function ScenarioBoard() {
   };
   // Sirut moottorin kanonisista riveistä (moottorin label); poisto = loput rivit uudelleen.
   const chips = res?.scenario_canonical ?? items;
+  const [ownOpen, setOwnOpen] = useState(false);
+  const saved = haut.filter((h) => h.status === "done" && h.items.length > 0);
   return (
     <section className={`gs ${busy ? "busy" : ""} ${items.length || live ? "has-res" : ""}`} aria-label="Oma skenaario">
       {/* "Entä jos?" -sanamerkki poistettu 7.11.2026 (käyttäjä: "poista tämä"): hakukenttä riittää. */}
@@ -297,6 +300,14 @@ export default function ScenarioBoard() {
             </details>
           )}
           {live.text && <p className={`gs-ai-t ${adjusted ? "dim" : ""}`}>{live.text}</p>}
+          {/* Skenaario selvästi näkyviin (8.11.2026: "vaikea ymmärtää mitkä on lukittu"). */}
+          {live.done && chips.length > 0 && (
+            <dl className="gs-scn">
+              {summarizeRows(chips).map((l, i) => (
+                <div key={i} className={`gs-scn-r ${l.kind}`}><dt>{KIND_LABEL[l.kind]}</dt><dd>{l.text}</dd></div>
+              ))}
+            </dl>
+          )}
           {adjusted && <p className="gs-adj">Säädit skenaariota: teksti kertoo alkuperäisestä, luvut ja kuvaaja ovat säädön mukaiset.</p>}
           {/* Uutisista hyväksytyt poissaolot, jotka ovat skenaariossa lähtötilanteena (7.11.2026). */}
           {live.news && live.news.length > 0 && <p className="gs-news">Mukana uutisista: {live.news.join(" · ")}</p>}
@@ -375,6 +386,25 @@ export default function ScenarioBoard() {
           {chips.length > 4 && (
             <button type="button" className="gs-chip more" onClick={() => setAllChips(!allChips)}>
               {allChips ? "Piilota lukitut tulokset" : `${chips.length} lukittua tulosta · näytä`}</button>
+          )}
+        </div>
+      )}
+      {/* Omat skenaariot (8.11.2026: "haluaisin rakentaa skenaarioita ja palata niihin"): etusivu pysyy
+          tyhjänä, mutta tallennetut skenaariot aukeavat yhdestä hillitystä linkistä hakukentän alla. */}
+      {!live && saved.length > 0 && (
+        <div className="gs-own">
+          <button type="button" className="gs-own-h" aria-expanded={ownOpen} onClick={() => setOwnOpen(!ownOpen)}>
+            Omat skenaariot · {saved.length}</button>
+          {ownOpen && (
+            <ul>
+              {saved.slice(0, 12).map((h) => (
+                <li key={h.id}><button type="button" onClick={() => open(h)}>
+                  <span className="gs-own-q">{h.question}</span>
+                  <span className="gs-own-l">{summarizeRows(h.items).map((l) => l.text).slice(0, 2).join(" · ")}</span>
+                  <span className="gs-own-t">{when(h.askedAt)}</span>
+                </button></li>
+              ))}
+            </ul>
           )}
         </div>
       )}
