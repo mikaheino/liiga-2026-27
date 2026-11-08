@@ -243,8 +243,10 @@ export default function ScenarioBoard() {
           onKeyDown={(e) => { if (e.key === "ArrowRight") pickEngine("cortex"); if (e.key === "ArrowLeft") pickEngine("qwen"); }}>
           <span className="gs-eng-puck" aria-hidden />
           {(["qwen", "cortex"] as const).map((k) => (
+            // Hinta näkyviin (8.11.: "miten indikoida että toinen on lokaali ja ilmainen, toinen maksullinen").
             <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
-              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}</button>
+              title={k === "qwen" ? "Oma malli sovelluksen kontissa, ei tokenikuluja" : "Snowflake Cortex, maksetaan tokeneista"}
+              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}<small className="gs-eng-cost">{k === "qwen" ? "0 €" : "€"}</small></button>
           ))}
         </div>
       )}
