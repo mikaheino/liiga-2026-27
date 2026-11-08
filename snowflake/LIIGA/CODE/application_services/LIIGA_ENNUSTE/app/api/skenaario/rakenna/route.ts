@@ -28,7 +28,7 @@ export const maxDuration = 300;
 const SEASON = 2027;
 
 export async function POST(req: Request) {
-  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown; base?: unknown; parent?: unknown; scenario?: unknown };
+  const b = (await req.json().catch(() => ({}))) as { text?: unknown; prompt?: unknown; followup?: unknown; base?: unknown; parent?: unknown; scenario?: unknown; engine?: unknown };
   const parentId = typeof b.parent === "string" && /^[0-9a-f-]{36}$/.test(b.parent) ? b.parent : null;
   const text = typeof b.text === "string" ? b.text.trim() : "";
   const followup = typeof b.followup === "string" && b.followup.trim() ? b.followup.trim().slice(0, 300) : null;
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         const d = await describe(prompt, (p) => {
           if (p.status) step(p.status);
           if (p.partial) send({ t: "text", text: splitChart(p.partial).text });
-        }, base, Array.isArray(b.scenario) ? (b.scenario as Record<string, unknown>[]).slice(0, 64) : null);
+        }, base, Array.isArray(b.scenario) ? (b.scenario as Record<string, unknown>[]).slice(0, 64) : null, b.engine === "cortex" ? "cortex" : "qwen");
         if (d.sql.length) send({ t: "sql", sql: d.sql.slice(0, 5) });
         // Vaikutukset lasketaan tässä eikä selaimessa, jotta luvut tallentuvat haun mukana.
         let result: Record<string, unknown> | null = null;

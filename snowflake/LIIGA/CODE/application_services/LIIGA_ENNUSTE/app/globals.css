@@ -1462,3 +1462,7 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 }
 .gs-ver { justify-self: end; font: 500 11px var(--mono); color: var(--faint); letter-spacing: .02em; }
 .sp-sub { font: 600 12.5px var(--sans); color: var(--muted); margin-top: 4px; }
+/* Kielimallin liukusäädin (8.11.2026) */
+.gs-engine { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px auto 0; font: 500 12.5px var(--sans); color: var(--muted, #8a7f63); }
+.gs-engine span.on { color: var(--gold-hi); }
+.gs-engine input[type="range"] { width: 56px; accent-color: #ebca68; }

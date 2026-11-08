@@ -130,7 +130,8 @@ Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan 
 ].filter(Boolean).join("\n\n");
 
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
-  pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null, forced: Record<string, unknown>[] | null = null): Promise<Described> {
+  pohja: { items: Record<string, unknown>[]; labels: string[] } | null = null, forced: Record<string, unknown>[] | null = null,
+  engine: "qwen" | "cortex" = "qwen"): Promise<Described> {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const teams = await loadTeams();
   const sched = await schedule(`${text} ${pohja?.labels.join(" ") ?? ""}`, teams);
@@ -216,7 +217,7 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const selfContained = namedTeams(own, teams).length > 0 || playersIn(own, [...pl.skaters, ...pl.goalies]).length > 0;
   if (forced?.length || !contin || (selfContained && !refers)) {
     progress?.({ status: "Tulkitaan kysymys" });
-    let qi = forced?.length ? forced : gAll ? goalieItems(gAll) : await qwenScenario(own, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
+    let qi = forced?.length ? forced : gAll ? goalieItems(gAll) : engine === "cortex" ? null : await qwenScenario(own, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
     // Qwen keksii joskus muita joukkueita (7.11.: "lisäksi Lukko häviää" -> myös Ässät ja Pelicans): vain
     // kysymyksessä nimetyt joukkueet ja pelaajat (sekä pelaajien joukkueet) kelpaavat.
     if (qi && !forced?.length && !gAll) {

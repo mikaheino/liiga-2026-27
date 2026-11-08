@@ -72,6 +72,8 @@ async function load(): Promise<State | null> {
 
 const state = () => (g.__qwen ??= load().catch((e) => { console.log(`[qwen] ei käytössä: ${(e as Error).message}`); return null; }));
 
+export async function qwenReady(): Promise<boolean> { return !!(await state()); }
+
 /** Mallin lataus muistiin taustalla käynnistyksessä (instrumentation.ts). */
 export async function warm(): Promise<void> {
   const t = Date.now();

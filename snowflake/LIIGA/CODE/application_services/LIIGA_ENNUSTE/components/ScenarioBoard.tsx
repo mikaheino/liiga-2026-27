@@ -55,7 +55,7 @@ type Haku = { id: string; question: string; followup: string | null; answer: str
 const when = (ts: string) => new Intl.DateTimeFormat("fi-FI", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Helsinki" }).format(new Date(ts));
 const keyOf = (l: Item[]) => l.map(itemKey).join("|");
 
-async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[]; parent?: string; scenario?: unknown[] }, on: (m: Msg) => void) {
+async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[]; parent?: string; scenario?: unknown[]; engine?: "qwen" | "cortex" }, on: (m: Msg) => void) {
   const r = await fetch("/api/skenaario/rakenna", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify(body) });
   if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})) as { error?: string }; throw new Error(j.error ?? `Virhe ${r.status}`); }
   const rd = r.body.getReader(), dec = new TextDecoder();
@@ -120,6 +120,14 @@ export default function ScenarioBoard() {
     setLocks(h.items); setOrig(h.items); setAdjusted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  // Liukusäädin Qwen <-> Cortex (8.11.2026, käyttäjä: "slider"): näkyy vain, kun Qwen on ladattu.
+  const [qwenOk, setQwenOk] = useState(false);
+  const [engine, setEngine] = useState<"qwen" | "cortex">("qwen");
+  useEffect(() => {
+    try { if (localStorage.getItem("liiga-engine") === "cortex") setEngine("cortex"); } catch {}
+    fetch("/api/skenaario/malli", { cache: "no-store" }).then((r) => r.json()).then((j: { qwen?: boolean }) => setQwenOk(!!j.qwen)).catch(() => {});
+  }, []);
+  const pickEngine = (e: "qwen" | "cortex") => { setEngine(e); try { localStorage.setItem("liiga-engine", e); } catch {} };
   const run = async (follow?: string, asked?: string, refreshed?: string, scenario?: unknown[]) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
@@ -144,7 +152,7 @@ export default function ScenarioBoard() {
     setLive({ q, prompt, base, refreshed, steps: [], text: "", sql: [], tools: [], done: false });
     const up = (f: (l: Live) => Live) => setLive((l) => (l ? f(l) : l));
     try {
-      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}), ...(parent ? { parent } : {}), ...(scenario ? { scenario } : {}) }, (m) => {
+      await build({ text: q, prompt, ...(follow ? { followup: follow.trim() } : {}), ...(base ? { base } : {}), ...(parent ? { parent } : {}), ...(scenario ? { scenario } : {}), engine }, (m) => {
         if (m.t === "step") up((l) => ({ ...l, steps: [...l.steps, m.text] }));
         else if (m.t === "text") up((l) => ({ ...l, text: m.text }));
         else if (m.t === "sql") up((l) => ({ ...l, sql: m.sql }));
@@ -244,6 +252,14 @@ export default function ScenarioBoard() {
           </ul>
         )}
       </form>
+      {qwenOk && (
+        <label className="gs-engine">
+          <span className={engine === "qwen" ? "on" : ""}>Ilmainen · Qwen</span>
+          <input type="range" min={0} max={1} step={1} value={engine === "cortex" ? 1 : 0} aria-label="Kielimalli"
+            onChange={(e) => pickEngine(e.target.value === "1" ? "cortex" : "qwen")} />
+          <span className={engine === "cortex" ? "on" : ""}>Cortex</span>
+        </label>
+      )}
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
           {live.version && <div className="gs-ver" title="Hyperversio: sama skenaario samalla ennusteella = sama tunniste">versio {live.version}{live.parentId ? " · jatkoa edelliselle" : ""}</div>}
