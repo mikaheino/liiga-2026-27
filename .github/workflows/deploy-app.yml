@@ -107,6 +107,12 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write(f"### Sovellus (STAGING)\n\n`LIIGA.APP.LIIGA_ENNUSTE_STAGING`: {state.get('status')}, https://{state.get('url')}\n")
           PY
+      # Kustannus (8.11.2026, käyttäjä: "tarkista ettei mitään jää päälle"): STAGING jäi jokaisen
+      # julkaisun jälkeen käyntiin 30 min (auto_suspend). Tarkistus on tehty, joten sammutetaan heti;
+      # herää itsestään, jos joku avaa osoitteen.
+      - name: STAGING sammuksiin
+        if: always()
+        run: snow sql -c ci --role LIIGA_APP -q "ALTER APPLICATION SERVICE LIIGA.APP.LIIGA_ENNUSTE_STAGING SUSPEND" || true
 
   prod:
     name: Sovellus tuotantoon (vaatii hyväksynnän)
