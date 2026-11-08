@@ -235,6 +235,19 @@ export default function ScenarioBoard() {
           onKeyUp={(e) => { if (e.key === "Escape" && !showSugs && !building) reset(); }}
           role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
           placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
+        {qwenOk && (
+          // Hakukentän sisällä oikealla (8.11.: vastaus tulee kentän alle, säädin ei saa olla välissä).
+          // Liukusäädin (8.11.2026, käyttäjä: "keskelle", "Qwen Cortex", "liikkumisen tulisi herättää
+        // mielihyvää"): kaksi yhtä leveää puolikasta, kultainen kiekko liukuu yli joustolla ja hehkuu.
+        <div className={`gs-engine ${engine}`} role="radiogroup" aria-label="Kielimalli"
+          onKeyDown={(e) => { if (e.key === "ArrowRight") pickEngine("cortex"); if (e.key === "ArrowLeft") pickEngine("qwen"); }}>
+          <span className="gs-eng-puck" aria-hidden />
+          {(["qwen", "cortex"] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
+              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}</button>
+          ))}
+        </div>
+      )}
 
         {showSugs && (
           <ul className="gs-sugs" id="gs-sugs" role="listbox">
@@ -252,18 +265,6 @@ export default function ScenarioBoard() {
           </ul>
         )}
       </form>
-      {qwenOk && (
-        // Liukusäädin (8.11.2026, käyttäjä: "keskelle", "Qwen Cortex", "liikkumisen tulisi herättää
-        // mielihyvää"): kaksi yhtä leveää puolikasta, kultainen kiekko liukuu yli joustolla ja hehkuu.
-        <div className={`gs-engine ${engine}`} role="radiogroup" aria-label="Kielimalli"
-          onKeyDown={(e) => { if (e.key === "ArrowRight") pickEngine("cortex"); if (e.key === "ArrowLeft") pickEngine("qwen"); }}>
-          <span className="gs-eng-puck" aria-hidden />
-          {(["qwen", "cortex"] as const).map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
-              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}</button>
-          ))}
-        </div>
-      )}
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
           {live.version && <div className="gs-ver" title="Hyperversio: sama skenaario samalla ennusteella = sama tunniste">versio {live.version}{live.parentId ? " · jatkoa edelliselle" : ""}</div>}

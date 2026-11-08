@@ -1464,11 +1464,11 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 .sp-sub { font: 600 12.5px var(--sans); color: var(--muted); margin-top: 4px; }
 /* Kielimallin liukusäädin (8.11.2026): keskellä, kaksi yhtä leveää puolikasta; kiekko liukuu
    joustolla (pieni yliliuku), venyy hetken liikkeessä ja hehkuu perillä. */
-.gs-engine { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 188px; margin: 14px auto 0;
+.gs-engine { position: relative; flex: none; display: grid; grid-template-columns: 1fr 1fr; width: 136px; margin: 0;
   padding: 3px; border-radius: 999px; background: rgba(235, 202, 104, 0.06); border: 1px solid rgba(235, 202, 104, 0.22);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
-.gs-engine button { position: relative; z-index: 1; border: 0; background: none; cursor: pointer; padding: 6px 0;
-  font: 600 12.5px var(--sans); letter-spacing: 0.04em; color: rgba(235, 202, 104, 0.55); transition: color 0.35s ease; }
+.gs-engine button { position: relative; z-index: 1; border: 0; background: none; cursor: pointer; padding: 5px 0;
+  font: 600 12px var(--sans); letter-spacing: 0.04em; color: rgba(235, 202, 104, 0.55); transition: color 0.35s ease; }
 .gs-engine button.on { color: #1a1408; }
 .gs-engine button:focus-visible { outline: none; }
 .gs-engine:focus-within { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(235, 202, 104, 0.35); }
@@ -1480,3 +1480,4 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 @keyframes gs-glow-r { 0% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); } 40% { box-shadow: 0 0 22px rgba(244, 217, 127, 0.75); scale: 1.06 0.94; } 100% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); scale: 1; } }
 @keyframes gs-glow-l { 0% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); } 40% { box-shadow: 0 0 22px rgba(244, 217, 127, 0.75); scale: 1.06 0.94; } 100% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); scale: 1; } }
 @media (prefers-reduced-motion: reduce) { .gs-eng-puck { transition: none; animation: none !important; } }
+@media (max-width: 480px) { .gs-engine { width: 112px; } .gs-engine button { font-size: 11px; } }
