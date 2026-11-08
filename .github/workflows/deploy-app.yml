@@ -125,6 +125,15 @@ jobs:
       - uses: ./.github/actions/snowflake-setup
         with:
           private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      # Ympäristömuuttujat tulevat app.yml:stä myös --promote-only-ajossa: ilman tätä tuotannosta puuttui
+      # LIIGA_SCENARIO_PROC (8.11.2026: "skenaarioproseduuria ei ole määritetty"), STAGINGissa se oli.
+      - name: Skenaarioproseduurin versio (tuotanto)
+        shell: bash
+        working-directory: snowflake/LIIGA/CODE/application_services/LIIGA_ENNUSTE
+        run: |
+          proc="SIMULATE_SCENARIO$(cd "$GITHUB_WORKSPACE" && python -c 'import sys; sys.path.insert(0, "scripts/deploy"); import deploy_tools; print(deploy_tools.suffix("SIMULATE_SCENARIO", False))')"
+          snow sql -c ci --format json -q "SHOW PROCEDURES LIKE '$proc' IN SCHEMA LIIGA.MODEL" | python -c "import json,sys; assert json.load(sys.stdin), '$proc puuttuu: aja ensin deploy.yml'"
+          printf '  - name: LIIGA_SCENARIO_PROC\n    value: "%s"\n' "$proc" >> app.yml
       - name: Sama käännös kuin STAGING tuotantoon
         shell: bash
         run: |
