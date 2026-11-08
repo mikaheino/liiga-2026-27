@@ -9,6 +9,7 @@ bundlen tai lisää uuden version. Versio = muuttumaton tilannekuva (Snowflake C
 """
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -61,7 +62,10 @@ def main() -> None:
                            capture_output=True, text=True)
         if r.returncode:
             sys.exit(f"stage copy\n{r.stdout}{r.stderr}")
-        exists = "LIIGA_DAILY_BUNDLE" in snow("SHOW CODE BUNDLES LIKE 'LIIGA_DAILY_BUNDLE' IN SCHEMA LIIGA.CODE")
+        # JSON: tekstitulosteessa kysely itse toistuu, jolloin nimi "löytyi" aina (8.11.).
+        r = subprocess.run(["snow", "sql", *conn(), "--format", "json", "-q", "SHOW CODE BUNDLES LIKE 'LIIGA_DAILY_BUNDLE' IN SCHEMA LIIGA.CODE"],
+                           capture_output=True, text=True)
+        exists = bool(json.loads(r.stdout or "[]")) if not r.returncode else False
         snow(f"ALTER CODE BUNDLE {NAME} ADD VERSION FROM {dest}/" if exists
              else f"CREATE CODE BUNDLE {NAME} FROM {dest}/ COMMENT = 'LIIGA_DAILY (src/liiga + data), commit {sha}'")
         print(f"{NAME}: {'uusi versio' if exists else 'luotu'} lähteestä {dest}/")
