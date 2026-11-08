@@ -24,10 +24,10 @@ import liiga.pipeline  # noqa: E402,F401
 
 print("liiga-paketti ok")
 for url in ("https://www.liiga.fi/api/v2/games?tournament=runkosarja&season=2027", "https://yle.fi/rss/t/18-188906/fi"):
-    try:
-        print(url[:40], requests.get(url, timeout=15).status_code)
-    except Exception as e:  # noqa: BLE001
-        print(url[:40], "VIRHE", type(e).__name__, str(e)[:120])
+    # Kaatuu, jos lähde ei vastaa: onnistunut tarkistus = verkko ja ulkoinen pääsy kunnossa.
+    code = requests.get(url, timeout=15).status_code
+    print(url[:40], code)
+    assert code == 200, f"{url}: {code}"
 s = daily.session()
 print("sessio", s.sql("SELECT CURRENT_ROLE(), CURRENT_WAREHOUSE()").collect())
 print("TARKISTUS VALMIS")
