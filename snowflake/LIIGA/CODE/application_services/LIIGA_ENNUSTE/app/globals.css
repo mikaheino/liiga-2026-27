@@ -1462,7 +1462,21 @@ body.chat-open .mc-wrap { right: var(--chat-w); }
 }
 .gs-ver { justify-self: end; font: 500 11px var(--mono); color: var(--faint); letter-spacing: .02em; }
 .sp-sub { font: 600 12.5px var(--sans); color: var(--muted); margin-top: 4px; }
-/* Kielimallin liukusäädin (8.11.2026) */
-.gs-engine { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px auto 0; font: 500 12.5px var(--sans); color: var(--muted, #8a7f63); }
-.gs-engine span.on { color: var(--gold-hi); }
-.gs-engine input[type="range"] { width: 56px; accent-color: #ebca68; }
+/* Kielimallin liukusäädin (8.11.2026): keskellä, kaksi yhtä leveää puolikasta; kiekko liukuu
+   joustolla (pieni yliliuku), venyy hetken liikkeessä ja hehkuu perillä. */
+.gs-engine { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 188px; margin: 14px auto 0;
+  padding: 3px; border-radius: 999px; background: rgba(235, 202, 104, 0.06); border: 1px solid rgba(235, 202, 104, 0.22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+.gs-engine button { position: relative; z-index: 1; border: 0; background: none; cursor: pointer; padding: 6px 0;
+  font: 600 12.5px var(--sans); letter-spacing: 0.04em; color: rgba(235, 202, 104, 0.55); transition: color 0.35s ease; }
+.gs-engine button.on { color: #1a1408; }
+.gs-engine button:focus-visible { outline: none; }
+.gs-engine:focus-within { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(235, 202, 104, 0.35); }
+.gs-eng-puck { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px;
+  background: linear-gradient(180deg, #f4d97f, #d9b04a); box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.gs-engine.cortex .gs-eng-puck { transform: translateX(100%); animation: gs-glow-r 0.6s ease-out; }
+.gs-engine.qwen .gs-eng-puck { animation: gs-glow-l 0.6s ease-out; }
+@keyframes gs-glow-r { 0% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); } 40% { box-shadow: 0 0 22px rgba(244, 217, 127, 0.75); scale: 1.06 0.94; } 100% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); scale: 1; } }
+@keyframes gs-glow-l { 0% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); } 40% { box-shadow: 0 0 22px rgba(244, 217, 127, 0.75); scale: 1.06 0.94; } 100% { box-shadow: 0 2px 8px rgba(235, 202, 104, 0.35); scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .gs-eng-puck { transition: none; animation: none !important; } }

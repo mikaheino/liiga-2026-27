@@ -253,12 +253,16 @@ export default function ScenarioBoard() {
         )}
       </form>
       {qwenOk && (
-        <label className="gs-engine">
-          <span className={engine === "qwen" ? "on" : ""}>Ilmainen · Qwen</span>
-          <input type="range" min={0} max={1} step={1} value={engine === "cortex" ? 1 : 0} aria-label="Kielimalli"
-            onChange={(e) => pickEngine(e.target.value === "1" ? "cortex" : "qwen")} />
-          <span className={engine === "cortex" ? "on" : ""}>Cortex</span>
-        </label>
+        // Liukusäädin (8.11.2026, käyttäjä: "keskelle", "Qwen Cortex", "liikkumisen tulisi herättää
+        // mielihyvää"): kaksi yhtä leveää puolikasta, kultainen kiekko liukuu yli joustolla ja hehkuu.
+        <div className={`gs-engine ${engine}`} role="radiogroup" aria-label="Kielimalli"
+          onKeyDown={(e) => { if (e.key === "ArrowRight") pickEngine("cortex"); if (e.key === "ArrowLeft") pickEngine("qwen"); }}>
+          <span className="gs-eng-puck" aria-hidden />
+          {(["qwen", "cortex"] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
+              onClick={() => pickEngine(k)}>{k === "qwen" ? "Qwen" : "Cortex"}</button>
+          ))}
+        </div>
       )}
       {live && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
