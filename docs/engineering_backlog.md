@@ -314,3 +314,12 @@ odottavat; `status.sh` näyttää tuotannon version. Agentin putki (`deploy.yml`
 
 **Milloin:** ennen seuraavaa isoa sovellusmuutosta; nykyinen tapa vaatii käyttäjältä
 toimen jokaisen pushin jälkeen.
+
+## Code Bundles (ehdollinen, käyttäjä 8.11.2026: "jos Qwen lähtee toimimaan, niin tehdään tämä")
+
+Ehto: Qwen 3B latautuu ja vastaa tuotannon sovelluksessa (lokissa `[qwen] malli muistissa`, haku ilman Cortexia).
+1. LIIGA_DAILY notebook -> Code Bundle (`code_bundle.yml`, `EXECUTE CODE BUNDLE` Taskista): koodi versioituna
+   paketista eikä kopioituna reposta joka ajolla.
+2. Qwen ajastetuissa töissä Code Bundlena laskentapoolissa, malli stagelta liitettynä: uutisten tulkinta ja
+   agenttievaluoinnin arvioija (answer_correctness, logical_consistency; tool_correct_rate ja vastaa_suomeksi koodiksi).
+Selvitettävä ensin: bundlen kokoraja / 2 Gt:n malli stagella, laskentapoolin hinta vs. Cortex-tuomarit.
