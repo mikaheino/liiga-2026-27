@@ -45,6 +45,11 @@ function engineTable(res: Res): string {
   return rows.map((r) => `${r.team}: ${KEYS.map(([k, l]) => `${l} ${pc(Number(r[`${k}_now`]))} -> ${pc(Number(r[`${k}_scenario`]))} %`).join(", ")}`).join("\n");
 }
 
+/** Poistaa lauseet, joissa on moottorista puuttuva luku (8.11.2026: korvaa kielimallin uudelleenkirjoituksen). */
+export function dropSentences(answer: string, bad: string[]): string {
+  return answer.split(/(?<=[.!?])\s+/).filter((x) => !bad.some((b) => x.includes(b))).join(" ").trim();
+}
+
 export async function rewrite(question: string, answer: string, res: Res, bad: string[]): Promise<string> {
   const ctx = `TEHTÄVÄ: Kirjoita alla oleva yhteenveto uudelleen niin, että KAIKKI prosentit ovat täsmälleen moottorin taulukosta. Luvut ${bad.join(", ")} % eivät olleet taulukossa. Älä kutsu työkaluja. Säilytä sävy (lempeä, selkokielinen) ja rakenne: ensimmäinen lause on johtopäätös. Pelkkää tekstiä, ei taulukoita, ei KUVAAJA-riviä.
 MOOTTORIN TAULUKKO (nyt -> skenaario):

@@ -21,7 +21,7 @@ import { abNotice, pickChart, verdict } from "@/lib/scenarioRules";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 import { saveHaku, summarize, versionOf } from "@/lib/skenaarioHaut";
-import { explore, factCheck, rewrite } from "@/lib/subagents";
+import { dropSentences, explore, factCheck } from "@/lib/subagents";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -70,9 +70,10 @@ export async function POST(req: Request) {
           const bad = factCheck(d.answer, result);
           if (bad.length) {
             step("Tarkistetaan luvut datasta");
-            console.log(`[skenaario] faktantarkistus: ${bad.join(", ")} % ei moottorissa -> uudelleenkirjoitus`);
-            const fixed = await rewrite(text, d.answer, result, bad).catch(() => "");
-            if (fixed && factCheck(fixed, result).length < bad.length) d.answer = fixed;
+            // 8.11.2026 (kustannus): ei enää kielimallin uudelleenkirjoitusta. Lauseet, joiden luku ei ole
+            // moottorista, poistetaan; johtopäätöslause tulee joka tapauksessa koodista luvuista.
+            console.log(`[skenaario] faktantarkistus: ${bad.join(", ")} % ei moottorissa -> lause pois`);
+            d.answer = dropSentences(d.answer, bad);
           }
         }
         // Säännöt koodina (lib/scenarioRules.ts): johtopäätös luvuista ensimmäiseksi, A/B-lause mallin
