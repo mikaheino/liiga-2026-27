@@ -45,7 +45,7 @@ Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/LIIGA/CODE/tasks/`**.
 | taski | ajastus | compute | tekee |
 |---|---|---|---|
 | `LIIGA_CHECK` | `CRON 0 5 * * * Europe/Helsinki` | serverless | laskee montako ottelua on hakematta, palauttaa luvun |
-| `LIIGA_DAILY_RUN` | `AFTER LIIGA_CHECK`, `WHEN … > 0` | `LIIGA_WH` | `EXECUTE NOTEBOOK LIIGA_DAILY()` |
+| `LIIGA_DAILY_RUN` | `AFTER LIIGA_CHECK`, `WHEN … > 0` | `LIIGA_WH` | `EXECUTE CODE BUNDLE LIIGA_DAILY_BUNDLE` (8.11.2026, ennen notebook LIIGA_DAILY; deploy-bundle.yml, tarkistus check.py) |
 
 **Ehto ei ole "oliko eilen kierros" vaan "onko jokin ottelu alkanut yli 8 h
 sitten ja yhä hakematta".** Normaalina päivänä sama asia, mutta itsekorjaava:
