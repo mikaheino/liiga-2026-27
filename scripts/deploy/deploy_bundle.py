@@ -56,9 +56,11 @@ def main() -> None:
             return
         snow(f"CREATE STAGE IF NOT EXISTS {STAGE[1:]} DIRECTORY = (ENABLE = TRUE)")
         dest = f"{STAGE}/liiga_daily/{sha}"
-        for d in sorted({p.parent for p in files}):
-            rel = d.relative_to(out).as_posix()
-            snow(f"PUT 'file://{d.as_posix()}/*' {dest}/{rel + '/' if rel != '.' else ''} AUTO_COMPRESS = FALSE OVERWRITE = TRUE")
+        # PUT ei kulje alihakemistoihin (ja kaatuu hakemistoon): snow stage copy --recursive säilyttää rakenteen.
+        r = subprocess.run(["snow", "stage", "copy", str(out), f"{dest}/", "--recursive", "--overwrite", *conn()],
+                           capture_output=True, text=True)
+        if r.returncode:
+            sys.exit(f"stage copy\n{r.stdout}{r.stderr}")
         exists = "LIIGA_DAILY_BUNDLE" in snow("SHOW CODE BUNDLES LIKE 'LIIGA_DAILY_BUNDLE' IN SCHEMA LIIGA.CODE")
         snow(f"ALTER CODE BUNDLE {NAME} ADD VERSION FROM {dest}/" if exists
              else f"CREATE CODE BUNDLE {NAME} FROM {dest}/ COMMENT = 'LIIGA_DAILY (src/liiga + data), commit {sha}'")
