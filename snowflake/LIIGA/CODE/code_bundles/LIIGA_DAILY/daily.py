@@ -8,7 +8,19 @@ from __future__ import annotations
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+
+def _here() -> str:
+    """Paketin juuri. Bundle ajaa entrypointin solun tapaan ilman __file__-nimeä (8.11.2026), joten
+    juuri haetaan config.yaml:n perusteella työhakemistosta ja sen alta."""
+    if "__file__" in globals():
+        return os.path.dirname(os.path.abspath(__file__))
+    for base in (os.getcwd(), *(os.path.join(os.getcwd(), d) for d in sorted(os.listdir(os.getcwd())))):
+        if os.path.isfile(os.path.join(base, "config.yaml")) and os.path.isdir(os.path.join(base, "src", "liiga")):
+            return base
+    raise FileNotFoundError(f"paketin juurta ei löytynyt: {os.getcwd()} {os.listdir(os.getcwd())[:20]}")
+
+
+HERE = _here()
 sys.path.insert(0, os.path.join(HERE, "src"))
 os.chdir(HERE)                       # config.yaml ja data/ suhteessa tähän
 
