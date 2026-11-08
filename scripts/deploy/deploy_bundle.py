@@ -30,7 +30,7 @@ DATA = ["crowd_predictions_2026_27.txt", "external_players.csv", "external_raw.t
 
 
 def assemble(out: Path) -> None:
-    for f in ("daily.py", "code_bundle.yml", "requirements.txt"):
+    for f in ("daily.py", "code_bundle.yml"):
         shutil.copy(BUNDLE / f, out / f)
     shutil.copy(ROOT / "config.yaml", out / "config.yaml")
     shutil.copytree(ROOT / "src/liiga", out / "src/liiga", ignore=shutil.ignore_patterns("__pycache__"))

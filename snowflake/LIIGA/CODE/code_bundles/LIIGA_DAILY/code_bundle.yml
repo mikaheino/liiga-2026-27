@@ -10,8 +10,8 @@ bundle:
     compute_pool: SYSTEM_COMPUTE_POOL_CPU
     query_warehouse: LIIGA_WH
     runtime_version: 'V2.9-CPU-PY3.12'
-  properties:
-    requirements_file: requirements.txt
+  # Ei requirements-tiedostoa (8.11.2026): asennus vaatisi PyPI-pääsyn ("Failed to install packages");
+  # konttiajoympäristössä pandas, numpy, scipy, scikit-learn, requests ja pyyaml ovat valmiina.
   external_access_integrations:
     - LIIGA_FI_ACCESS
     - LIIGA_NEWS_ACCESS
