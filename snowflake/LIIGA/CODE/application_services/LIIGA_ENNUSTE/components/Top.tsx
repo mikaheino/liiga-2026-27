@@ -1,6 +1,6 @@
 // Yläpalkki: brändi (= etusivulle), osiot ja ennusteen aikaleima.
 import Link from "next/link";
-import { MOUHO_PAGES, STATIC } from "@/lib/target";
+import { STATIC } from "@/lib/target";
 
 export function stamp(iso: string) {
   const f = new Intl.DateTimeFormat("fi-FI", { timeZone: "Europe/Helsinki", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -8,10 +8,10 @@ export function stamp(iso: string) {
   return `${p.day}.${p.month}. klo ${p.hour}.${p.minute}`;
 }
 
-// Pagesissa ei LinkedIn-osiota, ja Mouho-peli avautuu omasta reposta.
+// Pagesissa ei LinkedIn-osiota eikä Mouho-peliä (käyttäjä 13.11.: ei mainintoja julkisessa versiossa).
 export const SECTIONS = [
   ["/sarjataulukko", "Sarjataulukko"], ["/sijainti", "Sijainnit"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"], ["/pelaajat", "Pelaajat"], ["/liike", "Liike"],
-  ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/linkedin", "LinkedIn"]]), [STATIC ? MOUHO_PAGES : "/mouho", "Mouho 2026"],
+  ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/linkedin", "LinkedIn"], ["/mouho", "Mouho 2026"]]),
 ] as const;
 
 export default function Top({ updatedAt, active }: { updatedAt?: string; active: string }) {

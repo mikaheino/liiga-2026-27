@@ -2,9 +2,10 @@
 // päivän ottelut /ottelut-sivulle, kauden kysymykset ja päivän tarina pois -- käyttäjä:
 // "Tiputa valmiit skenaariot pois", päivän tarinasta "tarpeeton"). Jäljellä:
 //   Entä jos?   skenaario hakukenttänä, tekoäly rakentaa sen livenä (vain sovellus;
-//               Pagesissa ei agenttia, joten siellä etusivulla on vain osiolinkit)
+//               Pagesissa ei agenttia: siellä etusivu on components/PagesHome.tsx, 13.11.)
 // Osioiden ovet yhdellä linkkirivillä puhelimelle (tietokoneella yläpalkki).
 import Link from "next/link";
+import PagesHome from "@/components/PagesHome";
 import ScenarioBoard from "@/components/ScenarioBoard";
 import Top, { SECTIONS } from "@/components/Top";
 import { loadMeta } from "@/lib/data";
@@ -18,7 +19,7 @@ export default async function Page() {
     <div className="shell">
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front fr">
-        {!STATIC && <ScenarioBoard />}
+        {STATIC ? <PagesHome /> : <ScenarioBoard />}
         <nav className="fr-links phone-only" aria-label="Osiot">
           {SECTIONS.map(([href, label]) => href.startsWith("http")
             ? <a key={href} href={href}>{label}</a>

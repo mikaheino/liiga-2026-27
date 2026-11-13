@@ -6,7 +6,7 @@ import Kiekko from "@/components/Kiekko";
 import NavTrack from "@/components/NavTrack";
 import VersionCheck from "@/components/VersionCheck";
 import { AGENT_SOURCE } from "@/lib/agent";
-import { STATIC } from "@/lib/target";
+import { BASE, STATIC } from "@/lib/target";
 import "./globals.css";
 
 // Fontit käännösvaiheessa sovellukseen (next/font): ei ulkoista hakua ajon
@@ -17,7 +17,22 @@ const mono = Roboto_Mono({ subsets: ["latin"], weight: ["400", "600"], variable:
 // versaalilappuihin, ei otsikoihin, nimiin eikä lukuihin.
 const pixel = Silkscreen({ subsets: ["latin"], weight: ["400"], variable: "--font-pixel" });
 
-export const metadata: Metadata = { title: "Liiga 2026-27 -ennuste", description: "Liigapörssi: sarjataulukko, vire ja ennuste" };
+// Jakokortti ja kuvakkeet (13.11.2026): linkki näkyy viestissä otsikolla ja kuvalla.
+// Kuvake: app/icon.svg ja app/apple-icon.png (Nextin tiedostokäytäntö), jakokuva public/og.png.
+// Osoite vain Pagesissa: jakokuvan on oltava täysi URL, ja sovelluksen osoite ei ole julkinen.
+const DESCRIPTION = "Liigan runkosarjan 2026–27 ennuste: illan ottelut, ennustettu lopputaulukko ja voittaja, päivitetään joka päivä.";
+export const metadata: Metadata = {
+  title: { default: "Liiga Ennuste 2026–27", template: "%s · Liiga Ennuste" },
+  description: DESCRIPTION,
+  applicationName: "Liiga Ennuste",
+  appleWebApp: { capable: true, title: "Liiga Ennuste", statusBarStyle: "black-translucent" },
+  ...(STATIC ? {
+    metadataBase: new URL("https://mikaheino.github.io"),
+    openGraph: { type: "website", locale: "fi_FI", siteName: "Liiga Ennuste", title: "Liiga Ennuste 2026–27", description: DESCRIPTION,
+      url: `${BASE}/`, images: [{ url: `${BASE}/og.png`, width: 1200, height: 630, alt: "Liiga Ennuste, runkosarja 2026–27" }] },
+    twitter: { card: "summary_large_image", title: "Liiga Ennuste 2026–27", description: DESCRIPTION, images: [`${BASE}/og.png`] },
+  } : {}),
+};
 // Puhelin (27.10.): sivu ulottuu lovin ja kotipalkin alle, alavalikko väistää ne
 // (env(safe-area-inset-*) globals.css:ssä); selaimen palkki sivun mustana.
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#050403" };
