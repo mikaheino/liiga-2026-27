@@ -1,6 +1,8 @@
-// Paikallinen "Kysy agentilta" (17.10.): koneella ajettaessa keskustelu käyttää
-// paikallista Claude Codea (`claude -p`) eikä Snowflaken agenttia. Claude saa
-// tiiviin tilannekuvan samasta datasta kuin sivut (DuckDB) ja 6.11. alkaen samat
+// Paikallinen "Kysy agentilta" (17.10.; 13.11.2026 jako): koneella ajettaessa vastaaja
+// peilaa Snowflakea. Qwen hoitaa sen, minkä se hoitaa Snowflakessakin (ensitulkinta,
+// lyhyt vapaa vastaus), ja Claude Code (`claude -p`) esittää Cortex-agenttia silloin,
+// kun tarvitaan työkalukutsuja (skenaarion rakennus, needsTools) tai LIIGA_LOCAL_LLM=claude.
+// Claude saa tiiviin tilannekuvan samasta datasta kuin sivut (DuckDB) ja 6.11. alkaen samat
 // työkalut kuin Snowflaken agentti MCP:n kautta (scripts/local/liiga_mcp.py):
 // liiga_skenaario, liiga_kokoonpanot ja liiga_tieto samoilla nimillä, kuvauksilla
 // ja toteutuksilla. liiga_ennuste/liiga_kausi tulevat vaiheessa B (VQR); siihen
@@ -25,6 +27,23 @@ const REPO = process.env.LIIGA_REPO ?? path.resolve(/* turbopackIgnore: true */ 
 const MCP_TOOLS = ["liiga_skenaario", "liiga_kokoonpanot", "liiga_tieto"];
 const MCP = JSON.stringify({ mcpServers: { liiga: { command: path.join(REPO, ".venv/bin/python"), args: [path.join(REPO, "scripts/local/liiga_mcp.py")] } } });
 const CLAUDE = process.env.CLAUDE_BIN ?? [path.join(os.homedir(), ".local/bin/claude"), "/opt/homebrew/bin/claude", "/usr/local/bin/claude"].find((p) => fs.existsSync(p)) ?? "claude";
+// Löytyykö Claude Code? Ilman sitä työkalua vaativakin kysymys vastataan Qwenillä (ei huonompaa kuin ennen).
+const CLAUDE_FOUND = !!process.env.CLAUDE_BIN || [path.join(os.homedir(), ".local/bin/claude"), "/opt/homebrew/bin/claude", "/usr/local/bin/claude"].some((p) => fs.existsSync(p));
+// Tarvitseeko viimeinen käyttäjäviesti työkalukutsuja (13.11.2026)? Snowflakessa skenaarion rakennus
+// menee Cortex-agentille, joka kutsuu liiga_skenaario-työkalua; Qwenin vapaa teksti ei koskaan palauta
+// kutsun syötettä, joten rivejä ei synny. Tunnus on skenaarioviestin oma alkulause (scenarioDescribe.ts
+// RULE: "TEHTÄVÄ: Käyttäjä kuvaa ... liiga_skenaario"), ankkuroituna viestin alkuun: kortit alkavat
+// "Käyttäjä kysyy sovelluksen", aliagentit (rewrite/explore) "TEHTÄVÄ: Kirjoita/Olet tutkija", chat on
+// käyttäjän vapaata tekstiä ilman TEHTÄVÄ-alkua, joten ne eivät osu.
+export const needsTools = (history: Turn[]): boolean => /^TEHTÄVÄ: Käyttäjä kuvaa [^\n]*liiga_skenaario/.test(history[history.length - 1]?.text ?? "");
+// Kortin tiedot kysymyksen mukana (askOnce: `${context}\n\nKYSYMYS\n${question}`); ensimmäinen kappale on
+// vastausohje Cortexille, joten se jätetään pois.
+function cardOf(history: Turn[]): string {
+  const t = history[history.length - 1]?.text ?? "";
+  const i = t.indexOf("\n\nKYSYMYS\n");
+  if (i < 0 || !t.startsWith("Käyttäjä kysyy sovelluksen")) return "";
+  return t.slice(0, i).split("\n\n").slice(1).join("\n\n");
+}
 const f1 = (x: number) => x.toFixed(1).replace(".", ",");
 const day = (ts: string) => `${Number(ts.slice(8, 10))}.${Number(ts.slice(5, 7))}.`;
 
@@ -67,7 +86,10 @@ Kirjoita aivan viimeiseksi riviksi kolme lyhyttä jatkokysymystä, joita käytt�
 const QWEN_SYSTEM = `Olet Liigan ennustesovelluksen avustaja. Vastaa suomeksi 2–4 lyhyellä lauseella vain alla olevan DATAn perusteella.
 Käytä lukuja täsmälleen niin kuin ne ovat datassa. Jos vastaus ei löydy datasta, sano se lyhyesti. Ei taulukoita, ei listoja.
 Sanasto: jatkoon = sijat 1-10 (1-6 suoraan puolivälieriin, 7-10 säälipudotuspeleihin), putoaa = sijat 15-17.`;
-async function qwenPrompt(convo: string, view: string): Promise<string> {
+async function qwenPrompt(convo: string, view: string, card = ""): Promise<string> {
+  // Kortin kysymys (13.11.2026): kortin tiedot LIIGAN YLEISTEN RIVIEN SIJAAN, ei niiden lisäksi
+  // (pitkä prompti sekoittaa 3B-mallin); 8k:n kontekstiin mahtuu ~3500 merkkiä.
+  if (card) return `DATA\n${card.slice(0, 3500)}\n\nKYSYMYS\n${convo.split("\n\n").slice(-1)[0].replace(/^Käyttäjä: /, "")}`;
   const teams = await loadTeams();
   const last = convo.split("\n\n").slice(-1)[0].toLowerCase();
   const named = teams.filter((t) => last.includes(t.toLowerCase().slice(0, Math.max(3, t.length - 2))));
@@ -77,24 +99,30 @@ async function qwenPrompt(convo: string, view: string): Promise<string> {
 }
 
 export async function askLocal(history: Turn[], emit: (e: Event) => void, page?: PageRef): Promise<void> {
+  // Työkaluja vaativa kysymys (skenaarion rakennus) = Cortexin rooli -> Claude, jos se on asennettu.
+  const claude = process.env.LIIGA_LOCAL_LLM === "claude" || (needsTools(history) && CLAUDE_FOUND);
   const t0 = Date.now();
   emit({ t: "status", text: "Mietitään…" });
   const convo = history.slice(-10).map((t) => `${t.role === "user" ? "Käyttäjä" : "Sinä"}: ${t.text}`).join("\n\n");
   // Sivun tilannekuva samalla tavalla kuin Snowflaken agentille (lib/pageContext.ts).
   const view = page ? await pageContext(page) : "";
   const prompt = `TILANNEKUVA\n${await context()}\n\n${view ? `NÄKYMÄ\n${CONTEXT_RULE}\n${view}\n\n` : ""}KESKUSTELU\n${convo}\n\nVastaa käyttäjän viimeiseen viestiin.`;
-  const tools = new Set<string>();
+  // "claude" kertoo vastaajan käyttöliittymälle (modelLabel, lib/agentTools.ts), kuten "qwen" Qwenin vastauksista.
+  const tools = new Set<string>(["claude"]);
   const inputs: ToolInput[] = [];
   // Qwen ensin (8.11.2026, käyttäjä: "ei tarvitse kuluttaa Clauden tokeneita applikaatiossa").
-  // Claude vain, jos LIIGA_LOCAL_LLM=claude.
-  if (process.env.LIIGA_LOCAL_LLM !== "claude") {
+  // Claude vain työkalukysymyksiin (needsTools) tai jos LIIGA_LOCAL_LLM=claude.
+  if (!claude) {
     emit({ t: "status", text: "Qwen miettii…" });
     // Luvut koodista (8.11.2026): kysymys -> Qwen-skenaario -> moottori -> johtopäätöslause.
     const question = convo.split("\n\n").slice(-1)[0].replace(/^Käyttäjä: /, "");
     const teams = await loadTeams();
+    // Kortin kysymys vastataan kortin tiedoista (13.11.2026): skenaariotulkinta ja liigan yleisoikopolku
+    // tulkitsivat esim. "montako maalia tällä pelaajalla on" skenaarioksi (xG-osuus +2 %).
+    const card = cardOf(history);
     // Koko liigan kysymys ilman joukkuetta ("Kuka voittaa runkosarjan?", "Ketkä putoavat?"): suoraan ennusteesta.
     const lowq = question.toLowerCase();
-    if (/(^|\s)(kuka|ketkä|mikä joukkue|mitkä joukkueet)(\s|\?|$)/.test(lowq) && !teams.some((t) => lowq.includes(t.toLowerCase().slice(0, Math.max(3, t.length - 2))))) {
+    if (!card && /(^|\s)(kuka|ketkä|mikä joukkue|mitkä joukkueet)(\s|\?|$)/.test(lowq) && !teams.some((t) => lowq.includes(t.toLowerCase().slice(0, Math.max(3, t.length - 2))))) {
       const pos = await loadPosition();
       const sum = (p: number[], a: number, b: number) => p.slice(a - 1, b).reduce((x, y) => x + y, 0);
       const [label, f] = /putoa|karsi|viimei|pohj/.test(lowq) ? ["putoamisuhka (sijat 15–17)", (p: number[]) => sum(p, 15, 17)]
@@ -105,7 +133,7 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
       emit({ t: "done", text: `Mallin mukaan ${label}: ${top.join(", ")}.`, ms: Date.now() - t0, suggestions: [], tools: ["ennuste"], inputs });
       return;
     }
-    const qi = await qwenScenario(question, "", teams).catch(() => null);
+    const qi = card ? null : await qwenScenario(question, "", teams).catch(() => null);
     if (qi?.length && !qi.some((x) => x.stakes_team != null || x.injury != null)) {
       const res = await runEngine<{ teams?: Record<string, unknown>[]; scenario_canonical?: Record<string, unknown>[]; error?: string }>("json", normalize(qi)).catch(() => null);
       if (res && !res.error && res.scenario_canonical) {
@@ -115,7 +143,7 @@ export async function askLocal(history: Turn[], emit: (e: Event) => void, page?:
         return;
       }
     }
-    const q = await qwenChat(QWEN_SYSTEM, await qwenPrompt(convo, view), (d) => emit({ t: "delta", text: d })).catch((e) => { throw new Error(`Qwen: ${(e as Error).message}`); });
+    const q = await qwenChat(QWEN_SYSTEM, await qwenPrompt(convo, view, card), (d) => emit({ t: "delta", text: d })).catch((e) => { throw new Error(`Qwen: ${(e as Error).message}`); });
     if (q == null) throw new Error("Qwen-mallia ei ole ladattu (models/). Aseta LIIGA_LOCAL_LLM=claude käyttääksesi Claudea.");
     const mq = q.match(/\n?\s*JATKO:\s*(.+)\s*$/);
     emit({ t: "done", text: mq ? q.slice(0, mq.index).trimEnd() : q, ms: Date.now() - t0,

@@ -14,7 +14,8 @@ import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, headlines, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
 import { qwenScenario } from "@/lib/qwen";
-import { goalieAll, goalieItems, normalize, playersIn, playersRule, withNews } from "@/lib/scenarioRules";
+import { goalieAll, goalieItems, normalize, playersIn, playersRule, SEASON_END, withNews } from "@/lib/scenarioRules";
+import { parseScenario } from "@/lib/scenarioParse";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
 // chart = agentin valitsema kuvaaja (7.11.2026: "agentti valitsee itse"); null = ei kuvaajaa.
@@ -130,7 +131,7 @@ Mainitse kysytyn joukkueen vihjeet yhdellä lauseella lopussa: "Uutisten mukaan 
 ].filter(Boolean).join("\n\n");
 
 /** "Mitkä pelit ratkaisevat X:n ...": joukkueen 5 ottelua, joiden tulos liikuttaa sen avointa tavoitetta eniten. */
-async function stakesAnswer(team: string): Promise<Described> {
+async function stakesAnswer(team: string, by = "qwen"): Promise<Described> {
   type Stake = { date: string; home: string; away: string; top: { goal: string; p_now: number; p_home_win: number; p_away_win: number } };
   const r = await runEngine<{ stakes?: Stake[]; error?: string }>("json", [{ stakes: { team, top: 5 } }]).catch((e) => ({ error: (e as Error).message } as { error: string; stakes?: Stake[] }));
   if (r.error || !r.stakes?.length) return { answer: "", items: [], tools: ["panokset"], sql: [], error: r.error ?? "ei otteluita", status: 422 };
@@ -142,7 +143,7 @@ async function stakesAnswer(team: string): Promise<Described> {
     return `${s.date} ${s.home}–${s.away}: voitolla ${pc(win)}, tappiolla ${pc(loss)}`;
   });
   return { answer: `${team}: ${g} todennäköisyys on nyt ${pc(r.stakes[0].top.p_now)}. Eniten sitä liikuttavat nämä ottelut:\n${rows.join("\n")}`,
-    items: [], tools: ["qwen", "panokset"], sql: [] };
+    items: [], tools: [by, "panokset"], sql: [] };
 }
 
 export async function describe(text: string, progress?: Parameters<typeof askOnce>[2],
@@ -233,10 +234,18 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
   const selfContained = namedTeams(own, teams).length > 0 || playersIn(own, [...pl.skaters, ...pl.goalies]).length > 0;
   if (forced?.length || !contin || (selfContained && !refers)) {
     progress?.({ status: "Tulkitaan kysymys" });
-    let qi = forced?.length ? forced : gAll ? goalieItems(gAll) : engine === "cortex" ? null : await qwenScenario(own, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
+    // Säännöt -> Qwen -> agentti (13.11.2026, lib/scenarioParse.ts): kiinteät kaavat ("X voittaa kolme
+    // seuraavaa", "Pääseekö X jatkoon?", "Y loukkaantuu viikoksi") jäsennetään koodilla heti; muu Qwenille.
+    // Cortex-valinta ohittaa molemmat (moottorien vertailu). 99 = loppukausi -> paluupäivä kuten Qwenilla.
+    const parsed = forced?.length || gAll || engine === "cortex" ? null : parseScenario(own, teams, [...pl.skaters, ...pl.goalies]);
+    if (parsed) console.log(`[säännöt] ${JSON.stringify(parsed)}`);
+    let qi = forced?.length ? forced : gAll ? goalieItems(gAll)
+      : parsed ? parsed.map((x) => (x.injury != null && x.games === 99 ? { injury: x.injury, until: SEASON_END } : x))
+      : engine === "cortex" ? null : await qwenScenario(own, ps.map((p) => `${p.name} (${p.team})`).join(", "), teams);
     // Qwen keksii joskus muita joukkueita (7.11.: "lisäksi Lukko häviää" -> myös Ässät ja Pelicans): vain
-    // kysymyksessä nimetyt joukkueet ja pelaajat (sekä pelaajien joukkueet) kelpaavat.
-    if (qi && !forced?.length && !gAll) {
+    // kysymyksessä nimetyt joukkueet ja pelaajat (sekä pelaajien joukkueet) kelpaavat. Sääntöjen rivit
+    // ohittavat suodattimen: ne syntyvät vain kysymyksen sanoista (ja namedTeams ei tunne esim. "Kärppien").
+    if (qi && !forced?.length && !gAll && !parsed) {
       const psOwn = playersIn(own, [...pl.skaters, ...pl.goalies]);
       const ok = new Set([...namedTeams(own, teams), ...psOwn.map((p) => p.team)]);
       const names = psOwn.map((p) => p.name.toLowerCase());
@@ -255,10 +264,10 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     }
     // Ratkaisevat ottelut (8.11.2026, markkinaidea "Potential Impact"): moottorin panokset ja vastaus koodista.
     const st = qi?.find((x) => x.stakes_team != null);
-    if (st) return withRoster(await stakesAnswer(String(st.stakes_team)));
+    if (st) return withRoster(await stakesAnswer(String(st.stakes_team), parsed ? "säännöt" : "qwen"));
     if (qi && !forced?.length && contin && /\b(lisäksi|myös|vielä|sen päälle|samalla)\b/i.test(own)) qi = [...pohja!.items, ...qi];
     if (qi) {
-      const d = await attempt({ text: "", suggestions: [], tools: [forced?.length ? "lähiskenaario" : gAll ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
+      const d = await attempt({ text: "", suggestions: [], tools: [forced?.length ? "lähiskenaario" : gAll || parsed ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
         inputs: [{ name: "liiga_skenaario", input: { scenario: JSON.stringify(qi) } }] });
       if (d.error) console.log(`[skenaario] oma tulkinta hylätty: ${d.error}`);
       if (!d.error && d.items.length) {

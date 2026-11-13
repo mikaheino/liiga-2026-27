@@ -235,8 +235,8 @@ kysymyksiin vastata" ja "Haluan siis että tätä voi käyttää idiottikin".
 - Moottorin tekstituloste (agentille) sisältää nyt jatkoon (1.–10.) -sarakkeen ja joukkueen muutoksen.
 - Testattu: "Kärpät vaihtavat valmentajaa" -> +5 %-yks., jatkoon 75,0 % -> 98,8 %; "Bartosak
   loukkaantuu" -> 10 ottelua; "Pääseekö Jokerit jatkoon?" -> 7,0 %. Ei yhtään tarkennuskysymystä.
-- ⚠️ Snowflaken agentin työkalukuvaus (deploy_agent.spec) ei vielä mainitse xg_sharea; sovelluksen
-  ohje kertoo sen agentille. Proseduuri julkaistaan deploy.yml:llä.
+- 13.11.2026: `liiga_skenaario`-työkalukuvaus (deploy_agent.spec, MCP samasta lähteestä) mainitsee nyt xg_share-rivin
+  (−0,05…+0,05, kova raja ±0,15, tyypilliset +0,02 / +0,015). Julkaisu CI/CD:llä; ei vielä ajettu Snowflakeen.
 
 ## Uutiset skenaariossa (7.11.2026)
 
@@ -382,3 +382,37 @@ moottori; selitys ja johtopäätös koodista. Jatkokysymykset ja epäonnistumise
 Mitattu: pitkä Sonnet-ohje 3B 0/5, 7B 2/5; lyhyt ohje + esimerkit 3B 6/8 (~7 s CPU, ~2 s Mac GPU), 7B 6/8 (~14 s).
 Malli ladataan käännöksessä (app.yml), ei repoon. ⚠️ Todennettava STAGINGissa: lataako Snowflaken
 käännös HF:stä, riittääkö järjestelmäpoolin muisti ja nopeus (lokirivi `[qwen] … ms`). `LIIGA_LLM=off` ohittaa.
+
+## Säännöt ennen Qwenia: kysymysjäsennin (13.11.2026)
+
+Qwen 3B osui 6/8, vei ~7 s CPU:lla ja keksi joukkueita, vastustajia ja kenttiä. Useimmat oikeat
+kysymykset ovat muutamaa kiinteää kaavaa, joten `lib/scenarioParse.ts` (`parseScenario`) jäsentää ne
+koodilla ennen Qwenia. Järjestys `describe()`ssa: **säännöt (maalivahti, jäsennin) -> Qwen -> agentti**;
+tools-kenttään `säännöt`. Cortex-moottorin valinta ohittaa jäsentimen (moottorien vertailu).
+- Kaavat: tulos (`voittaa/häviää/saa pisteen/menee jatkoajalle/ratkeaa varsinaisella peliajalla`,
+  `jatkoajalla`/`varsinaisella peliajalla` -> ot_win, reg_loss …), määrä (lukusanat yksi…kymmenen,
+  pari, numerot 1–60, `seuraavan` = 1, `kaikki`/`loput`/`loppukauden` = 99, ei määrää = normalize():n
+  oletus 5), koti/vieras, vastustaja (`Ilvestä vastaan`, `voittaa Lukon`, `häviää Tapparalle`), useampi
+  joukkue (`Tappara ja Ilves häviävät`; `Ässät voittaa ja HIFK häviää seuraavan` = sama määrä
+  molemmille), tavoite (jatkoon/pudotuspeli -> top10, kärkikuusikko/kuuden joukkoon -> top6,
+  putoaminen/sarjassa -> avoid_relegation, runkosarjan voitto/mestaruus -> win, myös tuloksen perään),
+  ratkaisevat ottelut (`ratkaisevat`, `tärkeimmät`), poissaolo (yksi yksiselitteinen pelaaja datasta;
+  viikko = 3, kuukausi = 12 ottelua, loppukausi = paluupäivä kuten Qwenilla; ei kestoa = oletus 10).
+- **Tarkkuus ennen kattavuutta**: jokaisen sanan pitää tunnistua. Tuntematon sana, kielto, pronomini
+  (hän, tämä, se), aikajakso (joulun yli, ensi viikolla), määrätön vastustaja/kenttä, monta samannimistä
+  pelaajaa tai xg_share-kysymys (valmentaja, pelaajan parannus) -> null, ja ketju jatkuu Qwenille.
+- Mitattu: qwen.ts:n 15 esimerkistä 13 (kaksi xg_sharea Qwenille), scenario_eval.py:n 17 lauseesta 14
+  (joulun yli, ensi viikolla ja monta Lehtosta Qwenille), vihamielisistä 7/7 null. Testit:
+  `tests/scenarioParse.test.ts` (83 tapausta, 46 jäsennettävää + 37 nulliksi), `npm test`, CI:n app-työ.
+- Mitattu sovelluksen reitillä (/api/skenaario/rakenna, Mac): sääntöpolku 0,9–2,9 s koko vastaukseen
+  (jäsennys alle millisekunnin, loput moottori); Qwen-polku ~4,9 s.
+
+## Paikallinen agenttipolku = Claude työkaluilla (13.11.2026)
+
+Snowflakessa skenaarion rakennus siirtyy Qwenin jälkeen työkaluja käyttävälle Cortex-agentille. Paikallisesti sama
+askel meni takaisin Qwenille, joka ei palauta työkalukutsun syötettä, joten jatkokysymyksestä ei syntynyt rivejä.
+Nyt `needsTools()` (`lib/localClaude.ts`) ohjaa skenaarion rakennuksen Claudelle MCP-työkaluineen, jos `claude` on
+asennettu; muu keskustelu ja kortit pysyvät Qwenillä. Tunnistus nojaa `RULE`:n alkulauseeseen
+`TEHTÄVÄ: Käyttäjä kuvaa … liiga_skenaario` (`lib/scenarioDescribe.ts`): jos sitä muutetaan, päivitä regex.
+Moottorivalitsimen toinen vaihtoehto on paikallisesti "Claude" (Snowflakessa "Cortex"). Mitattu: viittaava
+jatkokysymys ("entä jos se häviääkin ne?") tuotti rivit Claudella 19–22 s:ssa; ennen ei riviäkään.

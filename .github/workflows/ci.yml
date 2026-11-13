@@ -52,7 +52,7 @@ jobs:
           PY
 
   app:
-    # Next.js-sovellus ilman Snowflakea: tyypit ja tuotantokäännös.
+    # Next.js-sovellus ilman Snowflakea: tyypit, yksikkötestit ja tuotantokäännös.
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -68,5 +68,7 @@ jobs:
         run: npm ci && npm audit --omit=dev --audit-level=high
       - name: Tyypit
         run: npm run typecheck
+      - name: Yksikkötestit (kysymysjäsennin, node --test)
+        run: npm test
       - name: Tuotantokäännös
         run: npm run build

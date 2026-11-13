@@ -13,6 +13,7 @@
 // agenttia ei pyydetä puhumaan, jos sillä ei ole sanottavaa.
 import { useCallback, useEffect, useRef, useState } from "react";
 import SwipeBack from "@/components/SwipeBack";
+import { modelLabel } from "@/lib/agentTools";
 import { openChat } from "@/lib/chatBus";
 import { md } from "@/lib/markdown";
 
@@ -24,6 +25,8 @@ type Row = {
 };
 export type Subject = { type: "game" | "team" | "player" | "season"; key: string };
 
+// Vastaajan merkit ("qwen", "claude") eivät ole työkaluja (lib/agentTools.ts modelLabel).
+const realTools = (t: string[]) => t.filter((x) => x !== "claude" && x !== "qwen");
 const TOOL: Record<string, string> = {
   liiga_ennuste: "Ennusteen semanttinen malli", liiga_kausi: "Kauden tilastojen semanttinen malli",
   liiga_skenaario: "Simulaattori (10 000 kautta)", liiga_kokoonpanot: "Illan kokoonpanot liiga.fi:stä",
@@ -47,7 +50,7 @@ function Trace({ r, forecastTs, onClose }: { r: Row; forecastTs: string; onClose
         <div className="mc-when">Agentin jälki</div>
         <div className="mc-box"><div className="label">Kysymys</div><b>{r.question}</b></div>
         <div className="mc-box ag-kv">
-          <div><span>Agentti</span><b>{r.source === "local" ? "Paikallinen Claude (kehitys)" : "Snowflake Intelligence · LIIGA_ENNUSTAJA"}</b></div>
+          <div><span>Agentti</span><b>{r.source === "local" ? `${modelLabel(r.source, r.tools)} (kehitys)` : "Snowflake Intelligence · LIIGA_ENNUSTAJA"}</b></div>
           <div><span>Kysytty</span><b>{when(r.askedAt)}</b></div>
           {r.ms != null && <div><span>Kesto</span><b>{Math.round(r.ms / 1000)} s</b></div>}
           <div><span>Perusta</span><b>ennuste {r.forecastTs || "–"}</b></div>
@@ -56,8 +59,8 @@ function Trace({ r, forecastTs, onClose }: { r: Row; forecastTs: string; onClose
         </div>
         <div className="mc-box">
           <div className="label">Työkalut</div>
-          {r.tools.length ? r.tools.map((t) => <div key={t} className="ag-tool"><b>{TOOL[t] ?? t}</b><span className="ag-mono">{t}</span></div>)
-            : <p>{r.source === "local" ? "Paikallinen Claude vastaa ilman työkaluja annetusta tilannekuvasta." : "Agentti vastasi kortin tiedoista ilman työkalukutsuja."}</p>}
+          {realTools(r.tools).length ? realTools(r.tools).map((t) => <div key={t} className="ag-tool"><b>{TOOL[t] ?? t}</b><span className="ag-mono">{t}</span></div>)
+            : <p>{r.source === "local" ? `${modelLabel(r.source, r.tools)} vastaa ilman työkaluja annetusta tilannekuvasta.` : "Agentti vastasi kortin tiedoista ilman työkalukutsuja."}</p>}
         </div>
         {r.sql.length > 0 && (
           <div className="mc-box">
@@ -143,7 +146,7 @@ export default function CardAgent({ subject, chips: offered, placeholder, title 
             {r.status === "done" && r.answer && (<>
               <div className="ag-a" dangerouslySetInnerHTML={{ __html: md(r.answer) }} />
               <div className="ag-acts">
-                <button className="ag-tr" onClick={() => setTrace(r)}>▸ Jälki{r.tools.length ? ` · ${r.tools.length} työkalu${r.tools.length > 1 ? "a" : ""}` : ""}</button>
+                <button className="ag-tr" onClick={() => setTrace(r)}>▸ Jälki{realTools(r.tools).length ? ` · ${realTools(r.tools).length} työkalu${realTools(r.tools).length > 1 ? "a" : ""}` : ""}</button>
                 {/* Kortista vapaaseen keskusteluun: kysymys ja vastaus keskustelun jatkoksi (6.11.). */}
                 <button className="ag-tr" onClick={() => openChat({ seed: [{ role: "user", text: r.question }, { role: "assistant", text: r.answer! }] })}>▸ Jatka keskustelua</button>
               </div>

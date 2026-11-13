@@ -72,7 +72,8 @@ async function build(body: { text: string; prompt: string; followup?: string; ba
   }
 }
 
-export default function ScenarioBoard() {
+// source (13.11.2026): "local" = koneella, jolloin suuri malli on Claude Code eikä Snowflaken Cortex (layout/page välittää AGENT_SOURCEn).
+export default function ScenarioBoard({ source = "snowflake" }: { source?: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [res, setRes] = useState<Res | null>(null);
   const [err, setErr] = useState("");
@@ -248,12 +249,13 @@ export default function ScenarioBoard() {
           {(["qwen", "cortex"] as const).map((k) => (
             // Paikallinen vs. pilvi kuvakkeella (8.11.: eurot "tyhmän näköisiä"); hinta vihjeessä.
             <button key={k} type="button" role="radio" aria-checked={engine === k} className={engine === k ? "on" : ""}
-              title={k === "qwen" ? "Oma malli sovelluksen kontissa, ei tokenikuluja" : "Snowflake Cortex, maksetaan tokeneista"}
+              title={k === "qwen" ? "Oma malli sovelluksen kontissa, ei tokenikuluja"
+                : source === "local" ? "Paikallinen Claude Code, käyttää Clauden tokeneita" : "Snowflake Cortex, maksetaan tokeneista"}
               onClick={() => pickEngine(k)}>
               <svg viewBox="0 0 16 16" aria-hidden className="gs-eng-ico">{k === "qwen"
                 ? <><rect x="4" y="4" width="8" height="8" rx="1.5" /><path d="M6 1.5v2.5M10 1.5v2.5M6 12v2.5M10 12v2.5M1.5 6h2.5M1.5 10h2.5M12 6h2.5M12 10h2.5" /></>
                 : <path d="M4.5 12.5h7.2a2.8 2.8 0 0 0 .3-5.6 4 4 0 0 0-7.7-.6A3.1 3.1 0 0 0 4.5 12.5Z" />}</svg>
-              {k === "qwen" ? "Qwen" : "Cortex"}</button>
+              {k === "qwen" ? "Qwen" : source === "local" ? "Claude" : "Cortex"}</button>
           ))}
         </div>
       )}

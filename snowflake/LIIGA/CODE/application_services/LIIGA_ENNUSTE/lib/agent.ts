@@ -5,7 +5,7 @@
 //   Snowflake: POST /api/v2/.../agents/LIIGA_ENNUSTAJA:run (stream: true, SSE).
 //     App Runtimessa palvelun sessiotoken (OAuth), paikallisesti liiga_ci-avainparin
 //     JWT. Jos striimi ei aukea, varalla SQL:n DATA_AGENT_RUN (koko vastaus kerralla).
-//   Paikallisesti (DuckDB-tila): paikallinen Claude, ks. lib/localClaude.ts.
+//   Paikallisesti (DuckDB-tila): Qwen ja tarvittaessa paikallinen Claude (työkalukutsut), ks. lib/localClaude.ts.
 //
 // Päätteetön nimi = oletusversio = PRODUCTION (agentilla ei ole live-versiota,
 // CLAUDE.md). LIIGA_AGENT='...!DEV' kokeilee DEV-aliasta paikallisesti.
@@ -34,7 +34,7 @@ export type Event =
   | { t: "error"; text: string };
 type Emit = (e: Event) => void;
 
-// Paikallisesti (DuckDB-tila) keskustelu käyttää paikallista Claudea, Snowflakessa agenttia.
+// Paikallisesti (DuckDB-tila) vastaa Qwen (+ Claude työkalukysymyksiin), Snowflakessa Cortex-agentti.
 export const AGENT_SOURCE = DATA_MODE === "duckdb" ? "local" : "snowflake";
 
 const body = (history: Turn[], stream: boolean) => JSON.stringify({

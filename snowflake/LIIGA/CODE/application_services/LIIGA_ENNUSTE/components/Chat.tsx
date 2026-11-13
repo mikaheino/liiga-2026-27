@@ -22,9 +22,10 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { chatState, onOpenChat } from "@/lib/chatBus";
+import { modelLabel } from "@/lib/agentTools";
 import { md } from "@/lib/markdown";
 
-type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean; suggestions?: string[] };
+type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean; suggestions?: string[]; tools?: string[] };
 const KEY = "liiga-chat";
 const load = (): Turn[] => { try { return JSON.parse(sessionStorage.getItem(KEY) ?? "[]"); } catch { return []; } };
 const save = (t: Turn[]) => { try { sessionStorage.setItem(KEY, JSON.stringify(t.slice(-30))); } catch { /* yksityinen ikkuna */ } };
@@ -134,7 +135,7 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
           const e = JSON.parse(line);
           if (e.t === "status") setStatus(e.text);
           else if (e.t === "delta") { acc += e.text; setLive(acc.split(/\n?\s*JATKO:/)[0]); }
-          else if (e.t === "done") done = { role: "assistant", text: e.text, ms: e.ms, suggestions: e.suggestions };
+          else if (e.t === "done") done = { role: "assistant", text: e.text, ms: e.ms, suggestions: e.suggestions, tools: e.tools };
           else if (e.t === "error") done = { role: "assistant", text: `Agentti ei vastannut: ${e.text}`, error: true };
         }
       }
@@ -158,7 +159,7 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
               <div className="label">Liiga Ennustaja</div>
               <div className="chat-sub">
                 <span className="chat-here" title="Agentti tietää, mitä sivua katsot">◎ {where}</span>
-                <span className="chat-dot">·</span>{source === "local" ? "Paikallinen Claude" : "Snowflake Intelligence"}
+                <span className="chat-dot">·</span>{modelLabel(source, [...turns].reverse().find((t) => t.role === "assistant" && t.tools)?.tools)}
               </div>
             </div>
             <div className="chat-acts">

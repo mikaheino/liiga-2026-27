@@ -351,3 +351,14 @@ kaksi tuntia ennen aloitusta, ja aamun Pages-ajo oli tehty käsin. Siksi:
 Julkisen repon vakiorunnerit ovat ilmaisia eivätkä kuluta kiintiötä, joten tiheys ei maksa
 mitään. Pagesin 10 käännöstä/tunti **ei koske omaa Actions-workflowia**. Todelliset rajat
 ovat `GITHUB_TOKEN` 1 000 API-kutsua/tunti/repo ja liiga.fi:n kuormittaminen.
+
+## Paikallinen vastaaja peilaa Snowflakea (13.11.2026)
+
+Koneella (`AGENT_SOURCE=local`) Qwen hoitaa sen, minkä se hoitaa Snowflakessakin (skenaarion ensitulkinta, lyhyt vapaa
+vastaus), ja Claude Code (`claude -p` + MCP `scripts/local/liiga_mcp.py`) esittää Cortex-agenttia, kun tarvitaan
+työkalukutsuja. `lib/localClaude.ts` `needsTools()`: viimeinen käyttäjäviesti alkaa skenaarioviestin tunnuslauseella
+(`TEHTÄVÄ: Käyttäjä kuvaa ... liiga_skenaario`, `scenarioDescribe.ts` RULE) -> Claude (jos binääri löytyy, muuten Qwen kuten ennen).
+Jos RULE:n alku muuttuu, muuta regex mukana. Skenaariosäätimen "Cortex" on paikallisesti "Claude" (`source`-prop page.tsx -> ScenarioBoard).
+Kortin kysymyksessä Qwen saa kortin tiedot yleisten liigarivien sijaan (ei skenaariotulkintaa eikä yleisoikopolkua).
+Vastaaja näkyy datasta: `done.tools` sisältää `qwen`/`ennuste` tai `claude` (`modelLabel`, `lib/agentTools.ts`).
+Kustannus: jokainen skenaarion tarkennus, jonka Qwen ei tulkitse itse, kuluttaa Clauden tokeneita (~20 s, sonnet).

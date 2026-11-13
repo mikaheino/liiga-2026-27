@@ -7,6 +7,7 @@
 import PagesHome from "@/components/PagesHome";
 import ScenarioBoard from "@/components/ScenarioBoard";
 import Top from "@/components/Top";
+import { AGENT_SOURCE } from "@/lib/agent";
 import { loadMeta } from "@/lib/data";
 import { STATIC } from "@/lib/target";
 
@@ -18,7 +19,7 @@ export default async function Page() {
     <div className="shell">
       <Top updatedAt={meta?.UPDATED_AT} active="/" />
       <main className="main front fr">
-        {STATIC ? <PagesHome /> : <ScenarioBoard />}
+        {STATIC ? <PagesHome /> : <ScenarioBoard source={AGENT_SOURCE} />}
       </main>
     </div>
   );
