@@ -31,6 +31,7 @@ jobs:
       - name: Riippuvuudet
         run: pip install -q -e .
       - name: Päivän haastaja
+        id: haastaja
         env:
           URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
         run: |
@@ -48,3 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --repo "${{ github.repository }}" -f history=false
+      - name: Ennuste myöhästyi
+        # challenger.py ennustaa vain alkamattomat ottelut. Jos ajo tuli ottelun alun
+        # jälkeen, se ei voi tehdä mitään -- ajo kaadetaan, jotta se näkyy (13.11.).
+        if: steps.haastaja.outputs.missed == '1'
+        run: echo "Haastajan ennuste jäi tekemättä jo alkaneille otteluille" && exit 1

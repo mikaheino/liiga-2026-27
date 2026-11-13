@@ -11,6 +11,7 @@
 //   POST /absence              -> istunto tarkistetaan, absence.yml käynnistetään
 //                                 palvelimen GitHub-avaimella (GITHUB_PAT, ei selaimessa)
 //   GET  /me                   -> kuka on kirjautunut
+//   ajastus (wrangler.toml)    -> news.yml / pages.yml käynnistetään ajallaan (13.11.)
 //
 // Salaisuudet (wrangler secret put): GITHUB_CLIENT_SECRET, GITHUB_PAT, SESSION_SECRET.
 
@@ -97,7 +98,37 @@ async function absence(req, env) {
   return r.status === 204 ? new Response(null, { status: 204, headers: cors(env) }) : json(env, 502, { error: `GitHub ${r.status}` });
 }
 
+// Ajastus (13.11.2026). GitHubin oma `schedule` toimitti news.yml:n 1.-12.11. kerran
+// päivässä klo 15.37-19.43 UTC, aina ottelun alun jälkeen: haastajan ennuste jäi
+// tekemättä 15:lle 29 pelatusta ottelusta, ja jokainen ajo näytti onnistuneelta.
+// Cloudflaren ajastin laukeaa ajallaan; workflow_dispatch käynnistyy heti.
+// Sama ajo useaan kertaan on turvallista: uusin ennen ottelua tehty ennuste jää voimaan.
+// Työ valitaan laukaisuhetken UTC-tunnista, ei cron-merkkijonosta (Cloudflare voi
+// palauttaa sen eri muodossa kuin wrangler.toml:ssa): 5 = aamun tulokset ja
+// ennustehistoria, 10-15 = kokoonpanot -> haastaja -> sivu, 17-20 = illan tulokset.
+function job(hour) {
+  if (hour === 5) return ["pages.yml", { history: "true" }];
+  if (hour >= 10 && hour <= 15) return ["news.yml", {}];
+  if (hour >= 17 && hour <= 20) return ["pages.yml", { history: "false" }];
+  return null;
+}
+
+async function dispatch(env, workflow, inputs) {
+  const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${workflow}/dispatches`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.GITHUB_PAT}`, Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "liiga-hyvaksynta" },
+    body: JSON.stringify({ ref: "main", inputs }),
+  });
+  if (r.status !== 204) throw new Error(`${workflow}: GitHub ${r.status}`);   // näkyy Cloudflaren lokissa virheenä
+}
+
 export default {
+  async scheduled(controller, env, ctx) {
+    const j = job(new Date(controller.scheduledTime).getUTCHours());
+    if (!j) throw new Error(`ajastus ${controller.cron}: ei työtä tälle tunnille`);
+    ctx.waitUntil(dispatch(env, j[0], j[1]));
+  },
   async fetch(req, env) {
     const path = new URL(req.url).pathname;
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(env) });

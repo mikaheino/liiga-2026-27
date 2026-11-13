@@ -23,6 +23,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -243,6 +244,25 @@ def _row(day: str, g0: dict, g: dict, base: dict, notes: list[str]) -> dict:
             "p_home_win": round(ph, 6), "notes": "; ".join(notes)}
 
 
+def _missed(news: Path, day: str, now: dt.datetime) -> list[str]:
+    """Päivän jo alkaneet ottelut, joille ei ole ennen ottelua tehtyä haastajan ennustetta.
+    13.11.: myöhästynyt ajo ei tehnyt mitään ja näytti onnistuneelta 15 ottelun ajan."""
+    done = {r["game_id"] for r in _read(news / "prediction_games_news.csv") if r["snapshot_date"] == day}
+    games = {r["game_id"]: r for r in _read(news / "lineup_games.csv") if r["date"] == day}
+    return sorted(f"{g['home']} – {g['away']}" for gid, g in games.items()
+                  if gid not in done and dt.datetime.fromisoformat(g["start"].replace("Z", "+00:00")) <= now)
+
+
+def _report_missed(missed: list[str]) -> None:
+    """GitHubin virhemerkintä + tuloste `missed=1`; recompute.yml kaataa ajon lopuksi."""
+    if not missed:
+        return
+    print(f"::error title=Haastajan ennuste puuttuu::{len(missed)} ottelua alkoi ennen ajoa: {'; '.join(missed)}")
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write("missed=1\n")
+
+
 def _write(path: Path, day: str, out: list[dict]) -> None:
     """Päivän uusi ajo korvaa saman päivän aiemman ennusteen vain näille otteluille."""
     redo = {r["game_id"] for r in out}
@@ -257,6 +277,7 @@ def main(news: Path, pages: Path, day: str | None = None) -> int:
     now = dt.datetime.now(dt.UTC)
     day = day or now.astimezone(ZoneInfo("Europe/Helsinki")).date().isoformat()
     base = _todays_base(news, pages, day, now)
+    _report_missed(_missed(news, day, now))
     if not base:
         print(f"{day}: ei alkamattomia otteluita tai aamun ennustetta")
         return 0
