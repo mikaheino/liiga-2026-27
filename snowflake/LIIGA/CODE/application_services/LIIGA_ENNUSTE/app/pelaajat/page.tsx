@@ -10,6 +10,7 @@ import { loadFixtures, loadPlayerHistory, loadPlayers } from "@/lib/data";
 import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Pelaajat" };
 
 export default async function Page() {
   const [{ skaters, goalies }, fixtures, hist] = await Promise.all([loadPlayers(), loadFixtures(),

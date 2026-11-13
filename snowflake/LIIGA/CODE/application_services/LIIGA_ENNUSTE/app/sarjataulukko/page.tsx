@@ -6,6 +6,7 @@ import { StandingsView } from "@/components/Views";
 import { loadLog, loadTeams } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sarjataulukko" };
 
 export default async function Page() {
   const [log, teams] = await Promise.all([loadLog(), loadTeams()]);

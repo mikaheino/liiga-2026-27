@@ -15,6 +15,10 @@ import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ team: string }> }) {
+  return { title: decodeURIComponent((await params).team) };
+}
+
 const zone = (k: number) => (k <= PLAYOFF_CUT ? "z-top" : k <= QUALI_CUT ? "z-quali" : k > RELEGATION_CUT ? "z-down" : "z-mid");
 
 export default async function Page({ params }: { params: Promise<{ team: string }> }) {

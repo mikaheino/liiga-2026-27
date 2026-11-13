@@ -4,6 +4,7 @@ import { MotionView } from "@/components/Views";
 import { loadHistory, loadPosition, loadTeams } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Ennusteen liike" };
 
 export default async function Page() {
   const [{ history, preseason }, pos, teams] = await Promise.all([loadHistory(), loadPosition(), loadTeams()]);

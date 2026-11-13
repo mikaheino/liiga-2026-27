@@ -11,6 +11,7 @@ import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadStake
 import { nextRound } from "@/lib/fixtures";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Ottelut" };
 
 export default async function Page() {
   const [all, teams, challenger, season, news, stakeList] = await Promise.all([

@@ -4,6 +4,7 @@ import { TitleView } from "@/components/Views";
 import { loadHistory, loadTeams, loadTitle } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Runkosarjan voittaja" };
 
 export default async function Page() {
   const [title, { history }, teams] = await Promise.all([loadTitle(), loadHistory(), loadTeams()]);

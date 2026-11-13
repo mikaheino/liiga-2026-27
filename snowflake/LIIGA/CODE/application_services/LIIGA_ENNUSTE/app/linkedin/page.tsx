@@ -5,6 +5,7 @@ import Top from "@/components/Top";
 import { query } from "@/lib/snowflake";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "LinkedIn" };
 
 export default async function Page() {
   const meta = await query<{ UPDATED_AT: string }>("SELECT updated_at FROM LIIGA.MODEL.PREDICTION_META");

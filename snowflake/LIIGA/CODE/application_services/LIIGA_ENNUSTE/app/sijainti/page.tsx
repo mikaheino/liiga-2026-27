@@ -8,6 +8,7 @@ import TimeTravel from "@/components/TimeTravel";
 import { loadMeta, loadPositionHistory } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sijainnit" };
 
 export default async function Page() {
   const [{ meta, next }, snapsAll] = await Promise.all([

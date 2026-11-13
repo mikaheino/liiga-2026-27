@@ -5,6 +5,7 @@ import Top from "@/components/Top";
 import { loadMeta } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Mouho 2026" };
 
 export default async function Page() {
   const { meta } = await loadMeta();

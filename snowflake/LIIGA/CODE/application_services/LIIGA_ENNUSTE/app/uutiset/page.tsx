@@ -8,6 +8,7 @@ import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadTeams
 import { fi } from "@/lib/table";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Uutiset ja haastaja" };
 
 const pct = (p: number) => `${fi(100 * p, 0)} %`;
 
