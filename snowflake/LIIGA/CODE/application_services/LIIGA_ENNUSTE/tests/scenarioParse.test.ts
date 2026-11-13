@@ -114,3 +114,20 @@ const NULL: string[] = [
 
 for (const [q, want] of OK) test(`jäsentää: ${q}`, () => assert.deepEqual(parse(q), want));
 for (const q of NULL) test(`ei arvaa: ${q}`, () => assert.equal(parse(q), null));
+
+// Useampi loukkaantunut yhdellä verbillä (13.11.2026): omistajan kysymys tarkassa näkymässä.
+const TPS = [{ name: "Lars Bryggman", team: "TPS" }, { name: "Niklas Friman", team: "TPS" }, { name: "Lukas Wernblom", team: "TPS" },
+  { name: "Lukas Haudum", team: "TPS" }, { name: "Aleksi Pesonen", team: "Tappara" }];
+const parseT = (q: string) => parseScenario(q, TEAMS, TPS);
+const FOUR = ["Lars Bryggman", "Niklas Friman", "Lukas Wernblom", "Lukas Haudum"];
+test("poissaolot: neljä pelaajaa, oletuskesto", () =>
+  assert.deepEqual(parseT("Bryggman, Friman, Wernblom ja Haudum loukkaantuvat"), FOUR.map((injury) => ({ injury }))));
+test("poissaolot: joukkue ja loukkaantumissuma edellä, lisäksi-sana", () =>
+  assert.deepEqual(parseT("Lisäksi TPS:lle tulee loukkaantumissuma: Bryggman, Friman, Wernblom ja Haudum loukkaantuvat"), FOUR.map((injury) => ({ injury }))));
+test("poissaolot: yhteinen kesto", () =>
+  assert.deepEqual(parseT("Bryggman ja Friman loukkaantuvat kuukaudeksi"), [{ injury: "Lars Bryggman", games: 12 }, { injury: "Niklas Friman", games: 12 }]));
+test("poissaolot: loppukausi", () =>
+  assert.deepEqual(parseT("Bryggman, Friman ja Haudum loukkaantuvat loppukaudeksi"), ["Lars Bryggman", "Niklas Friman", "Lukas Haudum"].map((injury) => ({ injury, games: 99 }))));
+test("ei arvaa: loukkaantumissuma ilman nimiä", () => assert.equal(parseT("TPS:lle tulee loukkaantumissuma"), null));
+test("ei arvaa: pelaaja eri joukkueesta kuin mainittu", () => assert.equal(parseT("TPS:n Bryggman ja Pesonen loukkaantuvat"), null));
+test("ei arvaa: poissaolo ja tulos samassa", () => assert.equal(parseT("Bryggman loukkaantuu ja TPS häviää kolme seuraavaa"), null));

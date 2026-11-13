@@ -12,7 +12,7 @@
 //                  asettaa deploy-app.yml (sama versio kuin agentin työkalulla)
 //   Pagesissa      esilaskettu public/skenaario/<joukkue>.json (scenario_static.py)
 import { NextResponse } from "next/server";
-import { loadTeams } from "@/lib/data";
+import { loadFixtures, loadTeams } from "@/lib/data";
 import { runEngine } from "@/lib/scenarioEngine";
 import { MAX_ITEMS, validItem } from "@/lib/scenarioItems";
 
@@ -22,7 +22,7 @@ const GOALS = new Set(["top6", "top10", "avoid_relegation", "win"]);
 const STREAKS = new Set([0, 3, 5, 10]);
 
 // Oma skenaario (lib/lockBus.ts): vain moottorin kanonisia rivejä (lib/scenarioItems.ts),
-// enintään MAX_ITEMS (64). Moottori palauttaa joukkueiden luvut, uskottavuuden ja kanonisen skenaarion.
+// enintään MAX_ITEMS (400, lib/scenarioItems.ts). Moottori palauttaa joukkueiden luvut, uskottavuuden ja kanonisen skenaarion.
 async function locks(items: unknown[]) {
   const teams = new Set(await loadTeams());
   if (!items.length || items.length > MAX_ITEMS || !items.every((x) => validItem(x, teams))) {
@@ -31,9 +31,15 @@ async function locks(items: unknown[]) {
   try {
     // Tallennettu skenaario voi sisältää jo pelattuja otteluita (7.11.2026, käyttäjä: "entä jos
     // tallennettu skenaario on muuttunut"): moottori ei löydä niitä pelaamattomista, joten ne
-    // pudotetaan ja lasketaan uudelleen (enintään 64 kierrosta = rivien määrä).
+    // pudotetaan ja lasketaan uudelleen. Silmukka pudottaa moottorin virheilmoituksesta vain yhden
+    // ottelun kerrallaan (~0,8 s/kierros), joten 13.11.2026 (raja 400) jo pelatut ottelut karsitaan ensin
+    // otteluluettelosta; moottorin silmukka jää varalle (enintään MAX_ITEMS kierrosta = rivien määrä).
     let rest = items as Record<string, unknown>[];
     const dropped: unknown[] = [];
+    const played = new Set((await loadFixtures().catch(() => [])).filter((f) => f.ended && f.gameId != null).map((f) => Number(f.gameId)));
+    for (const x of rest) if ("game_id" in x && played.has(Number(x.game_id))) dropped.push(Number(x.game_id));
+    rest = rest.filter((x) => !("game_id" in x && played.has(Number(x.game_id))));
+    if (!rest.length) return NextResponse.json({ error: "kaikki lukitut ottelut on jo pelattu", dropped }, { status: 422, headers: NO_STORE });
     for (let k = 0; k <= MAX_ITEMS; k++) {
       const res = await runEngine("json", rest);
       const gone = /ottelua (\d+) ei löydy pelaamattomista/.exec(String(res.error ?? ""));

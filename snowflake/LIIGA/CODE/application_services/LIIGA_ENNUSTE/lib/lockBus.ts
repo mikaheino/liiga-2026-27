@@ -21,6 +21,18 @@ import { MAX_ITEMS as MAX_LOCKS } from "@/lib/scenarioItems";
 
 export const itemKey = (i: Item) =>
   "game_id" in i ? `g:${i.game_id}` : "injury" in i ? `i:${i.injury}` : "xg_share" in i ? `s:${i.team}` : "model" in i ? "m" : `t:${i.team}:${i.goal}`;
+/** Ottelulukituksen label samassa muodossa kuin moottorin kanoninen rivi (simulate_scenario.py
+ *  _lock_label, 13.11.2026 tarkkaa näkymää varten), jotta sirut lukevat samoin ennen moottorin vastausta. */
+export function lockLabel(date: string, home: string, away: string, r: GameLock["result"]): string {
+  const what: Record<GameLock["result"], string> = {
+    home_win: `${home} voittaa`, away_win: `${away} voittaa`,
+    home_reg: `${home} voittaa varsinaisella peliajalla`, home_ot: `${home} voittaa jatkoajalla`,
+    away_ot: `${away} voittaa jatkoajalla`, away_reg: `${away} voittaa varsinaisella peliajalla`,
+    overtime: "menee jatkoajalle", regulation: "ratkeaa varsinaisella peliajalla",
+    home_point: `${home} saa vähintään pisteen`, away_point: `${away} saa vähintään pisteen`,
+  };
+  return `${date} ${home}–${away}: ${what[r]}`;
+}
 /** Moottorille: label pois. */
 export const engineItem = (i: Item) => Object.fromEntries(Object.entries(i).filter(([k]) => k !== "label"));
 

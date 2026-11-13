@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         const d = await describe(prompt, (p) => {
           if (p.status) step(p.status);
           if (p.partial) send({ t: "text", text: splitChart(p.partial).text });
-        }, base, Array.isArray(b.scenario) ? (b.scenario as Record<string, unknown>[]).slice(0, 64) : null, b.engine === "cortex" ? "cortex" : "qwen");
+        }, base, Array.isArray(b.scenario) ? (b.scenario as Record<string, unknown>[]).slice(0, MAX_ITEMS) : null, b.engine === "cortex" ? "cortex" : "qwen");
         if (d.sql.length) send({ t: "sql", sql: d.sql.slice(0, 5) });
         // Vaikutukset lasketaan tässä eikä selaimessa, jotta luvut tallentuvat haun mukana.
         let result: Record<string, unknown> | null = null;
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         // säädölle ja kuvaajan valinta rakenteesta (ennen agentin ohjeessa).
         if (result && d.items.length) {
           const teams = await loadTeams();
-          d.answer = [verdict(result, d.items, teams), d.answer, abNotice(d.items)].filter(Boolean).join("\n\n");
+          d.answer = [verdict(result, d.focus?.length ? d.focus : d.items, teams), d.answer, abNotice(d.items)].filter(Boolean).join("\n\n");
           d.chart = pickChart(d.items, result, teams);
         }
         const status = d.error ? "error" : d.items.length ? "done" : "clarify";

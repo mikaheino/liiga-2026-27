@@ -416,3 +416,87 @@ asennettu; muu keskustelu ja kortit pysyvät Qwenillä. Tunnistus nojaa `RULE`:n
 `TEHTÄVÄ: Käyttäjä kuvaa … liiga_skenaario` (`lib/scenarioDescribe.ts`): jos sitä muutetaan, päivitä regex.
 Moottorivalitsimen toinen vaihtoehto on paikallisesti "Claude" (Snowflakessa "Cortex"). Mitattu: viittaava
 jatkokysymys ("entä jos se häviääkin ne?") tuotti rivit Claudella 19–22 s:ssa; ennen ei riviäkään.
+
+## Rivimäärän raja 64 -> 400 ja jatko/korvaus-lause (13.11.2026)
+
+Käyttäjä haluaa lukita usean joukkueen koko lopun kauden ottelu kerrallaan; yhdellä joukkueella on
+~40 ottelua jäljellä, joten 64 ei riittänyt kahdelle. Mitattu ennen muutosta: `scripts/tools/skenaario.py
+--json <rivit>` (sama komento kuin `scenarioEngine.ts`), oikeat pelaamattomat `game_id`:t
+(`stg_games`, kausi 2027, `ended` false), mediaani 3 ajosta, koko prosessi (DuckDB + 10 000 kautta):
+
+| lukittuja otteluita | 10 | 40 | 64 | 120 | 200 | 300 | 376 (kaikki) |
+|---|---|---|---|---|---|---|---|
+| mediaani s | 0,80 | 0,80 | 0,79 | 0,79 | 0,76 | 0,74 | 0,71 |
+
+Aika ei kasva rivimäärän mukana (lukitus kiinnittää tuloksen, ei lisää laskentaa). Muut rajat: argv
+17 kt 376 rivillä (macOS ~1 Mt, Linux 128 kt/argumentti); Snowflaken proseduuriargumentti ja
+`SKENAARIO_HAKU`:n `items`/`result`/`answer` (VARIANT/STRING = 16 Mt) ovat kaukana; moottorissa ei
+omaa rajaa. Ei DDL-muutosta. Päätös: `MAX_ITEMS = 400` (`lib/scenarioItems.ts`): kaikki 376
+pelaamatonta ottelua mahtuvat, ja loput tilaa poissaolo-/tavoiterivelle. `lockBus.ts` (MAX_LOCKS) ja
+`rakenna`-reitin `base`/`scenario`-rajat seuraavat vakiota. Injury/xg_share `games` <= 64 on eri 64
+(otteluita per joukkue kaudessa), ennallaan.
+- `/api/skenaario`: pelatut ottelut karsitaan nyt ensin otteluluettelosta; moottorin silmukka
+  (yksi pudotus ~0,8 s kierros) olisi 400 rivillä pahimmillaan minuutteja. Silmukka jäi varalle.
+- `/api/skenaario/ottelut?team=` tarkistaa joukkueen (400 tuntemattomalle), järjestää ajan mukaan.
+- Jatkokysymyksen sääntö/Qwen-vastaus alkaa nyt lauseella: "Uusi skenaario (edellinen korvattiin)."
+  tai "Jatkettu edellistä: lisätty N riviä, yhteensä M." (`continuity()` in `lib/scenarioRules.ts`;
+  luvut moottorin kanonisista riveistä; ei pohjaa = ei lausetta). Agenttipolku kertoo valintansa itse.
+- ⚠️ Snowflake-proseduuria ja SKENAARIO_HAKU:a ei ajettu tässä; rajat luettu koodista ja DDL:stä.
+
+## Tarkka näkymä: skenaario ottelu kerrallaan (13.11.2026)
+
+Käyttäjä: "näkymä, jossa skenaarioita voi rakentaa muutenkin kuin sanallisesti, ja/tai sanallista
+skenaariota voi jatkaa tarkemmassa näkymässä", esim. "joukkueen loppukauden pelit, tai osa niistä".
+- `components/ScenarioBuilder.tsx`, avataan ScenarioBoardista: tyhjänä "Rakenna ottelu kerrallaan",
+  skenaarion ollessa ruudulla "Tarkenna ottelu kerrallaan". Ei Pagesissa (ScenarioBoard ei renderöidy, ja
+  komponentti palauttaa `null`, jos `STATIC`).
+- **Sama skenaario kuin hakukentällä**: rakentaja ei pidä omaa tilaa riveistä, vaan saa ScenarioBoardin
+  `items`-listan (lib/lockBus.ts) ja kirjoittaa takaisin `setLocks`-kautta. Tekstistä tulleet lukitukset
+  näkyvät valittuina, ja uusi haku hakukentässä lähettää muokatut rivit `base`-pohjana (haku sulkee näkymän,
+  jotta vastaus näkyy). Muokkaus poistaa ScenarioParams-säätimet (ne rakentaisivat rivit alkuperäisestä
+  skenaariosta ja pudottaisivat muutokset) ja näyttää "Säädit skenaariota" -huomautuksen tekstin alla.
+- Joukkuevalitsin: 17 logoa (`loadTeams` app/page.tsx:ssä, ei kovakoodattu), lukittujen määrä logossa;
+  ottelut ja panokset `/api/skenaario/ottelut?team=` (välimuisti joukkueittain näkymän ajan).
+- Tulos joukkueen näkökulmasta sarjataulukon sarakkeina: kotijoukkue V=`home_reg`, JV=`home_ot`,
+  JH=`away_ot`, H=`away_reg`; vierasjoukkue peilattuna. Sama ottelu näkyy samana kummankin joukkueen
+  näkymässä (avain `game_id`). Karkea lukitus tekstistä tai ottelukortista (`home_win`, `overtime`,
+  `home_point` …) näkyy luettavana ("voitto", "jatkoaika", "vähintään piste"), sallitut napit
+  katkoviivalla; napautus tarkentaa, ✕ poistaa, mitään ei kirjoiteta hiljaa uudelleen.
+- Label samassa muodossa kuin moottorin kanoninen rivi (`lockLabel()` lib/lockBus.ts = `_lock_label`).
+- Pikatäytöt (seuraavat 5 / koti / vieras / kaikki × V/JV/JH/H) ja "Tyhjennä joukkueen ottelut".
+- Raja `MAX_LOCKS` (= `MAX_ITEMS`): täynnä uusia otteluita ei voi lukita (napit pois käytöstä, syy
+  yhteenvedossa); pikatäyttö lukitsee mahtuvat ja kertoo montako jäi pois. Aiempia rivejä ei pudoteta.
+- Laskenta: rakentajan muutos asettaa `soft`-lipun, ja ScenarioBoardin laskenta odottaa 700 ms ennen
+  moottoria (napautussarja = yksi ajo); muut muutokset lasketaan heti kuten ennen. Sirut näyttävät moottorin
+  kanoniset rivit vain, kun luvut ovat näiden rivien (`resSig`), muuten store-rivit.
+- Tarkistettu: tsc, npm test, pytest; `/api/skenaario` V/JV/JH/H Lukon vieras- (KalPa 18.11.) ja kotiottelulle
+  (HPK 21.11.): odotetut pisteet 122,9 / 121,1 / 119,4 / 117,7 (nyt 121,0). ⚠️ Ulkoasua ei katsottu selaimessa.
+
+## Tulos sarjataulukkona molemmissa poluissa (13.11.2026)
+
+Omistaja lukitsi "KooKoo häviää kaikki kotiottelunsa" ja sai hakutuloslistan ("KooKoo: Putoaa 91 → 100 %"):
+"Tämä tulos ei kerro minulle suoraan mitään. Haluaisin mieluummin interaktiivisen näkymän, jossa näen
+vaikutuksen sarjataulukkoon samaan aikaan. Itse asiassa haluan nähdä sen samoin, kun kuvailen skenaarioita
+sanoin. Sarjataulukko on se mikä kiinnostaa."
+- **Päätös: ennustettu lopputaulukko on ensisijainen tulos sekä sanallisessa haussa että tarkassa näkymässä.**
+  `components/ScenarioTable.tsx`, logiikka `lib/scenarioTable.ts` (testit `tests/scenarioTable.test.ts`).
+  ScenarioBoard luo taulukon kerran samasta datasta (`res.teams` → `fromEngine`) ja näyttää sen joko
+  tulosalueella (`.gs-results`, hakutuloslistan `.gs-r` tilalla) tai tarkan näkymän sisällä; johtopäätöslause,
+  uskottavuus, vaatimukset, kuvaaja ja jatkokysymykset pysyvät ennallaan.
+- Taulukko: 17 joukkuetta `rank_scenario`-järjestyksessä, vyöhykeotsikot (1.–6. / 7.–10. / 11.–14. / 15.–17.)
+  ja viivat 6/10/14 jälkeen, sijan muutos muotona (▲2 ▼1 –), odotetut pisteet ja muutos pyöristetyistä
+  (49 / −23), Jatkoon / Top 6 / Putoaa / Voitto ja muutos prosenttiyksikköinä. Selvästi liikkuneet rivit
+  (sija vaihtui, ≥ 2 p tai ≥ 3 %-yks.) sävytettyinä, skenaarion joukkueet (`teamsIn`) ◆ ja kultainen reuna.
+  Otsikko "Ennustettu lopputaulukko skenaariossa": tämä on loppusijoitus, ei tämän päivän taulukko.
+- **Pohja**: ennen ensimmäistä lukitusta taulukko näyttää julkaistun ennusteen (`loadPosition` app/page.tsx:ssä,
+  sija pisteiden mukaan kuten moottorin `rank_now`, ei Pagesissa) ilman muutosmerkkejä.
+- **Laskennan aikana** edellinen taulukko pysyy himmennettynä ja "Lasketaan…" (aria-live); virheessä luvut jäävät
+  edellisiksi ja siitä kerrotaan. Sijan vaihtuessa rivit liukuvat (FLIP, transform), ei `prefers-reduced-motion`-tilassa.
+- **Tarkka näkymä leveänä** (rakentajan oma leveys ≥ 880 px, container query; käytännössä ikkuna ≥ 1100 px ilman
+  telakoitua agenttipaneelia): ottelut vasemmalla, taulukko oikealla ruutuun tarttuvana.
+- **Puhelimessa**: välilehdet Ottelut / Taulukko näkymän yläosassa (tila säilyy). Taulukossa yksi
+  todennäköisyyssarake kerrallaan, valitsin taulukon yllä; oletus on se, joka liikkuu eniten skenaarion
+  joukkueilla (KooKoon kotitappiot → Putoaa). Alareunan yhteenveto näyttää valitun joukkueen "sija 16. → 17. ·
+  72 → 49 p" ja napin Taulukko, joka vaihtaa välilehden ja vierittää näkymän alkuun: lukitse (pikatäyttö) →
+  Taulukko = koko liigan lopputilanne yhdellä napautuksella.
+- ⚠️ Ulkoasua ei katsottu selaimessa (ei selainta); leveydet laskettu käsin (390 px: joukkueelle 144 px).

@@ -45,6 +45,7 @@ const PHRASES: [RegExp, string][] = [
   [P("(jää|jäävät) (sivuun|pois)|on (sivussa|poissa)"), "#inj"],
   [P("(koko )?loppukau(den|deksi|della|si)"), "#loppu"],
   [P("tällä kaudella"), ""],
+  [P("(tulee|iskee|on) loukkaantumissuma"), ""],
 ];
 
 type Tok =
@@ -109,7 +110,7 @@ function classify(w: string, teams: string[]): Tok | null {
 
 /** Pelaajat alkuperäisestä tekstistä (iso alkukirjain, sukunimen vartalo kuten playersIn): sana -> "§p".
  *  Useampi eri pelaaja samalla sanalla (monta Lehtosta) -> null. */
-function markPlayers(text: string, teams: string[], players: PlayerLite[]): { text: string; names: string[] } | null {
+function markPlayers(text: string, teams: string[], players: PlayerLite[]): { text: string; names: string[]; seq: string[] } | null {
   const words = [...text.matchAll(/[\p{L}][\p{L}\-:]*/gu)];
   const names: string[] = [];
   const at = new Set<number>(), first = new Set<number>();
@@ -133,7 +134,7 @@ function markPlayers(text: string, teams: string[], players: PlayerLite[]): { te
     const m = words[i];
     out = out.slice(0, m.index) + (first.has(i) ? "" : "§P") + out.slice(m.index! + m[0].length);
   }
-  return { text: out, names: [...new Set(names)] };
+  return { text: out, names: [...new Set(names)], seq: names };
 }
 
 type Clause = { teams: string[]; res: string; toks: Tok[]; opp?: string };
@@ -173,12 +174,13 @@ export function parseScenario(question: string, teams: string[], players: Player
   const q = question.trim();
   if (q.length < 3 || q.length > 200 || !/^[\p{L}\d\s,.!?:\-–]+$/u.test(q)) return null;
   const mp = markPlayers(q, teams, players);
-  if (!mp || mp.names.length > 1) return null;
-  let low = mp.text.toLowerCase().replace(/[.!?–]/g, " ").replace(/,/g, " , ").replace(/\s+/g, " ").trim();
+  if (!mp) return null;
+  let low = mp.text.toLowerCase().replace(/[.!?–]/g, " ").replace(/:(\s|$)/g, " ").replace(/,/g, " , ").replace(/\s+/g, " ").trim();
   for (const [re, to] of PHRASES) low = low.replace(re, to);
   const toks: Tok[] = [];
+  let seen = 0;                                                        // §p-merkit esiintymisjärjestyksessä
   for (const w of low.split(" ").filter(Boolean)) {
-    if (w === "§p") { toks.push({ k: "player", name: mp.names[0] }); continue; }
+    if (w === "§p") { toks.push({ k: "player", name: mp.seq[seen++] }); continue; }
     const t = classify(w, teams);
     if (!t) return null;                                               // tuntematon sana -> ei arvata
     if (t.k !== "stop") toks.push(t);
@@ -193,9 +195,15 @@ export function parseScenario(question: string, teams: string[], players: Player
   }
 
   // Poissaolo: "Pesonen loukkaantuu kahdeksi viikoksi", "Korhonen ei pelaa enää tällä kaudella".
+  // Useampi pelaaja yhdellä verbillä ja yhteisellä kestolla (13.11.2026, omistajan kysymys: "TPS:lle tulee
+  // loukkaantumissuma: Bryggman, Friman, Wernblom ja Haudum loukkaantuvat" -> Qwen keksi TPS:lle tappioita
+  // ja otti pelaajista vain yhden). Joukkueen saa mainita vain, jos kaikki nimetyt pelaajat ovat siitä.
   if (has("player") || has("inj")) {
-    if (!has("player") || !has("inj") || !toks.every((t) => ["player", "inj", "num", "dur", "all", "next", "noun"].includes(t.k))) return null;
-    if (toks.filter((t) => t.k === "player" || t.k === "inj").length !== 2) return null;
+    if (!has("player") || !has("inj") || !toks.every((t) => ["player", "inj", "num", "dur", "all", "next", "noun", "and", "team"].includes(t.k))) return null;
+    if (toks.filter((t) => t.k === "inj").length !== 1) return null;
+    const who = [...new Set(toks.flatMap((t) => (t.k === "player" ? [t.name] : [])))];
+    if (who.length > 8) return null;
+    if (teamsAll.length > 1 || (teamsAll.length === 1 && !who.every((n) => players.some((p) => p.name === n && p.team === teamsAll[0])))) return null;
     const nums = toks.filter((t) => t.k === "num") as { n: number }[];
     const durs = toks.filter((t) => t.k === "dur") as { per: number }[];
     const units = toks.filter((t) => t.k === "noun") as { unit: boolean; venue?: string }[];
@@ -206,7 +214,7 @@ export function parseScenario(question: string, teams: string[], players: Player
     else if (durs.length) games = (nums[0]?.n ?? 1) * durs[0].per;
     else if (units.length) { if (!nums.length) return null; games = nums[0].n; }
     else if (nums.length || has("next")) return null;
-    return [{ injury: mp.names[0], ...(games != null ? { games } : {}) }];
+    return who.map((name) => ({ injury: name, ...(games != null ? { games } : {}) }));
   }
 
   // Tulokset ja tavoitteet. Ensin vastustajat: "Ilvestä vastaan", "voittaa Lukon", "häviää Lukolle".

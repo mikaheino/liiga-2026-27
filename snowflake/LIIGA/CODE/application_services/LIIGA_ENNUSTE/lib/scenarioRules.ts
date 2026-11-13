@@ -29,10 +29,13 @@ export function normalize(list: Row[]): Row[] {
 }
 
 /** Hyväksytyt uutispoissaolot mukaan, ellei käyttäjä jätä niitä pois ("ilman Wernblomia", "ilman uutisia"). */
-export function withNews(list: Row[], abs: NewsAbsence[], userText: string): Row[] {
+export function withNews(list: Row[], abs: NewsAbsence[], userText: string, known: string[] = []): Row[] {
   const low = userText.toLowerCase();
   if (/ilman uutisi/.test(low)) return list;
-  const have = new Set(list.filter((x) => x.injury != null).map((x) => String(x.injury).toLowerCase()));
+  // known = skenaariossa jo olevien rivien labelit (13.11.2026): kanonisessa rivissä pelaaja on tunnisteena,
+  // joten nimi löytyy vain labelista. Ilman tätä jatkettu skenaario sai saman uutispoissaolon kahdesti.
+  const have = new Set([...list.filter((x) => x.injury != null).map((x) => `${x.injury} ${x.label ?? ""}`.toLowerCase()),
+    ...known.map((l) => l.toLowerCase())]);
   const add = abs.filter((a) => {
     const last = a.player.split(" ").slice(-1)[0].toLowerCase();
     const excluded = new RegExp(`ilman\\s+(\\S+\\s+)?${last.slice(0, Math.max(4, last.length - 2))}`).test(low);
@@ -55,8 +58,11 @@ export function mainTeam(res: Res, among: string[]): Row | null {
  *  "(joukkue)", mallin vahvuudet). 7.11.: "Lukko häviää kolme" valitsi muuten KalPan, jonka luvut
  *  liikkuivat eniten; kysymys koskee silti Lukkoa. Tasatilanteessa kaikki eniten mainitut. */
 export function teamsIn(items: Row[], teams: string[]): string[] {
-  const text = items.map((x) => `${x.team ?? ""} ${x.label ?? ""} ${Object.keys((x.model as Row)?.strength ?? {}).join(" ")}`).join(" ");
-  const n = new Map(teams.map((t) => [t, text.split(t).length - 1] as const).filter(([, c]) => c > 0));
+  // Lasketaan RIVIT, joissa joukkue on mukana, ei nimen esiintymiä (13.11.2026): "Ilves häviää kolme
+  // seuraavaa" antoi rivit "SaiPa–Ilves: SaiPa voittaa", "Ilves–SaiPa: SaiPa voittaa", "K-Espoo–Ilves: ...",
+  // joissa SaiPa mainitaan neljästi ja Ilves kolmesti -> vastaus ja jatkoehdotukset puhuivat SaiPasta.
+  const rows = items.map((x) => `${x.team ?? ""} ${x.label ?? ""} ${Object.keys((x.model as Row)?.strength ?? {}).join(" ")}`);
+  const n = new Map(teams.map((t) => [t, rows.filter((r) => r.includes(t)).length] as const).filter(([, c]) => c > 0));
   const top = Math.max(0, ...n.values());
   return [...n].filter(([, c]) => c === top).map(([t]) => t);
 }
@@ -148,4 +154,29 @@ export function playersRule(ps: PlayerRef[]): string {
     ? `${p.name} (${p.team}, maalivahti, ${p.starts} aloitusta)`
     : `${p.name} (${p.team}${p.position ? `, ${p.position}` : ""}${p.gp != null ? `, ${p.gp} ott. ${p.goals ?? 0}+${(p.points ?? 0) - (p.goals ?? 0)}=${p.points ?? 0}` : ""})`;
   return `KYSYMYKSEN PELAAJAT (datasta, älä kysy joukkuetta): ${ps.map(line).join("; ")}. Jos sama sukunimi on useammalla, kysy kumpi. Pelaajan oman tason nousu tai lasku mallinnetaan joukkueen muutoksena (xg_share): huomattava parannus +0,01…+0,03; kerro oletus lempeästi, myös jos toive on epärealistinen (esim. 3 pistettä per ottelu).`;
+}
+
+/** Yksi selkeä lause siitä, jatkuiko edellinen skenaario vai korvautuiko se (13.11.2026, käyttäjä: "en ymmärrä,
+ *  ovatko skenaariot toisistaan riippumattomia vai vaikuttavatko ne toisiinsa"). Luvut ovat moottorin ratkaisemia
+ *  kanonisia rivejä: `baseRows` = edellisen skenaarion rivit, `totalRows` = rivit nyt. Ei pohjaa = ei lausetta. */
+export function continuity(baseRows: number, appended: boolean, totalRows: number): string {
+  if (baseRows <= 0) return "";
+  if (!appended) return "Uusi skenaario (edellinen korvattiin).";
+  const added = totalRows - baseRows;
+  // Uusi rivi samasta ottelusta tai pelaajasta korvaa vanhan (mergeRows): rivimäärä ei silloin kasva.
+  if (added <= 0) return `Jatkettu edellistä: päivitetty aiempia rivejä, yhteensä ${totalRows}.`;
+  return `Jatkettu edellistä: lisätty ${added} ${added === 1 ? "rivi" : "riviä"}, yhteensä ${totalRows}.`;
+}
+
+/** Rivin tunniste yhdistämistä varten (sama kuin selaimen lockBus.itemKey): ottelu, pelaaja, joukkueen
+ *  muutos, mallin säätö, tavoite. */
+export const rowKey = (i: Row): string =>
+  i.game_id != null ? `g:${i.game_id}` : i.injury != null ? `i:${i.injury}` : i.xg_share != null ? `s:${i.team}` : i.model != null ? "m" : `t:${i.team}:${i.goal}`;
+
+/** Uudet rivit nykyisen skenaarion päälle (13.11.2026, omistaja: "uusi skenaario tulee Uusi-napilla":
+ *  kirjoitettu jatko lisätään aina nykyiseen). Sama ottelu tai pelaaja uudelleen -> uusi rivi korvaa vanhan;
+ *  moottori hylkäisi muuten skenaarion ("lukittu kahdesti eri tavoin"). Molemmat listat kanonisia rivejä. */
+export function mergeRows(base: Row[], added: Row[]): Row[] {
+  const keys = new Set(added.map(rowKey));
+  return [...base.filter((b) => !keys.has(rowKey(b))), ...added];
 }

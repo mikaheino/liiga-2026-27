@@ -14,7 +14,7 @@ import { DATA_MODE, query } from "@/lib/snowflake";
 import { activeAbsences, headlines, injuryHints, type NewsAbsence, type NewsHint } from "@/lib/newsContext";
 import { missingPlayers, queueRoster } from "@/lib/rosterQueue";
 import { qwenScenario } from "@/lib/qwen";
-import { goalieAll, goalieItems, normalize, playersIn, playersRule, SEASON_END, withNews } from "@/lib/scenarioRules";
+import { continuity, mergeRows, goalieAll, goalieItems, normalize, playersIn, playersRule, SEASON_END, withNews } from "@/lib/scenarioRules";
 import { parseScenario } from "@/lib/scenarioParse";
 import { MAX_ITEMS } from "@/lib/scenarioItems";
 
@@ -23,7 +23,9 @@ export type Chart = { type: "pisteet" | "jakauma" | "ottelut"; team?: string } |
 // news = skenaariossa mukana olevat uutisista hyväksytyt poissaolot (rivien labelit).
 // roster = pelaajat, joita mallin rosterissa ei ole ja jotka kirjattiin rosterijonoon (lib/rosterQueue.ts).
 export type Described = { answer: string; items: Record<string, unknown>[]; tools: string[]; sql: string[]; error?: string; status?: number; chart?: Chart;
-  news?: string[]; roster?: string[] };
+  news?: string[]; roster?: string[];
+  /** Jatkon omat rivit (13.11.2026): johtopäätös puhuu juuri lisätystä, ei koko skenaarion yleisimmästä joukkueesta. */
+  focus?: Record<string, unknown>[] };
 
 // Agentin viimeinen rivi "KUVAAJA: <tyyppi> [joukkue]" luetaan ja poistetaan näkyvästä tekstistä.
 const CHART_LINE = /\n?\s*KUVAAJA:\s*(pisteet|jakauma|ottelut|ei)\b\s*([^\n]*)\s*$/i;
@@ -116,10 +118,9 @@ async function schedule(text: string, teams: string[]): Promise<string> {
 const BASE_RULE = (base: Record<string, unknown>[], labels: string[]) => `NYKYINEN SKENAARIO (käyttäjällä auki juuri nyt):
 ${labels.map((l) => `- ${l}`).join("\n")}
 Samat rivit moottorin muodossa: ${JSON.stringify(base)}
-Päätä itse, jatkaako käyttäjä tätä skenaariota vai kysyykö uutta:
-- JATKA, jos kuvaus viittaa nykyiseen ("tähän", "päälle", "myös", "lisäksi", "vielä", "entä jos sen lisäksi") tai täydentää sitä luontevasti (esim. pelkkä uusi loukkaantuminen tai tulos samoihin joukkueisiin). Ota silloin nämä rivit liiga_skenaario-kutsuun SELLAISINAAN ja lisää uudet; muuta tai poista nykyinen rivi, jos käyttäjä niin pyytää.
-- ALOITA UUSI, jos kuvaus on itsenäinen kokonaisuus, joka ei liity nykyiseen (esim. "Mitä jos Kärpät voittaa loppukauden"). Älä silloin ota nykyisiä rivejä mukaan.
-- Kerro valintasi TOISESSA lauseessa (ensimmäinen on aina johtopäätös): "Lisäsin tämän nykyiseen skenaarioon …" tai "Tämä on uusi skenaario …". Luvut koskevat aina sitä skenaariota, jonka työkalu laski.`;
+Käyttäjä JATKAA aina tätä skenaariota (13.11.2026: uusi skenaario aloitetaan vain käyttöliittymän Uusi skenaario -napilla, ei koskaan kuvauksella):
+- Ota nämä rivit liiga_skenaario-kutsuun SELLAISINAAN ja lisää uudet. Muuta tai poista nykyinen rivi vain, jos käyttäjä pyytää sitä tai uusi rivi koskee samaa ottelua tai pelaajaa (uusi korvaa vanhan).
+- Kerro TOISESSA lauseessa (ensimmäinen on aina johtopäätös), mitä lisäsit nykyiseen skenaarioon. Luvut koskevat aina sitä skenaariota, jonka työkalu laski.`;
 
 // Uutiset (lib/newsContext.ts): hyväksytyt poissaolot ovat lähtötilanne kysytyille joukkueille,
 // hyväksymättömät uutiset vain mainitaan. Otsikot tulevat erikseen (headlines(), 7.11.).
@@ -177,6 +178,8 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
       return askOnce(text, ctx + extra, progress);
     }
   };
+  // Skenaariossa jo olevien rivien labelit: uutispoissaoloa ei lisätä toista kertaa (withNews).
+  let known: string[] = pohja?.labels ?? [];
   const attempt = async (a: Answer): Promise<Described> => {
     const sc = splitChart(a.text);
     const base = { answer: sc.text, tools: a.tools, sql: a.sql, chart: sc.chart };
@@ -191,7 +194,7 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     // Vain lukitukset, poissaolot, tavoitteet ja joukkueen muutokset siruiksi; panospyyntöjä ei.
     // Säännöt koodina (lib/scenarioRules.ts): oletuskestot ja uutisten hyväksytyt poissaolot.
     const list = withNews(normalize((Array.isArray(parsed) ? parsed : [parsed])
-      .filter((x) => x && typeof x === "object" && !("stakes" in (x as object))) as Record<string, unknown>[]), abs, text);
+      .filter((x) => x && typeof x === "object" && !("stakes" in (x as object))) as Record<string, unknown>[]), abs, text, known);
     progress?.({ status: "Moottori ratkaisee skenaarion otteluiksi" });
     const res = await runEngine<{ scenario_canonical?: Record<string, unknown>[] }>("json", list).catch((e) => ({ error: (e as Error).message } as { error: string; scenario_canonical?: undefined }));
     if (res.error) return { ...base, items: [], error: res.error, status: 422 };
@@ -265,7 +268,22 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
     // Ratkaisevat ottelut (8.11.2026, markkinaidea "Potential Impact"): moottorin panokset ja vastaus koodista.
     const st = qi?.find((x) => x.stakes_team != null);
     if (st) return withRoster(await stakesAnswer(String(st.stakes_team), parsed ? "säännöt" : "qwen"));
-    if (qi && !forced?.length && contin && /\b(lisäksi|myös|vielä|sen päälle|samalla)\b/i.test(own)) qi = [...pohja!.items, ...qi];
+    // Kirjoitettu jatko lisätään AINA nykyisen skenaarion päälle (13.11.2026, omistaja: "uusi skenaario tulee
+    // Uusi-napilla. Skenaariota voi jatkaa teknisesti ja sanallisesti päälle"); ennen vain sanalla "lisäksi",
+    // ja muuten käsin rakennettu skenaario korvautui. Uudet rivit ratkaistaan ensin yksin otteluiksi, jotta
+    // sama ottelu tai pelaaja korvaa vanhan rivin (mergeRows) eikä moottori hylkää ristiriitaa.
+    const appended = !!qi && !forced?.length && contin;
+    let added: Record<string, unknown>[] | null = null;      // jatkon omat rivit: johtopäätös puhuu niistä
+    if (appended) {
+      const alone = await attempt({ text: "", suggestions: [], tools: [], sql: [], ms: 0, source: "local",
+        inputs: [{ name: "liiga_skenaario", input: { scenario: JSON.stringify(qi) } }] });
+      if (alone.error || !alone.items.length) { console.log(`[skenaario] jatko hylätty: ${alone.error ?? "ei rivejä"}`); qi = null; }
+      else {
+        qi = mergeRows(pohja!.items, alone.items.map(({ label: _l, ...x }) => x));
+        known = [...known, ...alone.items.map((i) => String(i.label ?? ""))];
+        added = alone.items.filter((i) => !alone.news?.includes(String(i.label ?? "")));
+      }
+    }
     if (qi) {
       const d = await attempt({ text: "", suggestions: [], tools: [forced?.length ? "lähiskenaario" : gAll || parsed ? "säännöt" : "qwen"], sql: [], ms: 0, source: "local",
         inputs: [{ name: "liiga_skenaario", input: { scenario: JSON.stringify(qi) } }] });
@@ -273,7 +291,8 @@ export async function describe(text: string, progress?: Parameters<typeof askOnc
       if (!d.error && d.items.length) {
         const labels = d.items.map((i) => String(i.label ?? "")).filter((l) => l && !d.news?.includes(l));
         const fromNews = d.news?.length ? ` Uutisista mukana hyväksytyt poissaolot: ${d.news.join("; ")}.` : "";
-        return withRoster({ ...d, answer: `Tulkitsin kysymyksen näin: ${labels.join("; ")}.${fromNews}` });
+        return withRoster({ ...d, ...(added ? { focus: added } : {}), answer: [continuity(pohja?.items.length ?? 0, appended, d.items.length),
+          `Tulkitsin kysymyksen näin: ${labels.join("; ")}.${fromNews}`].filter(Boolean).join(" ") });
       }
     }
   }

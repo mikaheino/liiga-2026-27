@@ -3,7 +3,15 @@
 // pieniä kokonaislukuja. Ei vapaata tekstiä (paitsi joukkueen nimi listalta).
 // Skenaarion rivimäärän yläraja (7.11.2026: 10 -> 64, käyttäjä: "skenaario pitäisi mennä koko
 // kaudelle"): yhden joukkueen koko runkosarja. Moottorissa ei ole omaa rajaa.
-export const MAX_ITEMS = 64;
+// 13.11.2026: 64 -> 400, käyttäjä haluaa lukita usean joukkueen koko lopun kauden ottelu kerrallaan.
+// Mitattu paikallisesti (scripts/tools/skenaario.py --json, mediaani 3 ajosta, sis. DuckDB:n luku ja
+// 10 000 kauden simulointi): 10 riviä 0,80 s · 40: 0,80 · 64: 0,79 · 120: 0,79 · 200: 0,76 ·
+// 300: 0,74 · 376 (kaikki pelaamattomat ottelut): 0,71 s -- aika ei kasva rivimäärän mukana, koska
+// lukitut ottelut vain kiinnittävät tuloksen simulaatioon. Kaikkien pelaamattomien otteluiden lukitus
+// (376 tänään, vain pienenee kauden mittaan) mahtuu, ja 400 jättää tilaa poissaolo- ja tavoiterivelle.
+// Muut rajat: komentoriviargumentti 17 kt (376 riviä; macOS ~1 Mt, Linux 128 kt/argumentti),
+// proseduurin VARCHAR-argumentti ja SKENAARIO_HAKU:n STRING/VARIANT 16 Mt. Tuntematon: Snowflake-proseduuria ei ajettu.
+export const MAX_ITEMS = 400;
 // + jatkoaika ja pisteet (7.11.2026): overtime, regulation, home_point, away_point.
 const RESULTS = new Set(["home_win", "away_win", "home_reg", "home_ot", "away_ot", "away_reg", "overtime", "regulation", "home_point", "away_point"]);
 const GOALS = new Set(["avoid_relegation", "top10", "top6", "win"]);

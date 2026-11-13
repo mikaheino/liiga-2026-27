@@ -7,12 +7,18 @@
 // ottelukortin "Lukitse"-napista (lib/lockBus.ts). Moottori laskee koko skenaarion
 // (app/api/skenaario, json-tila); luvut ankkuroitu julkaistuun ennusteeseen, uskottavuus =
 // lukittujen tulosten mallitodennäköisyyksien tulo. Sirun poisto laskee uudelleen ilman agenttia.
+// 13.11.2026: tulos on ennustettu lopputaulukko (components/ScenarioTable.tsx), ei enää hakutuloslista
+// (omistaja: "sarjataulukko on se mikä kiinnostaa"). Sama taulukko näkyy tarkassa näkymässä.
 import { KIND_LABEL, summarize as summarizeRows } from "@/lib/scenarioSummary";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
 import { engineItem, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
 import ScenarioParams from "@/components/ScenarioParams";
+import ScenarioBuilder from "@/components/ScenarioBuilder";
+import ScenarioTable from "@/components/ScenarioTable";
+import { teamsIn } from "@/lib/scenarioRules";
+import { fromBaseline, fromEngine, type Baseline } from "@/lib/scenarioTable";
 import ScenarioChart, { type ChartPick, type Charts, type LockedGame, fallbackPick } from "@/components/ScenarioChart";
 
 type Row = { team: string } & Record<string, number | string>;
@@ -26,6 +32,9 @@ const pct = (p: number) => (p > 0 && p < 0.005 ? "<1" : fi(100 * p, 0));
 const diff = (r: Row, k: string) => Math.abs(Number(r[`${k}_scenario`]) - Number(r[`${k}_now`]));
 const moved = (r: Row) => Math.max(...COLS.map(([k]) => diff(r, k)));
 
+/** Täysi moottorin tulos: kaikki joukkueet ja skenaarion rivit (tallenteen tiivistelmässä niitä ei ole). */
+const isFull = (r: Res | null | undefined): r is Res => !!r && Array.isArray(r.scenario_canonical) && Array.isArray(r.teams) && r.teams.length >= 17;
+
 function summary(res: Res, rows: Row[]): string {
   return [`Oma skenaario (ennuste ${res.forecast_date}, 10 000 simuloitua kautta): ${res.scenario_canonical.map((c) => c.label).join("; ")}.`,
     res.plausibility != null ? `Mallin mukaan kaikki lukitut tulokset toteutuvat ${fi(100 * res.plausibility, 1)} %:n todennäköisyydellä.` : "",
@@ -34,9 +43,6 @@ function summary(res: Res, rows: Row[]): string {
       .map(([k, l]) => `${l.toLowerCase()} ${pct(Number(r[`${k}_now`]))} -> ${pct(Number(r[`${k}_scenario`]))} %`).join(", ")}`).join("; ")}.` : "",
   ].filter(Boolean).join("\n");
 }
-
-const LABEL: Record<string, string> = Object.fromEntries(COLS);
-const href = (team: string) => `/joukkue/${encodeURIComponent(team)}`;
 
 // Live-rakennus (7.11.2026): /api/skenaario/rakenna striimaa agentin vaiheet (datahaku SQL:llä,
 // simulointi mallilla), yhteenvedon ja ajetut SQL-lauseet; valmiit rivit lukitaan siruiksi.
@@ -55,6 +61,8 @@ type Haku = { id: string; question: string; followup: string | null; answer: str
   sqlCount: number; forecastTs: string; askedAt: string; status: "done" | "clarify" | "error" };
 const when = (ts: string) => new Intl.DateTimeFormat("fi-FI", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Helsinki" }).format(new Date(ts));
 const keyOf = (l: Item[]) => l.map(itemKey).join("|");
+// Rivien sisältö tuloksineen (keyOf ei erota saman ottelun eri tuloksia): kertoo, onko res näiden rivien.
+const sigOf = (l: Item[]) => JSON.stringify(l.map(engineItem));
 
 async function build(body: { text: string; prompt: string; followup?: string; base?: { item: unknown; label: string }[]; parent?: string; scenario?: unknown[]; engine?: "qwen" | "cortex" }, on: (m: Msg) => void) {
   const r = await fetch("/api/skenaario/rakenna", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify(body) });
@@ -73,9 +81,16 @@ async function build(body: { text: string; prompt: string; followup?: string; ba
 }
 
 // source (13.11.2026): "local" = koneella, jolloin suuri malli on Claude Code eikä Snowflaken Cortex (layout/page välittää AGENT_SOURCEn).
-export default function ScenarioBoard({ source = "snowflake" }: { source?: string }) {
+// teams (13.11.2026): tarkan näkymän joukkuevalitsin (app/page.tsx, loadTeams; ei Pagesissa).
+// baseline (13.11.2026): julkaistu ennuste (loadPosition), lopputaulukko ennen ensimmäistä lukitusta.
+export default function ScenarioBoard({ source = "snowflake", teams = [], baseline = [] }: { source?: string; teams?: string[]; baseline?: Baseline[] }) {
   const [items, setItems] = useState<Item[]>([]);
   const [res, setRes] = useState<Res | null>(null);
+  // Tarkka näkymä (13.11.2026, components/ScenarioBuilder.tsx): sama skenaario ottelu kerrallaan.
+  // soft = seuraava laskenta tulee rakentajan napautuksesta: odotetaan, jotta napautussarja = yksi moottoriajo.
+  const [builder, setBuilder] = useState(false);
+  const soft = useRef(false);
+  const [resSig, setResSig] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
@@ -118,7 +133,10 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
     setAllChips(false); setReply("");
     setLive({ q: h.question, steps: [], text: h.answer, sql: [], tools: h.tools, done: true, items: h.items.length,
       error: h.status === "error" ? h.answer : undefined, saved: { at: h.askedAt, stale }, chart: h.result?.chart, news: (h.result as { news?: string[] } | null)?.news ?? [] });
-    preset.current = !stale && h.result && h.items.length ? { key: keyOf(h.items), res: h.result } : null;
+    // Tallenteessa on tiivistetty tulos (lib/skenaarioHaut.ts summarize: vain liikkuneet joukkueet, ei
+    // skenaarion rivejä). Lopputaulukko tarvitsee kaikki joukkueet, joten vajaa tulos lasketaan moottorilla
+    // uudelleen (~0,8 s). 13.11.2026: vajaa tulos kaatoi sivun (chips = undefined) tallennettua hakua avatessa.
+    preset.current = !stale && isFull(h.result) && h.items.length ? { key: keyOf(h.items), res: h.result } : null;
     setLocks(h.items); setOrig(h.items); setAdjusted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -143,6 +161,8 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
       : prev ? `EDELLINEN KYSYMYS: ${prev.q}\nEDELLINEN VASTAUS (lyhennetty): ${prev.text.slice(0, 600)}\n\nJATKOKYSYMYS: ${q}` : q;
     const parent = follow && live ? live.parentId ?? undefined : prev?.id;
     preset.current = null;
+    // Uusi haku sulkee tarkan näkymän, jotta tekoälyn vastaus näkyy; nykyiset rivit kulkevat pohjana (base).
+    setBuilder(false);
     setReply("");
     // Uusi haku = uusi skenaario (7.11.2026, käyttäjä: "kun kysyn jotain niin se on konkreettista"):
     // vanhat sirut pois heti, jotta tekoälyn teksti ja alla olevat luvut koskevat samaa skenaariota.
@@ -164,7 +184,7 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
         else if (m.t === "done") {
           up((l) => ({ ...l, done: true, text: m.answer || l.text, tools: m.tools ?? [], error: m.error, items: m.items?.length ?? 0, chart: m.chart, news: m.news ?? [], roster: m.roster ?? [], id: m.id, version: m.version, parentId: m.parentId }));
           if (m.items?.length) {
-            if (m.result) preset.current = { key: keyOf(m.items), res: m.result };
+            if (isFull(m.result)) preset.current = { key: keyOf(m.items), res: m.result };
             setLocks(m.items); setText(""); setOrig(m.items); setAdjusted(false);
           } else if (!follow) {
             // Ei skenaariota (tarkennus tai pelkkä vastaus): edellisen haun luvut ja kuvaaja pois, jotta
@@ -178,15 +198,21 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
     } catch (e) { up((l) => ({ ...l, done: true, error: (e as Error).message })); }
   };
   useEffect(() => {
-    if (!items.length) { setRes(null); return; }
-    if (preset.current?.key === keyOf(items)) { setRes(preset.current.res); setErr(""); return; }
+    // setBusy(false) tyhjennyksessä (13.11.2026): kesken jäänyt laskenta ei jätä paneelia "laskee"-tilaan.
+    // Tarkan näkymän napautukset odottavat 700 ms (moottoriajo ~2 s); muut muutokset lasketaan heti kuten ennen.
+    const wait = soft.current ? 700 : 0;
+    soft.current = false;
+    if (!items.length) { setRes(null); setBusy(false); return; }
+    const sig = sigOf(items);
+    if (preset.current?.key === keyOf(items)) { setRes(preset.current.res); setResSig(sig); setErr(""); return; }
     let live = true;
     setBusy(true); setErr("");
-    fetch("/api/skenaario", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store",
+    const go = () => fetch("/api/skenaario", { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store",
       body: JSON.stringify({ scenario: items.map(engineItem) }) })
-      .then(async (r) => { const j = (await r.json()) as Res; if (!live) return; if (!r.ok || j.error) setErr(j.error ?? `Virhe ${r.status}`); else setRes(j); })
+      .then(async (r) => { const j = (await r.json()) as Res; if (!live) return; if (!r.ok || j.error) setErr(j.error ?? `Virhe ${r.status}`); else { setRes(j); setResSig(sig); } })
       .catch((e) => live && setErr((e as Error).message)).finally(() => live && setBusy(false));
-    return () => { live = false; };
+    const t = wait ? setTimeout(go, wait) : (go(), undefined);
+    return () => { live = false; if (t) clearTimeout(t); };
   }, [items]);
   const rows = (res?.teams ?? []).filter((r) => moved(r) >= 0.01).sort((a, b) => moved(b) - moved(a)).slice(0, 8);
   type Opt = { q: string; meta: string; icon: "hist" | "news" | "data"; haku?: Haku };
@@ -199,7 +225,7 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
   const showSugs = focus && !building && opts.length > 0;
   // Nollaus (7.11.2026, käyttäjä: "miten nollata"): ✕ tai Esc tyhjentää kentän, vastauksen ja
   // skenaarion, jolloin näkymä palaa tyhjäksi etusivuksi.
-  const reset = () => { setText(""); setLive(null); setReply(""); setLocks([]); setRes(null); setErr(""); preset.current = null; setHi(-1); };
+  const reset = () => { setBuilder(false); setText(""); setLive(null); setReply(""); setLocks([]); setRes(null); setErr(""); preset.current = null; setHi(-1); };
   // Ei nollausnappia (käyttäjä: "ei nappi"): kuten Googlessa, logo ja alavalikon Koti (linkit
   // etusivulle) palauttavat tyhjän näkymän. Next ei lataa samaa sivua uudelleen, joten kuunnellaan
   // klikkauksia etusivulinkeihin.
@@ -216,11 +242,33 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
     if (o.haku) { setText(""); open(o.haku); } else { setText(o.q); run(undefined, o.q); }
   };
   // Sirut moottorin kanonisista riveistä (moottorin label); poisto = loput rivit uudelleen.
-  const chips = res?.scenario_canonical ?? items;
+  // Vain jos luvut ovat näiden rivien (13.11.2026): tarkan näkymän muokkaus odottaa laskentaa, eikä
+  // sirun poisto saa sillä välin palauttaa vanhaa skenaariota.
+  const fresh = !!res && resSig === sigOf(items);
+  const chips = fresh && res?.scenario_canonical ? res.scenario_canonical : items;
+  // Rakentajan muutos: luvut moottorilta viiveellä; ScenarioParams pois, koska se rakentaisi rivit
+  // alkuperäisestä skenaariosta ja pudottaisi tarkan näkymän muutokset. Tekstin yhteyteen "säädit"-huomautus.
+  const edit = (next: Item[]) => { preset.current = null; soft.current = true; setOrig([]); if (live) setAdjusted(true); setLocks(next); };
   const [ownOpen, setOwnOpen] = useState(false);
   const saved = haut.filter((h) => h.status === "done" && h.items.length > 0);
+  // Lopputaulukko (13.11.2026, components/ScenarioTable.tsx): sama elementti sanalliselle haulle ja tarkalle
+  // näkymälle. Rivit: moottorin viimeisin tulos, kun skenaariossa on rivejä; muuten julkaistu ennuste (pohja).
+  // Laskennan ajan (myös rakentajan 700 ms:n odotus) edellinen taulukko pysyy ja merkitään päivittyväksi.
+  const base = !items.length || !res;
+  const trows = useMemo(() => (items.length && res ? fromEngine(res.teams) : fromBaseline(baseline)), [items.length, res, baseline]);
+  const [pickTeam, setPickTeam] = useState<string | null>(null);
+  const focusTeams = useMemo(() => {
+    const t = teamsIn(items as unknown as Record<string, unknown>[], teams.length ? teams : trows.map((r) => r.team));
+    return builder && pickTeam && !t.includes(pickTeam) ? [...t, pickTeam] : t;
+  }, [items, teams, trows, builder, pickTeam]);
+  // Virhe ei jätä taulukkoa "Lasketaan…"-tilaan: luvut jäävät edellisiksi ja virhe näkyy.
+  const pending = items.length > 0 && (busy || (!fresh && !err));
+  const table = trows.length > 0 ? (
+    <ScenarioTable rows={trows} base={base} pending={pending} focus={focusTeams}
+      note={err && items.length && res && !fresh ? "Viimeisin laskenta epäonnistui: taulukko on edellisestä skenaariosta." : undefined} />
+  ) : null;
   return (
-    <section className={`gs ${busy ? "busy" : ""} ${items.length || live ? "has-res" : ""}`} aria-label="Oma skenaario">
+    <section className={`gs ${busy ? "busy" : ""} ${items.length || live ? "has-res" : ""} ${builder ? "has-sb" : ""}`} aria-label="Oma skenaario">
       {/* "Entä jos?" -sanamerkki poistettu 7.11.2026 (käyttäjä: "poista tämä"): hakukenttä riittää. */}
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""} ${showSugs ? "open" : ""}`} role="search">
         {/* Ei erillisiä nappeja: Enter tai suurennuslasi lähettää. */}
@@ -238,7 +286,7 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
           }}
           onKeyUp={(e) => { if (e.key === "Escape" && !showSugs && !building) reset(); }}
           role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
-          placeholder={items.length ? "Jatka skenaariota tai kysy uutta" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
+          placeholder={items.length ? "Jatka skenaariota: lisää tulos, poissaolo tai muutos" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
         {qwenOk && (
           // Hakukentän sisällä oikealla (8.11.: vastaus tulee kentän alle, säädin ei saa olla välissä).
           // Liukusäädin (8.11.2026, käyttäjä: "keskelle", "Qwen Cortex", "liikkumisen tulisi herättää
@@ -276,7 +324,25 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
           </ul>
         )}
       </form>
-      {live && (
+      {/* Tarkka näkymä (13.11.2026): toinen tapa rakentaa sama skenaario, ottelu kerrallaan. */}
+      {/* Uusi skenaario vain napista (13.11.2026, omistaja): kirjoitettu jatko ja tarkka näkymä lisäävät aina
+          nykyiseen, joten tyhjästä aloittaminen on oma, näkyvä tekonsa. */}
+      {!building && (
+        <div className="gs-acts">
+          {!builder && (
+            <button type="button" className="gs-alt" onClick={() => setBuilder(true)}>
+              {items.length ? "Tarkenna ottelu kerrallaan" : "Rakenna ottelu kerrallaan"}</button>
+          )}
+          {(items.length > 0 || live) && (
+            <button type="button" className="gs-alt gs-new" onClick={reset}>Uusi skenaario</button>
+          )}
+        </div>
+      )}
+      {builder && (
+        <ScenarioBuilder items={items} teams={teams} rows={trows} base={base} busy={pending} table={table}
+          onTeam={setPickTeam} onChange={edit} onClose={() => setBuilder(false)} />
+      )}
+      {live && !builder && (
         <div className={`gs-ai ${live.done ? "done" : ""}`} aria-live="polite">
           {live.version && <div className="gs-ver" title="Hyperversio: sama skenaario samalla ennusteella = sama tunniste">versio {live.version}{live.parentId ? " · jatkoa edelliselle" : ""}</div>}
           <div className="gs-ai-h">{live.saved ? <>Tallennettu haku {when(live.saved.at)}</> : "Tekoäly rakentaa skenaariota"} <span>“{live.q}”</span></div>
@@ -343,22 +409,9 @@ export default function ScenarioBoard({ source = "snowflake" }: { source?: strin
             ennuste {Number(res.forecast_date.slice(8, 10))}.{Number(res.forecast_date.slice(5, 7))}. · 10 000 simuloitua kautta
           </p>
           {res.requirements.map((r) => <p key={r.team + r.goal} className="gs-req">{r.team}: {r.goal} <b>{fi(100 * r.p, r.p < 0.1 ? 1 : 0)} %</b></p>)}
-          {rows.length ? rows.map((r) => {
-            // Otsikkona joukkueen suurin muutos, katkelmana muut liikkuneet luvut.
-            const ks = COLS.map(([k]) => k).filter((k) => diff(r, k) >= 0.01).sort((a, b) => diff(r, b) - diff(r, a));
-            const part = (k: string) => {
-              const a = Number(r[`${k}_now`]), b = Number(r[`${k}_scenario`]);
-              const good = k === "p_relegation" ? b < a : b > a;
-              return <span key={k}>{LABEL[k]} {pct(a)} → <b className={good ? "up" : "down"}>{pct(b)} %</b></span>;
-            };
-            return (
-              <article key={r.team} className="gs-r">
-                <div className="gs-crumb">liiga-ennuste › joukkue › {r.team}</div>
-                <a className="gs-t" href={href(r.team)}>{r.team}: {part(ks[0])}</a>
-                {ks.length > 1 && <p className="gs-snip">{ks.slice(1).map((k, i) => <Fragment key={k}>{i ? " · " : ""}{part(k)}</Fragment>)}</p>}
-              </article>
-            );
-          }) : <p className="gs-status">Luvut eivät liiku yli prosenttiyksikköä.</p>}
+          {/* Hakutuloslista korvattu lopputaulukolla (13.11.2026). Tarkan näkymän ollessa auki taulukko on
+              siellä otteluiden vieressä, joten sitä ei toisteta tässä. */}
+          {!builder && table}
           {/* Tutkija-aliagentin lähiskenaariot (7.11.2026): luvut moottorilta, napautus ajaa haun. */}
           {(live?.exploring || (live?.related?.length ?? 0) > 0) && (
             <div className="gs-rel">
