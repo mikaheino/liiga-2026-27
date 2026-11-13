@@ -3,7 +3,7 @@
 // todennäköisyys (jatkoaika mukaan lukien) vs. vierasvoitto; suosikin nimi kirkas.
 import Link from "next/link";
 import MatchTap from "@/components/MatchCard";
-import { fixtureKey } from "@/lib/challenger";
+import { compactNotes, fixtureKey } from "@/lib/challenger";
 import type { Challenger, NewsItem, Stake } from "@/lib/data";
 import type { Fixture } from "@/lib/fixtures";
 import { matchDetail } from "@/lib/matchDetail";
@@ -65,7 +65,8 @@ export default function NextRound({ games, challenger, all = [], news = [], stak
                     const c = challenger?.get(fixtureKey(g));
                     const base = h == null ? null : h / 100;
                     if (!c || base == null || (Math.abs(c.pHome - base) < 0.005 && !c.notes)) return null;
-                    return <span className="nr-ch">Haastaja {Math.round(100 * c.pHome)} – {Math.round(100 * (1 - c.pHome))} %{c.notes ? ` · ${c.notes}` : ""}</span>;
+                    const short = compactNotes(c.notes);
+                    return <span className="nr-ch" title={c.notes || undefined}>Haastaja {Math.round(100 * c.pHome)} – {Math.round(100 * (1 - c.pHome))} %{short ? ` · ${short}` : ""}</span>;
                   })()}
                   {(() => {
                     const t = stakes?.get(g.gameId ?? -1)?.top;

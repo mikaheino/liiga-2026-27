@@ -27,3 +27,20 @@ export function abScore(ch: Challenger[], fixtures: Fixture[]): Ab {
   return { n, llBase: mean("llBase"), llNews: mean("llNews"), hitsBase: hits("base"), hitsNews: hits("pHome"),
     changed: rows.filter((r) => Math.abs(r.pHome - r.base) >= 0.005).length, rows };
 }
+
+// Haastajan huomiot kortin riville (13.11.2026): pitkä nimiluettelo ("Puuttuu kokoonpanosta:
+// A, B, C ...") oli puhelimessa tekstiseinä. Poissa ja pelikielto näytetään nimillä (harvoja
+// ja tärkeitä), kokoonpanosta puuttuvat lukumääränä; kaikki nimet jäävät otteluikkunaan ja
+// vihjetekstiin. Muoto: "Syy: Joukkue – A, B · Joukkue – C; MV X +0.05".
+export function compactNotes(notes: string): string {
+  return notes.split("; ").filter(Boolean).map((part) => {
+    const i = part.indexOf(": ");
+    if (i < 0) return part;                                   // esim. "MV Lekkas +0.04"
+    const label = part.slice(0, i);
+    // Kausiennusteen muoto ("Poissa X (JOUKKUE): JOUKKUE voitto a → b") on jo lyhyt: sellaisenaan.
+    if (!["Poissa", "Pelikielto", "Puuttuu kokoonpanosta"].includes(label)) return part;
+    const names = part.slice(i + 2).split(" · ").flatMap((t) => (t.split(" – ")[1] ?? "").split(", ")).filter(Boolean);
+    if (label === "Puuttuu kokoonpanosta") return names.length ? `${names.length} puuttuu kokoonpanosta` : "";
+    return `${label}: ${names.join(", ")}`;
+  }).filter(Boolean).join(" · ");
+}
