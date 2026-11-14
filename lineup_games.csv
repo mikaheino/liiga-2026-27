@@ -108,3 +108,8 @@ fetched_at,date,game_id,start,home,away,lineup_ready,home_starter,away_starter
 2026-11-14T15:44:30+00:00,2026-11-14,2701453,2026-11-14T15:00:00Z,Kärpät,Tappara,1,Niklas Rubin,Henri Kiviaho
 2026-11-14T15:44:30+00:00,2026-11-14,2701454,2026-11-14T15:00:00Z,Sport,HPK,1,Masi Härkönen,Kim Saarinen
 2026-11-14T15:44:30+00:00,2026-11-14,2701455,2026-11-14T15:00:00Z,Ässät,Jokerit,1,Roope Taponen,Olle Eriksson Ek
+2026-11-14T15:51:01+00:00,2026-11-14,2701451,2026-11-14T15:00:00Z,Jukurit,KooKoo,1,Jesper Myrenberg,Eetu Randelin
+2026-11-14T15:51:01+00:00,2026-11-14,2701452,2026-11-14T15:00:00Z,JYP,Pelicans,1,Oskari Setänen,Jussi Olkinuora
+2026-11-14T15:51:01+00:00,2026-11-14,2701453,2026-11-14T15:00:00Z,Kärpät,Tappara,1,Niklas Rubin,Henri Kiviaho
+2026-11-14T15:51:01+00:00,2026-11-14,2701454,2026-11-14T15:00:00Z,Sport,HPK,1,Masi Härkönen,Kim Saarinen
+2026-11-14T15:51:01+00:00,2026-11-14,2701455,2026-11-14T15:00:00Z,Ässät,Jokerit,1,Roope Taponen,Olle Eriksson Ek
