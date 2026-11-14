@@ -20,8 +20,8 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-13,2701449,TPS,Jokerit,0.530631,0.394445,0.379394,0.226162,0.50843,Poissa: TPS – Lukas Wernblom; Puuttuu kokoonpanosta: TPS – Alexis Binner · Jokerit – Max Krogdahl; MV Mäkiniemi +0.05; MV Karhunen -0.01
 2026-11-13,2701450,Tappara,HIFK,0.612599,0.502178,0.272711,0.225111,0.619236,"Poissa: HIFK – Jake Leschyshyn; Puuttuu kokoonpanosta: Tappara – Juuso Nykänen, Kasper Kulonummi · HIFK – Jere Somervuori, Lukas Pilö; MV Metsola -0.12; MV Alnefelt -0.00"
 2026-11-13,2701447,Pelicans,Ässät,0.551905,0.413799,0.346254,0.239946,0.538572,"Puuttuu kokoonpanosta: Pelicans – Brett Stapley, Eelis Teutari, Hampus Falk · Ässät – Juuso Pulli; MV Olkinuora -0.15; MV Taponen -0.05"
-2026-11-14,2701451,Jukurit,KooKoo,0.563178,0.440767,0.328394,0.230839,0.55711,Pelikielto: Jukurit – Pekka Jormakka
-2026-11-14,2701452,JYP,Pelicans,0.655837,0.535467,0.233053,0.23148,0.655837,
-2026-11-14,2701453,Kärpät,Tappara,0.476224,0.360545,0.409933,0.229522,0.476224,
-2026-11-14,2701454,Sport,HPK,0.459537,0.337809,0.428099,0.234093,0.459537,
-2026-11-14,2701455,Ässät,Jokerit,0.546034,0.429323,0.339107,0.23157,0.546034,
+2026-11-14,2701451,Jukurit,KooKoo,0.563178,0.425181,0.343181,0.231637,0.541926,"Pelikielto: Jukurit – Pekka Jormakka; Puuttuu kokoonpanosta: Jukurit – Justin Addamo, Louis Boudon, Thomas Olsen · KooKoo – Akseli Mäkinen, Joona Riekkinen, Marcus Davidsson; MV Myrenberg +0.00; MV Randelin +0.14"
+2026-11-14,2701452,JYP,Pelicans,0.655837,0.549888,0.220038,0.230074,0.669526,"Puuttuu kokoonpanosta: JYP – Topias Liljamo · Pelicans – Brett Stapley, Johannes Johannesen; MV Setänen -0.02; MV Olkinuora -0.15"
+2026-11-14,2701453,Kärpät,Tappara,0.476224,0.372885,0.397479,0.229637,0.492296,"Puuttuu kokoonpanosta: Kärpät – Tuomas Salmela, Wiktor Nilsson · Tappara – Kasper Kulonummi; MV Rubin +0.11; MV Kiviaho -0.16"
+2026-11-14,2701454,Sport,HPK,0.459537,0.341166,0.423091,0.235743,0.463753,"Puuttuu kokoonpanosta: Sport – Eetu Levänen · HPK – Eerik Wallenius, Miska Kukkonen, Olli Palola, Oskari Kuusisto, Sami Päivärinta; MV Härkönen +0.05; MV Saarinen +0.13"
+2026-11-14,2701455,Ässät,Jokerit,0.546034,0.424484,0.344191,0.231325,0.541072,"Puuttuu kokoonpanosta: Ässät – Juuso Pulli · Jokerit – Jere Henriksson, Max Krogdahl; MV Taponen -0.05; MV Eriksson Ek +0.05"
