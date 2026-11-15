@@ -114,3 +114,4 @@ fetched_at,date,game_id,start,home,away,lineup_ready,home_starter,away_starter
 2026-11-14T15:51:01+00:00,2026-11-14,2701454,2026-11-14T15:00:00Z,Sport,HPK,1,Masi Härkönen,Kim Saarinen
 2026-11-14T15:51:01+00:00,2026-11-14,2701455,2026-11-14T15:00:00Z,Ässät,Jokerit,1,Roope Taponen,Olle Eriksson Ek
 2026-11-15T10:21:15+00:00,2026-11-15,2701526,2026-11-15T13:00:00Z,Ilves,SaiPa,0,,
+2026-11-15T12:21:10+00:00,2026-11-15,2701526,2026-11-15T13:00:00Z,Ilves,SaiPa,1,Mantas Armalis,Kari Piiroinen
