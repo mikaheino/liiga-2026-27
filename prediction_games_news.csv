@@ -26,3 +26,9 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-14,2701454,Sport,HPK,0.459537,0.341166,0.423091,0.235743,0.463753,"Puuttuu kokoonpanosta: Sport – Eetu Levänen · HPK – Eerik Wallenius, Miska Kukkonen, Olli Palola, Oskari Kuusisto, Sami Päivärinta; MV Härkönen +0.05; MV Saarinen +0.13"
 2026-11-14,2701455,Ässät,Jokerit,0.546034,0.424484,0.344191,0.231325,0.541072,"Puuttuu kokoonpanosta: Ässät – Juuso Pulli · Jokerit – Jere Henriksson, Max Krogdahl; MV Taponen -0.05; MV Eriksson Ek +0.05"
 2026-11-15,2701526,Ilves,SaiPa,0.569449,0.462955,0.301238,0.235807,0.585575,"Pelikielto: Ilves – Austin Strand; Puuttuu kokoonpanosta: Ilves – Iivari Heikkinen, Jaakko Lantta · SaiPa – Janne Naukkarinen, Patrik Siikanen, Petr Fridrich; MV Armalis +0.05; MV Piiroinen +0.11"
+2026-11-18,2701456,JYP,Sport,0.715019,0.597076,0.17611,0.226814,0.715019,
+2026-11-18,2701458,Jukurit,Jokerit,0.545915,0.430681,0.340681,0.228638,0.545915,
+2026-11-18,2701459,KalPa,Lukko,0.406273,0.294981,0.475112,0.229907,0.410854,"Poissa: Lukko – Chris Harpur, Lenni Hämäläinen, Santeri Virtanen"
+2026-11-18,2701460,K-Espoo,Ilves,0.508753,0.388343,0.3758,0.235857,0.510988,Pelikielto: Ilves – Austin Strand
+2026-11-18,2701461,TPS,Kärpät,0.507349,0.369532,0.40086,0.229608,0.485255,Poissa: TPS – Lukas Wernblom
+2026-11-18,2701462,Ässät,Pelicans,0.583643,0.458556,0.300892,0.240552,0.583643,
