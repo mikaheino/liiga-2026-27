@@ -33,9 +33,9 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-18,2701461,TPS,Kärpät,0.507349,0.357463,0.413811,0.228726,0.472741,Poissa: TPS – Lukas Wernblom; Puuttuu kokoonpanosta: TPS – Alexis Binner; MV Vali -0.05; MV Rubin +0.11
 2026-11-18,2701462,Ässät,Pelicans,0.583643,0.467516,0.292487,0.239997,0.592315,"Puuttuu kokoonpanosta: Ässät – Alexandr Kim, Petteri Nikkilä · Pelicans – Brett Stapley, Johannes Johannesen, Onni Amhamdi; MV Taponen -0.05; MV Poletin -0.09"
 2026-11-19,2701463,Tappara,Sport,0.701967,0.599721,0.180194,0.220085,0.714165,"Puuttuu kokoonpanosta: Tappara – Joona Karvonen, Tomi Sallinen · Sport – George Diaco; MV Metsola -0.09; MV Ortio -0.11"
-2026-11-20,2701283,Pelicans,Lukko,0.38366,0.270318,0.496073,0.233609,0.388057,"Poissa: Lukko – Chris Harpur, Lenni Hämäläinen, Santeri Virtanen"
-2026-11-20,2701464,HPK,Jokerit,0.52187,0.405296,0.363406,0.231298,0.52187,
-2026-11-20,2701465,Ilves,Tappara,0.590595,0.470821,0.296147,0.233032,0.588269,Pelikielto: Ilves – Austin Strand
-2026-11-20,2701466,JYP,HIFK,0.597661,0.492277,0.279691,0.228032,0.610854,Poissa: HIFK – Jake Leschyshyn
-2026-11-20,2701467,KooKoo,Kärpät,0.447958,0.328754,0.442008,0.229238,0.447958,
-2026-11-20,2701468,SaiPa,TPS,0.617057,0.517873,0.248674,0.233453,0.639268,Poissa: TPS – Lukas Wernblom
+2026-11-20,2701283,Pelicans,Lukko,0.38366,0.263178,0.503637,0.233185,0.380703,"Poissa: Lukko – Chris Harpur, Lenni Hämäläinen, Santeri Virtanen; Puuttuu kokoonpanosta: Pelicans – Christoffer Forsberg, Johannes Johannesen · Lukko – Anton Olsson; MV Poletin -0.09; MV Raanta +0.01"
+2026-11-20,2701464,HPK,Jokerit,0.52187,0.425946,0.339223,0.234831,0.548058,"Puuttuu kokoonpanosta: HPK – Olli Palola, Oskari Kuusisto, Sami Päivärinta, Vili Alitalo · Jokerit – Max Krogdahl, Maxime Fortier; MV Saarinen +0.13; MV Karhunen -0.01"
+2026-11-20,2701465,Ilves,Tappara,0.590595,0.481049,0.285488,0.233463,0.598714,"Pelikielto: Ilves – Austin Strand; Puuttuu kokoonpanosta: Ilves – Timi Teuho-Markkola · Tappara – Joona Karvonen, Tomi Sallinen; MV Armalis +0.05; MV Metsola -0.09"
+2026-11-20,2701466,JYP,HIFK,0.597661,0.479805,0.292525,0.22767,0.598194,"Puuttuu kokoonpanosta: JYP – Aaro Vidgren · HIFK – Anttoni Uronen, Jere Somervuori, Lukas Pilö; MV Setänen -0.02; MV Alnefelt -0.00"
+2026-11-20,2701467,KooKoo,Kärpät,0.447958,0.359351,0.414044,0.226605,0.477186,"Puuttuu kokoonpanosta: KooKoo – Akseli Mäkinen, Niklas Nykyri, Samuel Valkeejärvi · Kärpät – Kasper Soini, Wiktor Nilsson; MV Randelin +0.14; MV Vedenpää -0.32"
+2026-11-20,2701468,SaiPa,TPS,0.617057,0.528783,0.238246,0.232971,0.649928,"Poissa: TPS – Lukas Wernblom; Puuttuu kokoonpanosta: SaiPa – Miro Tauslahti, Veeti Moilanen, Vertti Svensk · TPS – Kasper Pikkarainen; MV Piiroinen +0.11; MV Vali -0.05"
