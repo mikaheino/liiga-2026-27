@@ -9,7 +9,9 @@ Uusi koti: `FUTURICEPARTNER-FUTURICEPARTNER` (Azure West Europe), sovellus contr
 Taulujen ylläpitäjäomistus (ennen ACCOUNTADMIN) on nyt `LIIGA_ADMIN`, samoin taskit. Ylläpitoyhteys `futurice`
 (avainpari, ei selainta). Palvelukäyttäjät `LIIGA_CI` ja `LIIGA_SYNC` käyttävät samoja avainpareja.
 Ei siirretty: vanhat `<sha>`-versiot, `_DEV`-objektit, notebook ja `LIIGA_REPO`, `DOCKER_WH`. Siirto:
-`control_plane/scripts/migrate/liiga.py` (account | tables | tasks). Vanha tili `uqb62234` jää purettavaksi.
+`control_plane/scripts/migrate/liiga.py` (account | tables | tasks | finish). Vanha tili `uqb62234` on pysäytetty
+(ei taskeja, hakuja, pooleja eikä automaattisesti heräävää warehousea; kulukatto OLD_ACCOUNT_STOP) ja odottaa purkua.
+Sovellus: https://iqazf-futuricepartner-futuricepartner.snowflakecomputing.app (STAGING `eqazf-...`).
 
 ## Snowflake (migration phase 1 done, 2026-08-30)
 
