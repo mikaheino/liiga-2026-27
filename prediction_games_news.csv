@@ -39,3 +39,9 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-20,2701466,JYP,HIFK,0.597661,0.479805,0.292525,0.22767,0.598194,"Puuttuu kokoonpanosta: JYP – Aaro Vidgren · HIFK – Anttoni Uronen, Jere Somervuori, Lukas Pilö; MV Setänen -0.02; MV Alnefelt -0.00"
 2026-11-20,2701467,KooKoo,Kärpät,0.447958,0.359351,0.414044,0.226605,0.477186,"Puuttuu kokoonpanosta: KooKoo – Akseli Mäkinen, Niklas Nykyri, Samuel Valkeejärvi · Kärpät – Kasper Soini, Wiktor Nilsson; MV Randelin +0.14; MV Vedenpää -0.32"
 2026-11-20,2701468,SaiPa,TPS,0.617057,0.528783,0.238246,0.232971,0.649928,"Poissa: TPS – Lukas Wernblom; Puuttuu kokoonpanosta: SaiPa – Miro Tauslahti, Veeti Moilanen, Vertti Svensk · TPS – Kasper Pikkarainen; MV Piiroinen +0.11; MV Vali -0.05"
+2026-11-21,2701469,Sport,Pelicans,0.470015,0.34811,0.417458,0.234432,0.470015,
+2026-11-21,2701470,Jukurit,TPS,0.562359,0.438062,0.322904,0.239034,0.562359,
+2026-11-21,2701471,KalPa,HIFK,0.483766,0.367731,0.402041,0.230228,0.483766,
+2026-11-21,2701472,K-Espoo,Ässät,0.596502,0.474527,0.290906,0.234566,0.596502,
+2026-11-21,2701473,Kärpät,Jokerit,0.602076,0.483932,0.288868,0.2272,0.602076,
+2026-11-21,2701474,Lukko,HPK,0.706539,0.58194,0.186991,0.231069,0.702096,"Poissa: Lukko – Chris Harpur, Lenni Hämäläinen, Santeri Virtanen"
