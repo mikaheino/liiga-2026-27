@@ -9,7 +9,7 @@
 -- $$-rajoja. Aja Python-konnektorilla, joka lähettää lauseen yhtenä:
 --
 --   import snowflake.connector as sc
---   con = sc.connect(connection_name="CONTAINER_SERVICES", role="ACCOUNTADMIN",
+--   con = sc.connect(connection_name="futurice", role="ACCOUNTADMIN",
 --                    warehouse="LIIGA_WH", database="LIIGA", schema="CODE")
 --   con.cursor().execute(open("snowflake/LIIGA/CODE/tasks/LIIGA_CHECK.sql").read())
 --   (sitten LIIGA_DAILY_RUN.sql samalla tavalla)

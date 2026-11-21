@@ -84,7 +84,7 @@ CLAUDE.md pidetään lyhyenä, koska se ladataan jokaiseen istuntoon ja jokaisel
 - **Kauden aikana aja `python scripts/local/daily_update.py`**, ei `refresh_standings.py`:tä (data.md).
 - **`game_id` ei ole yksilöllinen kausien yli**: liitä `(season, game_id)` (data.md).
 - Yksityisiä avaimia (`~/.ssh/id_ed25519_liiga`, `~/.snowflake/keys/`) ei koskaan tulosteta.
-- Snowflake-kyselyt yhteydellä `liiga_ci`; `CONTAINER_SERVICES` (selain) vain ylläpitoon (snowflake.md).
+- Snowflake-kyselyt yhteydellä `liiga_ci`; ylläpito `futurice` (Futuricen tili control planen alla 21.11.2026, snowflake.md).
 - Sovellus ja agentti julkaistaan vain CI/CD-putken kautta, ei omalta koneelta; push käynnistää putken.
 - Mallia ei viritetä kesken kauden (AGENTS.md §10).
 - Mouho-peli on omassa repossaan `/Users/mika.heino/prod/mouho_2026`.

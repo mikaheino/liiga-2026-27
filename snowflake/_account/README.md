@@ -1,6 +1,6 @@
 # Tilitason objektit
 
-Ajetaan ACCOUNTADMINina (`snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f <tiedosto>`).
+Ajetaan ACCOUNTADMINina (`snow sql -c futurice --role ACCOUNTADMIN -f <tiedosto>`).
 Kaikki tiedostot ovat idempotentteja. Yksi tiedosto per objekti; **roolille annetut
 oikeudet ovat sen roolin tiedostossa**.
 

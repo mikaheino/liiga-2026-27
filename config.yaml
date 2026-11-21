@@ -15,7 +15,7 @@ database:
   snowflake:
     # Preferred: a named profile in ~/.snowflake/connections.toml -- no
     # secrets here or in the environment. SNOWFLAKE_CONNECTION overrides it.
-    connection_name: CONTAINER_SERVICES
+    connection_name: futurice
     connection_name_env: SNOWFLAKE_CONNECTION
     database: LIIGA
     schema: MODEL

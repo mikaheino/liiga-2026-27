@@ -2,7 +2,7 @@
 -- agentit, joten tilin toinen tuotantoagentti VW_AGENT on mukana. Listan
 -- näkeminen ei anna pääsyä agenttiin; se vaatii USAGEn (LIIGA_AGENT_USER).
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/cowork/SNOWFLAKE_INTELLIGENCE_OBJECT_DEFAULT.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/cowork/SNOWFLAKE_INTELLIGENCE_OBJECT_DEFAULT.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;

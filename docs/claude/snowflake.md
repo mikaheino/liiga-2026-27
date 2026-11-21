@@ -2,6 +2,15 @@
 
 Siirretty CLAUDE.md:stä 23.10.2026 sanasta sanaan (tokenisäästö). Lue kun aihe on työn alla.
 
+## Siirto Futuricen tilille control planen alle (21.11.2026)
+
+Uusi koti: `FUTURICEPARTNER-FUTURICEPARTNER` (Azure West Europe), sovellus control planen alla
+(`/Users/mika.heino/prod/control_plane`): `SYSADMIN -> CP_ADMIN -> LIIGA_ADMIN -> LIIGA_*`-roolit.
+Taulujen ylläpitäjäomistus (ennen ACCOUNTADMIN) on nyt `LIIGA_ADMIN`, samoin taskit. Ylläpitoyhteys `futurice`
+(avainpari, ei selainta). Palvelukäyttäjät `LIIGA_CI` ja `LIIGA_SYNC` käyttävät samoja avainpareja.
+Ei siirretty: vanhat `<sha>`-versiot, `_DEV`-objektit, notebook ja `LIIGA_REPO`, `DOCKER_WH`. Siirto:
+`control_plane/scripts/migrate/liiga.py` (account | tables | tasks). Vanha tili `uqb62234` jää purettavaksi.
+
 ## Snowflake (migration phase 1 done, 2026-08-30)
 
 All 21 DuckDB tables now also live in Snowflake account `uqb62234`:

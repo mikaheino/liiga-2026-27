@@ -1,7 +1,7 @@
 -- Aamusynkan palvelukäyttäjä (launchd + sync_to_snowflake.py), avainpari.
 -- Yhteys liiga_sync tiedostossa ~/.snowflake/connections.toml.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/users/LIIGA_SYNC.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/users/LIIGA_SYNC.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;

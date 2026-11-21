@@ -16,7 +16,7 @@
 -- skeemaansa LIIGA.APP. Rooli saa luontioikeudet VAIN siihen skeemaan, ei mallin
 -- tai koodin skeemoihin.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_APP.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_APP.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;
@@ -26,7 +26,7 @@ CREATE ROLE IF NOT EXISTS LIIGA_APP
 
 GRANT ROLE LIIGA_APP TO ROLE LIIGA_DEPLOYER;
 
-GRANT ROLE LIIGA_APP TO ROLE SYSADMIN;
+GRANT ROLE LIIGA_APP TO ROLE LIIGA_ADMIN;   -- control plane: LIIGA_ADMIN -> CP_ADMIN -> SYSADMIN
 
 -- Data: vain luku, nykyiset ja tulevat (notebook ja synkka luovat taulut uudelleen).
 GRANT USAGE ON DATABASE LIIGA TO ROLE LIIGA_APP;

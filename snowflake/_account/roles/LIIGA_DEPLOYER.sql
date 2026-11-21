@@ -3,7 +3,7 @@
 -- jotta objektien omistajuus ei heilu. Ei dataa kirjoittavia oikeuksia RAW/MODEL-
 -- tauluihin (paitsi tietopankin oma taulu), ei käyttäjä- eikä roolihallintaa.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_DEPLOYER.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_DEPLOYER.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;
@@ -11,7 +11,7 @@ USE ROLE ACCOUNTADMIN;
 CREATE ROLE IF NOT EXISTS LIIGA_DEPLOYER
   COMMENT = 'Liiga Ennustaja: näkymien, semanttisten mallien, agentin ja evaluointien julkaisu (paikallinen + CI).';
 
-GRANT ROLE LIIGA_DEPLOYER TO ROLE SYSADMIN;
+GRANT ROLE LIIGA_DEPLOYER TO ROLE LIIGA_ADMIN;   -- control plane: LIIGA_ADMIN -> CP_ADMIN -> SYSADMIN
 
 GRANT ROLE LIIGA_DEPLOYER TO USER MHEINO;
 
@@ -59,9 +59,7 @@ GRANT CREATE TABLE, CREATE STAGE, CREATE FILE FORMAT, CREATE TASK, CREATE DATASE
 -- tarkoituksella: VERSION$2 viittaa niihin, ja ne ovat jäädytettyjä.
 GRANT OWNERSHIP ON ALL VIEWS IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_DEPLOYER COPY CURRENT GRANTS;
 
-GRANT OWNERSHIP ON SEMANTIC VIEW LIIGA.MODEL.LIIGA_ENNUSTAJA_SV_DEV TO ROLE LIIGA_DEPLOYER COPY CURRENT GRANTS;
 
-GRANT OWNERSHIP ON SEMANTIC VIEW LIIGA.MODEL.LIIGA_KAUSI_SV_DEV TO ROLE LIIGA_DEPLOYER COPY CURRENT GRANTS;
 
 GRANT OWNERSHIP ON ALL TABLES IN SCHEMA LIIGA.EVALS TO ROLE LIIGA_DEPLOYER COPY CURRENT GRANTS;
 

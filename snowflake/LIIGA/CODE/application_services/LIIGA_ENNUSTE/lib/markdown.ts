@@ -2,7 +2,7 @@
 // taulukot. Teksti escapetaan ensin, joten agentin vastaus ei voi syöttää
 // sivulle omaa HTML:ää. Sovelluksen omat osoitteet muuttuvat sisäisiksi
 // linkeiksi, jotta "Lisää sovelluksessa" avautuu samaan ikkunaan.
-const APP = /https:\/\/[a-z0-9]+-zueemdq-container-services\.snowflakecomputing\.app/g;
+const APP = /https:\/\/[a-z0-9]+-[a-z0-9-]+\.snowflakecomputing\.app/g;  // tilin nimestä riippumaton (siirto Futuricelle 21.11.2026)
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 

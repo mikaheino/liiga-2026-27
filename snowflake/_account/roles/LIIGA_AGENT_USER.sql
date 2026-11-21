@@ -3,7 +3,7 @@
 -- FUTURE-oikeudet ovat pakollisia: notebook, synkka ja julkaisu luovat
 -- objektit uudelleen, ja yksittäiset oikeudet katoaisivat seuraavana yönä.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_AGENT_USER.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_AGENT_USER.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;
@@ -11,7 +11,7 @@ USE ROLE ACCOUNTADMIN;
 CREATE ROLE IF NOT EXISTS LIIGA_AGENT_USER
   COMMENT = 'Liiga Ennustaja -agentin käyttäjä (CoWork-demo).';
 
-GRANT ROLE LIIGA_AGENT_USER TO ROLE SYSADMIN;
+GRANT ROLE LIIGA_AGENT_USER TO ROLE LIIGA_ADMIN;   -- control plane: LIIGA_ADMIN -> CP_ADMIN -> SYSADMIN
 
 GRANT ROLE LIIGA_AGENT_USER TO USER MHEINO;
 
@@ -39,9 +39,7 @@ GRANT SELECT ON FUTURE VIEWS IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_USER;
 
 GRANT SELECT ON FUTURE SEMANTIC VIEWS IN SCHEMA LIIGA.MODEL TO ROLE LIIGA_AGENT_USER;
 
--- Käyttäjä: varastot. DOCKER_WH on agentin nykyinen työkaluvarasto,
--- LIIGA_WH projektin oma (siirto sinne on kohdassa 4).
-GRANT USAGE ON WAREHOUSE DOCKER_WH TO ROLE LIIGA_AGENT_USER;
+-- Käyttäjä: varasto LIIGA_WH (DOCKER_WH jäi vanhalle tilille, 21.11.2026).
 
 GRANT USAGE ON WAREHOUSE LIIGA_WH TO ROLE LIIGA_AGENT_USER;
 

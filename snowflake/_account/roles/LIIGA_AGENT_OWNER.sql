@@ -2,7 +2,7 @@
 -- (johtoryhmävisualisointi) perii OMISTAJAROOLIN oikeudet -- ACCOUNTADMINina
 -- hiekkalaatikko olisi toiminut tilin laajimmilla oikeuksilla. Ei dataa.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_AGENT_OWNER.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_AGENT_OWNER.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;
@@ -12,7 +12,7 @@ USE ROLE ACCOUNTADMIN;
 CREATE ROLE IF NOT EXISTS LIIGA_AGENT_OWNER
   COMMENT = 'Omistaa Liiga Ennustaja -agentit. Rajattu: koodinsuoritus perii nämä oikeudet.';
 
-GRANT ROLE LIIGA_AGENT_OWNER TO ROLE SYSADMIN;
+GRANT ROLE LIIGA_AGENT_OWNER TO ROLE LIIGA_ADMIN;   -- control plane: LIIGA_ADMIN -> CP_ADMIN -> SYSADMIN
 
 -- Omistaja: agenttiskeema, skillien stage ja Cortex.
 GRANT USAGE ON DATABASE SNOWFLAKE_INTELLIGENCE TO ROLE LIIGA_AGENT_OWNER;

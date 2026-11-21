@@ -2,7 +2,7 @@
 -- avain: ALTER USER LIIGA_CI SET RSA_PUBLIC_KEY = ...; yksityinen avain on vain
 -- GitHubin salaisuutena SNOWFLAKE_PRIVATE_KEY ja ~/.snowflake/keys/ (älä tulosta).
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/users/LIIGA_CI.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/users/LIIGA_CI.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;

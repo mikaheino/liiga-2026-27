@@ -3,7 +3,7 @@
 -- siksi taulujen omistajuus siirretään tälle roolille. EI raw_gamesia: notebook
 -- (ACCOUNTADMIN) luo sen uudelleen.
 --
--- Aja ACCOUNTADMINina: snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_LOADER.sql
+-- Aja ACCOUNTADMINina: snow sql -c futurice --role ACCOUNTADMIN -f snowflake/_account/roles/LIIGA_LOADER.sql
 -- Idempotentti. Koko tilin järjestys: snowflake/_account/README.md.
 
 USE ROLE ACCOUNTADMIN;
@@ -11,7 +11,7 @@ USE ROLE ACCOUNTADMIN;
 CREATE ROLE IF NOT EXISTS LIIGA_LOADER
   COMMENT = 'Liiga: paikallisen ajon julkaisemat taulut Snowflakeen (aamusynkka).';
 
-GRANT ROLE LIIGA_LOADER TO ROLE SYSADMIN;
+GRANT ROLE LIIGA_LOADER TO ROLE LIIGA_ADMIN;   -- control plane: LIIGA_ADMIN -> CP_ADMIN -> SYSADMIN
 
 GRANT ROLE LIIGA_LOADER TO USER MHEINO;
 
@@ -35,7 +35,6 @@ GRANT READ, WRITE ON STAGE LIIGA.CODE.LOAD_STAGE TO ROLE LIIGA_LOADER;
 GRANT USAGE ON FILE FORMAT LIIGA.CODE.PARQUET_FMT TO ROLE LIIGA_LOADER;
 
 -- Git-repon päivitys (sync_to_snowflake.py --code).
-GRANT READ, WRITE ON GIT REPOSITORY LIIGA.CODE.LIIGA_REPO TO ROLE LIIGA_LOADER;
 
 -- Synkattavien taulujen omistajuus.
 GRANT OWNERSHIP ON TABLE LIIGA.RAW.LEAGUE_FACTORS TO ROLE LIIGA_LOADER COPY CURRENT GRANTS;
