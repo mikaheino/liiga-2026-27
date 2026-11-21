@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Kiekko from "@/components/Kiekko";
 import NavTrack from "@/components/NavTrack";
 import VersionCheck from "@/components/VersionCheck";
+import WakeBanner from "@/components/WakeBanner";
 import { AGENT_SOURCE } from "@/lib/agent";
 import { BASE, STATIC } from "@/lib/target";
 import "./globals.css";
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fi" className={`${hanken.variable} ${mono.variable} ${pixel.variable}`}>
       {/* Vapaa keskustelu ilman kelluvaa nappia (6.11.): avataan navigaation Kysy-kohdasta
           tai kortin "Jatka keskustelua" -rivistä (lib/chatBus.ts). Pagesissa ei agenttia. */}
-      <body>{children}<Footer /><BottomNav /><NavTrack /><VersionCheck />{!STATIC && <Chat source={AGENT_SOURCE} />}{!STATIC && <Kiekko />}</body>
+      <body>{children}<Footer /><BottomNav /><NavTrack /><VersionCheck /><WakeBanner />{!STATIC && <Chat source={AGENT_SOURCE} />}{!STATIC && <Kiekko />}</body>
     </html>
   );
 }

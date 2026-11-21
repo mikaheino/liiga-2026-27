@@ -56,7 +56,10 @@ run:
 # palvella ensimmäistäkään pyyntöä (käyttäjä: "sammutamme applikaation ennen kuin
 # se ehtii käynnistyä"). Heräämisen aikana tullut pyyntö saa heti 503:n
 # (serviceStatus=PENDING) eikä jää odottamaan -- sivu ladataan uudelleen.
-auto_suspend_secs: 1800
+# 900 s (21.11.2026, mobiilisovellus vähin krediitein): public/sw.js näyttää heräämisen ajan
+# välimuistin version ja päivittää sivun, kun palvelu vastaa, joten 503 ei näy käyttäjälle.
+# 900 s > kylmäkäynnistys (~8,5 min), joten palvelu ehtii käynnistyä ennen sammutusrajaa.
+auto_suspend_secs: 900
 auto_resume: true
 min_instances: 1
 max_instances: 1

@@ -18,7 +18,9 @@ import { DATA_MODE, query } from "@/lib/snowflake";
 import type { Game } from "@/lib/table";
 
 const M = "LIIGA.MODEL";
-const CHECK_MS = 30_000;
+// Snowflakessa 10 min (21.11.2026): data vaihtuu kerran päivässä, ja jokainen tarkistus herättää
+// LIIGA_WH:n (V_UPCOMING_PREDICTIONS käyttää nykyhetkeä, joten tulosvälimuisti ei auta).
+const CHECK_MS = DATA_MODE === "snowflake" ? 600_000 : 30_000;
 
 type Store = { stamp: string; checked: number; meta: Promise<unknown> | null; values: Map<string, Promise<unknown>> };
 const store: Store = ((globalThis as { __liigaData?: Store }).__liigaData ??= { stamp: "", checked: 0, meta: null, values: new Map() });
