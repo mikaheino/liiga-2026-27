@@ -40,38 +40,47 @@ def _teams(*texts: str) -> str:
     return ", ".join(found)
 
 
+def _published(item: str) -> str:
+    pub = (_text(item, "pubDate") or [""])[0]
+    try:
+        return parsedate_to_datetime(pub).isoformat() if pub else ""
+    except (TypeError, ValueError):
+        return ""
+
+
+def _liiga_items(xml: str, known: set[str]):
+    """(otsikko, linkki, joukkue, julkaistu) vain Liiga-jutuista, joita ei vielä ole talletettu."""
+    for item in re.findall(r"<item>(.*?)</item>", xml, re.S):
+        title = (_text(item, "title") or [""])[0]
+        link = (_text(item, "link") or [""])[0]
+        if not title or not link.startswith("https://") or link in known:
+            continue
+        cats = _text(item, "category")
+        team = _teams(title, " ".join(cats))
+        if {c.lower() for c in cats} & LIIGA_CATS or team:   # ei NHL:ää, maajoukkuetta eikä muita lajeja
+            yield title, link, team, _published(item)
+
+
+def _collect(session, source: str, url: str, known: set[str]) -> str:
+    try:
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=20)
+        r.raise_for_status()
+    except Exception as e:  # noqa: BLE001  (yksittäinen katko ei pysäytä muita)
+        return f"virhe: {str(e)[:120]}"
+    n = 0
+    for title, link, team, published in _liiga_items(r.text, known):
+        session.sql(
+            "insert into LIIGA.MEDIA.MEDIA_LINKS (published, source, team, title, url)"
+            " select try_to_timestamp_tz(?), ?, nullif(?, ''), ?, ?",
+            [published, source, team, title[:300], link[:500]]).collect()
+        known.add(link)
+        n += 1
+    return f"uusia {n}"
+
+
 def run(session) -> dict:
     known = {r[0] for r in session.sql(
         "select url from LIIGA.MEDIA.MEDIA_LINKS where fetched_at > dateadd(day, -60, current_timestamp())").collect()}
-    status, new = {}, 0
-    for source, url in SOURCES:
-        try:
-            r = requests.get(url, headers={"User-Agent": UA}, timeout=20)
-            r.raise_for_status()
-        except Exception as e:  # noqa: BLE001  (yksittäinen katko ei pysäytä muita)
-            status[source] = f"virhe: {str(e)[:120]}"
-            continue
-        n = 0
-        for item in re.findall(r"<item>(.*?)</item>", r.text, re.S):
-            title = (_text(item, "title") or [""])[0]
-            link = (_text(item, "link") or [""])[0]
-            cats = _text(item, "category")
-            if not title or not link.startswith("https://") or link in known:
-                continue
-            team = _teams(title, " ".join(cats))
-            if not ({c.lower() for c in cats} & LIIGA_CATS or team):
-                continue  # vain Liiga: ei NHL:ää, maajoukkuetta eikä muita lajeja
-            pub = (_text(item, "pubDate") or [""])[0]
-            try:
-                published = parsedate_to_datetime(pub).isoformat() if pub else None
-            except (TypeError, ValueError):
-                published = None
-            session.sql(
-                "insert into LIIGA.MEDIA.MEDIA_LINKS (published, source, team, title, url)"
-                " select try_to_timestamp_tz(?), ?, nullif(?, ''), ?, ?",
-                [published or "", source, team, title[:300], link[:500]]).collect()
-            known.add(link)
-            n += 1
-        status[source] = f"uusia {n}"
-        new += n
+    status = {source: _collect(session, source, url, known) for source, url in SOURCES}
+    new = sum(int(v.split()[-1]) for v in status.values() if v.startswith("uusia"))
     return {"uusia": new, "lähteet": status}
