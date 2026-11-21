@@ -1,16 +1,10 @@
--- Lausejärjestys on tarkka: COMMENT ennen AFTER:ia, WHEN viimeisenä.
--- Argumentiton SYSTEM$GET_PREDECESSOR_RETURN_VALUE() koska edeltäjiä on yksi;
--- nimellinen muoto ei resolvoitunut.
+-- Suoritin ilman omaa ajastusta (21.11.2026): control plane päättää, milloin ajetaan.
+-- Politiikka: /Users/mika.heino/prod/control_plane/policies/snowflake/liiga.toml, workflow liiga-daily
+-- (klo 05:00 Helsinki, sensori = pelattu mutta hakematta oleva ottelu, toiminto EXECUTE TASK tähän).
+-- Entinen juuritaski LIIGA_CHECK on nyt control planen sensori; epäonnistuminen -> liiga-taskivirhe.
+-- Omistaja LIIGA_ADMIN. Luonti Python-konnektorilla: control_plane/scripts/migrate/liiga.py tasks
 CREATE OR REPLACE TASK LIIGA.CODE.LIIGA_DAILY_RUN
   WAREHOUSE = LIIGA_WH
-  COMMENT = 'Koko putki. Ajetaan vain kun ottelu on pelattu mutta hakematta.'
-  AFTER LIIGA.CODE.LIIGA_CHECK
-  WHEN SYSTEM$GET_PREDECESSOR_RETURN_VALUE()::INTEGER > 0
+  COMMENT = 'Koko putki (koodibundle). Käynnistää control plane (workflow liiga-daily).'
 AS
-  -- 8.11.2026: notebookista Code Bundleen (koodi versioituna paketista, deploy-bundle.yml).
   EXECUTE CODE BUNDLE LIIGA.CODE.LIIGA_DAILY_BUNDLE ENTRYPOINT = 'daily.py';
-
--- Vaihto olemassa olevaan tehtävään (ACCOUNTADMIN, 8.11.2026): juuritehtävä tauolle, runko vaihtoon, takaisin.
--- ALTER TASK LIIGA.CODE.LIIGA_CHECK SUSPEND;
--- ALTER TASK LIIGA.CODE.LIIGA_DAILY_RUN MODIFY AS EXECUTE CODE BUNDLE LIIGA.CODE.LIIGA_DAILY_BUNDLE ENTRYPOINT = 'daily.py';
--- ALTER TASK LIIGA.CODE.LIIGA_CHECK RESUME;
