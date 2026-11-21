@@ -11,7 +11,7 @@ export function stamp(iso: string) {
 // Pagesissa ei LinkedIn-osiota eikä Mouho-peliä (käyttäjä 13.11.: ei mainintoja julkisessa versiossa).
 export const SECTIONS = [
   ["/sarjataulukko", "Sarjataulukko"], ["/sijainti", "Sijainnit"], ["/voittaja", "Voittaja"], ["/ottelut", "Ottelut"], ["/pelaajat", "Pelaajat"], ["/liike", "Liike"],
-  ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/linkedin", "LinkedIn"], ["/mouho", "Mouho 2026"]]),
+  ...(STATIC ? [["/uutiset", "Uutiset"]] : [["/mediat", "Mediat"], ["/linkedin", "LinkedIn"], ["/mouho", "Mouho 2026"]]),
 ] as const;
 
 export default function Top({ updatedAt, active }: { updatedAt?: string; active: string }) {

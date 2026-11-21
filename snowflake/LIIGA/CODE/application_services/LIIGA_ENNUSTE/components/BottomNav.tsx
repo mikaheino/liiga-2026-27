@@ -26,7 +26,7 @@ const ITEMS: Item[] = [
     ["/pelaajat", "Pelaajat", "Pisteet, maalivahdit ja pelaajakortit"],
     // Uutiset ja haastaja vain Pagesissa (data news-data-haarasta); LinkedIn ja peli vain sovelluksessa.
     ...(STATIC ? [["/uutiset", "Uutiset", "Uutiset, poissaolot ja haastajamalli"] as Sub]
-      : [["/linkedin", "LinkedIn", "Postausluonnokset"] as Sub, ["/mouho", "Mouho 2026", "Peli"] as Sub]),
+      : [["/mediat", "Mediat", "Ilta-Sanomat, Iltalehti ja MTV: Liiga-otsikot"] as Sub, ["/linkedin", "LinkedIn", "Postausluonnokset"] as Sub, ["/mouho", "Mouho 2026", "Peli"] as Sub]),
     ["/tietoa", "Tietoa", "Miten ennuste lasketaan ja miten se on osunut"],
   ] },
 ];

@@ -13,6 +13,16 @@ Ei siirretty: vanhat `<sha>`-versiot, `_DEV`-objektit, notebook ja `LIIGA_REPO`,
 (ei taskeja, hakuja, pooleja eikä automaattisesti heräävää warehousea; kulukatto OLD_ACCOUNT_STOP) ja odottaa purkua.
 Sovellus: https://iqazf-futuricepartner-futuricepartner.snowflakecomputing.app (STAGING `eqazf-...`).
 
+## Muut mediat ja mobiilisovellus (21.11.2026)
+
+- `LIIGA.MEDIA.MEDIA_LINKS`: Ilta-Sanomien, Iltalehden ja MTV:n Liiga-otsikot ja linkit, sovelluksen Mediat-sivu.
+  **EI TEKOÄLYLLE**: julkaisijat kieltävät AI-käytön robots.txt:ssä. Vain otsikko ja linkki, ei tekstiä;
+  skeema vain LIIGA_APPille, ei agentti-, malli- eikä uutissignaalipolkuihin (`lib/media.ts` vain Mediat-sivulle).
+  Keräys `LIIGA.MEDIA.COLLECT_MEDIA()` (oma verkkosääntö `LIIGA_MEDIA_RULE`), control plane `liiga-mediat` 6 h välein.
+  Jatkoaika puuttuu: sivu renderöidään JavaScriptillä eikä syötettä ole.
+- Mobiili vähin krediitein: `public/sw.js` (välimuisti heräämisen ajaksi), `WakeBanner`, sammutus 900 s,
+  aikaleiman tarkistus 10 min välein.
+
 ## Snowflake (migration phase 1 done, 2026-08-30)
 
 All 21 DuckDB tables now also live in Snowflake account `uqb62234`:
