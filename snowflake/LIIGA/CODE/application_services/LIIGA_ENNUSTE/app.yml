@@ -25,6 +25,8 @@ targets:
     artifact_repo: LIIGA.APP.LIIGA_ENNUSTE_DEV_REPO
   staging:
     name: LIIGA_ENNUSTE_STAGING
+    # 22.11.2026: ehdokas vain CI-tarkistukseen (ja deploy-app.yml sammuttaa sen heti), joten lyhin sallittu.
+    auto_suspend_secs: 300
   prod:
     name: LIIGA_ENNUSTE
 
@@ -59,7 +61,9 @@ run:
 # 900 s (21.11.2026, mobiilisovellus vähin krediitein): public/sw.js näyttää heräämisen ajan
 # välimuistin version ja päivittää sivun, kun palvelu vastaa, joten 503 ei näy käyttäjälle.
 # 900 s > kylmäkäynnistys (~8,5 min), joten palvelu ehtii käynnistyä ennen sammutusrajaa.
-auto_suspend_secs: 900
+# 600 s (22.11.2026, käyttäjä: avattu sovellus pysyy päällä 10 min käyttämättömänä, ei sammu aiemmin).
+# Yhä > kylmäkäynnistys (~8,5 min); heräämisen ajan sw.js näyttää välimuistin version.
+auto_suspend_secs: 600
 auto_resume: true
 min_instances: 1
 max_instances: 1

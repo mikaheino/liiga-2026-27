@@ -6,7 +6,7 @@
 #            käyttäjäroolille
 # Erillään agentin putkesta (deploy.yml) 17.10.: oma jono, oma hyväksyntä.
 #
-# Palvelut sammuvat itse 5 min käyttämättöminä (app.yml: auto_suspend_secs 300,
+# Palvelut sammuvat itse käyttämättöminä (app.yml: tuotanto 600 s, STAGING 300 s,
 # auto_resume), joten ehdokas ei jää kuluttamaan.
 name: Deploy app
 
