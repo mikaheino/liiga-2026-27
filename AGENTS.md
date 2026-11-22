@@ -262,9 +262,11 @@ repo via the notebook `LIIGA.CODE.LIIGA_DAILY`, and it is a **second
 independent run**, not a copy of the Mac's results — it fetches from liiga.fi
 and recomputes everything itself.
 
-Two things cross the boundary and nothing else: code (`git push` → `ALTER GIT
-REPOSITORY … FETCH`) and the curated inputs the pipeline cannot derive
-(`scripts/deploy/sync_to_snowflake.py`, defaulting to `snowflake_sync.CURATED_TABLES`).
+Since 22.11.2026 only code crosses the boundary: the curated inputs ship in the
+LIIGA_DAILY code bundle (`data/` from git) and `src/liiga/curated.py` loads them and
+rebuilds roster/player rates in Snowflake only when the roster inputs change; news
+tables come from `recompute.yml` (`scripts/news/publish_news.py`). The default
+`sync_all()` is a no-op; `sync_to_snowflake.py` with explicit tables is for recovery only.
 Pushing local copies of derived tables over the top would replace Snowflake's
 own results with the Mac's, which defeats the point.
 

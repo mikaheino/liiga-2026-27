@@ -284,6 +284,14 @@ def sync_all(tables: list[str] | None = None, *, strict: bool = False,
     quiet=True drops the per-table lines but still reports the outcome --
     a silent publish is indistinguishable from no publish at all.
     """
+    if tables is None:
+        # 22.11.2026: Snowflake lataa kuratoidut taulut itse gitistä (liiga.curated, LIIGA_DAILY_RUN) ja
+        # uutistaulut tulevat GitHubista (recompute.yml), joten oletussynkka ei enää tee mitään. Omistaja
+        # on LIIGA_ADMIN; LIIGA_LOADERin CREATE OR REPLACE kaatuisi. Erikseen nimetyt taulut (palautus)
+        # toimivat yhä: sync_all(tables=[...]) tai scripts/deploy/sync_to_snowflake.py.
+        if not quiet:
+            print("snowflake sync: ei tarpeen (Snowflake lataa kuratoidut taulut itse, 22.11.2026)")
+        return {}
     c = _cfg()
     if not c["enabled"]:
         if not quiet:

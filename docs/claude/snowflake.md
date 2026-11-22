@@ -28,8 +28,14 @@ OLD_ACCOUNT_STOP 0,00 krediittiä (ainoa käynnissä oleva taski on Snowflaken o
 | 05:00 | `liiga-daily` | sensori (ottelu pelattu > 8 h sitten ja hakematta) -> `EXECUTE TASK LIIGA.CODE.LIIGA_DAILY_RUN` (LIIGA_WH): tulokset, vahvuudet, ennuste |
 | 07–23, 2 h välein | `liiga-daily-varmistus` | sama sensori; ajaa uudelleen vain jos ottelu yhä hakematta (pelipäivän jälkeen tai 05:00-ajo kaatui) |
 | 06:00 / 06:30 | `liiga-taskivirhe` / `liiga-rosteri` | LLM-diagnoosi epäonnistuneista taskeista / rosterijono (ihminen hyväksyy) |
-| 08:30 | `liiga-paivitys` (Mac) | `daily_update.sh` + synkka `LIIGA_SYNC`: rosterit, player_rates, uutissignaalit (vain Macin tuottamat taulut) |
+| ~~08:30~~ | ~~`liiga-paivitys` (Mac)~~ | pois päältä 22.11.2026: kuratoidut taulut ja pelaajamalli `LIIGA_DAILY_RUN`issa (`src/liiga/curated.py`), uutistaulut `recompute.yml`:stä (`publish_news.py`). Mac tarvitaan vain `liiga-rosteri`in |
 | 30 min välein | `liiga-otteluvahti` | ajaa vain ottelun aikana |
+
+**Ei Macia (22.11.2026).** `LIIGA_DAILY_RUN` lataa bundlen `data/`-tiedostoista (gitistä) kuratoidut taulut
+ja laskee rosterin ja pelaajamallin uudelleen vain, kun rosterin syötteet muuttuvat (sormenjälki
+`LIIGA.CODE.PIPELINE_STATE`); muuten ennusteen luvut pysyvät samoina. Vertailu ilman kirjoituksia:
+`EXECUTE CODE BUNDLE LIIGA.CODE.LIIGA_DAILY_BUNDLE ENTRYPOINT = 'rates_check.py'`. Taulujen omistaja LIIGA_ADMIN.
+Rosterimuutos Snowflakeen = rosterityön commit mainiin -> deploy-bundle.yml -> seuraava päivän ajo.
 
 Ajastukset harvennettu 22.11.2026 (ennen 5–60 min välein). Politiikka: `control_plane/policies/snowflake/liiga.toml`
 ja `platform.toml`. Sovellus tarkistaa `PREDICTION_META`n 10 min välein. Minimipalvelut: `CP_TICK` (serverless)
@@ -172,7 +178,7 @@ Yksityiset avaimet ovat `~/.snowflake/keys/` -- **älä koskaan tulosta niitä**
 | yhteys (`~/.snowflake/connections.toml`) | käyttäjä | rooli | käyttö |
 |---|---|---|---|
 | `liiga_ci` (GitHubissa `ci`) | `LIIGA_CI` | `LIIGA_DEPLOYER` | näkymät, semanttiset mallit, agentti, evaluoinnit; agenttitestit (`DATA_AGENT_RUN`) |
-| `liiga_sync` | `LIIGA_SYNC` | `LIIGA_LOADER` | `daily_update.py`:n synkka ja `sync_to_snowflake.py` (config.yaml) |
+| `liiga_sync` | `LIIGA_SYNC` | `LIIGA_LOADER` | vain `sync_to_snowflake.py` (palautus); poistetaan aikaisintaan 29.11.2026, kun ajot ovat olleet viikon puhtaita |
 | `futurice` | `MHEINO` (avainpari) | `ACCOUNTADMIN` / `LIIGA_ADMIN` | ylläpito: roolit, oikeudet, otteluohjelman `raw_games` |
 | `CONTAINER_SERVICES` | `MHEINO` (selain) | `ACCOUNTADMIN` | **vain vanha tili `uqb62234`** (pysäytetty, odottaa purkua) |
 

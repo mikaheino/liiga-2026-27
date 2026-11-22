@@ -59,9 +59,9 @@ def main(sync: bool = True, grace_hours: int = 8) -> None:
           f"crowd weight {res['crowd_weight']:.2f}")
     build_site_main()
 
-    # Publish local (dev) state to Snowflake (prod). Best-effort by design:
-    # strict=False means an expired token or an offline warehouse leaves the
-    # local run -- results, site, DuckDB -- completely intact.
+    # 22.11.2026: ei enää julkaise Snowflakeen (sync_all ilman tauluja ei tee mitään): Snowflake
+    # lataa kuratoidut taulut gitistä ja laskee pelaajamallin itse (liiga.curated). Paikallinen ajo
+    # on nyt pelkkä kehityskopio; control planen liiga-paivitys on pois päältä.
     if sync:
         sync_all(quiet=True)
     _news()

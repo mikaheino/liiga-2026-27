@@ -61,6 +61,8 @@ def main() -> None:
     s = session()
     configure(s)
     from liiga.config import load_config
+    from liiga.curated import sync as sync_curated
+    from liiga.db import get_connection
     from liiga.pipeline import forecast, persist, refresh_results
     from liiga.team_strength import build_team_strength
 
@@ -68,6 +70,9 @@ def main() -> None:
     print(f"season {got['season']}: {got['games_played']}/{got['games_total']} played; news {got.get('news')}")
     if got["detail_failed"]:
         print("FAILED:", got["detail_failed"])
+    # Kuratoidut taulut ja pelaajamalli gitistä (22.11.2026, ennen Macin aamusynkka): ennen
+    # build_team_strengthiä, joka lukee player_rates-taulun. Muuttumattomat syötteet -> ei kirjoituksia.
+    print("kuratoidut:", sync_curated(get_connection()))
     build_team_strength()
     res = forecast(cfg=load_config())
     persist(res)

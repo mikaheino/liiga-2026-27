@@ -26,11 +26,13 @@ NAME = "LIIGA.CODE.LIIGA_DAILY_BUNDLE"
 # Samat kuin notebookin bootstrap-solussa (data/raw jätetään pois: 2800 välimuistitiedostoa).
 DATA = ["crowd_predictions_2026_27.txt", "external_players.csv", "external_raw.txt",
         "external_returnees_raw.txt", "goalies_raw.txt", "league_factors.csv",
-        "rosters_2026_27.csv", "transfers_2026_27.txt"]
+        "rosters_2026_27.csv", "transfers_2026_27.txt",
+        # 22.11.2026: Macin aamusynkan korvaus (liiga.curated lataa nämä Snowflakessa)
+        "coaching_changes.csv", "preseason_player_rates.csv", "roster_impact.csv"]
 
 
 def assemble(out: Path) -> None:
-    for f in ("daily.py", "check.py", "code_bundle.yml"):
+    for f in ("daily.py", "check.py", "rates_check.py", "code_bundle.yml"):
         shutil.copy(BUNDLE / f, out / f)
     shutil.copy(ROOT / "config.yaml", out / "config.yaml")
     shutil.copytree(ROOT / "src/liiga", out / "src/liiga", ignore=shutil.ignore_patterns("__pycache__"))
