@@ -39,6 +39,14 @@ def changed() -> list[str]:
     return out
 
 
+LOCAL_ONLY = ("data/liiga.duckdb", "logs/", "data/roster_requests.csv")
+
+
+def drift_from_main(paths: list[str]) -> list[str]:
+    """Polut, jotka eroavat origin/mainista eivätkä ole rosteritiedostoja (katselmointi B1)."""
+    return sorted(p for p in set(paths) if p and p not in ROSTER_FILES and not p.startswith(LOCAL_ONLY))
+
+
 def branch_name(existing: set[str], today: str) -> str:
     name, n = f"roster/{today}", 1
     while name in existing:
@@ -64,6 +72,14 @@ def main(argv: list[str]) -> int:
     start = git("rev-parse", "--abbrev-ref", "HEAD").strip()
     if start != "main":
         print(f"aja mainista (nyt {start})", file=sys.stderr)
+        return 2
+    # Katselmointi B1: mikään rosteritiedostojen ulkopuolinen ei saa erota origin/mainista (myös commitoimaton
+    # tai jo commitoitu paikallinen muutos, esim. muokattu skripti), muuten ei PR:ää.
+    git("fetch", "-q", "origin", "main")
+    foreign = drift_from_main(git("diff", "--name-only", "origin/main").splitlines()
+                              + git("ls-files", "--others", "--exclude-standard").splitlines())
+    if foreign:
+        print(f"eroaa origin/mainista rosteritiedostojen ulkopuolella, ei PR:ää: {foreign[:20]}", file=sys.stderr)
         return 2
     roster, other = check_files(changed())
     tracked_other = [p for p in other if git("ls-files", "--error-unmatch", p, check=False).strip()]

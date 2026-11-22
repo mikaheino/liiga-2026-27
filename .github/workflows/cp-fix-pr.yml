@@ -121,18 +121,21 @@ jobs:
             "$SNOWFLAKE_ACCOUNT" "$HOME/.snowflake/fixagent.p8" > ~/.snowflake/connections.toml
           chmod 600 ~/.snowflake/connections.toml
       - name: Cortex Code ehdottaa korjausta
-        run: |
-          set -euo pipefail
-          python scripts/ci/cp_worker.py agent "$RUNNER_TEMP/job.json" "$RUNNER_TEMP/summary.md"
-          rm -f ~/.snowflake/fixagent.p8
-          python scripts/dev/quality.py
+        run: python scripts/ci/cp_worker.py agent "$RUNNER_TEMP/job.json" "$RUNNER_TEMP/summary.md"
+      # Katselmointi M2: avain pois ennen kuin agentin kirjoittama koodi (testit) ajetaan, myös agentin epäonnistuessa.
+      - name: Agentin avain pois
+        if: always()
+        run: rm -f ~/.snowflake/fixagent.p8 ~/.snowflake/connections.toml && test ! -e ~/.snowflake/fixagent.p8
+      - name: Laatuportti (ilman avaimia)
+        run: python scripts/dev/quality.py
       - name: Korjaus patchiksi
         id: diff
         if: always()
         run: |
           set -euo pipefail
           git checkout -- .coverage 2>/dev/null || true   # laatuportin sivutuote, ei muutos
-          git add -A && git diff --cached --binary > "$RUNNER_TEMP/fix.patch"
+          env -i PATH=/usr/bin:/bin /usr/bin/git add -A
+          env -i PATH=/usr/bin:/bin /usr/bin/git diff --cached --binary --no-renames > "$RUNNER_TEMP/fix.patch"
           echo "changed=$([ -s "$RUNNER_TEMP/fix.patch" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
           touch "$RUNNER_TEMP/summary.md" "$RUNNER_TEMP/summary.md.tokens"
       - uses: actions/upload-artifact@v4
@@ -173,7 +176,10 @@ jobs:
           git config user.name "liiga-control-plane[bot]"
           git config user.email "control-plane@users.noreply.github.com"
           git checkout -q -b "$B"
-          git apply --index "$RUNNER_TEMP/fix/fix.patch"
+          # Katselmointi M1: tarkistus indeksistä (polut -z --no-renames, tiedostotyypit, numstat vs. otsikot),
+          # absoluuttinen git ja tyhjä ympäristö.
+          env -i PATH=/usr/bin:/bin /usr/bin/git apply --index "$RUNNER_TEMP/fix/fix.patch"
+          python3 scripts/ci/cp_worker.py check-index "$RUNNER_TEMP/fix/fix.patch"
           git commit -q -m "Korjausehdotus control planesta (ajo $RUN)" -m "$(head -c 3000 "$RUNNER_TEMP/fix/summary.md")"
           git push -q "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "refs/heads/$B"
           { echo "Control planen itsekorjaus (ajo $RUN). Cortex Coden ehdotus; CI testaa, ihminen yhdistää."; echo;

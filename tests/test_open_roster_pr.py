@@ -21,3 +21,8 @@ def test_only_roster_files_are_committed():
 def test_no_merge_or_free_refspec_in_source():
     src = Path(r.__file__).read_text(encoding="utf-8")
     assert "merge" not in src.replace("yhdistämistä", "") and '"push", "-q", "-u", "origin", f"refs/heads/{name}"' in src
+
+
+def test_drift_from_main_flags_scripts_not_roster_data():
+    assert r.drift_from_main(["data/transfers_2026_27.txt", "data/liiga.duckdb", "logs/a"]) == []
+    assert r.drift_from_main(["scripts/local/open_roster_pr.py", "data/transfers_2026_27.txt"]) == ["scripts/local/open_roster_pr.py"]

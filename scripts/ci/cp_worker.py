@@ -7,6 +7,7 @@ Control plane (CONTROL_PLANE.CORE) jonottaa ajon suorittimelle github-liiga ja j
                          (safe_job: taski + virhe enintään 1500 sallittua merkkiä); exit 3 = ei ajoa
   agent <job.json> <out.md>          Cortex Code (cortex -p) ehdottaa korjausta työhakemistoon; out.md = PR:n kuvaus
   paths <fix.patch>                  exit 1, jos korjaus koskee muuta kuin src/ tai tests/ (ks. ALLOWED/DENIED)
+  check-index <fix.patch>            git apply --index -jälkeen: indeksin polut, tiedostotyypit ja numstat (M1)
   finish <id> <status> <note-file> [tokens]  kirjaa tuloksen (CALL FINISH); note = PR-osoite tai virhe
 
 Yhteys "ci" (LIIGA_CI avainparilla, .github/actions/snowflake-setup), rooli CP_GITHUB_WORKER: vain CLAIM, FINISH
@@ -82,6 +83,39 @@ def forbidden(paths: list[str]) -> list[str]:
     return [p for p in paths if ".." in p.split("/") or p.startswith(DENIED) or not p.startswith(ALLOWED)]
 
 
+GIT = "/usr/bin/git"
+CLEAN_ENV = {"PATH": "/usr/bin:/bin", "HOME": "/nonexistent", "GIT_CONFIG_NOSYSTEM": "1", "LC_ALL": "C"}
+
+
+def _git(*args: str, cwd: str = ".") -> str:
+    """Absoluuttinen git, tyhjä ympäristö (ei aliaksia, hookeja eikä käyttäjän asetuksia)."""
+    r = subprocess.run([GIT, *args], cwd=cwd, env=CLEAN_ENV, capture_output=True, text=True, check=False)
+    if r.returncode:
+        raise SystemExit(f"git {args[0]}: {r.stderr.strip()[:300]}")
+    return r.stdout
+
+
+def index_problems(patch_file: str, cwd: str = ".") -> list[str]:
+    """Katselmointi M1: tarkista se, mitä indeksiin oikeasti tuli, ei vain patchin otsikoita.
+    - polut: git diff --cached --name-only -z --no-renames (kaikki, myös uudelleennimeämisen molemmat puolet)
+    - tyypit: vain tavalliset tiedostot (100644/100755); symlinkki 120000 ja alimoduuli 160000 hylätään
+    - git apply --numstat ei saa listata yhtään polkua, jota otsikoissa ei ole."""
+    names = [n for n in _git("diff", "--cached", "--name-only", "-z", "--no-renames", cwd=cwd).split("\0") if n]
+    problems = [f"kielletty polku: {p}" for p in forbidden(names)]
+    for line in _git("diff", "--cached", "--raw", "--no-renames", cwd=cwd).splitlines():
+        meta, _, path = line.partition("\t")
+        modes = meta.lstrip(":").split()[:2]
+        if any(m not in ("000000", "100644", "100755") for m in modes):
+            problems.append(f"ei tavallinen tiedosto ({'/'.join(modes)}): {path}")
+    header = set(patch_paths(Path(patch_file).read_text(encoding="utf-8", errors="replace")))
+    numstat = {ln.split("\t", 2)[2] for ln in _git("apply", "--numstat", patch_file, cwd=cwd).splitlines() if ln.count("\t") >= 2}
+    problems += [f"numstat-polku puuttuu otsikoista: {p}" for p in sorted(numstat - header)]
+    problems += [f"indeksin polku puuttuu otsikoista: {p}" for p in sorted(set(names) - header)]
+    if not names:
+        problems.append("tyhjä korjaus")
+    return problems
+
+
 def finish(con, run_id: int, status: str, note: str, tokens: int = 0) -> None:
     con.cursor().execute("CALL CONTROL_PLANE.CORE.FINISH(%s, %s, %s, %s, %s)", (run_id, status, tokens, 0.0, note[:4000]))
 
@@ -137,6 +171,11 @@ def main(argv: list[str]) -> int:
     cmd = argv[0] if argv else ""
     if cmd == "agent":
         return agent(argv[1], argv[2])
+    if cmd == "check-index":
+        bad = index_problems(argv[1])
+        for b in bad:
+            print("KIELLETTY:", b, file=sys.stderr)
+        return 1 if bad else 0
     if cmd == "paths":
         paths = patch_paths(Path(argv[1]).read_text(encoding="utf-8", errors="replace"))
         bad = forbidden(paths)
