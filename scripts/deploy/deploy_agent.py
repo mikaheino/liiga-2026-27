@@ -163,7 +163,10 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
         # (oikeellisuus 0,95, työkalu 1,00, suomi 0,97, johdonmukaisuus 0,91; docs/agent_evals.md).
         # LIIGA_AGENT_MODEL vaihtaa mallin kokeilua varten.
         "models": {"orchestration": os.environ.get("LIIGA_AGENT_MODEL", "claude-sonnet-5-5")},
-        "orchestration": {"budget": {"seconds": 300, "tokens": 20000}},
+        # Analytical search (22.11.2026): laskenta ja trendit otsikoiden yli (AI_FILTER/AI_EXTRACT/AI_AGG + SQL);
+        # tavalliset kysymykset pysyvät tavallisella haulla. Silmukka kestää 2-6 min, siksi 600 s.
+        "orchestration": {"budget": {"seconds": 600, "tokens": 20000},
+                          "capabilities": {"analytical_search": True}},
         "instructions": {
             "orchestration": orch,
             "response": RESPONSE + app_note(app_url(dev)),
@@ -213,7 +216,26 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
             "liiga_tieto": {"search_service": f"LIIGA.MODEL.LIIGA_TIETO{ksfx}", "max_results": 6,
                             "title_column": "SECTION", "id_column": "ID"},
             "liiga_media": {"search_service": "LIIGA.MEDIA.LIIGA_MEDIA_SEARCH", "max_results": 8,
-                            "title_column": "TITLE", "id_column": "URL"},
+                            "title_column": "TITLE", "id_column": "URL",
+                            "columns_and_descriptions": {
+                                "SEARCH_TEXT": {"description": "Headline plus the teams, players, coaches and event type, in Finnish. Search here.",
+                                                "type": "string", "searchable": True, "filterable": False},
+                                "TITLE": {"description": "Finnish news headline, e.g. 'SM-liigassa mätkäistiin kolme pelikieltoa'.",
+                                          "type": "string", "searchable": True, "filterable": False},
+                                "SOURCE": {"description": "Publisher. Values: Ilta-Sanomat, Iltalehti, MTV Uutiset.",
+                                           "type": "string", "searchable": False, "filterable": True},
+                                "TEAMS": {"description": "Liiga teams named in the headline, comma-separated exact names (e.g. 'Tappara', 'HIFK, KalPa'); empty when none.",
+                                          "type": "string", "searchable": False, "filterable": True},
+                                "EVENT_TYPE": {"description": "What happened. Values: suspension, injury, transfer, coaching, game result, crisis, off-ice, other.",
+                                               "type": "string", "searchable": False, "filterable": True},
+                                "PUBLISHED": {"description": "Publication time 'YYYY-MM-DD HH24:MI' (UTC); use for date ranges and trends.",
+                                              "type": "string", "searchable": False, "filterable": False},
+                                "PLAYERS": {"description": "Players named in the headline, comma-separated full names; often empty.",
+                                            "type": "string", "searchable": True, "filterable": False},
+                                "COACHES": {"description": "Coaches or sports directors named, comma-separated full names (e.g. 'Fredrik Norrena').",
+                                            "type": "string", "searchable": True, "filterable": False},
+                                "URL": {"description": "Link to the article; always cite it.",
+                                        "type": "string", "searchable": False, "filterable": False}}},
             "code_execution": {},
         },
         "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{sha}/{k}"}}

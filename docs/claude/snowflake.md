@@ -48,6 +48,8 @@ avoinna oleva CP_DEMO-sovellus (pollaa) -- sammuta demojen välillä.
   korjataan nimet, jotka ovat valmentajia muualla tai `COACHING_CHANGES`issa. Haku `LIIGA_MEDIA_SEARCH`
   (TARGET_LAG 1 day) on agentin työkalu `liiga_media`. Control plane `liiga-media-ontologia` 04:45, sensori =
   poimimattomat otsikot (0 -> ei tekoälykulua). Ontologiakäsite `MediaEvent` (`control_plane/catalog/liiga.toml`).
+  Agentilla **analytical search** päällä (22.11.2026, `orchestration.capabilities`): laskenta- ja trendikysymykset
+  otsikoiden yli (AI_FILTER/AI_EXTRACT/AI_AGG + SQL, 2-6 min, lisäkulu vain silloin); budjetti 600 s.
   Rajoite: otsikoissa on harvoin nimiä; pelaajia vain muutamassa ja rosteriin täsmää harva.
   Keräys `LIIGA.MEDIA.COLLECT_MEDIA()` (oma verkkosääntö `LIIGA_MEDIA_RULE`), control plane `liiga-mediat` kerran yössä 04:30.
   Jatkoaika puuttuu: sivu renderöidään JavaScriptillä eikä syötettä ole.
