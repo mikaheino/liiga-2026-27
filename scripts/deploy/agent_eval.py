@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import tempfile
 import time
@@ -241,10 +242,25 @@ def _sql(q: str, json_out: bool = False):
     return _snow("sql", "-q", q, json_out=json_out)
 
 
+# Uutistarkistus (22.11.2026): kun kysymys nimeää joukkueen tai pelaajan, agentin ohje vaatii päätyökalun
+# lisäksi yhden liiga_media-kutsun, joten odotetut kutsut ovat [päätyökalu, liiga_media]. Tunnistus nimen
+# vartalolla (taivutusmuodot: Tapparan, KooKoon, HIFK:n). Pelaajat: testijoukon nimetyt pelaajat.
+NAMED = re.compile(r"\b(HIFK|HPK|Ilve|Jokeri|JYP|Jukuri|KalPa|Kärp|KooKoo|K-Espoo|Lukko|Lukon|Pelicans|SaiPa|"
+                   r"Sport|Tappara|TPS|Ässi|Ässät|Mäkiaho)")
+
+
+def expected_tools(q: str, tool: str | None) -> list[str]:
+    if not tool:
+        return []
+    return [tool, N] if tool != N and NAMED.search(q) else [tool]
+
+
 def build_dataset(run: str) -> str:
     rows = []
     for q, tool, gt in GOLDEN:
-        inv = f"ARRAY_CONSTRUCT(OBJECT_CONSTRUCT('tool_name', '{tool}'))" if tool else "ARRAY_CONSTRUCT()"
+        tools = expected_tools(q, tool)
+        inv = ("ARRAY_CONSTRUCT(" + ", ".join(f"OBJECT_CONSTRUCT('tool_name', '{t}')" for t in tools) + ")"
+               if tools else "ARRAY_CONSTRUCT()")
         rows.append(f"SELECT '{q.replace(chr(39), chr(39)*2)}' AS input_query, "
                     f"TO_VARIANT(OBJECT_CONSTRUCT('ground_truth_output', {gt}, "
                     f"'ground_truth_invocations', {inv})) AS ground_truth")
