@@ -1,0 +1,119 @@
+# Control planen korjaus-PR:t (23.11.2026, G4). Control plane jonottaa ajon (workflow liiga-korjaus-pr, suoritin
+# github-liiga), kun itsekorjaus luokittelee virheen koodilla korjattavaksi. Tämä työ ottaa ajon, antaa Cortex Coden
+# ehdottaa korjausta omaan haaraan, ajaa laatuportin ja avaa PR:n. CI testaa PR:n. EI KOSKAAN YHDISTÄ: ihminen yhdistää.
+#
+# Käynnistys: 3 h välein tarkistus (LIST jonon stageen: pilvipalvelukerros, ei varastoa, ~20 s Actions-aikaa),
+# käsin (workflow_dispatch) tai heti Snowflakesta (repository_dispatch cp-fix-pr; vaatii tokenin, ks. alla).
+#
+# PR:n avaaminen vaatii JOMMANKUMMAN (kumpaakaan ei ole vielä, 23.11.2026):
+#   a) salaisuus CP_FIX_PR_TOKEN: fine-grained PAT vain tähän repoon, oikeudet Contents RW + Pull requests RW.
+#      Suositus: tokenilla avattu PR käynnistää CI:n (github.tokenilla avattu ei käynnistä).
+#   b) Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests" (github.token).
+# Ilman kumpaakaan haara työnnetään silti ja ajon tulokseen kirjataan haaran nimi ja syy.
+name: cp-fix-pr
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # 8 tarkistusta päivässä; kiireelliset heti repository_dispatchilla
+  workflow_dispatch:
+  repository_dispatch:
+    types: [cp-fix-pr]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: cp-fix-pr
+  cancel-in-progress: false
+
+env:
+  LIIGA_SNOW_CONNECTION: ci
+  LIIGA_SNOW_ROLE: CP_GITHUB_WORKER
+  LIIGA_SNOW_WAREHOUSE: CP_WH
+  SNOWFLAKE_ACCOUNT: FUTURICEPARTNER-FUTURICEPARTNER
+  SNOWFLAKE_USER: LIIGA_CI
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: ./.github/actions/snowflake-setup
+        with:
+          private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      - name: Onko jonossa korjauksia
+        id: check
+        run: |
+          set -euo pipefail
+          echo "state=$(python scripts/ci/cp_worker.py check)" >> "$GITHUB_OUTPUT"
+      - name: Ota ajo
+        id: claim
+        if: steps.check.outputs.state == 'pending' || github.event_name != 'schedule'
+        run: |
+          set -uo pipefail
+          python scripts/ci/cp_worker.py claim "$RUNNER_TEMP/job.json"; rc=$?
+          if [ $rc -eq 3 ]; then echo "run=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          [ $rc -eq 0 ] || exit $rc
+          echo "run=$(jq -r .id "$RUNNER_TEMP/job.json")" >> "$GITHUB_OUTPUT"
+      - name: Cortex Code ehdottaa korjausta
+        id: agent
+        if: steps.claim.outputs.run != ''
+        run: |
+          set -euo pipefail
+          curl -LsS https://ai.snowflake.com/static/cc-scripts/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          git checkout -b "cp-fix/run-${{ steps.claim.outputs.run }}"
+          python scripts/ci/cp_worker.py agent "$RUNNER_TEMP/job.json" "$RUNNER_TEMP/summary.md"
+          python scripts/dev/quality.py
+          git status --porcelain | tee "$RUNNER_TEMP/changes.txt"
+          echo "changed=$([ -s "$RUNNER_TEMP/changes.txt" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+      - name: Haara ja PR (ei yhdistetä)
+        id: pr
+        if: steps.agent.outputs.changed == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.CP_FIX_PR_TOKEN || github.token }}
+          HAS_PAT: ${{ secrets.CP_FIX_PR_TOKEN != '' }}
+          RUN: ${{ steps.claim.outputs.run }}
+        run: |
+          set -euo pipefail
+          git config user.name "liiga-control-plane[bot]"
+          git config user.email "control-plane@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Korjausehdotus control planesta (ajo $RUN)" -m "$(head -c 3000 "$RUNNER_TEMP/summary.md")"
+          if [ "$HAS_PAT" = "true" ]; then
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          fi
+          git push -q -u origin "cp-fix/run-$RUN"
+          { echo "Control planen itsekorjaus (ajo $RUN). Cortex Coden ehdotus; CI testaa, ihminen yhdistää."; echo;
+            cat "$RUNNER_TEMP/summary.md"; } > "$RUNNER_TEMP/body.md"
+          if url=$(gh pr create --base main --head "cp-fix/run-$RUN" --title "Korjausehdotus: control planen ajo $RUN" \
+                     --body-file "$RUNNER_TEMP/body.md" 2>"$RUNNER_TEMP/pr.err"); then
+            echo "$url" > "$RUNNER_TEMP/note.txt"
+          else
+            { echo "haara cp-fix/run-$RUN työnnetty, PR:n avaus estyi (lisää CP_FIX_PR_TOKEN):"; cat "$RUNNER_TEMP/pr.err"; } > "$RUNNER_TEMP/note.txt"
+          fi
+          cat "$RUNNER_TEMP/note.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Tulos control planeen
+        if: always() && steps.claim.outputs.run != ''
+        env:
+          RUN: ${{ steps.claim.outputs.run }}
+        run: |
+          set -uo pipefail
+          tokens=$(cat "$RUNNER_TEMP/summary.md.tokens" 2>/dev/null || echo 0)
+          if [ "${{ steps.agent.outcome }}" != "success" ]; then
+            { echo "agentti tai laatuportti epäonnistui"; tail -c 1500 "$RUNNER_TEMP/summary.md" 2>/dev/null; } > "$RUNNER_TEMP/note.txt"
+            python scripts/ci/cp_worker.py finish "$RUN" failed "$RUNNER_TEMP/note.txt" "$tokens"
+          elif [ "${{ steps.agent.outputs.changed }}" != "yes" ]; then
+            { echo "ei muutosehdotusta (diagnoosi):"; head -c 3000 "$RUNNER_TEMP/summary.md"; } > "$RUNNER_TEMP/note.txt"
+            python scripts/ci/cp_worker.py finish "$RUN" done "$RUNNER_TEMP/note.txt" "$tokens"
+          else
+            python scripts/ci/cp_worker.py finish "$RUN" "${{ steps.pr.outcome == 'success' && 'done' || 'failed' }}" "$RUNNER_TEMP/note.txt" "$tokens"
+          fi
