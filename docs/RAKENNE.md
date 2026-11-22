@@ -15,7 +15,8 @@ Snowflake-vastine.
 | `_account/cowork/SNOWFLAKE_INTELLIGENCE_OBJECT_DEFAULT.sql` | CoWork-agenttilista | ACCOUNTADMIN käsin |
 | `LIIGA/CODE/network_rules/LIIGA_FI_RULE.sql` | `LIIGA.CODE.LIIGA_FI_RULE` | ACCOUNTADMIN käsin |
 | `LIIGA/CODE/notebooks/LIIGA_DAILY/` | notebook `LIIGA.CODE.LIIGA_DAILY` | `CREATE OR REPLACE NOTEBOOK ... FROM` git-reposta (docs/snowflake_architecture.md) |
-| `LIIGA/CODE/tasks/<TASKI>.sql` | `LIIGA_CHECK`, `LIIGA_DAILY_RUN` | Python-konnektorilla (`tasks/README.md`) |
+| `LIIGA/CODE/tasks/<TASKI>.sql` | `LIIGA_DAILY_RUN` (ajastus control planessa) | Python-konnektorilla (`tasks/README.md`) |
+| `LIIGA/CODE/tables/PIPELINE_SETTINGS.sql` | `LIIGA.CODE.PIPELINE_SETTINGS` | LIIGA_ADMIN käsin |
 | `LIIGA/CODE/application_services/LIIGA_ENNUSTE/` (Next.js, `app.yml`) | App Runtime -sovellus `LIIGA_ENNUSTE_DEV` / `_STAGING` / `LIIGA_ENNUSTE` | `snow app deploy --target dev` (oma kone), CI: staging -> prod `--promote-only` |
 | `LIIGA/CODE/stages/AGENT_SKILLS/<skill>/` | `@LIIGA.CODE.AGENT_SKILLS/<sha>/<skill>/` | `deploy_agent.py` (CI) |
 | `LIIGA/MODEL/views/<NÄKYMÄ>.sql` + `_order.txt` | `LIIGA.MODEL.V_*` | `deploy_views.py` (CI) |
@@ -72,7 +73,7 @@ muutu koskaan; DEV-versiot ovat `_DEV`.
 
 | sijainti | mitä |
 |---|---|
-| `~/.snowflake/connections.toml` | yhteydet `liiga_ci` (julkaisu), `liiga_sync` (synkka), `CONTAINER_SERVICES` (ylläpito, selain) |
+| `~/.snowflake/connections.toml` | yhteydet `liiga_ci` (julkaisu), `liiga_sync` (synkka), `futurice` (ylläpito, avainpari), `CONTAINER_SERVICES` (vain vanha tili) |
 | `~/.snowflake/keys/*.p8` | palvelukäyttäjien yksityiset avaimet -- **ei koskaan repoon eikä tulosteisiin** |
 | `~/Library/LaunchAgents/com.liiga.daily-update.plist` | asennettu kopio `scripts/local/com.liiga.daily-update.plist`:stä |
 | `.venv/` | Python-ympäristö (`pip install -e .`) |

@@ -17,7 +17,7 @@ first; this file is the record of how it got there.
 
 ## Phase 1 as built
 
-Account `uqb62234`, connection profile `CONTAINER_SERVICES`.
+Account `uqb62234`, connection profile `CONTAINER_SERVICES` (historical; since 2026-11-21 `FUTURICEPARTNER`, connection `futurice`).
 
 | Object | Purpose |
 |---|---|

@@ -125,14 +125,13 @@ Or walk through the stages:
 
 **DuckDB is development, Snowflake is production**, and they are two independent
 runs of the same code rather than a copy of one another. The Mac computes into
-`data/liiga.duckdb`; Snowflake account `uqb62234` recomputes everything from
-liiga.fi itself through the notebook `LIIGA.CODE.LIIGA_DAILY`, driven by a git
-mirror of this repository. Only two things cross over: the code, via `git push`,
+`data/liiga.duckdb`; Snowflake account `FUTURICEPARTNER` (since 2026-11-21) recomputes everything from
+liiga.fi itself through the code bundle `LIIGA.CODE.LIIGA_DAILY_BUNDLE`. Only two things cross over: the code, via `git push`,
 and the curated inputs the pipeline cannot derive, via
 `scripts/deploy/sync_to_snowflake.py`.
 
-Nothing is scheduled in Snowflake yet — the notebook is run on demand until the
-model has been checked against real in-season results.
+The control plane runs it every morning at 05:00 Helsinki time (`liiga-daily`), with
+re-checks on game days; see `docs/claude/snowflake.md`.
 
 `docs/snowflake_architecture.md` has the full picture, including the portability
 traps that cost real debugging.

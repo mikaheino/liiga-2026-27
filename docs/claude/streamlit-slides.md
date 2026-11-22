@@ -20,7 +20,7 @@ identical numbers (Tappara 43%, JYP σ 3.8).
 ```bash
 streamlit run streamlit_app/streamlit_app.py          # local
 cd streamlit_app && snow streamlit deploy --replace \
-  -c CONTAINER_SERVICES --role ACCOUNTADMIN --warehouse LIIGA_WH \
+  -c futurice --role LIIGA_ADMIN --warehouse LIIGA_WH \
   --database LIIGA --schema CODE                      # Snowflake
 ```
 

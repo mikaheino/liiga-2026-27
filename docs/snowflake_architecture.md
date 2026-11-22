@@ -4,7 +4,7 @@ How the 2026-27 prediction runs in Snowflake, end to end. Companion to
 `docs/snowflake_ml_migration.md`, which records *why* each step was taken;
 this one records *what is wired to what*.
 
-Account `uqb62234`, database `LIIGA`, warehouse `LIIGA_WH` (X-Small,
+Account `FUTURICEPARTNER` (until 2026-11-21 `uqb62234`), database `LIIGA`, warehouse `LIIGA_WH` (X-Small,
 auto-suspend 60s).
 
 ```mermaid
@@ -149,6 +149,8 @@ only version worth scoring a played game against.
    and `ALTER SESSION SET SEARCH_PATH`.
 3. **Run** — `refresh_results()` → `build_team_strength()` → `forecast()` →
    `persist()`.
+
+**Update 2026-11-21:** scheduled by the control plane (`liiga-daily`, 05:00), see `docs/claude/snowflake.md`. Original text:
 
 **Nothing is scheduled.** Zero tasks exist in `LIIGA`. A `TASK` calling
 `EXECUTE NOTEBOOK` is all that is missing, and it waits until the model has

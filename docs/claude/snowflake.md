@@ -13,17 +13,43 @@ Ei siirretty: vanhat `<sha>`-versiot, `_DEV`-objektit, notebook ja `LIIGA_REPO`,
 (ei taskeja, hakuja, pooleja eikä automaattisesti heräävää warehousea; kulukatto OLD_ACCOUNT_STOP) ja odottaa purkua.
 Sovellus: https://iqazf-futuricepartner-futuricepartner.snowflakecomputing.app (STAGING `eqazf-...`).
 
+**Todennettu 22.11.2026:** vanhalla tilillä kaikki taskit, warehouset, 5 sovelluspalvelua ja poolit SUSPENDED,
+OLD_ACCOUNT_STOP 0,00 krediittiä (ainoa käynnissä oleva taski on Snowflaken oma `SNOWFLAKE.MODELS.CORTEX_BASE_MODELS_REFRESH_TASK`).
+⚠️ Siirrosta puuttui **`LIIGA.CODE.PIPELINE_SETTINGS`** (luotu aikanaan käsin, ei DDL:ää repossa), joten
+`LIIGA_DAILY_RUN` kaatui 21.–22.11. ja Snowflake jäi paikallisesta jälkeen (194 vs 200 ottelua). DDL nyt
+`snowflake/LIIGA/CODE/tables/PIPELINE_SETTINGS.sql`; siirron jälkeen tarkista aina `LIIGA_DAILY_RUN`in ensimmäinen ajo.
+
+### Miten data päivittyy (FUTURICEPARTNER)
+
+| klo (Helsinki) | mikä | tekee |
+|---|---|---|
+| 04:00 | `cp-syke` | alustan tila (jono, hyväksynnät, virheet) |
+| 04:30 | `liiga-mediat` | `LIIGA.MEDIA.COLLECT_MEDIA()` |
+| 05:00 | `liiga-daily` | sensori (ottelu pelattu > 8 h sitten ja hakematta) -> `EXECUTE TASK LIIGA.CODE.LIIGA_DAILY_RUN` (LIIGA_WH): tulokset, vahvuudet, ennuste |
+| 07–23, 2 h välein | `liiga-daily-varmistus` | sama sensori; ajaa uudelleen vain jos ottelu yhä hakematta (pelipäivän jälkeen tai 05:00-ajo kaatui) |
+| 06:00 / 06:30 | `liiga-taskivirhe` / `liiga-rosteri` | LLM-diagnoosi epäonnistuneista taskeista / rosterijono (ihminen hyväksyy) |
+| 08:30 | `liiga-paivitys` (Mac) | `daily_update.sh` + synkka `LIIGA_SYNC`: rosterit, player_rates, uutissignaalit (vain Macin tuottamat taulut) |
+| 30 min välein | `liiga-otteluvahti` | ajaa vain ottelun aikana |
+
+Ajastukset harvennettu 22.11.2026 (ennen 5–60 min välein). Politiikka: `control_plane/policies/snowflake/liiga.toml`
+ja `platform.toml`. Sovellus tarkistaa `PREDICTION_META`n 10 min välein. Minimipalvelut: `CP_TICK` (serverless)
+ja yllä olevat ajastukset; sovellukset sammuvat itse (auto-suspend) ja heräävät avattaessa, demoa varten
+`ALTER APPLICATION SERVICE LIIGA.APP.LIIGA_ENNUSTE RESUME` ~5 min etukäteen. Suurin CP_WH-kuluttaja on
+avoinna oleva CP_DEMO-sovellus (pollaa) -- sammuta demojen välillä.
+
 ## Muut mediat ja mobiilisovellus (21.11.2026)
 
 - `LIIGA.MEDIA.MEDIA_LINKS`: Ilta-Sanomien, Iltalehden ja MTV:n Liiga-otsikot ja linkit, sovelluksen Mediat-sivu.
   **EI TEKOÄLYLLE**: julkaisijat kieltävät AI-käytön robots.txt:ssä. Vain otsikko ja linkki, ei tekstiä;
   skeema vain LIIGA_APPille, ei agentti-, malli- eikä uutissignaalipolkuihin (`lib/media.ts` vain Mediat-sivulle).
-  Keräys `LIIGA.MEDIA.COLLECT_MEDIA()` (oma verkkosääntö `LIIGA_MEDIA_RULE`), control plane `liiga-mediat` 6 h välein.
+  Keräys `LIIGA.MEDIA.COLLECT_MEDIA()` (oma verkkosääntö `LIIGA_MEDIA_RULE`), control plane `liiga-mediat` kerran yössä 04:30.
   Jatkoaika puuttuu: sivu renderöidään JavaScriptillä eikä syötettä ole.
 - Mobiili vähin krediitein: `public/sw.js` (välimuisti heräämisen ajaksi), `WakeBanner`, sammutus 900 s,
   aikaleiman tarkistus 10 min välein.
 
 ## Snowflake (migration phase 1 done, 2026-08-30)
+
+> Historiaa: tili `uqb62234` on 21.11.2026 alkaen FUTURICEPARTNER (ks. yllä). Mekaniikka pätee yhä.
 
 All 21 DuckDB tables now also live in Snowflake account `uqb62234`:
 `LIIGA.RAW` (source) and `LIIGA.MODEL` (derived), warehouse `LIIGA_WH`.
@@ -60,6 +86,9 @@ The site stays local-only regardless — the never-publish policy above is
 unaffected by the Snowflake work.
 
 ## Snowflake ajastaa itse itsensä (2026-09-09)
+
+> Historiaa: 21.11.2026 alkaen ajastus on control planessa ja `LIIGA_CHECK` on poistettu
+> (`snowflake/LIIGA/CODE/tasks/README.md`). Sensorin ehto ja 05:00-lattia pätevät yhä.
 
 Kaksi taskia `LIIGA.CODE`:ssa, DDL repossa: **`snowflake/LIIGA/CODE/tasks/`**.
 
@@ -135,17 +164,18 @@ Yksityiset avaimet ovat `~/.snowflake/keys/` -- **älä koskaan tulosta niitä**
 |---|---|---|---|
 | `liiga_ci` (GitHubissa `ci`) | `LIIGA_CI` | `LIIGA_DEPLOYER` | näkymät, semanttiset mallit, agentti, evaluoinnit; agenttitestit (`DATA_AGENT_RUN`) |
 | `liiga_sync` | `LIIGA_SYNC` | `LIIGA_LOADER` | `daily_update.py`:n synkka ja `sync_to_snowflake.py` (config.yaml) |
-| `CONTAINER_SERVICES` | `MHEINO` (selain) | `ACCOUNTADMIN` | vain ylläpito: roolit, oikeudet, otteluohjelman `raw_games` |
+| `futurice` | `MHEINO` (avainpari) | `ACCOUNTADMIN` / `LIIGA_ADMIN` | ylläpito: roolit, oikeudet, otteluohjelman `raw_games` |
+| `CONTAINER_SERVICES` | `MHEINO` (selain) | `ACCOUNTADMIN` | **vain vanha tili `uqb62234`** (pysäytetty, odottaa purkua) |
 
-**Käytä itse `liiga_ci`:tä kaikkiin projektin kyselyihin**, ei
-`CONTAINER_SERVICES`ia: jokainen MHEINO-kutsu vanhentuneella tokenilla avaa
-käyttäjälle selainikkunan. Rooli-SQL: `snowflake/_account/roles/`,
+**Ylläpitoon `futurice`**, kyselyihin `liiga_ci`. Cortex Codessa älä vaihda aktiivista yhteyttä
+`liiga_ci`:hin kesken session (katkaisee mallitokenit); käytä `futurice`a ja täysiä nimiä.
+`CONTAINER_SERVICES` avaa selainikkunan. Rooli-SQL: `snowflake/_account/roles/`,
 `ci_user.sql`, `loader_user.sql`.
 
 `LIIGA_LOADER` omistaa synkattavat 9 taulua (CREATE OR REPLACE vaatii
 omistajuuden). **Ei `raw_games`ia**: LIIGA_DAILY-notebook (ACCOUNTADMIN) luo sen
 uudelleen, joten otteluohjelman siirto viedään ylläpitäjänä:
-`snow sql -c CONTAINER_SERVICES --role ACCOUNTADMIN` + sync `-t raw_games` sillä
+`snow sql -c futurice --role LIIGA_ADMIN` + sync `-t raw_games` sillä
 yhteydellä (aseta `SNOWFLAKE_CONNECTION`/config tilapäisesti) -- harvinaista.
 
 Synkka löytää `snow`in myös launchdissa (`_SNOW_FALLBACKS`), ja testattu

@@ -102,7 +102,7 @@ ottelukohtaisesta päätepisteestä). 9.10. siirrot jäivät Snowflakesta puuttu
 liiga.fi pitää sen vanhalla päivällä tilassa `ACTIVE_OR_NOT_STARTED` kunnes uusi
 ajankohta julkaistaan, joten `refresh_schedule()` ei löydä muutettavaa. Ennuste on
 silti oikein — ottelu on yhä jäljellä olevissa ja simuloidaan. Sivuvaikutukset:
-paikallinen ajo hakee sen joka aamu (yksi kutsu), ja Snowflaken `LIIGA_CHECK`
+paikallinen ajo hakee sen joka aamu (yksi kutsu), ja control planen `liiga-daily`-sensori
 laskee sen hakemattomaksi, joten `LIIGA_DAILY_RUN` ajaa joka aamu myös
 otteluttomina päivinä. Molemmat loppuvat kun uusi päivä tulee ja
 `refresh_schedule()` siirtää ottelun. Tarkista se kun uusi päivä on julkaistu.
