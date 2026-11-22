@@ -61,13 +61,14 @@ WAREHOUSE = "LIIGA_WH"   # oli DOCKER_WH; projektin oma varasto kustannusten koh
 
 ORCHESTRATION = """Scope: Liiga 2026-27 regular season, as forecast by this project's model and as played so far. Nothing else.
 
-Tool selection -- one tool, one call (the only exception: a morning brief request that lists its own steps):
+Tool selection -- one main tool, one call (exceptions: a morning brief request that lists its own steps, and the news check below):
 - liiga_ennuste: the future (final table, zones, upcoming games and their 1X2, round previews, strengths, player projections, forecast history) and WHY a forecast changed.
 - liiga_kausi: the past and now (table, results, model accuracy, surprises, scoring, goalies, special teams, past seasons of teams AND players).
 - liiga_skenaario: what if (locked results), injuries or absences of named players for any period, and what a team needs (stay up, top 6, top 10, win).
 - liiga_kokoonpanot: today's or tomorrow's published lineups, starting goalies, absences, lineup-corrected 1X2, fair odds and betting questions.
 - liiga_tieto: how the model works, measured findings (backtests, home advantage, xG, 40 minutes, goalies), limitations (what the model cannot know) and data sources. Never answer these from table columns or memory.
-- liiga_media: Finnish media headlines (Ilta-Sanomat, Iltalehti, MTV Uutiset) about teams, players and coaches: suspensions, injuries, transfers, coach pressure, crises. Use for 'mitä uutisissa', 'onko X pelikiellossa', news behind a forecast change. Headlines only: never claim more than the headline says.
+- liiga_media: Liiga news events from Finnish media headlines (Ilta-Sanomat, Iltalehti, MTV Uutiset) and club, Yle and Sport news (headline + lead): suspensions, injuries, transfers, coaching changes, crises. Use as the main tool for 'mitä uutisissa', 'onko X pelikiellossa / loukkaantunut'.
+- News check (22.11.2026): when the question is about a named team, a named player or a named game (forecast, chances, next game, form, why a forecast changed), ALSO call liiga_media once after the main tool, with the team or player name and the words 'loukkaantuminen pelikielto siirto valmentaja' in the query. Use only events from the last 21 days. Skip the check for league-wide tables, model questions (liiga_tieto), betting odds lists and round previews.
 - Two tools only when comparing forecast with outcome, or when a current number needs its meaning from liiga_tieto (e.g. "is the home advantage bigger than the model assumes": liiga_kausi + liiga_tieto). Never use web search.
 
 Workflows:
@@ -86,7 +87,9 @@ Facts: when the question is about the title, the champion or who wins the regula
 
 Round preview: one sentence (number of games; the clearest favourite = the highest win % among the rows), then each OTTELU line in bold followed by the ENNUSTE, TILANNE, MAALIVAHDIT and KESKINAISET lines verbatim (skip empty ones), then at most one upset sentence; SUOSIKKI 'tasainen' = no favourite.
 
-Media answers (liiga_media): at most five headlines, each as a bullet with source, date (D.M.) and the link as a markdown link; one sentence of what they have in common. Say it is based on headlines only.
+Media answers (liiga_media as the main tool): at most five items, each as a bullet with source, date (D.M.) and the link as a markdown link; one sentence of what they have in common. Say it is based on headlines and club/Yle news, not full articles.
+
+News check (team, player or game answers): after the model's numbers, add one line starting "Uutiset:" with at most two relevant events from the last 21 days (who, what, source D.M., markdown link) and one clause on how they qualify the forecast, e.g. that the model does not yet know about a three-game suspension or an injury, so the team may be weaker than the number suggests in those games. Never change, adjust or re-estimate a model number because of news, and never say the news changed the forecast: the forecast is computed from results and rosters only. Offer liiga_skenaario for a named injured or suspended player when the effect matters. No relevant event: omit the line.
 
 Knowledge answers (liiga_tieto): plain Finnish, at most six lines or a short list, numbers as the knowledge base gives them; say when something is a limitation of the model.
 
@@ -197,9 +200,11 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                                "required": ["day"]}}},
             {"tool_spec": {"type": "cortex_search", "name": "liiga_tieto",
                            "description": "WHAT: the project's own knowledge base, in Finnish: how the forecast model works (player rates, age curve, league factors, goaltending, Poisson match model, overtime calibration, Elo, 40/60 blend, crowd signal, simulation), measured findings (backtest accuracy, home advantage test, xG and luck, 40-minute leaders, goalies), limitations and data sources. USE WHEN: 'miten malli toimii', 'miksi malli', 'onko X tilastollisesti merkitsevä', 'mitä malli ei tiedä', 'voiko X laskea / mitata', 'mistä data tulee'. DO NOT USE: for current numbers (other tools)."}},
-            # Muut mediat (22.11.2026, lupa tekoälykäyttöön): vain otsikot ja linkit, LIIGA.MEDIA.MEDIA_EVENTS.
+            # Uutiset (22.11.2026, lupa tekoälykäyttöön): IS/IL/MTV-otsikot ja seurojen, Ylen ja Sportin uutiset
+            # (otsikko + ingressi), LIIGA.MEDIA.MEDIA_EVENTS. Vain haku, ei semanttista näkymää: uutiset ovat tulkinnan
+            # taustaa lähdeviitteineen, eivät lukuja, joita agentti voisi laskea ennusteeseen.
             {"tool_spec": {"type": "cortex_search", "name": "liiga_media",
-                           "description": "WHAT: Finnish media headlines about Liiga from Ilta-Sanomat, Iltalehti and MTV Uutiset, with the teams, players and coaches they mention and an event type (suspension, injury, transfer, coaching, game result, crisis, off-ice, other), publication time and link. Headlines only, no article text; collected nightly. USE WHEN: news, rumours or media coverage of a team, player or coach; whether someone is suspended, injured or under pressure; context for a forecast change. DO NOT USE: for numbers, results or forecasts (other tools)."}},
+                           "description": "WHAT: Liiga news events: Finnish media headlines (Ilta-Sanomat, Iltalehti, MTV Uutiset) and club, Yle and Sport news (headline and lead), each with the Liiga teams, players and coaches it mentions, an event type (suspension, injury, transfer, coaching, game result, crisis, off-ice, other), publication time, source and link. Refreshed every morning. USE WHEN: news, rumours or media coverage of a team, player or coach; whether someone is suspended, injured or under pressure; the news check after a team, player or game forecast; context for a forecast change. DO NOT USE: for numbers, results or forecasts (other tools); news never changes the model's numbers."}},
             # HTML-esikatselu (CoWork document generation) tarvitsee tämän.
             # Oletus permission_policy = always_ask: käyttäjä hyväksyy ajon.
             {"tool_spec": {"type": "code_execution", "name": "code_execution"}},
@@ -218,14 +223,18 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
             "liiga_media": {"search_service": "LIIGA.MEDIA.LIIGA_MEDIA_SEARCH", "max_results": 8,
                             "title_column": "TITLE", "id_column": "URL",
                             "columns_and_descriptions": {
-                                "SEARCH_TEXT": {"description": "Headline plus the teams, players, coaches and event type, in Finnish. Search here.",
+                                "SEARCH_TEXT": {"description": "Headline (and lead for club/Yle/Sport news) plus the teams, players, coaches, event type and date, in Finnish. Search here; put the team or player name in the query.",
                                                 "type": "string", "searchable": True, "filterable": False},
                                 "TITLE": {"description": "Finnish news headline, e.g. 'SM-liigassa mätkäistiin kolme pelikieltoa'.",
                                           "type": "string", "searchable": True, "filterable": False},
-                                "SOURCE": {"description": "Publisher. Values: Ilta-Sanomat, Iltalehti, MTV Uutiset.",
+                                "SUMMARY": {"description": "Lead paragraph of club/Yle/Sport news; empty for media headlines.",
+                                            "type": "string", "searchable": True, "filterable": False},
+                                "SOURCE": {"description": "Publisher: Ilta-Sanomat, Iltalehti, MTV Uutiset, Yle, Sport or a club (HIFK, Lukko, Ilves, ...).",
                                            "type": "string", "searchable": False, "filterable": True},
-                                "TEAMS": {"description": "Liiga teams named in the headline, comma-separated exact names (e.g. 'Tappara', 'HIFK, KalPa'); empty when none.",
-                                          "type": "string", "searchable": False, "filterable": True},
+                                "SOURCE_KIND": {"description": "media = national media headline only; news = club, Yle or Sport item with a lead.",
+                                                "type": "string", "searchable": False, "filterable": True},
+                                "TEAMS": {"description": "Liiga teams the item is about, comma-separated exact names (e.g. 'Tappara', 'HIFK, KalPa'); empty when none. Do not filter on it (items about several teams would be missed): put the team name in the query.",
+                                          "type": "string", "searchable": False, "filterable": False},
                                 "EVENT_TYPE": {"description": "What happened. Values: suspension, injury, transfer, coaching, game result, crisis, off-ice, other.",
                                                "type": "string", "searchable": False, "filterable": True},
                                 "PUBLISHED": {"description": "Publication time 'YYYY-MM-DD HH24:MI' (UTC); use for date ranges and trends.",

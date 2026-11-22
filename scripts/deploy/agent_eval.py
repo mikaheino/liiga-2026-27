@@ -50,6 +50,7 @@ TABLE = f"{DB}.{SCHEMA}.GOLDEN"
 TODAY = "TO_DATE(CONVERT_TIMEZONE('Europe/Helsinki', CURRENT_TIMESTAMP()))"
 M = "LIIGA.MODEL"
 E, K, S, L, T = "liiga_ennuste", "liiga_kausi", "liiga_skenaario", "liiga_kokoonpanot", "liiga_tieto"
+N = "liiga_media"   # uutiset (22.11.2026)
 
 # (kysymys, odotettu työkalu tai None, SQL-lauseke joka palauttaa odotetun vastauksen)
 GOLDEN: list[tuple[str, str | None, str]] = [
@@ -199,6 +200,17 @@ GOLDEN: list[tuple[str, str | None, str]] = [
     ("Voiko maalivahtien torjuntaprosentin laskea tältä kaudelta?", T,
      "'Ei: liiga.fi ei julkaise laukauksia maalivahtikohtaisesti. Kuluvalta kaudelta tiedetään aloitukset "
      "ja päästetyt maalit, ja vertailu tehdään odotettuihin maaleihin.'"),
+    # Uutiset (22.11.2026, G3): uutiset pääkysymyksenä, ja joukkueen ennuste + uutistarkistus (luvut mallista).
+    ("Ketkä Liiga-pelaajat ovat saaneet pelikieltoa viimeisen kahden viikon aikana?", N,
+     """(SELECT 'Uutisten mukaan: ' || COALESCE(LISTAGG(who, ', ') WITHIN GROUP (ORDER BY who), 'ei nimettyjä pelaajia')
+             || '. Lähde ja päivä mainittava.'
+          FROM (SELECT DISTINCT p.value::STRING || ' (' || COALESCE(NULLIF(e.teams, ''), '?') || ')' AS who
+                  FROM LIIGA.MEDIA.MEDIA_EVENTS e, LATERAL FLATTEN(e.players) p
+                 WHERE e.event_type = 'suspension' AND e.published >= DATEADD(day, -14, CURRENT_TIMESTAMP())))"""),
+    ("Millä todennäköisyydellä Lukko pääsee kuuden joukkoon?", E,
+     f"""(SELECT 'Lukko sijoittuu kuuden joukkoon (1.–6.) ' || TO_CHAR(ROUND(p_top6_quarterfinal * 100, 1))
+             || ' %:n todennäköisyydellä. Luku mallista; tuoreet uutiset voidaan mainita taustana, mutta ne eivät muuta lukua.'
+          FROM {M}.V_ZONE_PROBABILITIES WHERE team = 'Lukko')"""),
     ("Tee illan peleistä HTML-sivu", E,
      f"""(SELECT 'Vastaa chatissa ilman HTML-tiedostoa (sivu vain johtoryhmävisualisointina). '
              || IFF(COUNT(*) = 0, 'Tänään ei ole otteluita.', 'Tänään ' || COUNT(*) || ' ottelua.')
