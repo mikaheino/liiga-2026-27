@@ -18,7 +18,7 @@ import pandas as pd
 
 from .config import load_config
 from .crowd import blend_with_model
-from .db import get_connection, query_df, register_df, replace_rows
+from .db import append_snapshot, get_connection, query_df, register_df
 from .elo import _ot_rate_before, elo_game_probs, elo_ratings_current
 from .ensemble import ensemble_game_probs
 from .inseason import poisson_probs, season_played, thaw_ratings
@@ -253,48 +253,30 @@ def forecast(con=None, cfg=None) -> dict:
             "crowd_weight": crowd_weight}
 
 
-def _replace_today(con, table: str, columns: list[str], today: str,
-                   fresh: pd.DataFrame) -> pd.DataFrame:
-    """Existing rows minus today's, plus today's -- idempotent per day."""
-    return replace_rows(con, table, columns, "snapshot_date", [today], fresh)
-
-
 def persist(res: dict, con=None) -> None:
     """Write the forecast to the output tables, on either backend.
 
-    prediction_history is append-with-replace-today rather than DELETE +
-    INSERT: the old version used DuckDB's own register()/execute() API, which
-    does not exist on a Snowpark session. Reading the table, dropping today's
-    rows in pandas and rewriting it is portable and idempotent -- re-running
-    on the same day replaces that day's snapshot instead of duplicating it.
+    Nykytilan taulut (standings, position, meta) korvataan kokonaan. Historiataulut ovat vain lisääviä
+    (23.11.2026, katselmointi M4): append_snapshot vaihtaa vain tämän päivän rivit, muita päiviä ei kirjoiteta
+    eikä taulua luoda uudelleen, joten aiempia ennusteita ei voi muuttaa jälkikäteen.
     """
     own = con is None
     con = con or get_connection()
+    today = res["today"]
     try:
-        history = _replace_today(con, "prediction_history", HISTORY_COLUMNS,
-                                 res["today"], res["history"])
-        games = _replace_today(con, "prediction_games", GAME_COLUMNS,
-                               res["today"], res["games"])
-
         register_df(con, "standings_2026_27", res["standings"])
         register_df(con, "position_distribution_2026_27", res["position"])
         register_df(con, "prediction_meta", res["meta"])
-        register_df(con, "prediction_history", history)
-        register_df(con, "prediction_games", games)
+        append_snapshot(con, "prediction_history", HISTORY_COLUMNS, "snapshot_date", today, res["history"])
+        append_snapshot(con, "prediction_games", GAME_COLUMNS, "snapshot_date", today, res["games"])
         if "position_history" in res:
-            pos_hist = _replace_today(con, "position_distribution_history",
-                                      POSITION_HISTORY_COLUMNS, res["today"],
-                                      res["position_history"])
-            register_df(con, "position_distribution_history", pos_hist)
+            append_snapshot(con, "position_distribution_history", POSITION_HISTORY_COLUMNS, "snapshot_date",
+                            today, res["position_history"])
         if "line_history" in res:
-            line_hist = _replace_today(con, "line_history", LINE_HISTORY_COLUMNS,
-                                       res["today"], res["line_history"])
-            register_df(con, "line_history", line_hist)
+            append_snapshot(con, "line_history", LINE_HISTORY_COLUMNS, "snapshot_date", today, res["line_history"])
         if "games_challenger" in res:
-            challenger = _replace_today(con, "prediction_games_challenger",
-                                        GAME_COLUMNS, res["today"],
-                                        res["games_challenger"])
-            register_df(con, "prediction_games_challenger", challenger)
+            append_snapshot(con, "prediction_games_challenger", GAME_COLUMNS, "snapshot_date", today,
+                            res["games_challenger"])
     finally:
         if own:
             con.close()

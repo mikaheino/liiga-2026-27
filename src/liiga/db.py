@@ -222,6 +222,56 @@ def replace_rows(con, table: str, columns: list[str], key_col: str,
     return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
 
 
+_SNAPSHOT_KEY = __import__("re").compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+
+
+def append_snapshot(con, table: str, columns: list[str], key_col: str, key: str, fresh: pd.DataFrame) -> None:
+    """Historiataulu vain lisäten (23.11.2026, katselmointi M4): taulua ei koskaan luoda uudelleen eikä muiden
+    päivien rivejä kirjoiteta. Vain tämän ajon oma päivä vaihdetaan (DELETE päivä + INSERT samassa transaktiossa),
+    joten saman päivän uusinta on idempotentti. Puuttuva taulu luodaan kerran register_df:llä."""
+    if not _SNAPSHOT_KEY.match(str(key)):
+        raise ValueError(f"virheellinen päivä: {key!r}")
+    fresh = fresh.reindex(columns=columns)
+    try:
+        query_df(con, f"SELECT 1 AS x FROM {table} LIMIT 0")
+    except Exception:               # noqa: BLE001 -- taulua ei vielä ole
+        register_df(con, table, fresh)
+        return
+    tmp = f"tmp_append_{table}"
+    register_temp(con, tmp, fresh)
+    cols = ", ".join(c.upper() for c in columns)
+    execute(con, "BEGIN")
+    try:
+        execute(con, f"DELETE FROM {table} WHERE {key_col} = '{key}'")
+        execute(con, f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {tmp}")
+        execute(con, "COMMIT")
+    except Exception:
+        execute(con, "ROLLBACK")
+        raise
+
+
+def register_temp(con, name: str, df: pd.DataFrame) -> None:
+    """DataFrame tilapäistauluksi (istunnon ajaksi) samaan skeemaan kuin register_df kirjoittaisi."""
+    out = df.copy()
+    out.columns = [c.upper() for c in out.columns]
+    if isinstance(con, ActiveSession):
+        from .snowflake_sync import RAW_TABLES, _cfg
+
+        cfg = _cfg()
+        schema = cfg["raw_schema"] if name in RAW_TABLES else cfg["model_schema"]
+        con.session.write_pandas(out, name.upper(), auto_create_table=True, overwrite=True,
+                                 table_type="temporary", database=cfg["database"], schema=schema)
+        return
+    if _is_duckdb(con):
+        con.register(f"_df_{name}", out)
+        con.execute(f'CREATE OR REPLACE TEMP TABLE {name} AS SELECT * FROM "_df_{name}"')
+        con.unregister(f"_df_{name}")
+        return
+    from snowflake.connector.pandas_tools import write_pandas
+
+    write_pandas(con, out, name.upper(), auto_create_table=True, overwrite=True, table_type="temporary")
+
+
 def _is_duckdb(con) -> bool:
     # DuckDB's connection class lives in the "_duckdb" module.
     return "duckdb" in con.__class__.__module__

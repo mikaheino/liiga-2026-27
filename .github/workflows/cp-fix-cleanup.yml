@@ -1,0 +1,35 @@
+# Korjaus-PR-haarojen siivous (23.11.2026, katselmointi): cp-fix/*-haarat, joilla ei ole PR:ää ja joiden
+# viimeisin commit on yli 14 päivää vanha, poistetaan kerran viikossa. Haarat, joilla on PR (auki tai suljettu),
+# jäävät ihmisen päätettäviksi.
+name: cp-fix-cleanup
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Poista vanhat cp-fix/*-haarat ilman PR:ää
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '14 days ago' +%s)
+          gh api --paginate "repos/$REPO/git/matching-refs/heads/cp-fix/" -q '.[].ref' | sed 's#refs/heads/##' | while read -r b; do
+            prs=$(gh api "repos/$REPO/pulls?state=all&head=${REPO%%/*}:$b" -q 'length')
+            at=$(gh api "repos/$REPO/commits/$b" -q '.commit.committer.date')
+            if [ "$prs" = "0" ] && [ "$(date -u -d "$at" +%s)" -lt "$cutoff" ]; then
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$b" && echo "poistettu $b ($at)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "säilytetään $b (PR:iä $prs, viimeisin $at)"
+            fi
+          done

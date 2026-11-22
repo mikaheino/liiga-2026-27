@@ -51,6 +51,28 @@ ja yllä olevat ajastukset; sovellukset sammuvat itse (auto-suspend) ja herääv
 `ALTER APPLICATION SERVICE LIIGA.APP.LIIGA_ENNUSTE RESUME` ~5 min etukäteen. Suurin CP_WH-kuluttaja on
 avoinna oleva CP_DEMO-sovellus (pollaa) -- sammuta demojen välillä.
 
+## Ennusteen syötteet siirron jälkeen (M4, tarkistettu 23.11.2026)
+
+Katselmoinnin huoli: 22.11. kuratoitujen taulujen drift-lataus (league_factors, raw_external_player_seasons,
+raw_goalie_seasons gitistä) muutti päivän ennustetta ilman uusia otteluita.
+
+Tarkistus (Macin data/liiga.duckdb vs. LIIGA.MODEL):
+- Macin viimeinen ennuste ennen siirtoa: PREDICTION_META updated_at 2026-11-22T06:32Z, 200 ottelua.
+- Snowflaken ajo drift-latauksen jälkeen: 2026-11-22T16:09Z, 200 ottelua.
+- standings_2026_27 joka sarakkeessa (mean_points, p05/p95, p_title, p_top_playoff, mean_rank, crowd_*): max |Δ| = 0,
+  kaikki 17 joukkuetta. PREDICTION_HISTORY 20.–22.11.: max |Δ| = 0.
+- Syy: ennuste lukee data/goalies_raw.txt, external_players.csv ja league_factors.csv suoraan tiedostoista
+  (goalies.parse_goalie_seasons, external.py, players.py), ei näitä tauluja. Macin työhakemiston data/ = git
+  (viimeisin muutos df05ad0 7.11., ei paikallisia muutoksia). Drift-lataus korjasi vain taulut vastaamaan gittiä.
+- Päätös: syötteitä ei palauteta (git = Macin käyttämä); tämän päivän muutos ennusteeseen = 0.
+
+Suojaukset jatkossa:
+- Historiataulut (prediction_history, prediction_games, position_distribution_history, line_history,
+  prediction_games_challenger) ovat vain lisääviä: db.append_snapshot vaihtaa vain ajon oman päivän rivit
+  (DELETE päivä + INSERT samassa transaktiossa), taulua ei luoda uudelleen.
+- Kun ajo lataa syötteitä (curated.sync: loaded / rebuilt), LIIGA_DAILY_RUN kirjaa joka joukkueen ennen/jälkeen
+  PIPELINE_CHECKSiin (check_name forecast_input_diff, status CHANGED / UNCHANGED, ottelumäärä ennen ja jälkeen).
+
 ## Muut mediat ja mobiilisovellus (21.11.2026)
 
 - `LIIGA.MEDIA.MEDIA_LINKS`: Ilta-Sanomien, Iltalehden ja MTV:n Liiga-otsikot ja linkit, sovelluksen Mediat-sivu.

@@ -62,9 +62,9 @@ def main() -> None:
     s = session()
     configure(s)
     from liiga.config import load_config
-    from liiga.curated import fingerprints
+    from liiga.curated import fingerprints, forecast_diff, inputs_loaded, log_forecast_diff
     from liiga.curated import sync as sync_curated
-    from liiga.db import get_connection
+    from liiga.db import get_connection, query_df
     from liiga.pipeline import forecast, persist, refresh_results
     from liiga.team_strength import build_team_strength
 
@@ -74,9 +74,23 @@ def main() -> None:
         print("FAILED:", got["detail_failed"])
     # Kuratoidut taulut ja pelaajamalli gitistä (22.11.2026, ennen Macin aamusynkka): ennen
     # build_team_strengthiä, joka lukee player_rates-taulun. Muuttumattomat syötteet -> ei kirjoituksia.
-    print("kuratoidut:", sync_curated(get_connection()))
+    # Ennuste ennen ajoa (vertailuun, jos syötteitä ladataan): edellisen ajon nykytilan taulu.
+    try:
+        before = query_df(get_connection(), "SELECT team, mean_points, p_top_playoff, proj_rank FROM standings_2026_27")
+        before.columns = [c.lower() for c in before.columns]
+        games_before = int(query_df(get_connection(), "SELECT games_played FROM prediction_meta").iloc[0, 0])
+    except Exception:                                          # noqa: BLE001 -- ensimmäinen ajo
+        before, games_before = None, 0
+    synced = sync_curated(get_connection())
+    print("kuratoidut:", synced)
     build_team_strength()
     res = forecast(cfg=load_config())
+    # Katselmointi M4: jos syötteitä ladattiin, joukkueittainen ennen/jälkeen PIPELINE_CHECKSiin.
+    loaded = inputs_loaded(synced)
+    if loaded:
+        diff = forecast_diff(before, res["standings"])
+        log_forecast_diff(get_connection(), loaded, diff, games_before, int(res["n_played"]))
+        print("syötteet ladattu", loaded, "suurin pistemuutos", diff["d_points"].abs().max())
     # Mitkä syötetiedostojen versiot ennuste näki (23.11.2026, katselmointi M5): PREDICTION_META.input_fingerprints.
     res["meta"]["input_fingerprints"] = json.dumps(fingerprints(get_connection()), sort_keys=True)
     persist(res)

@@ -140,13 +140,14 @@ def write_state(con, name: str, fp: str, note: str) -> None:
     execute(con, _state_sql(con, name, fp, note))
 
 
-def log_check(con, table: str, rows_new: int, digest: str, rows_current: int, status: str, detail: str) -> None:
+def log_check(con, table: str, rows_new: int, digest: str, rows_current: int, status: str, detail: str,
+              check_name: str = "curated_drift") -> None:
     t = _checks_table(con)
     ts = "TIMESTAMP_LTZ" if isinstance(con, ActiveSession) else "TIMESTAMPTZ"
     execute(con, f"""CREATE TABLE IF NOT EXISTS {t} (checked_at {ts}, check_name VARCHAR, table_name VARCHAR,
         rows_new BIGINT, digest VARCHAR, rows_current BIGINT, status VARCHAR, detail VARCHAR)""")
     detail = detail.replace("'", "")[:2000]
-    execute(con, f"INSERT INTO {t} SELECT CURRENT_TIMESTAMP, 'curated_drift', '{table}', {int(rows_new)}, "
+    execute(con, f"INSERT INTO {t} SELECT CURRENT_TIMESTAMP, '{check_name}', '{table}', {int(rows_new)}, "
                  f"'{digest}', {int(rows_current)}, '{status}', '{detail}'")
 
 
@@ -300,6 +301,38 @@ def _table_action(con, table: str, fp: str, cur: str | None, initialized: bool) 
         return ("adopted", None) if cur is None else ("", None)
     log_check(con, table, len(df), new, n_live, "DRIFT", f"live {live} != git {new}; loading from git")
     return "drift", df
+
+
+def inputs_loaded(out: dict[str, str]) -> list[str]:
+    """sync()-tuloksesta taulut, joiden sisältö kirjoitettiin tällä ajolla (lataus tai pelaajamallin uudelleenlaskenta)."""
+    return sorted(t for t, v in out.items() if str(v).startswith(("loaded", "rebuilt")))
+
+
+def forecast_diff(before: pd.DataFrame | None, after: pd.DataFrame) -> pd.DataFrame:
+    """Joukkueittainen ennusteen muutos (katselmointi M4): pisteet ja pudotuspelitodennäköisyys ennen ja jälkeen."""
+    cols = ["team", "mean_points", "p_top_playoff", "proj_rank"]
+    a = after[cols].copy()
+    if before is None or before.empty:
+        b = a.assign(mean_points=float("nan"), p_top_playoff=float("nan"), proj_rank=float("nan"))
+    else:
+        b = before[[c for c in cols if c in before.columns]].copy()
+    x = b.merge(a, on="team", how="outer", suffixes=("_before", "_after"))
+    x["d_points"] = (x["mean_points_after"] - x["mean_points_before"]).round(3)
+    x["d_playoff_pp"] = ((x["p_top_playoff_after"] - x["p_top_playoff_before"]) * 100).round(2)
+    return x.sort_values("team").reset_index(drop=True)
+
+
+def log_forecast_diff(con, loaded: list[str], diff: pd.DataFrame, games_before: int, games_after: int) -> None:
+    """Syötteen latauksen jälkeen joka joukkueen ennen/jälkeen PIPELINE_CHECKSiin (check_name forecast_input_diff).
+    games_* kertoo, tuliko välissä myös uusia otteluita (silloin muutos ei ole pelkästään syötteistä)."""
+    tag = ",".join(loaded)[:200]
+    for r in diff.itertuples():
+        detail = (f"pisteet {r.mean_points_before:.2f} -> {r.mean_points_after:.2f} ({r.d_points:+.2f}), "
+                  f"pudotuspelit {r.p_top_playoff_before:.4f} -> {r.p_top_playoff_after:.4f} ({r.d_playoff_pp:+.2f} pp), "
+                  f"syötteet: {tag}, ottelut {games_before} -> {games_after}")
+        status = "UNCHANGED" if (abs(r.d_points) < 0.005 and abs(r.d_playoff_pp) < 0.005) else "CHANGED"
+        log_check(con, str(r.team), int(games_after), tag, int(games_before), status, detail,
+                  check_name="forecast_input_diff")
 
 
 def sync(con) -> dict[str, str]:

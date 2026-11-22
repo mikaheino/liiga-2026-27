@@ -1,0 +1,19 @@
+{
+    "window.title": "Liiga 2026–27${separator}${activeEditorShort}",
+    "workbench.colorCustomizations": {
+        "titleBar.activeBackground": "#0C4A6E",
+        "titleBar.activeForeground": "#FFFFFF",
+        "titleBar.inactiveBackground": "#0C4A6EAA",
+        "titleBar.inactiveForeground": "#FFFFFFCC",
+        "titleBar.border": "#0C4A6E",
+        "activityBar.background": "#0C4A6E",
+        "activityBar.foreground": "#FFFFFF",
+        "activityBar.inactiveForeground": "#FFFFFF99",
+        "statusBar.background": "#0C4A6E",
+        "statusBar.foreground": "#FFFFFF",
+        "statusBar.border": "#0C4A6E",
+        "statusBarItem.hoverBackground": "#FFFFFF33",
+        "statusBarItem.remoteBackground": "#0C4A6E",
+        "statusBarItem.remoteForeground": "#FFFFFF"
+    }
+}

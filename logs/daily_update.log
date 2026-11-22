@@ -1,443 +1,3 @@
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
-    conn.connect()
-    ~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
-    self.sock = sock = self._new_conn()
-                       ~~~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
-    raise NameResolutionError(self.host, self, e) from e
-urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
-    main()
-    ~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
-    refresh_results(target)
-    ~~~~~~~~~~~~~~~^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
-    games = fetch_season(target, force=True)
-  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
-    resp = requests.get(
-        _season_url(season),
-        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
-        timeout=cfg["request_timeout_seconds"],
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
-    return request("get", url, params=params, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
-    r = adapter.send(request, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
-    raise ConnectionError(e, request=request)
-requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-=== 2026-07-25 08:39:18 daily update ===
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
-    sock = connection.create_connection(
-        (self._dns_host, self.port),
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
-    conn.connect()
-    ~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
-    self.sock = sock = self._new_conn()
-                       ~~~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
-    raise NameResolutionError(self.host, self, e) from e
-urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
-    main()
-    ~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
-    refresh_results(target)
-    ~~~~~~~~~~~~~~~^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
-    games = fetch_season(target, force=True)
-  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
-    resp = requests.get(
-        _season_url(season),
-        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
-        timeout=cfg["request_timeout_seconds"],
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
-    return request("get", url, params=params, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
-    r = adapter.send(request, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
-    raise ConnectionError(e, request=request)
-requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-=== 2026-07-26 08:44:09 daily update ===
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
-    sock = connection.create_connection(
-        (self._dns_host, self.port),
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
-    conn.connect()
-    ~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
-    self.sock = sock = self._new_conn()
-                       ~~~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
-    raise NameResolutionError(self.host, self, e) from e
-urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
-    main()
-    ~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
-    refresh_results(target)
-    ~~~~~~~~~~~~~~~^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
-    games = fetch_season(target, force=True)
-  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
-    resp = requests.get(
-        _season_url(season),
-        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
-        timeout=cfg["request_timeout_seconds"],
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
-    return request("get", url, params=params, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
-    r = adapter.send(request, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
-    raise ConnectionError(e, request=request)
-requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-=== 2026-07-27 08:37:00 daily update ===
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
-    sock = connection.create_connection(
-        (self._dns_host, self.port),
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
-    conn.connect()
-    ~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
-    self.sock = sock = self._new_conn()
-                       ~~~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
-    raise NameResolutionError(self.host, self, e) from e
-urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
-    main()
-    ~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
-    refresh_results(target)
-    ~~~~~~~~~~~~~~~^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
-    games = fetch_season(target, force=True)
-  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
-    resp = requests.get(
-        _season_url(season),
-        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
-        timeout=cfg["request_timeout_seconds"],
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
-    return request("get", url, params=params, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
-    r = adapter.send(request, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
-    raise ConnectionError(e, request=request)
-requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-=== 2026-07-28 08:30:59 daily update ===
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
-    sock = connection.create_connection(
-        (self._dns_host, self.port),
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
-    conn.connect()
-    ~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
-    self.sock = sock = self._new_conn()
-                       ~~~~~~~~~~~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 211, in _new_conn
-    raise NameResolutionError(self.host, self, e) from e
-urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 842, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 543, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 149, in <module>
-    main()
-    ~~~~^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 88, in main
-    refresh_results(target)
-    ~~~~~~~~~~~~~~~^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/scripts/daily_update.py", line 51, in refresh_results
-    games = fetch_season(target, force=True)
-  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/ingest.py", line 41, in fetch_season
-    resp = requests.get(
-        _season_url(season),
-        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
-        timeout=cfg["request_timeout_seconds"],
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
-    return request("get", url, params=params, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
-    r = adapter.send(request, **kwargs)
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
-    raise ConnectionError(e, request=request)
-requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/games?tournament=runkosarja&season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
-=== 2026-08-03 08:30:03 daily update ===
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 204, in _new_conn
-    sock = connection.create_connection(
-        (self._dns_host, self.port),
-    ...<2 lines>...
-        socket_options=self.socket_options,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 977, in getaddrinfo
-    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
-               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 788, in urlopen
-    response = self._make_request(
-        conn,
-    ...<10 lines>...
-        **response_kw,
-    )
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
-    raise new_e
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
-    self._validate_conn(conn)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
     conn.connect()
     ~~~~~~~~~~~~^^
   File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 759, in connect
@@ -1997,4 +1557,444 @@ updated: 161/544 games played, crowd weight 0.14
 wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
 serve with: python -m http.server 8765 --directory site
 snowflake sync: 11 tables, 5,563 rows published to LIIGA
+=== done ===
+=== 2026-11-07 08:30:37 daily update ===
+news_items: 378 riviä
+news_lineups: 61 riviä
+prediction_games_news: 14 riviä
+news_absences: 8 riviä
+news_candidates: 32 riviä
+news_roster: 567 riviä
+Lenni Hämäläinen (Lukko): 35 ottelua, voitto 61.3% -> 60.8%
+Lukas Wernblom (TPS): 4 ottelua, voitto 48.5% -> 46.2%
+Santeri Virtanen (Lukko): 35 ottelua, voitto 61.3% -> 60.8%
+Lukko: 118.8 -> 118.3 p, top 6 98.4% -> 98.2%
+uutinen: Lukas Wernblom (TPS) 4 ott., voitto 48.5% -> 46.2%, -0.27 p
+poissaoloja 3, muuttuneita otteluita 39 (ennuste 2026-11-07)
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-07): open 55.4%
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 11 tables, 5,563 rows published to LIIGA
+=== done ===
+=== 2026-11-08 08:44:21 daily update ===
+news_items: 382 riviä
+news_lineups: 61 riviä
+prediction_games_news: 14 riviä
+news_absences: 8 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+Lukas Wernblom (TPS): 4 ottelua, voitto 48.5% -> 46.2%
+Santeri Virtanen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+uutinen: Lukas Wernblom (TPS) 4 ott., voitto 48.5% -> 46.2%, -0.27 p
+poissaoloja 3, muuttuneita otteluita 39 (ennuste 2026-11-08)
+news_signals: 26 riviä, news_absence_log: 8 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-08): open 55.4%
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,616 rows published to LIIGA
+=== done ===
+=== 2026-11-09 08:30:05 daily update ===
+news_items: 383 riviä
+news_lineups: 61 riviä
+prediction_games_news: 14 riviä
+news_absences: 8 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+Lukas Wernblom (TPS): 4 ottelua, voitto 48.5% -> 46.2%
+Santeri Virtanen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+poissaoloja 3, muuttuneita otteluita 39 (ennuste 2026-11-09)
+news_signals: 26 riviä, news_absence_log: 8 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-09): open 55.4%
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,616 rows published to LIIGA
+=== done ===
+=== 2026-11-10 08:30:04 daily update ===
+news_items: 397 riviä
+news_lineups: 62 riviä
+prediction_games_news: 14 riviä
+news_absences: 8 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+Lukas Wernblom (TPS): 4 ottelua, voitto 48.5% -> 46.2%
+Santeri Virtanen (Lukko): 35 ottelua, voitto 61.4% -> 61.1%
+poissaoloja 3, muuttuneita otteluita 39 (ennuste 2026-11-10)
+news_signals: 27 riviä, news_absence_log: 8 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 161/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-10): open 55.4%
+updated: 161/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,616 rows published to LIIGA
+=== done ===
+=== 2026-11-11 08:30:00 daily update ===
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py:222: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+news_items: 406 riviä
+news_lineups: 62 riviä
+prediction_games_news: 14 riviä
+news_absences: 9 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 35 ottelua, voitto 61.4% -> 61.2%
+Lukas Wernblom (TPS): 3 ottelua, voitto 48.2% -> 45.9%
+Santeri Virtanen (Lukko): 35 ottelua, voitto 61.4% -> 61.2%
+Jake Leschyshyn (HIFK): 20 ottelua, voitto 52.6% -> 51.2%
+HIFK: 97.5 -> 96.8 p, top 6 29.0% -> 26.0%
+poissaoloja 4, muuttuneita otteluita 57 (ennuste 2026-11-11)
+news_signals: 27 riviä, news_absence_log: 9 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 162/544 played, detail fetched for 1 new game(s)
+kauden kysymys hpk-joulu (2026-11-11): open 55.6%
+updated: 162/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,617 rows published to LIIGA
+=== done ===
+=== 2026-11-12 08:30:05 daily update ===
+news_items: 413 riviä
+news_lineups: 68 riviä
+prediction_games_news: 14 riviä
+news_absences: 9 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Lukas Wernblom (TPS): 3 ottelua, voitto 48.0% -> 45.8%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Jake Leschyshyn (HIFK): 19 ottelua, voitto 50.2% -> 48.9%
+HIFK: 94.1 -> 93.5 p, top 6 19.3% -> 17.2%
+poissaoloja 4, muuttuneita otteluita 55 (ennuste 2026-11-12)
+news_signals: 27 riviä, news_absence_log: 9 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 168/544 played, detail fetched for 6 new game(s)
+kauden kysymys hpk-joulu (2026-11-12): open 60.7%
+updated: 168/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,618 rows published to LIIGA
+=== done ===
+=== 2026-11-13 08:30:03 daily update ===
+news_items: 430 riviä
+news_lineups: 68 riviä
+prediction_games_news: 14 riviä
+news_absences: 9 riviä
+news_candidates: 34 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Lukas Wernblom (TPS): 3 ottelua, voitto 48.0% -> 45.8%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Jake Leschyshyn (HIFK): 19 ottelua, voitto 50.2% -> 48.9%
+HIFK: 94.1 -> 93.5 p, top 6 19.3% -> 17.2%
+poissaoloja 4, muuttuneita otteluita 55 (ennuste 2026-11-13)
+news_signals: 27 riviä, news_absence_log: 9 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 168/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-13): open 60.7%
+updated: 168/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,618 rows published to LIIGA
+=== done ===
+=== 2026-11-14 08:30:02 daily update ===
+news_items: 440 riviä
+news_lineups: 89 riviä
+prediction_games_news: 21 riviä
+news_absences: 10 riviä
+news_candidates: 35 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Lukas Wernblom (TPS): 2 ottelua, voitto 45.6% -> 43.4%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Chris Harpur (Lukko): 3 ottelua, voitto 63.5% -> 63.3%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.4% -> 51.0%
+HIFK: 97.2 -> 96.6 p, top 6 29.5% -> 26.7%
+uutinen: Chris Harpur (Lukko) 3 ott., voitto 63.5% -> 63.5%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 53 (ennuste 2026-11-14)
+news_signals: 27 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 175/544 played, detail fetched for 7 new game(s)
+kauden kysymys hpk-joulu (2026-11-14): open 44.6%
+updated: 175/544 games played, crowd weight 0.14
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,480 rows published to LIIGA
+=== done ===
+=== 2026-11-15 08:30:05 daily update ===
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py:222: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+news_items: 453 riviä
+news_lineups: 114 riviä
+prediction_games_news: 26 riviä
+news_absences: 10 riviä
+news_candidates: 35 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 61.9%
+Lukas Wernblom (TPS): 2 ottelua, voitto 44.8% -> 42.6%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 61.9%
+Chris Harpur (Lukko): 3 ottelua, voitto 63.8% -> 63.6%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.2% -> 50.9%
+HIFK: 97.3 -> 96.7 p, top 6 27.9% -> 25.0%
+uutinen: Chris Harpur (Lukko) 3 ott., voitto 63.8% -> 63.8%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 53 (ennuste 2026-11-15)
+news_signals: 27 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 180/544 played, detail fetched for 5 new game(s)
+kauden kysymys hpk-joulu (2026-11-15): open 51.6%
+updated: 180/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,481 rows published to LIIGA
+=== done ===
+=== 2026-11-16 08:30:04 daily update ===
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py:222: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+news_items: 465 riviä
+news_lineups: 119 riviä
+prediction_games_news: 27 riviä
+news_absences: 10 riviä
+news_candidates: 37 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Lukas Wernblom (TPS): 2 ottelua, voitto 45.3% -> 43.0%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Chris Harpur (Lukko): 3 ottelua, voitto 63.8% -> 63.6%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.2% -> 50.8%
+HIFK: 97.1 -> 96.5 p, top 6 27.6% -> 24.9%
+uutinen: Chris Harpur (Lukko) 3 ott., voitto 63.8% -> 63.8%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 53 (ennuste 2026-11-16)
+news_signals: 28 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 181/544 played, detail fetched for 1 new game(s)
+kauden kysymys hpk-joulu (2026-11-16): open 51.0%
+updated: 181/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,481 rows published to LIIGA
+=== done ===
+=== 2026-11-17 08:30:04 daily update ===
+news_items: 477 riviä
+news_lineups: 119 riviä
+prediction_games_news: 27 riviä
+news_absences: 10 riviä
+news_candidates: 41 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Lukas Wernblom (TPS): 2 ottelua, voitto 45.3% -> 43.0%
+Santeri Virtanen (Lukko): 34 ottelua, voitto 62.2% -> 62.0%
+Chris Harpur (Lukko): 3 ottelua, voitto 63.8% -> 63.6%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.2% -> 50.8%
+HIFK: 97.1 -> 96.5 p, top 6 27.6% -> 24.9%
+uutinen: Chris Harpur (Lukko) 3 ott., voitto 63.8% -> 63.8%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 53 (ennuste 2026-11-17)
+news_signals: 30 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 181/544 played, detail fetched for 0 new game(s)
+kauden kysymys hpk-joulu (2026-11-17): open 51.0%
+updated: 181/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,482 rows published to LIIGA
+=== done ===
+=== 2026-11-18 08:30:02 daily update ===
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 239, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.18/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 983, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 494, in _make_request
+    raise new_e
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 470, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1125, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 827, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 246, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/standings?season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/local/daily_update.py", line 114, in <module>
+    main(sync=not args.no_sync, grace_hours=args.grace)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/scripts/local/daily_update.py", line 47, in main
+    got = refresh_results(target, grace_hours=grace_hours)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/pipeline.py", line 107, in refresh_results
+    snapshot_standings(con, season)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/standings.py", line 88, in snapshot_standings
+    for t in fetch_standings(season, cfg):
+             ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/standings.py", line 73, in fetch_standings
+    data = _get(f"{cfg['api_base']}/standings?season={int(season)}", cfg)
+  File "/Users/mika.heino/prod/liiga_2026-27/src/liiga/results.py", line 80, in _get
+    resp = requests.get(
+        url,
+        headers={"User-Agent": cfg["user_agent"], "Accept": "application/json"},
+        timeout=cfg["request_timeout_seconds"],
+    )
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "/Users/mika.heino/prod/liiga_2026-27/.venv/lib/python3.13/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='www.liiga.fi', port=443): Max retries exceeded with url: /api/v2/standings?season=2027 (Caused by NameResolutionError("HTTPSConnection(host='www.liiga.fi', port=443): Failed to resolve 'www.liiga.fi' ([Errno 8] nodename nor servname provided, or not known)"))
+=== 2026-11-19 08:30:00 daily update ===
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/results.py:379: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return (pd.concat(parts, ignore_index=True) if parts
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py:222: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/results.py:379: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return (pd.concat(parts, ignore_index=True) if parts
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/results.py:379: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return (pd.concat(parts, ignore_index=True) if parts
+news_items: 502 riviä
+news_lineups: 149 riviä
+prediction_games_news: 33 riviä
+news_absences: 10 riviä
+news_candidates: 41 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 33 ottelua, voitto 63.3% -> 63.0%
+Lukas Wernblom (TPS): 1 ottelua, voitto 38.3% -> 36.1%
+Santeri Virtanen (Lukko): 33 ottelua, voitto 63.3% -> 63.0%
+Chris Harpur (Lukko): 2 ottelua, voitto 66.2% -> 66.0%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.2% -> 50.8%
+HIFK: 97.2 -> 96.5 p, top 6 30.0% -> 27.2%
+uutinen: Chris Harpur (Lukko) 2 ott., voitto 66.2% -> 66.2%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 51 (ennuste 2026-11-19)
+news_signals: 30 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 187/544 played, detail fetched for 7 new game(s)
+kauden kysymys hpk-joulu (2026-11-19): open 53.3%
+updated: 187/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,484 rows published to LIIGA
+=== done ===
+=== 2026-11-20 08:30:04 daily update ===
+/Users/mika.heino/prod/liiga_2026-27/src/liiga/db.py:222: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  return pd.concat([old, fresh.reindex(columns=columns)], ignore_index=True)
+news_items: 524 riviä
+news_lineups: 154 riviä
+prediction_games_news: 34 riviä
+news_absences: 10 riviä
+news_candidates: 44 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 33 ottelua, voitto 63.3% -> 63.0%
+Lukas Wernblom (TPS): 1 ottelua, voitto 38.3% -> 36.1%
+Santeri Virtanen (Lukko): 33 ottelua, voitto 63.3% -> 63.0%
+Chris Harpur (Lukko): 2 ottelua, voitto 66.2% -> 66.0%
+Jake Leschyshyn (HIFK): 18 ottelua, voitto 52.2% -> 50.8%
+HIFK: 97.2 -> 96.6 p, top 6 31.9% -> 29.2%
+uutinen: Chris Harpur (Lukko) 2 ott., voitto 66.2% -> 66.2%, +0.00 p
+poissaoloja 5, muuttuneita otteluita 51 (ennuste 2026-11-20)
+news_signals: 32 riviä, news_absence_log: 10 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 188/544 played, detail fetched for 1 new game(s)
+kauden kysymys hpk-joulu (2026-11-20): open 54.4%
+updated: 188/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,484 rows published to LIIGA
+=== done ===
+=== 2026-11-21 08:30:02 daily update ===
+news_items: 534 riviä
+news_lineups: 184 riviä
+prediction_games_news: 40 riviä
+news_absences: 11 riviä
+news_candidates: 45 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 32 ottelua, voitto 63.8% -> 63.6%
+Santeri Virtanen (Lukko): 32 ottelua, voitto 63.8% -> 63.6%
+Chris Harpur (Lukko): 1 ottelua, voitto 70.8% -> 70.5%
+uutinen: Chris Harpur (Lukko) 1 ott., voitto 70.8% -> 70.8%, +0.00 p
+poissaoloja 3, muuttuneita otteluita 32 (ennuste 2026-11-21)
+news_signals: 32 riviä, news_absence_log: 11 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 194/544 played, detail fetched for 6 new game(s)
+kauden kysymys hpk-joulu (2026-11-21): open 42.2%
+updated: 194/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,486 rows published to LIIGA
+=== done ===
+=== 2026-11-22 08:32:07 daily update ===
+news_items: 554 riviä
+news_lineups: 214 riviä
+prediction_games_news: 46 riviä
+news_absences: 11 riviä
+news_candidates: 45 riviä
+news_roster: 568 riviä
+Lenni Hämäläinen (Lukko): 31 ottelua, voitto 63.8% -> 63.6%
+Santeri Virtanen (Lukko): 31 ottelua, voitto 63.8% -> 63.6%
+poissaoloja 2, muuttuneita otteluita 31 (ennuste 2026-11-22)
+news_signals: 32 riviä, news_absence_log: 11 riviä
+uutiset -> /Users/mika.heino/prod/liiga_2026-27/data/news.duckdb
+season 2027: 200/544 played, detail fetched for 6 new game(s)
+kauden kysymys hpk-joulu (2026-11-22): open 50.5%
+updated: 200/544 games played, crowd weight 0.13
+wrote /Users/mika.heino/prod/liiga_2026-27/site/index.html
+serve with: python -m http.server 8765 --directory site
+snowflake sync: 13 tables, 5,487 rows published to LIIGA
 === done ===
