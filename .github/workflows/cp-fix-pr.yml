@@ -74,6 +74,7 @@ jobs:
           git checkout -b "cp-fix/run-${{ steps.claim.outputs.run }}"
           python scripts/ci/cp_worker.py agent "$RUNNER_TEMP/job.json" "$RUNNER_TEMP/summary.md"
           python scripts/dev/quality.py
+          git checkout -- .coverage 2>/dev/null || true   # laatuportin sivutuote, ei muutos
           git status --porcelain | tee "$RUNNER_TEMP/changes.txt"
           echo "changed=$([ -s "$RUNNER_TEMP/changes.txt" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
       - name: Haara ja PR (ei yhdistetä)
