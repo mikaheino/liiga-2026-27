@@ -37,6 +37,14 @@ ja laskee rosterin ja pelaajamallin uudelleen vain, kun rosterin syötteet muutt
 `EXECUTE CODE BUNDLE LIIGA.CODE.LIIGA_DAILY_BUNDLE ENTRYPOINT = 'rates_check.py'`. Taulujen omistaja LIIGA_ADMIN.
 Rosterimuutos Snowflakeen = rosterityön commit mainiin -> deploy-bundle.yml -> seuraava päivän ajo.
 
+**Kertaluonteinen siirtymä (päätös 22.11.2026, korjaus, ei viritys).** `players.assemble_player_seasons` valitsi kahden
+saman kauden ulkomaanjakson (esim. AHL + NCAA) välillä numpyn quicksortin mukaan, joten Mac ja Snowflake laskivat eri
+luvut. Nyt vakaa järjestys (`kind="stable"`). Ensimmäinen rosterimuutos mainissa laskee pelaajamallin uudelleen, ja
+silloin 13 pelaajan ennuste muuttuu kerran enintään 0,043 p/ott (joukkueiden summat enintään 0,043): Sampo Ranta,
+Gabriel Nitz, Miks Tumanovs, Andrew Lucas, Andrej Sustr, Linus Sjödin, Arvid Costmar, Kyle Crnkovic, Kasper Kotkansalo,
+Oula Palve, Brett Harrison, Markus Niemeläinen, Ethan Prow. Hyväksytty; jaksojen yhdistäminen ei kuulu tähän (mallimuutos).
+Rosterimuutokset tulevat PR:nä (control planen liiga-rosteri, kierros 4).
+
 Ajastukset harvennettu 22.11.2026 (ennen 5–60 min välein). Politiikka: `control_plane/policies/snowflake/liiga.toml`
 ja `platform.toml`. Sovellus tarkistaa `PREDICTION_META`n 10 min välein. Minimipalvelut: `CP_TICK` (serverless)
 ja yllä olevat ajastukset; sovellukset sammuvat itse (auto-suspend) ja heräävät avattaessa, demoa varten

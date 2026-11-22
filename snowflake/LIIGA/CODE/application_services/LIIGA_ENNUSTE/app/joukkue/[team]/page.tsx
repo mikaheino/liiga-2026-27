@@ -5,12 +5,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AbsenceCard from "@/components/AbsenceCard";
 import CardAgent from "@/components/CardAgent";
+import EventList from "@/components/EventList";
 import { FixtureList } from "@/components/Fixtures";
 import History from "@/components/History";
 import Scenario from "@/components/Scenario";
 import Shell from "@/components/Shell";
 import { loadAbsence, loadChallengerSeason, loadFixtures, loadHistory, loadLog, loadPosition, loadSeasonQuestions, loadTeams, teamHref } from "@/lib/data";
 import { PLAYOFF_CUT, QUALI_CUT, RELEGATION_CUT, TEAMS, fi, logo, seasonTable } from "@/lib/table";
+import { newsFor } from "@/lib/media";
 import { STATIC } from "@/lib/target";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export default async function Page({ params }: { params: Promise<{ team: string 
     loadAbsence(decodeURIComponent((await params).team)).catch((e) => { console.log(`[data] poissaolot: ${(e as Error).message}`); return null; }),
     loadSeasonQuestions().catch(() => []),
   ]);
+  const news = await newsFor([team]);   // uutiset (22.11.2026): vain tiedoksi, eivät muuta lukuja
   const ch = season.teams.find((t) => t.team === team && Math.abs(t.points - t.pointsNow) >= 0.3);
   const i = pos.findIndex((r) => r.team === team);
   if (i < 0) notFound();
@@ -114,6 +117,7 @@ export default async function Page({ params }: { params: Promise<{ team: string 
           <div className="label">Ennusteen liike</div>
           <History history={history} order={[team]} highlight={new Set()} preseason={preseason} big />
           {absence?.show && <div className="team-agent"><AbsenceCard a={absence} /></div>}
+          {news.length > 0 && <div className="team-agent"><EventList items={news} /></div>}
           <div className="team-agent"><Scenario team={team} defaultGoal={goal} /></div>
           {!STATIC && seasonNo > 0 && (
             <div className="team-agent"><CardAgent subject={{ type: "team", key: `${seasonNo}:${team}` }} chips={chips} placeholder={`Kysy joukkueesta ${team}…`} /></div>

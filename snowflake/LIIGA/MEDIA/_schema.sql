@@ -42,31 +42,76 @@ CREATE TABLE IF NOT EXISTS LIIGA.MEDIA.MEDIA_EVENTS (
   extracted_at TIMESTAMP_TZ DEFAULT CURRENT_TIMESTAMP()
 ) COMMENT = 'Liiga-uutisten tapahtumat: kuka (joukkue, pelaaja, valmentaja) ja mitä (pelikielto, loukkaantuminen, siirto, valmentajamuutos, tulos, kriisi). Lähde: otsikot, linkki aina mukana.';
 
+-- 22.11.2026 (G3): myös seurojen, Ylen ja Sportin uutiset (LIIGA.RAW.NEWS_ITEMS: otsikko + ingressi) samaan
+-- ontologiaan. source_kind = 'media' (IS, IL, MTV: vain otsikko) | 'news' (NEWS_ITEMS: otsikko + ingressi).
+ALTER TABLE LIIGA.MEDIA.MEDIA_EVENTS ADD COLUMN IF NOT EXISTS source_kind STRING
+  COMMENT 'media = IS/IL/MTV (MEDIA_LINKS, vain otsikko) | news = seurat, Yle, Sport (RAW.NEWS_ITEMS, otsikko + ingressi)';
+ALTER TABLE LIIGA.MEDIA.MEDIA_EVENTS ADD COLUMN IF NOT EXISTS summary STRING
+  COMMENT 'Ingressi (vain news; media-riveillä NULL, koska lupa koskee vain otsikoita)';
+UPDATE LIIGA.MEDIA.MEDIA_EVENTS SET source_kind = 'media' WHERE source_kind IS NULL;
+ALTER TABLE LIIGA.MEDIA.MEDIA_EVENTS ALTER COLUMN teams COMMENT 'Liigajoukkueet RAW_GAMES-nimin, pilkulla ja välilyönnillä erotettuna';
+
+-- Joukkueen tunnistus otsikosta, kun lähde ei kerro joukkuetta (vartalo kattaa taivutusmuodot: Lukon, Ilveksen, Kärppien).
+CREATE OR REPLACE VIEW LIIGA.MEDIA.V_TEAM_PATTERNS
+  COMMENT = 'Liigajoukkue ja sen nimen vartalo otsikkotunnistukseen (EXTRACT_MEDIA_EVENTS)'
+AS
+SELECT t.team, COALESCE(p.stem, t.team) AS stem
+  FROM (SELECT DISTINCT home_team AS team FROM LIIGA.RAW.RAW_GAMES
+         WHERE season = (SELECT MAX(season) FROM LIIGA.RAW.RAW_GAMES)) t
+  LEFT JOIN (SELECT column1 AS team, column2 AS stem FROM VALUES
+      ('Ilves', 'Ilve(s|k)'), ('Kärpät', 'Kärp'), ('Ässät', 'Äss'), ('Lukko', 'Luko|Lukon|Lukko'),
+      ('Jokerit', 'Jokeri'), ('Pelicans', 'Pelican'), ('Tappara', 'Tappara'), ('KalPa', 'KalPa'),
+      ('Jukurit', 'Jukuri'), ('SaiPa', 'SaiPa'), ('Sport', 'Sport(i|in| )')) p ON p.team = t.team;
+
 CREATE OR REPLACE PROCEDURE LIIGA.MEDIA.EXTRACT_MEDIA_EVENTS()
   RETURNS VARIANT LANGUAGE SQL
-  COMMENT = 'Uudet otsikot -> MEDIA_EVENTS (vain poimimattomat, joten kulu on vain uusista). Kutsuja: control plane (liiga-mediat).'
+  COMMENT = 'Uudet otsikot (MEDIA_LINKS) ja uutiset (RAW.NEWS_ITEMS) -> MEDIA_EVENTS, vain poimimattomat URLit. Kutsuja: control plane (liiga-media-ontologia).'
   EXECUTE AS OWNER
 AS
 $$
 DECLARE
   n INTEGER;
 BEGIN
-  INSERT INTO LIIGA.MEDIA.MEDIA_EVENTS (url, published, source, title, teams, players, coaches, event_type)
+  INSERT INTO LIIGA.MEDIA.MEDIA_EVENTS (url, published, source, source_kind, title, summary, teams, players, coaches, event_type)
   WITH uudet AS (
-    SELECT l.* FROM LIIGA.MEDIA.MEDIA_LINKS l
-     WHERE NOT EXISTS (SELECT 1 FROM LIIGA.MEDIA.MEDIA_EVENTS e WHERE e.url = l.url)
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY l.url ORDER BY l.fetched_at) = 1
+    SELECT url, published, source, 'media' AS source_kind, title, NULL::STRING AS summary, team, fetched_at
+      FROM LIIGA.MEDIA.MEDIA_LINKS
+    UNION ALL
+    SELECT url, COALESCE(TRY_TO_TIMESTAMP_TZ(NULLIF(published, '')), TRY_TO_TIMESTAMP_TZ(fetched_at)), source, 'news',
+           title, NULLIF(summary, ''), team, TRY_TO_TIMESTAMP_TZ(fetched_at)
+      FROM LIIGA.RAW.NEWS_ITEMS
+  ), u AS (
+    SELECT * FROM uudet n
+     WHERE n.url IS NOT NULL AND n.title IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM LIIGA.MEDIA.MEDIA_EVENTS e WHERE e.url = n.url)
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY n.url ORDER BY n.fetched_at) = 1
   ), x AS (
-    SELECT u.*,
-           AI_EXTRACT(text => u.title, responseFormat => {'schema': {'type': 'object', 'properties': {
+    SELECT u.*, u.title || IFF(u.summary IS NULL, '', '. ' || u.summary) AS txt FROM u
+  ), y AS (
+    SELECT x.*,
+           AI_EXTRACT(text => x.txt, responseFormat => {'schema': {'type': 'object', 'properties': {
              'players': {'description': 'Names of ice hockey players mentioned (full names as written)', 'type': 'array'},
              'coaches': {'description': 'Names of coaches or sports directors mentioned', 'type': 'array'}}}}):response AS r,
-           AI_CLASSIFY(u.title, ['suspension', 'injury', 'transfer', 'coaching', 'game result', 'crisis', 'off-ice', 'other'],
-             {'task_description': 'Classify a Finnish ice hockey (SM-liiga) news headline by event type'}):labels[0]::STRING AS et
-      FROM uudet u
+           AI_CLASSIFY(x.txt, ['suspension', 'injury', 'transfer', 'coaching', 'game result', 'crisis', 'off-ice', 'other'],
+             {'task_description': 'Classify a Finnish ice hockey (SM-liiga) news item by event type'}):labels[0]::STRING AS et
+      FROM x
   )
-  SELECT url, published, source, title, team, COALESCE(r:players::ARRAY, []), COALESCE(r:coaches::ARRAY, []), et FROM x;
+  SELECT url, published, source, source_kind, title, summary, team,
+         COALESCE(r:players::ARRAY, []), COALESCE(r:coaches::ARRAY, []), et FROM y;
   n := SQLROWCOUNT;
+
+  -- Joukkueet RAW_GAMES-nimiin (lähteissä "Tampereen Ilves", "Oulun Kärpät", erottimet vaihtelevat);
+  -- jos lähde ei kerro joukkuetta, tunnistus otsikosta (ja ingressistä) nimen vartalolla. Ei kielimallia.
+  UPDATE LIIGA.MEDIA.MEDIA_EVENTS e SET teams = t.teams
+    FROM (SELECT e2.url, LISTAGG(DISTINCT p.team, ', ') WITHIN GROUP (ORDER BY p.team) AS teams
+            FROM LIIGA.MEDIA.MEDIA_EVENTS e2
+            JOIN LIIGA.MEDIA.V_TEAM_PATTERNS p
+              ON IFF(NULLIF(TRIM(e2.teams), '') IS NOT NULL,
+                     ARRAY_CONTAINS(p.team::VARIANT, TRANSFORM(SPLIT(REPLACE(REPLACE(e2.teams, 'Tampereen Ilves', 'Ilves'),
+                       'Oulun Kärpät', 'Kärpät'), ','), v -> TRIM(v::STRING)::VARIANT)),
+                     REGEXP_LIKE(e2.title || ' ' || COALESCE(e2.summary, ''), '(^|.*[^A-Za-zÅÄÖåäö])(' || p.stem || ').*', 's'))
+           GROUP BY e2.url) t
+   WHERE e.url = t.url AND (e.teams IS NULL OR e.teams <> t.teams);
 
   -- Valmentaja ei ole pelaaja: nimi, joka on jossain otsikossa valmentaja tai COACHING_CHANGESissa,
   -- siirretään players -> coaches (AI_EXTRACT sekoittaa ne, kun otsikossa ei ole roolia).
@@ -88,23 +133,31 @@ BEGIN
            WHERE e2.player_ids IS NULL
            GROUP BY e2.url) m
    WHERE e.url = m.url;
+  -- Haku heti ajan tasalle (TARGET_LAG 1 day olisi muuten jopa vuorokauden myöhässä); vain kun tuli uutta.
+  IF (n > 0) THEN
+    ALTER CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH REFRESH;
+  END IF;
   RETURN OBJECT_CONSTRUCT('uusia', :n);
 END;
 $$;
 
--- Agentin haku: otsikko + kuka + mitä; linkki ja aika palautetaan lähteeksi.
-CREATE CORTEX SEARCH SERVICE IF NOT EXISTS LIIGA.MEDIA.LIIGA_MEDIA_SEARCH
+-- Agentin haku: otsikko (+ ingressi) + kuka + mitä; linkki, lähde ja aika palautetaan lähteeksi.
+-- 22.11.2026: kattaa molemmat lähdetyypit (source_kind); suodatettavat: source, source_kind, event_type ja
+-- team_list (ARRAY, @contains: myös usean joukkueen otsikot; teams-merkkijono vain näyttöön).
+CREATE OR REPLACE CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH
   ON search_text
-  ATTRIBUTES source, teams, event_type
+  ATTRIBUTES source, source_kind, teams, team_list, event_type
   WAREHOUSE = LIIGA_WH
   TARGET_LAG = '1 day'
-  COMMENT = 'Liiga-uutisotsikot (IS, IL, MTV) tapahtumineen agentille: pelikiellot, loukkaantumiset, siirrot, valmentajat.'
+  COMMENT = 'Liiga-uutiset tapahtumineen agentille: IS, IL, MTV (otsikot) sekä seurat, Yle ja Sport (otsikko + ingressi). Pelikiellot, loukkaantumiset, siirrot, valmentajat.'
 AS
-SELECT url, title, source, COALESCE(teams, '') AS teams, event_type,
+SELECT url, title, COALESCE(summary, '') AS summary, source, source_kind, COALESCE(teams, '') AS teams,
+       IFF(NULLIF(teams, '') IS NULL, [], SPLIT(teams, ', ')) AS team_list, event_type,
        TO_VARCHAR(published, 'YYYY-MM-DD HH24:MI') AS published,
        ARRAY_TO_STRING(players, ', ') AS players, ARRAY_TO_STRING(coaches, ', ') AS coaches,
-       title || ' | joukkueet: ' || COALESCE(teams, '-') || ' | pelaajat: ' || ARRAY_TO_STRING(players, ', ')
-         || ' | valmentajat: ' || ARRAY_TO_STRING(coaches, ', ') || ' | tyyppi: ' || event_type AS search_text
+       title || IFF(summary IS NULL, '', ' | ' || summary) || ' | joukkueet: ' || COALESCE(teams, '-')
+         || ' | pelaajat: ' || ARRAY_TO_STRING(players, ', ') || ' | valmentajat: ' || ARRAY_TO_STRING(coaches, ', ')
+         || ' | tyyppi: ' || event_type || ' | ' || TO_VARCHAR(published, 'YYYY-MM-DD') AS search_text
   FROM LIIGA.MEDIA.MEDIA_EVENTS;
 
 CREATE STAGE IF NOT EXISTS LIIGA.MEDIA.CODE;
@@ -126,5 +179,8 @@ GRANT USAGE ON SCHEMA LIIGA.MEDIA TO ROLE LIIGA_AGENT_OWNER;
 GRANT USAGE ON CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH TO ROLE LIIGA_AGENT_OWNER;
 GRANT USAGE ON SCHEMA LIIGA.MEDIA TO ROLE LIIGA_AGENT_USER;
 GRANT USAGE ON CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH TO ROLE LIIGA_AGENT_USER;
+GRANT SELECT ON VIEW LIIGA.MEDIA.V_TEAM_PATTERNS TO ROLE LIIGA_APP;
 GRANT USAGE ON SCHEMA LIIGA.MEDIA TO ROLE LIIGA_DEPLOYER;
 GRANT USAGE ON CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH TO ROLE LIIGA_DEPLOYER;
+-- Agentin evaluointi (agent_eval.py) laskee uutiskysymyksen odotetun vastauksen MEDIA_EVENTSistä (22.11.2026).
+GRANT SELECT ON TABLE LIIGA.MEDIA.MEDIA_EVENTS TO ROLE LIIGA_DEPLOYER;

@@ -3,12 +3,14 @@
 //   /ottelut?kk=2026-10&joukkue=Tappara
 // Alussa päivän ottelut (7.11.2026, siirretty etusivulta): ratkaisupeli ja seuraava kierros.
 import { KeyGame } from "@/components/DayStory";
+import EventList from "@/components/EventList";
 import NextRound from "@/components/NextRound";
 import Shell from "@/components/Shell";
 import { FixturesView } from "@/components/Views";
 import { fixtureKey, gameKey } from "@/lib/challenger";
 import { loadChallenger, loadChallengerSeason, loadFixtures, loadNews, loadStakes, loadTeams } from "@/lib/data";
 import { nextRound } from "@/lib/fixtures";
+import { newsFor } from "@/lib/media";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ottelut" };
@@ -30,11 +32,14 @@ export default async function Page() {
   const stakes = new Map(stakeList.map((s) => [s.game_id, s]));
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Helsinki" });
   const round = nextRound(all, today);
+  // Seuraavan kierroksen joukkueiden uutiset (22.11.2026): poissaolot ja siirrot, joita malli ei vielä tiedä.
+  const roundNews = await newsFor([...new Set(round.flatMap((g) => [g.home, g.away]))], 6);
   return (
     <Shell active="/ottelut" title="Ottelut">
       <div className="ot-today">
         <KeyGame games={round} stakes={stakes} all={all} news={news.items} challenger={chMap} />
         <NextRound games={round} challenger={chMap} all={all} news={news.items} stakes={stakes} />
+        <EventList items={roundNews} title="Uutiset kierroksen joukkueista" />
       </div>
       <FixturesView fixtures={fixtures} teams={teams} />
     </Shell>
