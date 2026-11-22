@@ -9,6 +9,10 @@ on:
     paths:
       - src/liiga/**
       - config.yaml
+      # Paketin data (deploy_bundle.DATA, 23.11.2026): ilman näitä rosteri- tai CSV-muutos ei päätyisi
+      # Snowflakeen. Ei data/raw/** eikä *.duckdb. tests/test_bundle_paths.py tarkistaa kattavuuden.
+      - data/*.csv
+      - data/*.txt
       - snowflake/LIIGA/CODE/code_bundles/**
       - scripts/deploy/deploy_bundle.py
       - .github/workflows/deploy-bundle.yml

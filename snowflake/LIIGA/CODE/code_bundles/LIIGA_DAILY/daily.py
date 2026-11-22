@@ -5,6 +5,7 @@ Kohdeskeemat LIIGA.CODE.PIPELINE_SETTINGSista kuten notebookissa (kuiva-ajo vaih
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
@@ -61,6 +62,7 @@ def main() -> None:
     s = session()
     configure(s)
     from liiga.config import load_config
+    from liiga.curated import fingerprints
     from liiga.curated import sync as sync_curated
     from liiga.db import get_connection
     from liiga.pipeline import forecast, persist, refresh_results
@@ -75,6 +77,8 @@ def main() -> None:
     print("kuratoidut:", sync_curated(get_connection()))
     build_team_strength()
     res = forecast(cfg=load_config())
+    # Mitkä syötetiedostojen versiot ennuste näki (23.11.2026, katselmointi M5): PREDICTION_META.input_fingerprints.
+    res["meta"]["input_fingerprints"] = json.dumps(fingerprints(get_connection()), sort_keys=True)
     persist(res)
     top = res["standings"].sort_values("proj_rank").head(5)
     for _, r in top.iterrows():

@@ -22,19 +22,25 @@ from .db import get_connection, query_df, register_df
 CSV = Path(__file__).resolve().parents[2] / "data" / "coaching_changes.csv"
 
 
+def read_coaching_changes(con) -> pd.DataFrame:
+    """Read the CSV and check team names against stg_games (no write; liiga.curated writes it)."""
+    df = pd.read_csv(CSV, dtype={"season": int})
+    seasons = ",".join(str(int(s)) for s in df["season"].unique())
+    known = set(query_df(con, f"""
+        SELECT DISTINCT home_team AS team FROM stg_games
+        WHERE season IN ({seasons})""")["team"])
+    unknown = sorted(set(df["team"]) - known)
+    if unknown:
+        raise ValueError(f"unknown team name(s) in {CSV.name}: {unknown}")
+    return df
+
+
 def load_coaching_changes(con=None) -> pd.DataFrame:
     """Read the CSV, check team names against stg_games, write the table."""
-    df = pd.read_csv(CSV, dtype={"season": int})
     own = con is None
     con = con or get_connection()
     try:
-        seasons = ",".join(str(int(s)) for s in df["season"].unique())
-        known = set(query_df(con, f"""
-            SELECT DISTINCT home_team AS team FROM stg_games
-            WHERE season IN ({seasons})""")["team"])
-        unknown = sorted(set(df["team"]) - known)
-        if unknown:
-            raise ValueError(f"unknown team name(s) in {CSV.name}: {unknown}")
+        df = read_coaching_changes(con)
         register_df(con, "coaching_changes", df)
     finally:
         if own:

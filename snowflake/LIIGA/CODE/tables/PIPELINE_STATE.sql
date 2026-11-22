@@ -1,7 +1,8 @@
 -- Kuratoitujen taulujen ja pelaajamallin sormenjäljet (22.11.2026, src/liiga/curated.py).
 -- daily.py luo taulun itse (CREATE TABLE IF NOT EXISTS); tämä tiedosto kuvaa sen.
 -- Uudelleenlataus seuraavassa ajossa: UPDATE ... SET fingerprint = 'force' WHERE name = '<taulu>'.
--- (Puuttuva rivi EI lataa: se kirjataan "adopted", koska taulu on jo olemassa.)
+-- Rivi __initialized__ (23.11.2026): ennen sitä puuttuva rivi omaksutaan vain, jos taulun sisältö = tiedosto
+-- (muuten poikkeama PIPELINE_CHECKSiin ja lataus); sen jälkeen puuttuva rivi tarkoittaa aina latausta.
 USE ROLE LIIGA_ADMIN;
 
 CREATE TABLE IF NOT EXISTS LIIGA.CODE.PIPELINE_STATE (

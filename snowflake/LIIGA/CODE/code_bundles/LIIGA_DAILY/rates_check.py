@@ -29,37 +29,12 @@ import pandas as pd  # noqa: E402
 
 daily.configure(daily.session())
 
-from liiga import coaching, curated, db, goalies, players, transfers  # noqa: E402
+from liiga import curated, db  # noqa: E402
 
-captured: dict[str, pd.DataFrame] = {}
-
-
-def _capture(con, name, df):
-    captured[name] = df.copy()
-
-
-for mod in (db, curated, coaching, goalies, players, transfers):
-    mod.register_df = _capture
-_query = players.query_df
-
-
-def _query_captured(con, sql, *a, **k):
-    # build_player_rates lukee rosterin taulusta: kaapattu uusi roster sen tilalle, kuten oikeassa ajossa.
-    if sql.strip() == "SELECT * FROM roster_2026_27" and "roster_2026_27" in captured:
-        df = captured["roster_2026_27"].copy()
-        df.columns = [c.lower() for c in df.columns]
-        return df
-    return _query(con, sql, *a, **k)
-
-
-players.query_df = _query_captured
-
+# Sama laskenta kuin päivän ajossa (curated.frame, curated.compute_rates), mutta vain muistiin.
 con = db.get_connection()
-for table in [*curated.CSV_TABLES, *curated.LOADER_FILES]:
-    curated._load(con, table)
-transfers.build_rosters_from_article()
-players.compute_liiga_rates(con)
-players.build_player_rates()
+captured: dict[str, pd.DataFrame] = {t: curated.frame(con, t) for t in [*curated.CSV_TABLES, *curated.LOADER_FILES]}
+captured.update(curated.compute_rates(con))
 
 
 def _norm(df: pd.DataFrame) -> list[tuple]:
