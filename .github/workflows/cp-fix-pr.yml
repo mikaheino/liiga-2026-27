@@ -68,6 +68,7 @@ jobs:
         if: steps.claim.outputs.run != ''
         run: |
           set -euo pipefail
+          pip install -q -e ".[dev]"      # laatuportti (ruff, pytest) kuten CI:ssä
           curl -LsS https://ai.snowflake.com/static/cc-scripts/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
           git checkout -b "cp-fix/run-${{ steps.claim.outputs.run }}"
