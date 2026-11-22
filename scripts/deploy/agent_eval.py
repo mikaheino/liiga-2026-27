@@ -242,22 +242,75 @@ def _sql(q: str, json_out: bool = False):
     return _snow("sql", "-q", q, json_out=json_out)
 
 
-# Uutistarkistus (22.11.2026): kun kysymys nimeää joukkueen tai pelaajan, agentin ohje vaatii päätyökalun
-# lisäksi yhden liiga_media-kutsun, joten odotetut kutsut ovat [päätyökalu, liiga_media]. Tunnistus nimen
-# vartalolla (taivutusmuodot: Tapparan, KooKoon, HIFK:n). Pelaajat: testijoukon nimetyt pelaajat.
-NAMED = re.compile(r"\b(HIFK|HPK|Ilve|Jokeri|JYP|Jukuri|KalPa|Kärp|KooKoo|K-Espoo|Lukko|Lukon|Pelicans|SaiPa|"
-                   r"Sport|Tappara|TPS|Ässi|Ässät|Mäkiaho)")
+# Uutistarkistus (23.11.2026, katselmointi): vain ETEENPÄIN katsovat kysymykset (ennuste, skenaario, kokoonpanot),
+# jotka nimeävät joukkueen tai pelaajan, odottavat päätyökalun lisäksi yhden liiga_media-kutsun. Historia,
+# ura ja osuvuus (liiga_kausi) sekä mallikysymykset (liiga_tieto) eivät. Nimet: joukkueiden vartalot ja
+# pelaajat LIIGA.RAW.ROSTER_2026_27:stä (ajossa, ei kovakoodattu).
+FORWARD = {E, S, L}
+TEAMS_RE = (r"HIFK|HPK|Ilve|Joker|JYP|Jukuri|KalPa|Kärp|KooKoo|K-Espoo|Kiekko-Espoo|Lukko|Luko|Pelicans|SaiPa|"
+            r"Sport|Tappara|TPS|Ässi|Ässät")
+_named: re.Pattern | None = None
 
 
-def expected_tools(q: str, tool: str | None) -> list[str]:
+def named_re() -> re.Pattern:
+    global _named
+    if _named is None:
+        rows = _sql("SELECT DISTINCT last_name AS n FROM LIIGA.RAW.ROSTER_2026_27 WHERE LENGTH(last_name) >= 4",
+                    json_out=True)
+        names = sorted({re.escape(r["N"]) for r in rows if r.get("N")}, key=len, reverse=True)
+        _named = re.compile(r"\b(" + TEAMS_RE + ("|" + "|".join(names) if names else "") + ")")
+    return _named
+
+
+def expected_tools(q: str, tool: str | None, named: re.Pattern | None = None) -> list[str]:
     if not tool:
         return []
-    return [tool, N] if tool != N and NAMED.search(q) else [tool]
+    named = named or named_re()
+    return [tool, N] if tool in FORWARD and named.search(q) else [tool]
+
+
+def _q(s: str) -> str:
+    return s.replace("'", "''")
+
+
+def adversarial() -> list[tuple[str, str | None, str]]:
+    """2-3 riviä tuoreimmasta rosterin pelaajan pelikiellosta tai loukkaantumisesta (21 pv): mallin luku
+    täsmälleen + Uutiset-rivi; vaikutusta ei arvioida itse. Ei rivejä, jos tuoretta tapahtumaa ei ole."""
+    ev = _sql("""SELECT r.team, r.first_name || ' ' || r.last_name AS player, e.event_type, e.source,
+                         TO_CHAR(e.published, 'DD.MM.') AS d
+                    FROM LIIGA.MEDIA.MEDIA_EVENTS e, LATERAL FLATTEN(e.players) f
+                    JOIN LIIGA.RAW.ROSTER_2026_27 r ON LOWER(r.first_name || ' ' || r.last_name) = LOWER(TRIM(f.value::STRING))
+                   WHERE e.event_type IN ('suspension', 'injury') AND e.published >= DATEADD(day, -21, CURRENT_TIMESTAMP())
+                     AND CONTAINS(e.teams, r.team)
+                   ORDER BY e.published DESC LIMIT 1""", json_out=True)
+    if not ev:
+        return []
+    t, pl, kind = _q(ev[0]["TEAM"]), _q(ev[0]["PLAYER"]), ev[0]["EVENT_TYPE"]
+    what = "pelikielto" if kind == "suspension" else "loukkaantuminen"
+    news = f"Uutiset-rivi: {pl} {what} ({_q(ev[0]['SOURCE'])} {ev[0]['D']}) lähdelinkillä; uutinen ei muuta lukua."
+    return [
+        (f"Millä todennäköisyydellä {t} pääsee kuuden joukkoon?", E,
+         f"""(SELECT '{t} sijoittuu kuuden joukkoon ' || TO_CHAR(ROUND(p_top6_quarterfinal * 100, 1))
+                 || ' %:n todennäköisyydellä (täsmälleen mallin luku). {news}'
+              FROM {M}.V_ZONE_PROBABILITIES WHERE team = '{t}')"""),
+        (f"Miten joukkueen {t} seuraava ottelu päättyy?", E,
+         f"""(SELECT 'Seuraava ottelu ' || TO_CHAR(game_date) || ' ' || home_team || '–' || away_team
+                 || '; suosikki ' || predicted_winner || ' ' || TO_CHAR(ROUND(confidence * 100, 1)) || ' % (mallin luku). {news}'
+              FROM {M}.V_UPCOMING_PREDICTIONS WHERE home_team = '{t}' OR away_team = '{t}'
+              ORDER BY game_date, start_time_fi LIMIT 1)"""),
+        (f"Paljonko {pl} heikentää joukkueen {t} mahdollisuuksia nyt?", S,
+         f"""'Ei arvioi vaikutusta itse eikä muuta mallin lukua: ajaa liiga_skenaarion poissaololla ({pl}) tai '
+             || 'tarjoaa sitä, ja kertoo uutisesta vain sen, mitä se sanoo. {news}'"""),
+    ]
+
+
+def golden() -> list[tuple[str, str | None, str]]:
+    return GOLDEN + adversarial()
 
 
 def build_dataset(run: str) -> str:
     rows = []
-    for q, tool, gt in GOLDEN:
+    for q, tool, gt in golden():
         tools = expected_tools(q, tool)
         inv = ("ARRAY_CONSTRUCT(" + ", ".join(f"OBJECT_CONSTRUCT('tool_name', '{t}')" for t in tools) + ")"
                if tools else "ARRAY_CONSTRUCT()")
@@ -324,7 +377,7 @@ def results(agent: str, run: str):
 METRICS = 4   # answer_correctness, logical_consistency, tool_selection_accuracy, vastaa_suomeksi
 
 
-def complete_results(agent: str, run: str, timeout_s: int = 900) -> list[dict]:
+def complete_results(agent: str, run: str, n_rows: int, timeout_s: int = 900) -> list[dict]:
     """STATUS = COMPLETED ei tarkoita, että pisteet ovat luettavissa: 16.10.
     tuotantoajo (20261016_1101) luki tulokset heti ja kaatui laatuporttiin,
     vaikka sama ajo antoi myöhemmin 28/28 pistettä joka mittarille ja läpäisi
@@ -336,12 +389,12 @@ def complete_results(agent: str, run: str, timeout_s: int = 900) -> list[dict]:
         for r in data:
             if r.get("EVAL_AGG_SCORE") is not None:
                 got[r["METRIC_NAME"]] = got.get(r["METRIC_NAME"], 0) + 1
-        if len(got) >= METRICS and min(got.values()) >= len(GOLDEN):
+        if len(got) >= METRICS and min(got.values()) >= n_rows:
             return data
         if time.time() - t0 > timeout_s:
             print(f"  pisteitä yhä kesken {timeout_s} s jälkeen: {got}")
             return data
-        print(f"  pisteitä {got} / {len(GOLDEN)}, odotetaan")
+        print(f"  pisteitä {got} / {n_rows}, odotetaan")
         time.sleep(30)
 
 
@@ -356,7 +409,7 @@ def complete_results(agent: str, run: str, timeout_s: int = 900) -> list[dict]:
 # laskee sen kahdeksi saman työkalun kutsuksi -> 0,5, vaikka työkalu on oikea.
 # Raaka arvo raportoidaan yhä tehokkuusmittarina. (GitHub-ajo 16.10.: 0,94
 # raakana, 1,00 oikeina työkaluina.)
-GATE = {"answer_correctness": 0.90, "tool_correct_rate": 0.95,
+GATE = {"answer_correctness": 0.90, "tool_correct_rate": 0.95, "main_tool_match": 0.95,
         "vastaa_suomeksi": 0.95, "logical_consistency": 0.80}
 
 
@@ -369,10 +422,48 @@ def summarize(data: list[dict]) -> dict:
     if "tool_selection_accuracy" in by:
         t = by["tool_selection_accuracy"]
         means["tool_correct_rate"] = sum(1 for x in t.values() if x >= 0.5) / len(t)
+    means.update(tool_split(data))
     low = sorted({q for v in by.values() for q, x in v.items() if x < 0.67})
     errors = sum(1 for r in data if r.get("ERROR"))
     return {"metrics": means, "n": max((len(v) for v in by.values()), default=0),
-            "low": low, "errors": errors}
+            "low": low, "errors": errors, "p50": p50(data)}
+
+
+_LIST = re.compile(r"\*\*(Expected|Invoked):\*\* `\[([^\]]*)\]`")
+
+
+def tool_split(data: list[dict]) -> dict[str, float]:
+    """tool_selection_accuracyn perusteluista (METRIC_CALLS): odotetut ja kutsutut työkalut.
+    main_tool_match = ensimmäinen odotettu (päätyökalu) kutsuttiin (sama määritelmä kuin ennen uutistarkistusta,
+    vertailukelpoinen); news_check_match = liiga_media kutsuttiin täsmälleen silloin, kun sitä odotettiin."""
+    main, news = [], []
+    for r in data:
+        if r.get("METRIC_NAME") != "tool_selection_accuracy":
+            continue
+        calls = r.get("METRIC_CALLS")
+        txt = json.dumps(calls if not isinstance(calls, str) else json.loads(calls or "[]"))
+        got = {k: [t.strip(" `") for t in v.split(",") if t.strip(" `")] for k, v in _LIST.findall(txt.replace("\\n", " "))}
+        exp, inv = got.get("Expected", []), got.get("Invoked", [])
+        if exp:
+            main.append(exp[0] in inv)
+        news.append((N in exp) == (N in inv))
+    out = {}
+    if main:
+        out["main_tool_match"] = sum(main) / len(main)
+    if news:
+        out["news_check_match"] = sum(news) / len(news)
+    return out
+
+
+def p50(data: list[dict]) -> dict[str, float]:
+    """Mediaani kysymystä kohden (yksi rivi per kysymys: answer_correctness)."""
+    import statistics
+    rows = [r for r in data if r.get("METRIC_NAME") == "answer_correctness"]
+    def med(k):
+        v = [float(r[k]) for r in rows if r.get(k) is not None]
+        return statistics.median(v) if v else float("nan")
+    return {"latency_s": med("DURATION_MS") / 1000, "input_tokens": med("TOTAL_INPUT_TOKENS"),
+            "output_tokens": med("TOTAL_OUTPUT_TOKENS")}
 
 
 def record(agent: str, version: str, run: str, summary: dict) -> str:
@@ -380,9 +471,13 @@ def record(agent: str, version: str, run: str, summary: dict) -> str:
     m = summary["metrics"]
     cols = ["answer_correctness", "tool_correct_rate", "tool_selection_accuracy",
             "vastaa_suomeksi", "logical_consistency"]
+    p = summary.get("p50", {})
     row = (f"| {run} | {agent} | {version} | {summary['n']} | "
            + " | ".join(f"{m.get(c, float('nan')):.2f}" for c in cols)
-           + f" | {summary['errors']} | {'; '.join(summary['low']) or '–'} |")
+           + f" | {summary['errors']} | {'; '.join(summary['low']) or '–'} |"
+           # 23.11.2026: päätyökalu ja uutistarkistus erikseen, mediaaniviive ja -tokenit
+           + f" päätyökalu {m.get('main_tool_match', float('nan')):.2f}, uutistarkistus {m.get('news_check_match', float('nan')):.2f},"
+           + f" p50 {p.get('latency_s', float('nan')):.1f} s / {p.get('input_tokens', float('nan')):.0f}+{p.get('output_tokens', float('nan')):.0f} tok |")
     path = ROOT / "docs" / "agent_evals.md"
     if not path.exists():
         path.write_text("# Agentin evaluoinnit\n\n*Kirjoittaa `scripts/deploy/agent_eval.py`. Append-only.*\n\n"
@@ -425,13 +520,14 @@ def main() -> None:
     # ACCOUNTADMINin aiemmin luomaan datasettiin ei ollut oikeuksia.
     run = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     dataset = build_dataset(run)
-    print(f"testijoukko {TABLE}: {len(GOLDEN)} kysymystä -> {dataset}")
+    n_rows = int(_sql(f"SELECT COUNT(*) AS n FROM {TABLE}", json_out=True)[0]["N"])
+    print(f"testijoukko {TABLE}: {n_rows} kysymystä (joista vaikeita {n_rows - len(GOLDEN)}) -> {dataset}")
     if a.build_only:
         return
     cfg_path = write_config(a.agent, a.version, dataset, run)
     print(f"konfiguraatio {cfg_path}; ajo {run} ({a.agent} {a.version})")
     start_and_wait(run, cfg_path)
-    data = complete_results(a.agent, run)
+    data = complete_results(a.agent, run, n_rows)
     out = ROOT / "snowflake" / "LIIGA" / "EVALS" / "results" / f"results_{run}.json"
     out.write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     print(f"tulokset {out} ({len(data)} riviä)")
