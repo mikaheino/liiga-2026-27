@@ -110,8 +110,8 @@ print("VERTAILU VALMIS:", "kaikki samat kuin nykyiset taulut" if not bad else f"
 
 s = daily.session()
 s.sql("""CREATE TABLE IF NOT EXISTS LIIGA.CODE.PIPELINE_CHECKS (checked_at TIMESTAMP_LTZ, check_name VARCHAR,
-    table_name VARCHAR, rows_new NUMBER, digest VARCHAR, rows_current NUMBER, status VARCHAR, sample VARCHAR)""").collect()
-out = pd.DataFrame(results, columns=["TABLE_NAME", "ROWS_NEW", "DIGEST", "ROWS_CURRENT", "STATUS", "SAMPLE"])
+    table_name VARCHAR, rows_new NUMBER, digest VARCHAR, rows_current NUMBER, status VARCHAR, detail VARCHAR)""").collect()
+out = pd.DataFrame(results, columns=["TABLE_NAME", "ROWS_NEW", "DIGEST", "ROWS_CURRENT", "STATUS", "DETAIL"])
 out.insert(0, "CHECK_NAME", "rates_check")
 out.insert(0, "CHECKED_AT", pd.Timestamp.now(tz="UTC"))
 s.write_pandas(out, "PIPELINE_CHECKS", database="LIIGA", schema="CODE", use_logical_type=True)
