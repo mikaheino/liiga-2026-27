@@ -12,10 +12,15 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const INTERNAL = /^\/(joukkue|sarjataulukko|voittaja|ottelut|liike|linkedin)?(\/|\?|$)/;
 const TOKEN = /\[([^\]]+)\]\(([^)\s]+)\)|(^|[\s(])((?:https?:\/\/|\/)[^\s<)]*)/g;
 
+// 23.11.2026 (katselmointi m6): ei tunnuksia osoitteessa (https://user:pw@...), ei kenoviivaa sisäisessä polussa
+// (/\evil.example tulkitaan selaimessa ulkoiseksi), ei suunnanvaihtomerkkejä näkyvässä tekstissä.
+const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
+
 export function safeHref(raw: string): string | null {
-  if (raw.startsWith("/")) return raw.startsWith("//") || !INTERNAL.test(raw) ? null : raw;
+  if (raw.startsWith("/")) return raw.startsWith("//") || raw.includes("\\") || !INTERNAL.test(raw) ? null : raw;
   try {
     const u = new URL(raw);
+    if (u.username || u.password) return null;
     return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
   } catch {
     return null;
@@ -31,14 +36,14 @@ function decode(s: string) {
 }
 
 function text(s: string) {
-  return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  return esc(s.replace(BIDI, "")).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
 
 function link(label: string, url: string) {
   const href = safeHref(url);
   if (!href) return text(label);
   const ext = !href.startsWith("/");
-  return `<a href="${esc(href)}"${ext ? ' target="_blank" rel="noopener noreferrer"' : ""}>${esc(label)}</a>`;
+  return `<a href="${esc(href)}"${ext ? ' target="_blank" rel="noopener noreferrer"' : ""}>${esc(label.replace(BIDI, ""))}</a>`;
 }
 
 function inline(s: string) {

@@ -15,6 +15,7 @@ on:
       - data/*.txt
       - snowflake/LIIGA/CODE/code_bundles/**
       - scripts/deploy/deploy_bundle.py
+      - snowflake/LIIGA/MEDIA/deploy_media.sql
       - .github/workflows/deploy-bundle.yml
   workflow_dispatch:
 
@@ -43,6 +44,9 @@ jobs:
       - uses: ./.github/actions/snowflake-setup
         with:
           private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      # Median joukkuetunnistus ja agentin haku (23.11.2026). Idempotentti, ei kielimallikutsuja.
+      - name: Media (joukkuetunnistus, haku)
+        run: snow sql -c ci --role LIIGA_DEPLOYER -f snowflake/LIIGA/MEDIA/deploy_media.sql
       - name: Code Bundle LIIGA_DAILY
         run: python scripts/deploy/deploy_bundle.py
       # Tarkistusajo (8.11.2026): sama paketti ajetaan Snowflakessa ilman kirjoituksia.

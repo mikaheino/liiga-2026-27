@@ -60,17 +60,7 @@ UPDATE LIIGA.MEDIA.MEDIA_EVENTS e SET source_team = n.team
  WHERE e.url = n.url AND e.source_kind = 'news' AND e.source_team IS NULL;
 ALTER TABLE LIIGA.MEDIA.MEDIA_EVENTS ALTER COLUMN teams COMMENT 'Liigajoukkueet RAW_GAMES-nimin, pilkulla ja välilyönnillä erotettuna';
 
--- Joukkueen tunnistus otsikosta, kun lähde ei kerro joukkuetta (vartalo kattaa taivutusmuodot: Lukon, Ilveksen, Kärppien).
-CREATE OR REPLACE VIEW LIIGA.MEDIA.V_TEAM_PATTERNS
-  COMMENT = 'Liigajoukkue ja sen nimen vartalo otsikkotunnistukseen (EXTRACT_MEDIA_EVENTS)'
-AS
-SELECT t.team, COALESCE(p.stem, t.team) AS stem
-  FROM (SELECT DISTINCT home_team AS team FROM LIIGA.RAW.RAW_GAMES
-         WHERE season = (SELECT MAX(season) FROM LIIGA.RAW.RAW_GAMES)) t
-  LEFT JOIN (SELECT column1 AS team, column2 AS stem FROM VALUES
-      ('Ilves', 'Ilve(s|k)'), ('Kärpät', 'Kärp'), ('Ässät', 'Äss'), ('Lukko', 'Luko(n|ssa|lle)|Lukko'),
-      ('Jokerit', 'Joker(i|e)'), ('K-Espoo', 'K-Espoo|Kiekko-Espoo'), ('Pelicans', 'Pelican'), ('Tappara', 'Tappara'), ('KalPa', 'KalPa'),
-      ('Jukurit', 'Jukuri'), ('SaiPa', 'SaiPa'), ('Sport', 'Sport(i|in| )')) p ON p.team = t.team;
+-- V_TEAM_PATTERNS: snowflake/LIIGA/MEDIA/deploy_media.sql (CI, deploy-bundle.yml, 23.11.2026).
 
 -- Joukkueet (23.11.2026, katselmointi): lähteen joukkue (news) UNION otsikon (+ ingressin) nimen vartalo.
 -- Vain rivit, joiden extracted_at >= SINCE (EXTRACT: tämän ajon rivit; '1970-01-01' = kaikki uudelleen). Ei kielimallia.
@@ -165,28 +155,7 @@ BEGIN
 END;
 $$;
 
--- Agentin haku: otsikko (+ ingressi) + kuka + mitä; linkki, lähde ja aika palautetaan lähteeksi.
--- 22.11.2026: kattaa molemmat lähdetyypit (source_kind); suodatettavat: source, source_kind, event_type ja
--- team_list (ARRAY, @contains: myös usean joukkueen otsikot; teams-merkkijono vain näyttöön).
--- 23.11.2026: published_date (DATE, suodatettava @gte: tuoreus; ei CURRENT_TIMESTAMPia lähteessä, jotta päivitys
--- pysyy inkrementaalisena); TARGET_LAG 7 days,
--- koska EXTRACT_MEDIA_EVENTS päivittää haun itse (REFRESH), kun uutta tulee.
-CREATE OR REPLACE CORTEX SEARCH SERVICE LIIGA.MEDIA.LIIGA_MEDIA_SEARCH
-  ON search_text
-  ATTRIBUTES source, source_kind, teams, team_list, event_type, published_date
-  WAREHOUSE = LIIGA_WH
-  TARGET_LAG = '7 days'
-  COMMENT = 'Liiga-uutiset tapahtumineen agentille: IS, IL, MTV (otsikot) sekä seurat, Yle ja Sport (otsikko + ingressi). Pelikiellot, loukkaantumiset, siirrot, valmentajat.'
-AS
-SELECT url, title, COALESCE(summary, '') AS summary, source, source_kind, COALESCE(teams, '') AS teams,
-       IFF(NULLIF(teams, '') IS NULL, [], SPLIT(teams, ', ')) AS team_list, event_type,
-       TO_VARCHAR(published, 'YYYY-MM-DD HH24:MI') AS published,
-       TO_DATE(CONVERT_TIMEZONE('UTC', COALESCE(published, extracted_at))) AS published_date,
-       ARRAY_TO_STRING(players, ', ') AS players, ARRAY_TO_STRING(coaches, ', ') AS coaches,
-       title || IFF(summary IS NULL, '', ' | ' || summary) || ' | joukkueet: ' || COALESCE(teams, '-')
-         || ' | pelaajat: ' || ARRAY_TO_STRING(players, ', ') || ' | valmentajat: ' || ARRAY_TO_STRING(coaches, ', ')
-         || ' | tyyppi: ' || event_type || ' | ' || TO_VARCHAR(published, 'YYYY-MM-DD') AS search_text
-  FROM LIIGA.MEDIA.MEDIA_EVENTS;
+-- LIIGA_MEDIA_SEARCH: snowflake/LIIGA/MEDIA/deploy_media.sql (CI, deploy-bundle.yml, 23.11.2026).
 
 CREATE STAGE IF NOT EXISTS LIIGA.MEDIA.CODE;
 -- PUT file://snowflake/LIIGA/MEDIA/procedures/COLLECT_MEDIA/collect_media.py @LIIGA.MEDIA.CODE AUTO_COMPRESS=FALSE OVERWRITE=TRUE;

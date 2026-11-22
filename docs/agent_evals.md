@@ -28,6 +28,15 @@ portti hylkäsi raa'an työkalumittarin 0,94 takia).
 | 20261017_085833 | LIIGA_ENNUSTAJA | DEV | 35 | 0.95 | 1.00 | 0.97 | 0.97 | 0.91 | 0 | Entä jos Ilves voittaa seuraavan ottelunsa?; Mikä on varjosarjataulukko?; Miten Tapparan seuraava ottelu päättyy?; Miten ennustemalli toimii?; Tee illan peleistä HTML-sivu |
 | 20261122_172533 | LIIGA_ENNUSTAJA | PRODUCTION | 41 | 0.92 | 1.00 | 0.92 | 0.98 | 0.89 | 0 | Ketkä putoavat?; Mikä on Tapparan todennäköinen kokoonpano?; Mikä on varjosarjataulukko?; Miten Daniel Mäkiaho on tehnyt pisteitä aiempina kausina?; Miten joukkueen KooKoo seuraava ottelu päättyy?; Miten joukkueet menestyivät viime kaudella?; Miten tämän päivän pelit päättyvät?; Mitkä ovat tämän illan otteluiden 1X2-todennäköisyydet ja maaliodottamat?; Onko KooKoon huono alku ollut huonoa tuuria?; Paljonko Manu Mäkelä heikentää joukkueen KooKoo mahdollisuuksia nyt?; Tee illan peleistä HTML-sivu | päätyökalu 1.00, uutistarkistus 0.93, p50 10.5 s / 60045+636 tok |
 
+### 23.11.2026: vaihtelu (katselmointi m4) – ei ajettu, perusteltu
+
+Pyyntö: VERSION$9 vielä kaksi kertaa, jos yhteensä alle ~150 000 tokenia. Yhden ajon p50 on 58 426 + 473 tokenia
+KYSYMYSTÄ kohden (taulukko alla), joten kaksi täyttä ajoa olisi useita miljoonia tokeneita, kymmeniä kertoja yli rajan.
+Pienempi otos (2–3 kysymystä) mahtuisi rajaan, mutta se ei kerro koko arvioinnin vaihtelusta mitään luotettavaa,
+joten sitä ei ajettu. Nykyinen tieto: yksi ajo (20261122_174559); keskiarvoa ja vaihteluväliä ei ole.
+Seuraava täysi ajo tulee luonnostaan agentin seuraavassa julkaisussa (deploy.yml, STAGING-portti); silloin kirjataan
+VERSION$9 vs. uusi versio rinnakkain. Jos vaihteluväli halutaan ennen sitä, kustannus on ~2 × täysi ajo.
+
 ### 23.11.2026: uutistarkistus eteenpäin katsoviin, uutiset lainattua dataa (VERSION$8 -> VERSION$9)
 Sama testijoukko (41 kysymystä, joista 3 vaikeaa tuoreimmasta pelikiellosta). Päätyökalu = ensimmäinen odotettu
 työkalu kutsuttiin (vanha määritelmä, vertailukelpoinen); uutistarkistus = liiga_media kutsuttiin täsmälleen kun odotettiin.

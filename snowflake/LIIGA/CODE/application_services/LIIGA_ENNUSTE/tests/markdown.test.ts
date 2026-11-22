@@ -40,3 +40,15 @@ test("ordinary links, internal paths and bold still work", () => {
   assert.equal(md("ja/tai"), "<p>ja/tai</p>");
   assert.equal(md("a < b"), "<p>a &lt; b</p>");
 });
+
+test("credentials in URLs, backslash paths and bidi controls are rejected (m6)", () => {
+  assert.equal(safeHref("https://user:pw@liiga.fi/x"), null);
+  assert.equal(safeHref("https://user@liiga.fi/x"), null);
+  assert.equal(safeHref("/\\evil.example/x"), null);
+  assert.equal(safeHref("/joukkue\\..\\x"), null);
+  assert.equal(safeHref("/joukkue/Ilves"), "/joukkue/Ilves");
+  const h = md("[Ilves\u202Egnp.exe](https://liiga.fi/a) ja \u2066teksti\u2069");
+  assert.ok(!/[\u202A-\u202E\u2066-\u2069]/.test(h), h);
+  assert.ok(h.includes('href="https://liiga.fi/a"'), h);
+  assert.ok(!/<a /.test(md("[x](https://a:b@evil.example/)")));
+});
