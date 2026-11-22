@@ -1,7 +1,8 @@
 """Pelaajamallin vertailuajo ilman kirjoituksia (22.11.2026, Macin aamusynkan korvaus).
 
 Laskee Snowflakessa saman kuin rosterityö (build_rosters_from_article + build_player_rates +
-compute_liiga_rates) ja lukee CSV-taulut paketista, mutta EI kirjoita: register_df kaapataan.
+compute_liiga_rates) ja lukee CSV-taulut paketista, mutta EI kirjoita mallin tauluihin: register_df
+kaapataan. Tulos kirjataan tarkistustauluun LIIGA.CODE.PIPELINE_CHECKS (bundlen tuloste ei näy SQL:ssä).
 Tulosteessa jokaiselle taululle rivimäärä ja tiiviste (sha256, 12 merkkiä): sama tiiviste kuin Macin
 laskennassa samoista git-tiedostoista = sama tulos. Lisäksi ero nykyiseen tauluun (tiedoksi: osa tauluista
 on vanhempia kuin git-tiedostot, koska Mac ei enää laskenut niitä uudelleen).
@@ -85,6 +86,7 @@ def _norm(df: pd.DataFrame) -> list[tuple]:
 
 
 bad = []
+results = []
 for name, new in captured.items():
     cur = db.query_df(con, f"SELECT * FROM {curated._fq(con, name)}")
     a, b = _norm(new), _norm(cur)
@@ -97,6 +99,7 @@ for name, new in captured.items():
     digest = hashlib.sha256(repr(a).encode()).hexdigest()[:12]
     status = "SAMA" if a == b else f"ERO +{len(only_new)} -{len(only_cur)}"
     print(f"{name:28} uusi {len(a):5} {digest}  nyk {len(b):5}  {status}")
+    results.append((name, len(a), digest, len(b), status, repr((only_new[:3], only_cur[:3]))[:2000]))
     for r in only_new[:3]:
         print("    vain uusi:", r)
     for r in only_cur[:3]:
@@ -104,3 +107,11 @@ for name, new in captured.items():
     if a != b:
         bad.append(name)
 print("VERTAILU VALMIS:", "kaikki samat kuin nykyiset taulut" if not bad else f"eroja nykyisiin: {bad}")
+
+s = daily.session()
+s.sql("""CREATE TABLE IF NOT EXISTS LIIGA.CODE.PIPELINE_CHECKS (checked_at TIMESTAMP_LTZ, check_name VARCHAR,
+    table_name VARCHAR, rows_new NUMBER, digest VARCHAR, rows_current NUMBER, status VARCHAR, sample VARCHAR)""").collect()
+out = pd.DataFrame(results, columns=["TABLE_NAME", "ROWS_NEW", "DIGEST", "ROWS_CURRENT", "STATUS", "SAMPLE"])
+out.insert(0, "CHECK_NAME", "rates_check")
+out.insert(0, "CHECKED_AT", pd.Timestamp.now(tz="UTC"))
+s.write_pandas(out, "PIPELINE_CHECKS", database="LIIGA", schema="CODE", use_logical_type=True)
