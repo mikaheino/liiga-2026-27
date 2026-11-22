@@ -43,6 +43,7 @@ jobs:
         env:
           URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
         run: |
+          set -euo pipefail
           git clone -q --branch news-data "$URL" .news-data
           git clone -q --depth 1 --branch pages-data "$URL" .pages-data
           # Yksiselitteiset uutiset kirjataan itse (auto_absences.py), sitten päivän haastaja.
@@ -62,11 +63,12 @@ jobs:
         env:
           LIIGA_NEWS_DUCKDB: ${{ runner.temp }}/news.duckdb
         run: |
+          set -euo pipefail
           python scripts/news/load_news.py .news-data
           python scripts/news/news_signals.py | tee -a "$GITHUB_STEP_SUMMARY"
-          python scripts/news/publish_news.py --sql "$RUNNER_TEMP/news.sql"
-          snow sql -c ci -f "$RUNNER_TEMP/news.sql" > /dev/null
-          snow sql -c ci -q "SELECT 'NEWS_SIGNALS' t, COUNT(*) n FROM LIIGA.MODEL.NEWS_SIGNALS UNION ALL SELECT 'NEWS_ABSENCE_LOG', COUNT(*) FROM LIIGA.MODEL.NEWS_ABSENCE_LOG" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Rooli LIIGA_NEWS_PUBLISHER, sidotut arvot, yksi transaktio; kaatuu, jos rivit tyhjenisivät
+          # tai putoaisivat alle puoleen (23.11.2026, katselmointi M3).
+          python scripts/news/publish_news.py | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Sivu (kausiennuste mukaan)
         env:
           GH_TOKEN: ${{ github.token }}
