@@ -14,7 +14,8 @@ eikä tekstiä Snowflakeen). Tämä vaihe johtaa niistä kaksi taulua, joissa on
                     jotta dismiss-kirjaus voi edelleen perua saman uutisen kirjaukset.
 
 Otsikkoa käytetään vain johtamiseen; sitä ei tallenneta. Taulut kirjoitetaan uutiskantaan
-(scripts/news/newsdb.py, LIIGA_NEWS_DUCKDB), ja liiga.snowflake_sync julkaisee ne LIIGA.MODELiin.
+(scripts/news/newsdb.py, LIIGA_NEWS_DUCKDB), ja recompute.yml julkaisee ne LIIGA.MODELiin
+(publish_news.py, 22.11.2026; ennen liiga.snowflake_sync Macilta).
 
     LIIGA_NEWS_DUCKDB=data/news.duckdb .venv/bin/python scripts/news/news_signals.py
 """

@@ -2,6 +2,7 @@
 # päivän otteluiden haastajaennuste (challenger.py -> news-data) ja sivun julkaisu, jossa kausiennuste
 # (pages.yml: challenger_season.py). Käynnistyy OK-painalluksista (absence.yml)
 # ja klo 14 -ajosta (news.yml).
+# 22.11.2026: lopuksi uutistaulut Snowflakeen (publish_news.py), ennen Macin aamusynkka.
 #
 # Ryhmittely: jonossa on yksi ajo käynnissä ja yksi odottamassa; uusi pyyntö
 # korvaa odottavan. Viisi OK:ta peräkkäin -> enintään kaksi laskentaa, ja
@@ -18,6 +19,13 @@ permissions:
 concurrency:
   group: recompute
   cancel-in-progress: false
+
+env:
+  LIIGA_SNOW_CONNECTION: ci
+  LIIGA_SNOW_ROLE: LIIGA_DEPLOYER
+  LIIGA_SNOW_WAREHOUSE: LIIGA_WH
+  SNOWFLAKE_ACCOUNT: FUTURICEPARTNER-FUTURICEPARTNER
+  SNOWFLAKE_USER: LIIGA_CI
 
 jobs:
   recompute:
@@ -45,6 +53,20 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Haastaja $(TZ=Europe/Helsinki date +%F\ %H:%M)" || { echo "ei muutoksia"; exit 0; }
           ../.github/scripts/push-retry.sh news-data
+      # Uutistaulut Snowflakeen (22.11.2026): samat vaiheet kuin Macin news_pull.py (load_news ->
+      # news_signals), sitten DELETE + INSERT yhdessä transaktiossa. Sovellus lukee LIIGA.MODELista.
+      - uses: ./.github/actions/snowflake-setup
+        with:
+          private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      - name: Uutistaulut Snowflakeen
+        env:
+          LIIGA_NEWS_DUCKDB: ${{ runner.temp }}/news.duckdb
+        run: |
+          python scripts/news/load_news.py .news-data
+          python scripts/news/news_signals.py | tee -a "$GITHUB_STEP_SUMMARY"
+          python scripts/news/publish_news.py --sql "$RUNNER_TEMP/news.sql"
+          snow sql -c ci -f "$RUNNER_TEMP/news.sql" > /dev/null
+          snow sql -c ci -q "SELECT 'NEWS_SIGNALS' t, COUNT(*) n FROM LIIGA.MODEL.NEWS_SIGNALS UNION ALL SELECT 'NEWS_ABSENCE_LOG', COUNT(*) FROM LIIGA.MODEL.NEWS_ABSENCE_LOG" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Sivu (kausiennuste mukaan)
         env:
           GH_TOKEN: ${{ github.token }}
