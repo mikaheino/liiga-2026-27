@@ -208,8 +208,12 @@ def assemble_player_seasons(con) -> pd.DataFrame:
             "factor", "position_group", "birth_year", "source"]
     alls = pd.concat([liiga[cols], ext[cols]], ignore_index=True)
     # prefer Liiga when a (player, season) exists in both
+    # kind="stable" (22.11.2026): kahden saman kauden ulkomaanjakson (esim. AHL + NCAA) välinen valinta
+    # riippui numpyn quicksortista, joten Mac ja Snowflaken kontti valitsivat eri rivin (13 pelaajaa,
+    # enintään 0,043 p/ott). Vakaa järjestys = tiedoston järjestys, sama kaikkialla. Jaksojen
+    # yhdistäminen olisi mallimuutos, ei tehdä kesken kauden.
     alls["_pref"] = (alls["source"] == "liiga").astype(int)
-    alls = (alls.sort_values("_pref", ascending=False)
+    alls = (alls.sort_values("_pref", ascending=False, kind="stable")
                 .drop_duplicates(subset=["key", "season"], keep="first")
                 .drop(columns="_pref"))
     return alls
