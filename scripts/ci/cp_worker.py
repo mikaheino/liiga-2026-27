@@ -167,42 +167,59 @@ def agent(job_path: str, out_path: str) -> int:
     return 0 if ok else 1
 
 
+def _cmd_check_index(argv: list[str]) -> int:
+    bad = index_problems(argv[1])
+    for b in bad:
+        print("KIELLETTY:", b, file=sys.stderr)
+    return 1 if bad else 0
+
+
+def _cmd_paths(argv: list[str]) -> int:
+    paths = patch_paths(Path(argv[1]).read_text(encoding="utf-8", errors="replace"))
+    bad = forbidden(paths)
+    print("muutetut:", ", ".join(paths) or "-")
+    if bad or not paths:
+        print("KIELLETTY:", ", ".join(bad) if bad else "tyhjä korjaus", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _cmd_check(con, _argv: list[str]) -> int:
+    print("pending" if pending(con) else "empty")
+    return 0
+
+
+def _cmd_claim(con, argv: list[str]) -> int:
+    job = claim(con)
+    if not job:
+        print("ei ajoa jonossa")
+        return 3
+    Path(argv[1]).write_text(json.dumps(job, default=str), encoding="utf-8")
+    print(f"ajo {job['id']} ({job['wf']['name']})")
+    return 0
+
+
+def _cmd_finish(con, argv: list[str]) -> int:
+    note = Path(argv[3]).read_text(encoding="utf-8") if Path(argv[3]).exists() else argv[3]
+    finish(con, int(argv[1]), argv[2], note, int(argv[4]) if len(argv) > 4 else 0)
+    return 0
+
+
+# Komennot ilman Snowflakea ja Snowflake-yhteyttä tarvitsevat (pr-työ ei saa avata yhteyttä).
+LOCAL = {"agent": lambda a: agent(a[1], a[2]), "check-index": _cmd_check_index, "paths": _cmd_paths}
+REMOTE = {"check": _cmd_check, "claim": _cmd_claim, "finish": _cmd_finish}
+
+
 def main(argv: list[str]) -> int:
     cmd = argv[0] if argv else ""
-    if cmd == "agent":
-        return agent(argv[1], argv[2])
-    if cmd == "check-index":
-        bad = index_problems(argv[1])
-        for b in bad:
-            print("KIELLETTY:", b, file=sys.stderr)
-        return 1 if bad else 0
-    if cmd == "paths":
-        paths = patch_paths(Path(argv[1]).read_text(encoding="utf-8", errors="replace"))
-        bad = forbidden(paths)
-        print("muutetut:", ", ".join(paths) or "-")
-        if bad or not paths:
-            print("KIELLETTY:", ", ".join(bad) if bad else "tyhjä korjaus", file=sys.stderr)
-            return 1
-        return 0
-    con = connect()
-    try:
-        if cmd == "check":
-            print("pending" if pending(con) else "empty")
-            return 0
-        if cmd == "claim":
-            job = claim(con)
-            if not job:
-                print("ei ajoa jonossa")
-                return 3
-            Path(argv[1]).write_text(json.dumps(job, default=str), encoding="utf-8")
-            print(f"ajo {job['id']} ({job['wf']['name']})")
-            return 0
-        if cmd == "finish":
-            note = Path(argv[3]).read_text(encoding="utf-8") if Path(argv[3]).exists() else argv[3]
-            finish(con, int(argv[1]), argv[2], note, int(argv[4]) if len(argv) > 4 else 0)
-            return 0
-    finally:
-        con.close()
+    if cmd in LOCAL:
+        return LOCAL[cmd](argv)
+    if cmd in REMOTE:
+        con = connect()
+        try:
+            return REMOTE[cmd](con, argv)
+        finally:
+            con.close()
     print(__doc__, file=sys.stderr)
     return 2
 
