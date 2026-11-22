@@ -51,6 +51,20 @@ ja yllä olevat ajastukset; sovellukset sammuvat itse (auto-suspend) ja herääv
 `ALTER APPLICATION SERVICE LIIGA.APP.LIIGA_ENNUSTE RESUME` ~5 min etukäteen. Suurin CP_WH-kuluttaja on
 avoinna oleva CP_DEMO-sovellus (pollaa) -- sammuta demojen välillä.
 
+## Tila hyväksynnässä (22.11.2026 illalla, kierros 7)
+
+- Ajot ilman Macia: LIIGA_DAILY_RUN (koodibundle, task) ja uutiset ajetaan Snowflakessa control planen kautta;
+  median ontologia `liiga-media-ontologia` (EXTRACT_MEDIA_EVENTS) ajettu control planesta (ajo 151, 2 uutta tapahtumaa).
+  Viimeisin Macin kirjoitus: LIIGA_SYNC 22.11. klo 8.32-8.33 (Helsinki, aamusynkka ennen siirtoa); launchd-synkkaa ei ole.
+  Mac (`com.controlplane.worker`) tarvitaan enää vain liiga-rosteriin. LIIGA_SYNC poistetaan aikaisintaan 29.11.2026.
+- Media julkaistaan CI:stä: `snowflake/LIIGA/MEDIA/deploy_media.sql` (deploy-bundle.yml, rooli LIIGA_DEPLOYER, omistaa
+  vain V_TEAM_PATTERNS:n ja LIIGA_MEDIA_SEARCH:n). Taulut ja AI-proseduurit: `_schema.sql` (LIIGA_ADMIN).
+- Joukkueet otsikoista: nimen vartalo + yksiselitteinen kotikaupunki (Oulu, Rauma, Pori, Kuopio, Jyväskylä,
+  Hämeenlinna, Lappeenranta, Kouvola, Mikkeli, Vaasa, Turku, Espoo; ei Tamperetta eikä Helsinkiä). Ilman joukkuetta
+  40/517 (ennen 42/515). Agentin haku ei sisällä event_type `other` eikä `off-ice` -rivejä.
+- Agentin markdown: ei tunnuksia osoitteessa, ei kenoviivaa sisäisessä polussa, suunnanvaihtomerkit poistetaan.
+- Historiataulut vain lisääviä; syötteen latauksesta joukkuediff PIPELINE_CHECKSiin (`forecast_input_diff`).
+
 ## Ennusteen syötteet siirron jälkeen (M4, tarkistettu 23.11.2026)
 
 Katselmoinnin huoli: 22.11. kuratoitujen taulujen drift-lataus (league_factors, raw_external_player_seasons,
