@@ -26,7 +26,10 @@ export default function EventList({ items, title = "Uusimmat uutiset" }: { items
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
         {items.map((r) => (
           <li key={r.url} style={{ fontSize: 14, lineHeight: 1.35 }}>
-            <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)" }}>{r.title}</a>
+            {/* 23.11.2026: linkki vain http(s)-osoitteelle (kolmannen osapuolen data), muuten pelkkä otsikko */}
+            {/^https?:\/\//i.test(r.url)
+              ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)" }}>{r.title}</a>
+              : <span>{r.title}</span>}
             <span style={{ display: "block", marginTop: 2, fontSize: 12, color: "var(--muted)" }}>
               <EventBadge type={r.eventType} />{r.source}{r.published ? ` · ${fmtDay.format(new Date(r.published))}` : ""}
             </span>

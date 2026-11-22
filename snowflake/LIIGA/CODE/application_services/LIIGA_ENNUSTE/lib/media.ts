@@ -34,10 +34,12 @@ export function loadMedia(): Promise<MediaLink[]> {
 
 // Joukkueiden tuoreimmat uutiset (joukkue-, ottelu- ja kierrosnäkymät). Ottelutulokset jätetään pois:
 // ne näkyvät jo sivulla itsellään, uutislista on siirtoja, poissaoloja ja valmentajia varten.
+// 23.11.2026: myös off-ice ja other pois (seurojen markkinointi: Black Week, VIP-paketit, tarjoukset).
+const NOT_ON_TEAM_PAGES = new Set(["game result", "off-ice", "other"]);
 export async function newsFor(teams: string[], max = 5, days = 14): Promise<MediaLink[]> {
   const want = new Set(teams);
   const since = Date.now() - days * 864e5;
   const rows = await loadMedia().catch(() => []);
-  return rows.filter((r) => r.eventType !== "game result" && r.teams.some((t) => want.has(t))
+  return rows.filter((r) => !NOT_ON_TEAM_PAGES.has(r.eventType ?? "") && r.teams.some((t) => want.has(t))
     && (!r.published || Date.parse(r.published) >= since)).slice(0, max);
 }

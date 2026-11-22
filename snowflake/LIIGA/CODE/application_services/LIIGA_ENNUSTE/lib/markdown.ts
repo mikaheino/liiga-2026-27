@@ -1,23 +1,62 @@
 // Agentin vastauksen kevyt markdown -> HTML: lihavointi, linkit, listat ja
-// taulukot. Teksti escapetaan ensin, joten agentin vastaus ei voi syöttää
+// taulukot. Kaikki teksti escapetaan, joten agentin vastaus ei voi syöttää
 // sivulle omaa HTML:ää. Sovelluksen omat osoitteet muuttuvat sisäisiksi
 // linkeiksi, jotta "Lisää sovelluksessa" avautuu samaan ikkunaan.
 const APP = /https:\/\/[a-z0-9]+-[a-z0-9-]+\.snowflakecomputing\.app/g;  // tilin nimestä riippumaton (siirto Futuricelle 21.11.2026)
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-function inline(s: string) {
-  let h = esc(s.replace(APP, ""));
-  h = h.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-  h = h.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, t, u) => link(t, u));
-  h = h.replace(/(^|[\s(])((?:https?:\/\/|\/)(?:joukkue|sarjataulukko|voittaja|ottelut|liike|linkedin)?[^\s<)]*)/g, (m, pre, u) =>
-    u.startsWith("/") && !/^\/(joukkue|sarjataulukko|voittaja|ottelut|liike|linkedin)?(\/|\?|$)/.test(u) ? m : pre + link(u === "/" ? "Etusivu" : decodeURIComponent(u), u));
-  return h;
+// 23.11.2026 (katselmointi, XSS): linkit käsitellään RAAKATEKSTISTÄ ennen escapetusta. Osoite tarkistetaan
+// new URL():lla (vain http/https) tai sovelluksen omana polkuna, ja sekä teksti että href escapetaan
+// dekoodauksen JÄLKEEN (%3C, %22 eivät pääse HTML:ksi). Muu kuin sallittu osoite näytetään tekstinä.
+const INTERNAL = /^\/(joukkue|sarjataulukko|voittaja|ottelut|liike|linkedin)?(\/|\?|$)/;
+const TOKEN = /\[([^\]]+)\]\(([^)\s]+)\)|(^|[\s(])((?:https?:\/\/|\/)[^\s<)]*)/g;
+
+export function safeHref(raw: string): string | null {
+  if (raw.startsWith("/")) return raw.startsWith("//") || !INTERNAL.test(raw) ? null : raw;
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
 }
-function link(text: string, url: string) {
-  const internal = url.startsWith("/");
-  if (!internal && !/^https?:\/\//.test(url)) return text;
-  return `<a href="${url}"${internal ? "" : ' target="_blank" rel="noopener"'}>${text}</a>`;
+
+function decode(s: string) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+function text(s: string) {
+  return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+}
+
+function link(label: string, url: string) {
+  const href = safeHref(url);
+  if (!href) return text(label);
+  const ext = !href.startsWith("/");
+  return `<a href="${esc(href)}"${ext ? ' target="_blank" rel="noopener noreferrer"' : ""}>${esc(label)}</a>`;
+}
+
+function inline(s: string) {
+  const src = s.replace(APP, "");
+  let out = "";
+  let last = 0;
+  for (const m of src.matchAll(TOKEN)) {
+    const at = m.index ?? 0;
+    if (m[1] !== undefined) {                              // [teksti](osoite)
+      out += text(src.slice(last, at)) + link(m[1], m[2]);
+    } else {                                               // paljas osoite tai sovelluksen polku
+      const pre = m[3], u = m[4];
+      if (u.startsWith("/") && !INTERNAL.test(u)) continue;    // esim. "ja/tai": tekstiä
+      out += text(src.slice(last, at) + pre) + link(u === "/" ? "Etusivu" : decode(u), u);
+    }
+    last = at + m[0].length;
+  }
+  return out + text(src.slice(last));
 }
 
 export function md(src: string): string {

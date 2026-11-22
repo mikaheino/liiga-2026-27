@@ -134,7 +134,7 @@ function Sheet({ d, onClose }: { d: MatchDetail; onClose: () => void }) {
         {d.news.length > 0 && (
           <div className="mc-box">
             <div className="label">Uutiset</div>
-            {d.news.map((n) => (
+            {d.news.filter((n) => /^https?:\/\//i.test(n.url)).map((n) => (   /* 23.11.2026: vain http(s) */
               <a key={n.url} className="mc-news" href={n.url} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={logo(n.team)} alt="" width={14} height={14} /> {n.date} {n.title} ↗
