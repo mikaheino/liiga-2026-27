@@ -1,11 +1,11 @@
 // Muut mediat (21.11.2026): Ilta-Sanomien, Iltalehden ja MTV:n Liiga-otsikot ja linkit (LIIGA.MEDIA).
-// EI TEKOÄLYLLE: julkaisijat kieltävät tekoälykäytön. Tätä moduulia ei saa tuoda agentin,
-// chatin, korttien, skenaarioiden eikä uutissignaalien koodiin -- vain Mediat-sivulle.
+// Mediat-sivun lukija. Tekoälykäyttö sallittu 22.11.2026 (lupa, vain otsikot ja linkit); agentti käyttää
+// omaa hakuaan LIIGA.MEDIA.LIIGA_MEDIA_SEARCH, ei tätä moduulia.
 import { DATA_MODE, query } from "@/lib/snowflake";
 
 export type MediaLink = { published: string | null; source: string; team: string | null; title: string; url: string };
 
-const TTL_MS = 10 * 60_000;      // keräys 6 h välein (control plane), joten 10 min muisti riittää
+const TTL_MS = 10 * 60_000;      // keräys kerran yössä (control plane), joten 10 min muisti riittää
 let cache: { at: number; rows: Promise<MediaLink[]> } | null = null;
 
 export function loadMedia(): Promise<MediaLink[]> {

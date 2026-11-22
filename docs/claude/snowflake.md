@@ -40,8 +40,15 @@ avoinna oleva CP_DEMO-sovellus (pollaa) -- sammuta demojen välillä.
 ## Muut mediat ja mobiilisovellus (21.11.2026)
 
 - `LIIGA.MEDIA.MEDIA_LINKS`: Ilta-Sanomien, Iltalehden ja MTV:n Liiga-otsikot ja linkit, sovelluksen Mediat-sivu.
-  **EI TEKOÄLYLLE**: julkaisijat kieltävät AI-käytön robots.txt:ssä. Vain otsikko ja linkki, ei tekstiä;
-  skeema vain LIIGA_APPille, ei agentti-, malli- eikä uutissignaalipolkuihin (`lib/media.ts` vain Mediat-sivulle).
+  **Tekoälykäyttö sallittu 22.11.2026** (Mika Heinon ilmoittama lupa, laajuus otsikot ja linkit; robots.txt kieltää
+  yhä AI-robotit, joten keräys ei hae artikkelitekstiä). Ennen tätä skeema oli vain LIIGA_APPille.
+- **Median ontologia (22.11.2026):** `EXTRACT_MEDIA_EVENTS()` poimii uusista otsikoista pelaajat ja valmentajat
+  (`AI_EXTRACT`) ja tapahtumatyypin (`AI_CLASSIFY`: suspension, injury, transfer, coaching, game result, crisis,
+  off-ice, other) tauluun `MEDIA_EVENTS`; pelaajat liitetään `ROSTER_2026_27.player_id`:hen ja valmentajiksi
+  korjataan nimet, jotka ovat valmentajia muualla tai `COACHING_CHANGES`issa. Haku `LIIGA_MEDIA_SEARCH`
+  (TARGET_LAG 1 day) on agentin työkalu `liiga_media`. Control plane `liiga-media-ontologia` 04:45, sensori =
+  poimimattomat otsikot (0 -> ei tekoälykulua). Ontologiakäsite `MediaEvent` (`control_plane/catalog/liiga.toml`).
+  Rajoite: otsikoissa on harvoin nimiä; pelaajia vain muutamassa ja rosteriin täsmää harva.
   Keräys `LIIGA.MEDIA.COLLECT_MEDIA()` (oma verkkosääntö `LIIGA_MEDIA_RULE`), control plane `liiga-mediat` kerran yössä 04:30.
   Jatkoaika puuttuu: sivu renderöidään JavaScriptillä eikä syötettä ole.
 - Mobiili vähin krediitein: `public/sw.js` (välimuisti heräämisen ajaksi), `WakeBanner`, sammutus 900 s,

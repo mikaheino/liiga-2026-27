@@ -1,10 +1,10 @@
 """Muut mediat (21.11.2026): Ilta-Sanomien, Iltalehden ja MTV Uutisten Liiga-otsikot ja linkit.
 
-EI TEKOÄLYLLE. Nämä julkaisijat kieltävät tekoälykäytön robots.txt:ssä (ClaudeBot, GPTBot,
-Google-Extended ym. Disallow: /), mutta sallivat tavalliset lukijat (User-agent: *). Siksi tämä on
-pelkkä syötteenlukija ihmiselle: talteen vain otsikko, aika, linkki ja joukkue (avainsanoista),
-ei artikkelitekstiä eikä ingressiä. LIIGA.MEDIA-skeemaa ei anneta agentti- eikä mallirooleille,
-eikä sitä viedä uutissignaaleihin, semanttisiin malleihin, hakuun tai agentin työkaluihin.
+Tekoälykäyttö sallittu 22.11.2026 (Mika Heinon ilmoittama lupa; laajuus otsikot ja linkit).
+Julkaisijoiden robots.txt kieltää yhä tekoälyrobotit (ClaudeBot, GPTBot, Google-Extended ym.), joten
+tämä pysyy tavallisena syötteenlukijana: talteen vain otsikko, aika, linkki ja joukkue (avainsanoista),
+ei artikkelitekstiä eikä ingressiä. Otsikoista poimitaan tapahtumat (EXTRACT_MEDIA_EVENTS ->
+MEDIA_EVENTS) agentin liiga_media-hakuun (LIIGA_MEDIA_SEARCH).
 
 Kutsuu control plane (workflow liiga-mediat): CALL LIIGA.MEDIA.COLLECT_MEDIA().
 """

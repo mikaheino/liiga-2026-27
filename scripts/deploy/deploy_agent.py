@@ -67,6 +67,7 @@ Tool selection -- one tool, one call (the only exception: a morning brief reques
 - liiga_skenaario: what if (locked results), injuries or absences of named players for any period, and what a team needs (stay up, top 6, top 10, win).
 - liiga_kokoonpanot: today's or tomorrow's published lineups, starting goalies, absences, lineup-corrected 1X2, fair odds and betting questions.
 - liiga_tieto: how the model works, measured findings (backtests, home advantage, xG, 40 minutes, goalies), limitations (what the model cannot know) and data sources. Never answer these from table columns or memory.
+- liiga_media: Finnish media headlines (Ilta-Sanomat, Iltalehti, MTV Uutiset) about teams, players and coaches: suspensions, injuries, transfers, coach pressure, crises. Use for 'mitä uutisissa', 'onko X pelikiellossa', news behind a forecast change. Headlines only: never claim more than the headline says.
 - Two tools only when comparing forecast with outcome, or when a current number needs its meaning from liiga_tieto (e.g. "is the home advantage bigger than the model assumes": liiga_kausi + liiga_tieto). Never use web search.
 
 Workflows:
@@ -84,6 +85,8 @@ Be brief: the answer in one sentence, then a table if needed (at most 10 rows, o
 Facts: when the question is about the title, the champion or who wins the regular season, say that 'mestaruus' here means winning the regular season, because the model does not forecast playoffs. Compare model accuracy with 'the home team always wins', not 50 %. Zones: 1-6 quarterfinals, 7-10 play-in, 15-17 relegated.
 
 Round preview: one sentence (number of games; the clearest favourite = the highest win % among the rows), then each OTTELU line in bold followed by the ENNUSTE, TILANNE, MAALIVAHDIT and KESKINAISET lines verbatim (skip empty ones), then at most one upset sentence; SUOSIKKI 'tasainen' = no favourite.
+
+Media answers (liiga_media): at most five headlines, each as a bullet with source, date (D.M.) and the link as a markdown link; one sentence of what they have in common. Say it is based on headlines only.
 
 Knowledge answers (liiga_tieto): plain Finnish, at most six lines or a short list, numbers as the knowledge base gives them; say when something is a limitation of the model.
 
@@ -191,6 +194,9 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                                "required": ["day"]}}},
             {"tool_spec": {"type": "cortex_search", "name": "liiga_tieto",
                            "description": "WHAT: the project's own knowledge base, in Finnish: how the forecast model works (player rates, age curve, league factors, goaltending, Poisson match model, overtime calibration, Elo, 40/60 blend, crowd signal, simulation), measured findings (backtest accuracy, home advantage test, xG and luck, 40-minute leaders, goalies), limitations and data sources. USE WHEN: 'miten malli toimii', 'miksi malli', 'onko X tilastollisesti merkitsevä', 'mitä malli ei tiedä', 'voiko X laskea / mitata', 'mistä data tulee'. DO NOT USE: for current numbers (other tools)."}},
+            # Muut mediat (22.11.2026, lupa tekoälykäyttöön): vain otsikot ja linkit, LIIGA.MEDIA.MEDIA_EVENTS.
+            {"tool_spec": {"type": "cortex_search", "name": "liiga_media",
+                           "description": "WHAT: Finnish media headlines about Liiga from Ilta-Sanomat, Iltalehti and MTV Uutiset, with the teams, players and coaches they mention and an event type (suspension, injury, transfer, coaching, game result, crisis, off-ice, other), publication time and link. Headlines only, no article text; collected nightly. USE WHEN: news, rumours or media coverage of a team, player or coach; whether someone is suspended, injured or under pressure; context for a forecast change. DO NOT USE: for numbers, results or forecasts (other tools)."}},
             # HTML-esikatselu (CoWork document generation) tarvitsee tämän.
             # Oletus permission_policy = always_ask: käyttäjä hyväksyy ajon.
             {"tool_spec": {"type": "code_execution", "name": "code_execution"}},
@@ -206,6 +212,8 @@ def spec(dev: bool, html: bool = False, sha: str = "dev") -> dict:
                                   "execution_environment": {"type": "warehouse", "warehouse": WAREHOUSE}},
             "liiga_tieto": {"search_service": f"LIIGA.MODEL.LIIGA_TIETO{ksfx}", "max_results": 6,
                             "title_column": "SECTION", "id_column": "ID"},
+            "liiga_media": {"search_service": "LIIGA.MEDIA.LIIGA_MEDIA_SEARCH", "max_results": 8,
+                            "title_column": "TITLE", "id_column": "URL"},
             "code_execution": {},
         },
         "skills": [{"name": k, "source": {"type": "STAGE", "path": f"{STAGE}/{sha}/{k}"}}
