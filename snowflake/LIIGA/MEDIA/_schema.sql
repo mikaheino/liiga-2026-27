@@ -7,10 +7,12 @@
 -- Ontologia: MEDIA_EVENTS (pelaajat, valmentajat, tapahtumatyyppi) -> agentin haku LIIGA_MEDIA_SEARCH.
 -- Aja ACCOUNTADMINina (ylläpitoyhteys futurice). Proseduurin koodi stagelta: ks. alla PUT.
 USE ROLE ACCOUNTADMIN;
-CREATE NETWORK RULE IF NOT EXISTS LIIGA.CODE.LIIGA_MEDIA_RULE
+-- 23.11.2026: laaja haku (tier 'wide', MEDIA_SOURCES) tarvitsee myös HS:n, Ylen ja Bingin uutishaun.
+-- Isännät ovat sallittuja valmiiksi; keräin hakee vain lähteitä, joilla enabled = true.
+CREATE OR REPLACE NETWORK RULE LIIGA.CODE.LIIGA_MEDIA_RULE
   TYPE = HOST_PORT MODE = EGRESS
-  VALUE_LIST = ('www.is.fi:443', 'www.iltalehti.fi:443', 'api.mtvuutiset.fi:443')
-  COMMENT = 'Muut mediat: vain RSS-syötteet (otsikot ja linkit)';
+  VALUE_LIST = ('www.is.fi:443', 'www.iltalehti.fi:443', 'api.mtvuutiset.fi:443', 'www.hs.fi:443', 'yle.fi:443', 'www.bing.com:443')
+  COMMENT = 'Muut mediat: vain RSS-syötteet ja uutishaun RSS (otsikot ja linkit)';
 CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS LIIGA_MEDIA_ACCESS
   ALLOWED_NETWORK_RULES = (LIIGA.CODE.LIIGA_MEDIA_RULE) ENABLED = TRUE
   COMMENT = 'LIIGA.MEDIA.COLLECT_MEDIA: IS, IL, MTV RSS';
@@ -27,7 +29,33 @@ CREATE TABLE IF NOT EXISTS LIIGA.MEDIA.MEDIA_LINKS (
   title      STRING NOT NULL,
   url        STRING NOT NULL
 ) COMMENT = 'Vain otsikko ja linkki, ei artikkelitekstiä.';
-ALTER TABLE LIIGA.MEDIA.MEDIA_LINKS SET COMMENT = 'Liiga-uutisotsikot ja linkit (IS, IL, MTV). Vain otsikko ja linkki, ei artikkelitekstiä.';
+ALTER TABLE LIIGA.MEDIA.MEDIA_LINKS SET COMMENT = 'Liiga-uutisotsikot ja linkit (MEDIA_SOURCES). Vain otsikko ja linkki, ei artikkelitekstiä.';
+
+-- Lähteet (23.11.2026): keräin lukee tämän. tier core = luvan piirissä 22.11.; tier wide = control planen
+-- ehdotus "Laajempi uutishaku" (Kyllä asettaa enabled = true ja kirjataan AUDITiin).
+CREATE TABLE IF NOT EXISTS LIIGA.MEDIA.MEDIA_SOURCES (
+  source      STRING PRIMARY KEY,
+  kind        STRING NOT NULL COMMENT 'rss | sport | search',
+  tier        STRING NOT NULL COMMENT 'core | wide',
+  url         STRING NOT NULL COMMENT 'search: {q} = joukkue + liiga',
+  enabled     BOOLEAN NOT NULL DEFAULT FALSE,
+  last_run_at TIMESTAMP_TZ,
+  last_status STRING
+) COMMENT = 'COLLECT_MEDIA-lähteet. Vain otsikot ja linkit.';
+MERGE INTO LIIGA.MEDIA.MEDIA_SOURCES t USING (
+  SELECT * FROM VALUES
+    ('Ilta-Sanomat', 'rss', 'core', 'https://www.is.fi/rss/jaakiekko.xml', TRUE),
+    ('Iltalehti', 'rss', 'core', 'https://www.iltalehti.fi/rss/jaakiekko.xml', TRUE),
+    ('MTV Uutiset', 'sport', 'core', 'https://api.mtvuutiset.fi/mtvuutiset/api/feed/rss/urheilu', TRUE),
+    ('Helsingin Sanomat', 'sport', 'wide', 'https://www.hs.fi/rss/urheilu.xml', FALSE),
+    ('Ilta-Sanomat urheilu', 'sport', 'wide', 'https://www.is.fi/rss/urheilu.xml', FALSE),
+    ('Iltalehti urheilu', 'sport', 'wide', 'https://www.iltalehti.fi/rss/urheilu.xml', FALSE),
+    ('Yle Urheilu', 'sport', 'wide', 'https://yle.fi/rss/urheilu', FALSE),
+    ('Uutishaku', 'search', 'wide', 'https://www.bing.com/news/search?q={q}&format=rss&setlang=fi', FALSE)
+    AS v(source, kind, tier, url, enabled)) v
+  ON t.source = v.source
+  WHEN MATCHED THEN UPDATE SET kind = v.kind, tier = v.tier, url = v.url
+  WHEN NOT MATCHED THEN INSERT (source, kind, tier, url, enabled) VALUES (v.source, v.kind, v.tier, v.url, v.enabled);
 
 -- Ontologia: yksi rivi per otsikko. Pelaajat ja valmentajat AI_EXTRACTilla, tyyppi AI_CLASSIFYlla,
 -- pelaajat liitetään rosteriin (player_ids). Joukkueet: ASSIGN_MEDIA_TEAMS (lähteen joukkue + otsikon nimi).
@@ -164,7 +192,7 @@ CREATE OR REPLACE PROCEDURE LIIGA.MEDIA.COLLECT_MEDIA()
   PACKAGES = ('snowflake-snowpark-python', 'requests')
   IMPORTS = ('@LIIGA.MEDIA.CODE/collect_media.py') HANDLER = 'collect_media.run'
   EXTERNAL_ACCESS_INTEGRATIONS = (LIIGA_MEDIA_ACCESS)
-  COMMENT = 'Muut mediat: IS, IL, MTV Liiga-otsikot ja linkit. Kutsuja: control plane (liiga-mediat).'
+  COMMENT = 'Liiga-otsikot ja linkit (lähteet MEDIA_SOURCES). Kutsuja: control plane (liiga-mediat, liiga-mediat-tihea).'
   EXECUTE AS OWNER;
 
 -- Sovellus (Mediat-sivu) ja agentti (haku). Julkaisu (LIIGA_DEPLOYER) tarkistaa palvelun olemassaolon.
