@@ -58,6 +58,14 @@ def _real_link(link: str) -> str:
     return link
 
 
+def _is_liiga(kind: str, title: str, cats: list[str], team: str) -> bool:
+    """rss: jääkiekkosyöte, kategoria riittää; sport ja search: vaaditaan joukkue tai sana liiga otsikossa."""
+    cat = bool({c.lower() for c in cats} & LIIGA_CATS)
+    if kind == "rss":
+        return cat or bool(team)
+    return bool(team) or cat or bool(re.search(r"\bliiga", title.lower()))
+
+
 def _items(xml: str, kind: str, known: set[str]):
     """(otsikko, linkki, joukkue, julkaistu, media) vain Liiga-jutuista, joita ei vielä ole talletettu."""
     for item in re.findall(r"<item>(.*?)</item>", xml, re.S):
@@ -67,11 +75,8 @@ def _items(xml: str, kind: str, known: set[str]):
             continue
         cats = _text(item, "category")
         team = _teams(title, " ".join(cats))
-        liiga = bool({c.lower() for c in cats} & LIIGA_CATS) or bool(re.search(r"\bliiga", title.lower()))
-        # rss: jääkiekkosyöte, kategoria riittää; sport ja search: vaaditaan joukkue tai sana liiga otsikossa.
-        if (kind == "rss" and ({c.lower() for c in cats} & LIIGA_CATS or team)) or (kind != "rss" and (team or liiga)):
-            media = (_text(item, "News:Source") or [""])[0]
-            yield title, link, team, _published(item), media
+        if _is_liiga(kind, title, cats, team):
+            yield title, link, team, _published(item), (_text(item, "News:Source") or [""])[0]
 
 
 def _get(url: str) -> str:
