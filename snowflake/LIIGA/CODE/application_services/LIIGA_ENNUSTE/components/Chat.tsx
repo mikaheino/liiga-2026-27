@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from "react";
 import { chatState, onOpenChat } from "@/lib/chatBus";
 import { modelLabel } from "@/lib/agentTools";
 import { md } from "@/lib/markdown";
+import { useWaking, WAKING_HINT } from "@/lib/waking";
 
 type Turn = { role: "user" | "assistant"; text: string; ms?: number; error?: boolean; suggestions?: string[]; tools?: string[] };
 const KEY = "liiga-chat";
@@ -70,6 +71,7 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
   const [wide, setWide] = useState(false);          // puhelimen laatikko: 55 % vai lähes koko ruutu
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
+  const waking = useWaking();   // palvelu herää: /api/chat ei vastaa (lib/waking.ts)
   const [busy, setBusy] = useState<number | null>(null);
   const [now, setNow] = useState(0);
   const [live, setLive] = useState("");       // striimattava vastaus ennen valmista
@@ -197,8 +199,8 @@ export default function Chat({ source = "snowflake" }: { source?: string }) {
             <div ref={end} />
           </div>
           <form className="chat-in" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Kysy sivusta ${where}…`} disabled={busy != null} aria-label="Kysymys" />
-            <button type="submit" className="btn" disabled={busy != null || !draft.trim()}>Lähetä</button>
+            <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={waking ? WAKING_HINT : `Kysy sivusta ${where}…`} disabled={busy != null || waking} aria-label="Kysymys" />
+            <button type="submit" className="btn" disabled={busy != null || waking || !draft.trim()}>Lähetä</button>
           </form>
         </aside>
       )}

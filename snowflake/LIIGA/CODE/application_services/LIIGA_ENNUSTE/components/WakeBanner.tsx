@@ -3,14 +3,15 @@
 // ja näyttää ilmoituksen, kun sovellus näyttää välimuistin version palvelun herätessä.
 // Kun palvelu vastaa taas, sivu päivittyy. Vain App Runtimessa (Pagesilla oma välimuistinsa).
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { STATIC } from "@/lib/target";
+import { setWaking, useWaking } from "@/lib/waking";
 
 const POLL_MS = 15_000;
 
 export default function WakeBanner() {
   const router = useRouter();
-  const [waking, setWaking] = useState(false);
+  const waking = useWaking();
 
   useEffect(() => {
     if (STATIC || !("serviceWorker" in navigator)) return;

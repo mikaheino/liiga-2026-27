@@ -12,6 +12,7 @@
 import { KIND_LABEL, summarize as summarizeRows } from "@/lib/scenarioSummary";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openChat } from "@/lib/chatBus";
+import { useWaking, WAKING_HINT } from "@/lib/waking";
 import { engineItem, itemKey, onLocks, setLocks, type Item } from "@/lib/lockBus";
 import { fi } from "@/lib/table";
 import ScenarioParams from "@/components/ScenarioParams";
@@ -96,6 +97,9 @@ export default function ScenarioBoard({ source = "snowflake", teams = [], baseli
   const [text, setText] = useState("");
   const [live, setLive] = useState<Live | null>(null);
   const building = !!live && !live.done;
+  // Palvelu herää (lib/waking.ts): /api ei vastaa, joten haku on pois käytöstä. Herätessä
+  // epäonnistuneet alkuhaut (ehdotukset, haut, malli) haetaan uudelleen, kun palvelu vastaa.
+  const waking = useWaking();
   // Etusivu avautuu aina tyhjänä kuin hakukone (7.11.2026, käyttäjä: "Vieläkin näkyy historiaa"):
   // edellinen skenaario ei palaa sessiosta; vanhat haut avataan Aiemmat skenaariot -listasta.
   useEffect(() => { setLocks([]); setItems([]); return onLocks(setItems); }, []);
@@ -116,13 +120,13 @@ export default function ScenarioBoard({ source = "snowflake", teams = [], baseli
   useEffect(() => {
     fetch("/api/skenaario/ehdotukset", { cache: "no-store" }).then((r) => r.json())
       .then((j: { suggestions?: { q: string; meta: string; kind: string }[] }) => setSugs(j.suggestions ?? [])).catch(() => {});
-  }, []);
+  }, [waking]);
   const [stamp, setStamp] = useState("");
   const loadHaut = useCallback(() => {
     fetch("/api/skenaario/haut", { cache: "no-store" }).then((r) => r.json())
       .then((j: { haut?: Haku[]; forecastTs?: string }) => { setHaut(j.haut ?? []); setStamp(j.forecastTs ?? ""); }).catch(() => {});
   }, []);
-  useEffect(loadHaut, [loadHaut]);
+  useEffect(loadHaut, [loadHaut, waking]);
   // Tallennetun haun avaus: teksti haun hetkeltä; luvut tallennetuista, jos ennuste on sama,
   // muuten moottori laskee ne nykyisellä ennusteella (VANHA PERUSTA -merkintä).
   const open = (h: Haku) => {
@@ -146,13 +150,13 @@ export default function ScenarioBoard({ source = "snowflake", teams = [], baseli
   useEffect(() => {
     try { if (localStorage.getItem("liiga-engine") === "cortex") setEngine("cortex"); } catch {}
     fetch("/api/skenaario/malli", { cache: "no-store" }).then((r) => r.json()).then((j: { qwen?: boolean }) => setQwenOk(!!j.qwen)).catch(() => {});
-  }, []);
+  }, [waking]);
   const pickEngine = (e: "qwen" | "cortex") => { setEngine(e); try { localStorage.setItem("liiga-engine", e); } catch {} };
   const run = async (follow?: string, asked?: string, refreshed?: string, scenario?: unknown[]) => {
     // Tarkennus (7.11.2026): agentti kysyi jotain, ja vastaus lähtee yhdessä alkuperäisen
     // kuvauksen ja kysymyksen kanssa -- kertakutsu ei muista edellistä kierrosta.
     const q = follow && live ? live.q : (asked ?? text).trim();
-    if (q.length < 3 || building || (follow != null && follow.trim().length < 1)) return;
+    if (q.length < 3 || building || waking || (follow != null && follow.trim().length < 1)) return;
     // Jatkopolku hakukentässä (7.11.2026, käyttäjä: "jatkopolku, kaikki muokkaus Google-chatissa"):
     // agentti saa edellisen kysymyksen ja vastauksen, jotta "entä jos painotetaan Eloa" tai "hän"
     // ymmärretään jatkoksi. Tarkennusvastaus kulkee kuten ennen.
@@ -272,10 +276,10 @@ export default function ScenarioBoard({ source = "snowflake", teams = [], baseli
       {/* "Entä jos?" -sanamerkki poistettu 7.11.2026 (käyttäjä: "poista tämä"): hakukenttä riittää. */}
       <form onSubmit={(e) => { e.preventDefault(); run(); }} className={`gs-box ${building ? "busy" : ""} ${showSugs ? "open" : ""}`} role="search">
         {/* Ei erillisiä nappeja: Enter tai suurennuslasi lähettää. */}
-        <button type="submit" className="gs-go" aria-label="Rakenna skenaario" disabled={building || text.trim().length < 3}>
+        <button type="submit" className="gs-go" aria-label="Rakenna skenaario" disabled={building || waking || text.trim().length < 3}>
           <svg viewBox="0 0 24 24" aria-hidden className="gs-ico"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
         </button>
-        <input value={text} onChange={(e) => { setText(e.target.value); setHi(-1); }} maxLength={300} disabled={building} enterKeyHint="search"
+        <input value={text} onChange={(e) => { setText(e.target.value); setHi(-1); }} maxLength={300} disabled={building || waking} enterKeyHint="search"
           onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 120)}
           onKeyDown={(e) => {
             if (!showSugs) return;
@@ -286,7 +290,7 @@ export default function ScenarioBoard({ source = "snowflake", teams = [], baseli
           }}
           onKeyUp={(e) => { if (e.key === "Escape" && !showSugs && !building) reset(); }}
           role="combobox" aria-expanded={showSugs} aria-controls="gs-sugs" aria-autocomplete="list"
-          placeholder={items.length ? "Jatka skenaariota: lisää tulos, poissaolo tai muutos" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
+          placeholder={waking ? WAKING_HINT : items.length ? "Jatka skenaariota: lisää tulos, poissaolo tai muutos" : "Kuvaile skenaario omin sanoin"} aria-label="Kuvaile skenaario omin sanoin" />
         {qwenOk && (
           // Hakukentän sisällä oikealla (8.11.: vastaus tulee kentän alle, säädin ei saa olla välissä).
           // Liukusäädin (8.11.2026, käyttäjä: "keskelle", "Qwen Cortex", "liikkumisen tulisi herättää
