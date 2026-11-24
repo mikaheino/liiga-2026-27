@@ -216,3 +216,6 @@ fetched_at,date,game_id,start,home,away,lineup_ready,home_starter,away_starter
 2026-11-24T10:21:18+00:00,2026-11-24,2701475,2026-11-24T16:30:00Z,Ilves,Ässät,0,,
 2026-11-24T10:21:18+00:00,2026-11-24,2701476,2026-11-24T16:30:00Z,SaiPa,Lukko,0,,
 2026-11-24T10:21:18+00:00,2026-11-24,2701478,2026-11-24T16:30:00Z,Sport,K-Espoo,0,,
+2026-11-24T12:21:28+00:00,2026-11-24,2701475,2026-11-24T16:30:00Z,Ilves,Ässät,1,Mantas Armalis,Roope Taponen
+2026-11-24T12:21:28+00:00,2026-11-24,2701476,2026-11-24T16:30:00Z,SaiPa,Lukko,1,Kari Piiroinen,Daniel Salonen
+2026-11-24T12:21:28+00:00,2026-11-24,2701478,2026-11-24T16:30:00Z,Sport,K-Espoo,1,Masi Härkönen,Petteri Rimpinen
