@@ -48,3 +48,7 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-24,2701475,Ilves,Ässät,0.673727,0.550643,0.210888,0.238469,0.674647,"Pelikielto: Ilves – Austin Strand; Puuttuu kokoonpanosta: Ilves – Iivari Heikkinen · Ässät – Alexandr Kim, Juuso Pulli; MV Armalis +0.05; MV Taponen -0.05"
 2026-11-24,2701476,SaiPa,Lukko,0.446709,0.341252,0.427608,0.23114,0.457747,"Poissa: Lukko – Lenni Hämäläinen, Santeri Virtanen; Puuttuu kokoonpanosta: SaiPa – Miro Tauslahti, Veeti Moilanen, Vertti Svensk; MV Piiroinen +0.11; MV Salonen -0.00"
 2026-11-24,2701478,Sport,K-Espoo,0.393674,0.281132,0.485464,0.233403,0.398768,"Puuttuu kokoonpanosta: K-Espoo – Eeli Salovaara, Ville Lajunen; MV Härkönen +0.05; MV Rimpinen +0.05"
+2026-11-25,2701480,HIFK,TPS,0.615833,0.498583,0.275938,0.225479,0.615833,
+2026-11-25,2701481,Jokerit,KooKoo,0.593198,0.478451,0.294363,0.227186,0.596588,Poissa: KooKoo – Manu Mäkelä
+2026-11-25,2701482,Kärpät,Pelicans,0.595325,0.474988,0.293594,0.231419,0.595325,
+2026-11-25,2701494,Tappara,Jukurit,0.613213,0.486511,0.290362,0.223127,0.602537,Pelikielto: Tappara – Michael Lindqvist
