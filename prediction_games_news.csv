@@ -53,3 +53,8 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-25,2701482,Kärpät,Pelicans,0.595325,0.486942,0.28267,0.230388,0.606744,"Puuttuu kokoonpanosta: Kärpät – Tuukka Tieksola, Veeti Ruotsalainen, Wiktor Nilsson · Pelicans – Christoffer Forsberg; MV Rubin +0.11; MV Olkinuora -0.15"
 2026-11-25,2701494,Tappara,Jukurit,0.613213,0.490718,0.286594,0.222688,0.606516,"Pelikielto: Tappara – Michael Lindqvist; Puuttuu kokoonpanosta: Tappara – Joona Karvonen, Tomi Sallinen · Jukurit – Bence Horvath, Christoffer Sedoff; MV Heljanko +0.10; MV Myrenberg +0.00"
 2026-11-26,2701486,Sport,Ilves,0.349708,0.230773,0.535574,0.233653,0.352273,"Puuttuu kokoonpanosta: Sport – Lari Heikkinen · Ilves – Jarkko Parikka, Topias Hynninen; MV Ortio -0.11; MV Rifalk -0.09"
+2026-11-27,2701483,KalPa,JYP,0.443268,0.324164,0.44679,0.229047,0.443268,
+2026-11-27,2701484,KooKoo,HPK,0.533033,0.409287,0.359011,0.231703,0.529772,Poissa: KooKoo – Manu Mäkelä
+2026-11-27,2701485,Lukko,Jukurit,0.699011,0.577681,0.197047,0.225272,0.694822,"Poissa: Lukko – Lenni Hämäläinen, Santeri Virtanen"
+2026-11-27,2701487,HIFK,SaiPa,0.52368,0.405582,0.367306,0.227112,0.52368,
+2026-11-27,2701488,Tappara,K-Espoo,0.534031,0.415069,0.356158,0.228773,0.534031,
