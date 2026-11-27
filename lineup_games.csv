@@ -270,3 +270,8 @@ fetched_at,date,game_id,start,home,away,lineup_ready,home_starter,away_starter
 2026-11-27T15:51:05+00:00,2026-11-27,2701484,2026-11-27T16:30:00Z,KooKoo,HPK,1,Eetu Randelin,Jakob Crespin
 2026-11-27T15:51:05+00:00,2026-11-27,2701488,2026-11-27T16:30:00Z,Tappara,K-Espoo,1,Christian Heljanko,Petteri Rimpinen
 2026-11-27T15:51:05+00:00,2026-11-27,2701487,2026-11-27T17:30:00Z,HIFK,SaiPa,1,Tim Juel,Gustavs Grigals
+2026-11-27T18:52:51+00:00,2026-11-27,2701485,2026-11-27T15:30:00Z,Lukko,Jukurit,1,Antti Raanta,Jesper Myrenberg
+2026-11-27T18:52:51+00:00,2026-11-27,2701483,2026-11-27T16:30:00Z,KalPa,JYP,1,Rasmus Korhonen,Oskari Salminen
+2026-11-27T18:52:51+00:00,2026-11-27,2701484,2026-11-27T16:30:00Z,KooKoo,HPK,1,Eetu Randelin,Jakob Crespin
+2026-11-27T18:52:51+00:00,2026-11-27,2701488,2026-11-27T16:30:00Z,Tappara,K-Espoo,1,Christian Heljanko,Petteri Rimpinen
+2026-11-27T18:52:51+00:00,2026-11-27,2701487,2026-11-27T17:30:00Z,HIFK,SaiPa,1,Tim Juel,Gustavs Grigals
