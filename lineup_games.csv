@@ -303,3 +303,10 @@ fetched_at,date,game_id,start,home,away,lineup_ready,home_starter,away_starter
 2026-11-28T15:51:06+00:00,2026-11-28,2701493,2026-11-28T15:00:00Z,TPS,K-Espoo,1,Markus Ruusu,Petteri Rimpinen
 2026-11-28T15:51:06+00:00,2026-11-28,2701495,2026-11-28T15:00:00Z,Ässät,Kärpät,1,Jan Bednar,Niklas Rubin
 2026-11-28T15:51:06+00:00,2026-11-28,2701615,2026-11-28T15:00:00Z,Jukurit,Lukko,1,Matthieu Herpin,Daniel Salonen
+2026-11-28T17:29:34+00:00,2026-11-28,2701489,2026-11-28T15:00:00Z,Ilves,HIFK,1,Mantas Armalis,Tim Juel
+2026-11-28T17:29:34+00:00,2026-11-28,2701490,2026-11-28T15:00:00Z,JYP,KalPa,1,Oskari Salminen,Stefanos Lekkas
+2026-11-28T17:29:34+00:00,2026-11-28,2701491,2026-11-28T15:00:00Z,Pelicans,KooKoo,1,Jussi Olkinuora,Jasper Patrikainen
+2026-11-28T17:29:34+00:00,2026-11-28,2701492,2026-11-28T15:00:00Z,SaiPa,Jokerit,1,Kari Piiroinen,Olle Eriksson Ek
+2026-11-28T17:29:34+00:00,2026-11-28,2701493,2026-11-28T15:00:00Z,TPS,K-Espoo,1,Markus Ruusu,Petteri Rimpinen
+2026-11-28T17:29:34+00:00,2026-11-28,2701495,2026-11-28T15:00:00Z,Ässät,Kärpät,1,Jan Bednar,Niklas Rubin
+2026-11-28T17:29:34+00:00,2026-11-28,2701615,2026-11-28T15:00:00Z,Jukurit,Lukko,1,Matthieu Herpin,Daniel Salonen
