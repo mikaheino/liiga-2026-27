@@ -58,3 +58,10 @@ snapshot_date,game_id,home_team,away_team,base_p_home_win,p_home_reg,p_away_reg,
 2026-11-27,2701484,KooKoo,HPK,0.533033,0.428053,0.341543,0.230404,0.547863,"Poissa: KooKoo – Manu Mäkelä; Puuttuu kokoonpanosta: KooKoo – Ari Gröndahl, Arttu Pelli, Ossi-Petteri Jaakola · HPK – Heikki Huttunen, Vili Alitalo; MV Randelin +0.14; MV Crespin -0.20"
 2026-11-27,2701487,HIFK,SaiPa,0.52368,0.413053,0.361271,0.225676,0.530404,"Puuttuu kokoonpanosta: HIFK – Anttoni Uronen, Atte Joki · SaiPa – Anze Zezelj, Veeti Moilanen, Vertti Svensk; MV Juel +0.01; MV Grigals -0.17"
 2026-11-27,2701488,Tappara,K-Espoo,0.534031,0.420554,0.350042,0.229404,0.539844,"Puuttuu kokoonpanosta: Tappara – Joona Karvonen, Tomi Sallinen · K-Espoo – Elias Puolanne, Matti Järvinen, Ville Lajunen; MV Heljanko +0.10; MV Rimpinen +0.05"
+2026-11-28,2701489,Ilves,HIFK,0.602554,0.481147,0.285377,0.233476,0.602554,
+2026-11-28,2701490,JYP,KalPa,0.662985,0.544424,0.227575,0.228,0.662985,
+2026-11-28,2701491,Pelicans,KooKoo,0.587149,0.472186,0.29329,0.234524,0.590386,Poissa: KooKoo – Manu Mäkelä
+2026-11-28,2701492,SaiPa,Jokerit,0.615675,0.500779,0.271252,0.227969,0.615675,
+2026-11-28,2701493,TPS,K-Espoo,0.47194,0.354253,0.412241,0.233506,0.47194,
+2026-11-28,2701495,Ässät,Kärpät,0.507532,0.389249,0.376063,0.234689,0.507532,
+2026-11-28,2701615,Jukurit,Lukko,0.368426,0.256187,0.51247,0.231342,0.372784,"Poissa: Lukko – Lenni Hämäläinen, Santeri Virtanen"
